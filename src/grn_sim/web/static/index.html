@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GRN-Sim Web Engine | Modernized phpIoRN</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .badge { display: inline-flex; align-items: center; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    canvas { touch-action: none; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-800/80 border-b border-slate-700 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-500/20">
+        GRN
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base font-bold text-white">GRN-Sim & phpIoRN Engine</h1>
+          <span class="badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v2.0 Real-time</span>
+        </div>
+        <p class="text-xs text-slate-400">Gene Network Perturbation Simulator & Reverse-Engineering Topology Resolver</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="https://doi.org/10.1049/ip-syb:20050073" target="_blank" class="text-xs text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1 bg-slate-700/50 px-3 py-1.5 rounded-md border border-slate-600">
+        📄 Wildenhain & Crampin (2006)
+      </a>
+      <a href="https://github.com/jwildenhain/gene-network-sim-inference" target="_blank" class="text-xs text-slate-300 hover:text-white transition flex items-center gap-1 bg-slate-700 px-3 py-1.5 rounded-md border border-slate-600 font-medium">
+        GitHub Repository
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 p-5 max-w-[1700px] w-full mx-auto">
+
+    <!-- Left Sidebar: Simulation & Inference Controls -->
+    <div class="lg:col-span-4 xl:col-span-3 flex flex-col gap-4">
+      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-4">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+            <span>⚙️ Simulation Parameters</span>
+          </h2>
+          <span class="text-xs text-slate-400 font-mono">IoRN Core</span>
+        </div>
+
+        <!-- Mode selection -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Experiment Mode</label>
+          <select id="simMode" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500" onchange="toggleMode()">
+            <option value="synthetic">Synthetic In Silico Perturbation</option>
+            <option value="sos">E. coli SOS Pathway Benchmark (Gardner 2003)</option>
+          </select>
+        </div>
+
+        <div id="syntheticControls" class="flex flex-col gap-3.5">
+          <!-- Topology -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Network Topology</label>
+            <select id="topologySelect" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="scale_free">Scale-Free (Barabási-Albert P(k)~k^-γ)</option>
+              <option value="random">Random Graph (Erdős-Rényi)</option>
+              <option value="hierarchical">Hierarchical Modular (Ravasz et al.)</option>
+            </select>
+          </div>
+
+          <!-- Gene Count -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">Network Size (Genes N)</span>
+              <span id="genesVal" class="text-cyan-400 font-mono font-bold">12</span>
+            </div>
+            <input type="range" id="numGenes" min="6" max="30" value="12" class="w-full accent-cyan-500" oninput="document.getElementById('genesVal').innerText = this.value">
+          </div>
+
+          <!-- Average Degree -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">Average Connectivity (k_av)</span>
+              <span id="kVal" class="text-cyan-400 font-mono font-bold">1.8</span>
+            </div>
+            <input type="range" id="kAv" min="1.0" max="3.5" step="0.1" value="1.8" class="w-full accent-cyan-500" oninput="document.getElementById('kVal').innerText = this.value">
+          </div>
+
+          <!-- Act / Inh Ratio -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">Activation / Inhibition Ratio</span>
+              <span id="ratioVal" class="text-cyan-400 font-mono font-bold">50% Act / 50% Inh</span>
+            </div>
+            <input type="range" id="actRatio" min="0.1" max="0.9" step="0.05" value="0.5" class="w-full accent-cyan-500" oninput="document.getElementById('ratioVal').innerText = Math.round(this.value*100)+'% Act / '+Math.round((1-this.value)*100)+'% Inh'">
+          </div>
+
+          <!-- Measurement Noise -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">Gaussian Noise (σ_m)</span>
+              <span id="noiseVal" class="text-cyan-400 font-mono font-bold">0.05 (5%)</span>
+            </div>
+            <input type="range" id="noiseLevel" min="0.0" max="0.25" step="0.01" value="0.05" class="w-full accent-cyan-500" oninput="document.getElementById('noiseVal').innerText = this.value + ' (' + Math.round(this.value*100) + '%)'">
+          </div>
+        </div>
+
+        <!-- Algorithm Selection -->
+        <div class="border-t border-slate-700 pt-3">
+          <label class="block text-xs font-semibold text-slate-300 mb-2">Reverse Engineering Algorithm</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
+              <input type="radio" name="activeAlg" value="s2g" checked class="accent-cyan-500" onchange="onAlgRadioChange()">
+              <span class="font-medium text-slate-200">S2G (Forward)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
+              <input type="radio" name="activeAlg" value="g2s" class="accent-cyan-500" onchange="onAlgRadioChange()">
+              <span class="font-medium text-slate-200">G2S (Backward)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
+              <input type="radio" name="activeAlg" value="vote" class="accent-emerald-500" onchange="onAlgRadioChange()">
+              <span class="font-medium text-emerald-400 font-bold">Voting Ensemble</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
+              <input type="radio" name="activeAlg" value="nir" class="accent-cyan-500" onchange="onAlgRadioChange()">
+              <span class="font-medium text-slate-200">NIR (Ridge)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
+              <input type="radio" name="activeAlg" value="fast" class="accent-cyan-500" onchange="onAlgRadioChange()">
+              <span class="font-medium text-slate-200">FAST (SVD)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
+              <input type="radio" name="activeAlg" value="by_chance" class="accent-cyan-500" onchange="onAlgRadioChange()">
+              <span class="font-medium text-slate-200">By-Chance</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button id="runBtn" onclick="runPipeline()" class="w-full mt-2 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-sm rounded-lg shadow-lg shadow-cyan-600/20 active:scale-[0.98] transition flex items-center justify-center gap-2">
+          <span>⚡ Execute & Resolve</span>
+        </button>
+
+        <div id="statusMsg" class="text-center text-xs text-slate-400">Ready to simulate.</div>
+      </div>
+    </div>
+
+    <!-- Center & Right: Interactive Visualizer & Analytics -->
+    <div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-5">
+
+      <!-- Graph Canvas Container -->
+      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-4 shadow-xl flex flex-col">
+        <!-- Canvas Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-700">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Graph View:</span>
+            <div class="inline-flex rounded-lg bg-slate-900 p-0.5 border border-slate-700">
+              <button id="viewCompBtn" onclick="setGraphView('comparison')" class="px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow">
+                Overlay Comparison
+              </button>
+              <button id="viewInferredBtn" onclick="setGraphView('inferred')" class="px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white">
+                Inferred Topology
+              </button>
+              <button id="viewTrueBtn" onclick="setGraphView('true')" class="px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white">
+                Ground Truth
+              </button>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Activation (+)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Inhibition (-)</span>
+            <span class="flex items-center gap-1.5 text-amber-400"><span class="w-3 h-1 bg-amber-400 inline-block"></span> Sign Error</span>
+            <span class="flex items-center gap-1.5 text-slate-400"><span class="w-3 h-1 border-t-2 border-dotted border-slate-400 inline-block"></span> Missed Edge</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="resetPhysics()" class="px-2.5 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition">
+              ↺ Reset Physics
+            </button>
+          </div>
+        </div>
+
+        <!-- HTML5 Canvas -->
+        <div class="relative w-full h-[460px] bg-slate-950 rounded-lg overflow-hidden mt-3 border border-slate-800">
+          <canvas id="graphCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+          <div id="hoverTooltip" class="absolute hidden bg-slate-800/95 border border-slate-600 text-slate-200 text-xs px-3 py-2 rounded-lg pointer-events-none shadow-2xl backdrop-blur"></div>
+        </div>
+      </div>
+
+      <!-- Performance Metrics & 4x4 Confusion Matrix -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <!-- Metrics Dashboard Cards -->
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-4">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-700 pb-2 flex justify-between items-center">
+            <span>📊 Thesis Performance Metrics</span>
+            <span id="activeAlgBadge" class="badge bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">S2G</span>
+          </h3>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400">Coverage (Recall)</div>
+              <div id="mCoverage" class="text-xl font-bold text-emerald-400 font-mono">--%</div>
+              <div class="text-[10px] text-slate-500">TP / True Connections</div>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400">False Positives %</div>
+              <div id="mFP" class="text-xl font-bold text-amber-400 font-mono">--%</div>
+              <div class="text-[10px] text-slate-500">FP / Total Possible</div>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400">Signed PPV (Precision)</div>
+              <div id="mPPV" class="text-xl font-bold text-cyan-400 font-mono">--%</div>
+              <div class="text-[10px] text-slate-500">Correct Sign / Inferred</div>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400">Total Errors</div>
+              <div id="mErrors" class="text-xl font-bold text-rose-400 font-mono">--</div>
+              <div class="text-[10px] text-slate-500">FP + FN + Sign Mismatch</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+              <span class="text-slate-400 text-[10px] block">True Positives</span>
+              <span id="mTPCount" class="font-bold text-emerald-400">--</span>
+            </div>
+            <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+              <span class="text-slate-400 text-[10px] block">False Positives</span>
+              <span id="mFPCount" class="font-bold text-rose-400">--</span>
+            </div>
+            <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+              <span class="text-slate-400 text-[10px] block">False Negatives</span>
+              <span id="mFNCount" class="font-bold text-slate-400">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4x4 Confusion Matrix (Matching stats_obs_pred.m) -->
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-700 pb-2 flex justify-between items-center">
+            <span>🎯 4×4 Observed vs Predicted Table</span>
+            <span class="text-[11px] text-slate-400 font-mono">phpIoRN Matrix</span>
+          </h3>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-center border-collapse">
+              <thead>
+                <tr class="text-slate-400 border-b border-slate-700">
+                  <th class="p-1.5 text-left font-normal text-[11px]">Obs \ Pred</th>
+                  <th class="p-1.5 text-emerald-400 font-semibold">Pred +</th>
+                  <th class="p-1.5 text-red-400 font-semibold">Pred -</th>
+                  <th class="p-1.5 text-slate-400 font-semibold">Pred 0</th>
+                  <th class="p-1.5 text-amber-400 font-semibold">Obs Err %</th>
+                </tr>
+              </thead>
+              <tbody id="cmatBody" class="font-mono divide-y divide-slate-800">
+                <tr><td colspan="5" class="py-6 text-slate-500 font-sans">Run simulation to populate matrix.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Comparative Table 4.1 Benchmark Across All Algorithms -->
+      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-700 pb-2 flex justify-between items-center">
+          <span>🏆 Algorithmic Benchmark Comparison (Table 4.1 Specification)</span>
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr class="text-slate-400 border-b border-slate-700 text-[11px]">
+                <th class="p-2">Algorithm</th>
+                <th class="p-2 text-right">Coverage %</th>
+                <th class="p-2 text-right">False Positives %</th>
+                <th class="p-2 text-right">Inferred Conn. %</th>
+                <th class="p-2 text-right">FP per Inferred %</th>
+                <th class="p-2 text-right">Signed PPV %</th>
+                <th class="p-2 text-right">Total Errors</th>
+                <th class="p-2 text-right">F1-Score</th>
+              </tr>
+            </thead>
+            <tbody id="benchmarkTableBody" class="font-mono divide-y divide-slate-800">
+              <tr><td colspan="8" class="py-4 text-center text-slate-500 font-sans">Awaiting simulation run.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // State
+    let simulationState = null;
+    let inferenceState = null;
+    let currentGraphView = 'comparison'; // 'comparison', 'inferred', 'true'
+    let currentAlg = 's2g';
+
+    // Physics Engine State
+    let canvas, ctx;
+    let nodes = [];
+    let links = [];
+    let draggedNode = null;
+    let hoveredNode = null;
+    let isDragging = false;
+    let animFrame = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      canvas = document.getElementById('graphCanvas');
+      ctx = canvas.getContext('2d');
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      setupCanvasEvents();
+      runPipeline(); // Initial run on load
+    });
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    function toggleMode() {
+      const mode = document.getElementById('simMode').value;
+      const syn = document.getElementById('syntheticControls');
+      if (mode === 'sos') {
+        syn.classList.add('opacity-40', 'pointer-events-none');
+      } else {
+        syn.classList.remove('opacity-40', 'pointer-events-none');
+      }
+    }
+
+    function onAlgRadioChange() {
+      const radios = document.getElementsByName('activeAlg');
+      for (const r of radios) {
+        if (r.checked) currentAlg = r.value;
+      }
+      document.getElementById('activeAlgBadge').innerText = currentAlg.toUpperCase();
+      if (inferenceState) {
+        updateViewsForSelectedAlg();
+      }
+    }
+
+    function setGraphView(view) {
+      currentGraphView = view;
+      document.getElementById('viewCompBtn').className = (view === 'comparison') ? 'px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white';
+      document.getElementById('viewInferredBtn').className = (view === 'inferred') ? 'px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white';
+      document.getElementById('viewTrueBtn').className = (view === 'true') ? 'px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white';
+      updateActiveGraphData();
+    }
+
+    async function runPipeline() {
+      const btn = document.getElementById('runBtn');
+      const status = document.getElementById('statusMsg');
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      status.innerText = "Simulating non-linear perturbation ODEs...";
+
+      const mode = document.getElementById('simMode').value;
+
+      try {
+        if (mode === 'sos') {
+          // SOS benchmark
+          status.innerText = "Running Gardner E. coli SOS Pathway Benchmark...";
+          const res = await fetch('/api/benchmark/sos');
+          const data = await res.json();
+          renderSOSBenchmark(data);
+          status.innerText = "Replicated Gardner 2003 E. coli SOS benchmark.";
+        } else {
+          // Synthetic simulation
+          const params = {
+            num_genes: parseInt(document.getElementById('numGenes').value),
+            topology: document.getElementById('topologySelect').value,
+            k_av: parseFloat(document.getElementById('kAv').value),
+            act_ratio: parseFloat(document.getElementById('actRatio').value),
+            noise: parseFloat(document.getElementById('noiseLevel').value),
+            algorithms: ["s2g", "g2s", "vote", "nir", "fast", "by_chance"]
+          };
+
+          // Step 1: Simulate
+          const simRes = await fetch('/api/simulate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+          });
+          simulationState = await simRes.json();
+
+          // Step 2: Infer
+          status.innerText = "Resolving topologies with S2G, G2S, NIR, FAST & Voting...";
+          const infRes = await fetch('/api/infer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+          });
+          inferenceState = await infRes.json();
+
+          updateViewsForSelectedAlg();
+          renderBenchmarkTable(inferenceState.metrics);
+          status.innerText = `Simulation resolved (${simulationState.total_edges} edges, k_av=${simulationState.k_average}).`;
+        }
+      } catch (err) {
+        status.innerText = "Error: " + err.message;
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }
+    }
+
+    function updateViewsForSelectedAlg() {
+      if (!inferenceState || !inferenceState.metrics[currentAlg]) return;
+
+      const m = inferenceState.metrics[currentAlg];
+      document.getElementById('mCoverage').innerText = m.coverage_pct + '%';
+      document.getElementById('mFP').innerText = m.false_positives_pct + '%';
+      document.getElementById('mPPV').innerText = m.inferred_sign_pct + '%';
+      document.getElementById('mErrors').innerText = m.total_errors;
+
+      document.getElementById('mTPCount').innerText = m.true_positives;
+      document.getElementById('mFPCount').innerText = m.false_positives;
+      document.getElementById('mFNCount').innerText = m.false_negatives;
+
+      // Render 4x4 confusion matrix
+      renderConfusionMatrix(inferenceState.confusion_matrix[currentAlg]);
+
+      // Update graph
+      updateActiveGraphData();
+    }
+
+    function renderConfusionMatrix(cmatData) {
+      if (!cmatData) return;
+      const tbody = document.getElementById('cmatBody');
+      const rows = cmatData.matrix;
+      const rErr = cmatData.row_errors;
+      const cErr = cmatData.col_errors;
+
+      let html = '';
+      const rLabels = ['Observed (+)', 'Observed (-)', 'No Interaction (0)'];
+      for (let i = 0; i < 3; i++) {
+        html += `<tr class="hover:bg-slate-800/60">
+          <td class="p-2 text-left font-sans font-medium text-slate-300">${rLabels[i]}</td>
+          <td class="p-2 text-emerald-400">${rows[i][0]}</td>
+          <td class="p-2 text-red-400">${rows[i][1]}</td>
+          <td class="p-2 text-slate-400">${rows[i][2]}</td>
+          <td class="p-2 font-bold text-amber-400">${rErr[i]}%</td>
+        </tr>`;
+      }
+      // Column errors summary row
+      html += `<tr class="border-t-2 border-slate-700 bg-slate-950/60 font-semibold">
+        <td class="p-2 text-left text-amber-400 font-sans">Pred Err %</td>
+        <td class="p-2 text-amber-400">${cErr[0]}%</td>
+        <td class="p-2 text-amber-400">${cErr[1]}%</td>
+        <td class="p-2 text-amber-400">${cErr[2]}%</td>
+        <td class="p-2 text-rose-400 font-bold">${cmatData.overall_error_pct}%</td>
+      </tr>`;
+      tbody.innerHTML = html;
+    }
+
+    function renderBenchmarkTable(metricsDict) {
+      const tbody = document.getElementById('benchmarkTableBody');
+      const algNames = {
+        's2g': 'S2G (Simple-to-General)',
+        'g2s': 'G2S (General-to-Specific)',
+        'vote': 'Voting Ensemble (S2G ∩ G2S)',
+        'nir': 'NIR (Multiple Regression)',
+        'fast': 'FAST (SVD Truncation)',
+        'by_chance': 'By-Chance Baseline'
+      };
+
+      let html = '';
+      for (const [key, m] of Object.entries(metricsDict)) {
+        const isSelected = key === currentAlg;
+        const rowBg = isSelected ? 'bg-cyan-950/40 border-l-4 border-cyan-500' : 'hover:bg-slate-800/50';
+        html += `<tr class="${rowBg} cursor-pointer transition" onclick="selectAlg('${key}')">
+          <td class="p-2 font-sans font-medium text-slate-200">${algNames[key] || key.toUpperCase()}</td>
+          <td class="p-2 text-right text-emerald-400 font-bold">${m.coverage_pct}%</td>
+          <td class="p-2 text-right text-amber-400">${m.false_positives_pct}%</td>
+          <td class="p-2 text-right text-slate-300">${m.inferred_connections_pct}%</td>
+          <td class="p-2 text-right text-slate-300">${m.fp_per_inferred_pct}%</td>
+          <td class="p-2 text-right text-cyan-400 font-bold">${m.inferred_sign_pct}%</td>
+          <td class="p-2 text-right text-rose-400">${m.total_errors}</td>
+          <td class="p-2 text-right text-slate-200 font-bold">${m.f1_score}</td>
+        </tr>`;
+      }
+      tbody.innerHTML = html;
+    }
+
+    function renderSOSBenchmark(data) {
+      if (!data || !data.table_4_1) return;
+      renderBenchmarkTable(data.table_4_1);
+      const s2g = data.table_4_1['s2g'];
+      if (s2g) {
+        document.getElementById('mCoverage').innerText = s2g.coverage_pct + '%';
+        document.getElementById('mFP').innerText = s2g.false_positives_pct + '%';
+        document.getElementById('mPPV').innerText = s2g.inferred_sign_pct + '%';
+        document.getElementById('mErrors').innerText = s2g.total_errors;
+      }
+    }
+
+    function selectAlg(key) {
+      const radios = document.getElementsByName('activeAlg');
+      for (const r of radios) {
+        if (r.value === key) r.checked = true;
+      }
+      onAlgRadioChange();
+    }
+
+    // Graph Layout and Force-Directed Physics Simulation
+    function updateActiveGraphData() {
+      if (!simulationState || !simulationState.graph) return;
+
+      let graphData;
+      if (currentGraphView === 'comparison' && inferenceState && inferenceState.comparison_graphs) {
+        graphData = inferenceState.comparison_graphs[currentAlg];
+      } else if (currentGraphView === 'inferred' && inferenceState && inferenceState.comparison_graphs) {
+        const rawComp = inferenceState.comparison_graphs[currentAlg];
+        // Only keep inferred edges
+        graphData = {
+          nodes: rawComp.nodes,
+          links: rawComp.links.filter(l => l.status !== 'FN')
+        };
+      } else {
+        // True graph
+        graphData = simulationState.graph;
+      }
+
+      initPhysicsGraph(graphData);
+    }
+
+    function initPhysicsGraph(graphData) {
+      const width = canvas.width;
+      const height = canvas.height;
+      const numNodes = graphData.nodes.length;
+      const radius = Math.min(width, height) * 0.35;
+
+      // Preserve existing positions if possible
+      const existing = {};
+      nodes.forEach(n => existing[n.id] = { x: n.x, y: n.y });
+
+      nodes = graphData.nodes.map((n, i) => {
+        const angle = (i / numNodes) * 2 * Math.PI;
+        return {
+          id: n.id,
+          label: n.label,
+          x: existing[n.id] ? existing[n.id].x : width / 2 + radius * Math.cos(angle) + (Math.random()-0.5)*20,
+          y: existing[n.id] ? existing[n.id].y : height / 2 + radius * Math.sin(angle) + (Math.random()-0.5)*20,
+          vx: 0,
+          vy: 0,
+          radius: 16
+        };
+      });
+
+      const nodeMap = {};
+      nodes.forEach(n => nodeMap[n.id] = n);
+
+      links = graphData.links.map(l => ({
+        source: nodeMap[l.source],
+        target: nodeMap[l.target],
+        color: l.color || '#10b981',
+        style: l.style || 'solid',
+        description: l.description || '',
+        status: l.status || ''
+      })).filter(l => l.source && l.target);
+
+      if (!animFrame) {
+        runPhysicsLoop();
+      }
+    }
+
+    function resetPhysics() {
+      updateActiveGraphData();
+    }
+
+    function runPhysicsLoop() {
+      // Force calculation
+      const width = canvas.width;
+      const height = canvas.height;
+      const kSpring = 0.05;
+      const kRepel = 1200;
+      const damping = 0.85;
+
+      // Repulsion between nodes
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[j].x - nodes[i].x;
+          const dy = nodes[j].y - nodes[i].y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const force = kRepel / (dist * dist);
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+
+          nodes[i].vx -= fx;
+          nodes[i].vy -= fy;
+          nodes[j].vx += fx;
+          nodes[j].vy += fy;
+        }
+      }
+
+      // Spring attraction along links
+      for (const link of links) {
+        const dx = link.target.x - link.source.x;
+        const dy = link.target.y - link.source.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const targetDist = 90;
+        const force = (dist - targetDist) * kSpring;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+
+        link.source.vx += fx;
+        link.source.vy += fy;
+        link.target.vx -= fx;
+        link.target.vy -= fy;
+      }
+
+      // Center gravity
+      for (const node of nodes) {
+        node.vx += (width / 2 - node.x) * 0.01;
+        node.vy += (height / 2 - node.y) * 0.01;
+
+        if (node !== draggedNode) {
+          node.vx *= damping;
+          node.vy *= damping;
+          node.x += node.vx;
+          node.y += node.vy;
+
+          // Boundary constraints
+          node.x = Math.max(node.radius + 10, Math.min(width - node.radius - 10, node.x));
+          node.y = Math.max(node.radius + 10, Math.min(height - node.radius - 10, node.y));
+        }
+      }
+
+      drawGraph();
+      animFrame = requestAnimationFrame(runPhysicsLoop);
+    }
+
+    function drawGraph() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Links
+      for (const link of links) {
+        ctx.save();
+        ctx.strokeStyle = link.color;
+        ctx.lineWidth = 2;
+
+        if (link.style === 'dashed') {
+          ctx.setLineDash([6, 4]);
+        } else if (link.style === 'dotted') {
+          ctx.setLineDash([2, 3]);
+        }
+
+        // Draw curved link or self-loop
+        if (link.source === link.target) {
+          // Self-loop
+          ctx.beginPath();
+          ctx.arc(link.source.x, link.source.y - 20, 14, 0, 2 * Math.PI);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(link.source.x, link.source.y);
+          ctx.lineTo(link.target.x, link.target.y);
+          ctx.stroke();
+
+          // Arrowhead
+          drawArrow(ctx, link.source.x, link.source.y, link.target.x, link.target.y, link.target.radius, link.color);
+        }
+        ctx.restore();
+      }
+
+      // Draw Nodes
+      for (const node of nodes) {
+        ctx.save();
+        const isHovered = node === hoveredNode;
+
+        // Shadow
+        ctx.shadowColor = isHovered ? 'rgba(6, 182, 212, 0.6)' : 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = isHovered ? 12 : 6;
+
+        // Circle
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius + (isHovered ? 2 : 0), 0, 2 * Math.PI);
+        ctx.fillStyle = isHovered ? '#0891b2' : '#1e293b';
+        ctx.fill();
+
+        ctx.strokeStyle = isHovered ? '#67e8f9' : '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.label, node.x, node.y);
+
+        ctx.restore();
+      }
+    }
+
+    function drawArrow(ctx, fromX, fromY, toX, toY, targetRadius, color) {
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const angle = Math.atan2(dy, dx);
+      const arrowLength = 9;
+
+      const endX = toX - Math.cos(angle) * (targetRadius + 3);
+      const endY = toY - Math.sin(angle) * (targetRadius + 3);
+
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX - arrowLength * Math.cos(angle - Math.PI / 6), endY - arrowLength * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(endX - arrowLength * Math.cos(angle + Math.PI / 6), endY - arrowLength * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function setupCanvasEvents() {
+      const tooltip = document.getElementById('hoverTooltip');
+
+      canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        for (const node of nodes) {
+          const dx = node.x - mouseX;
+          const dy = node.y - mouseY;
+          if (dx * dx + dy * dy <= node.radius * node.radius) {
+            draggedNode = node;
+            isDragging = true;
+            break;
+          }
+        }
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        if (isDragging && draggedNode) {
+          draggedNode.x = mouseX;
+          draggedNode.y = mouseY;
+          draggedNode.vx = 0;
+          draggedNode.vy = 0;
+          return;
+        }
+
+        // Hover test
+        hoveredNode = null;
+        for (const node of nodes) {
+          const dx = node.x - mouseX;
+          const dy = node.y - mouseY;
+          if (dx * dx + dy * dy <= node.radius * node.radius) {
+            hoveredNode = node;
+            break;
+          }
+        }
+
+        if (hoveredNode) {
+          tooltip.style.display = 'block';
+          tooltip.style.left = (e.clientX - rect.left + 15) + 'px';
+          tooltip.style.top = (e.clientY - rect.top - 15) + 'px';
+          const inCount = links.filter(l => l.target === hoveredNode).length;
+          const outCount = links.filter(l => l.source === hoveredNode).length;
+          tooltip.innerHTML = `<strong>${hoveredNode.label}</strong><br>In-degree: ${inCount}<br>Out-degree: ${outCount}`;
+        } else {
+          tooltip.style.display = 'none';
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+        draggedNode = null;
+      });
+    }
+  </script>
+</body>
+</html>

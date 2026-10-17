@@ -104,6 +104,11 @@ def cmd_multi_agent(args):
     print(format_table(headers, rows))
 
 
+def cmd_web(args):
+    from grn_sim.web.server import run_server
+    run_server(port=args.port, open_browser=not args.no_browser)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="GRN-Sim: Gene Network Perturbation Simulator & Inference Suite"
@@ -121,12 +126,19 @@ def main():
     p_ma.add_argument("--noise", type=float, default=0.0, help="Measurement noise variance")
     p_ma.add_argument("--seed", type=int, default=42, help="Random seed")
 
+    # web
+    p_web = subparsers.add_parser("web", help="Launch interactive phpIoRN-equivalent web simulation & inference engine")
+    p_web.add_argument("--port", "-p", type=int, default=8080, help="Port to bind server (default: 8080)")
+    p_web.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
+
     args = parser.parse_args()
 
     if args.command == "sos-benchmark":
         cmd_sos_benchmark(args)
     elif args.command == "multi-agent":
         cmd_multi_agent(args)
+    elif args.command == "web":
+        cmd_web(args)
     else:
         # Default behavior: run sos benchmark and multi-agent demonstration
         cmd_sos_benchmark(args)
@@ -142,3 +154,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
