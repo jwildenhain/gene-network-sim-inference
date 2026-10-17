@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grn-sim"
+version = "0.1.0"
+description = "Gene Regulatory Network Perturbation Simulator and Reverse Engineering Inference Suite"
+readme = "README.md"
+authors = [
+    { name = "Jan Wildenhain", email = "jan.wildenhain@gmail.com" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.20.0",
+    "scipy>=1.7.0",
+    "matplotlib>=3.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+grn-sim = "grn_sim.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
