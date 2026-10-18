@@ -1,17 +1,19 @@
 """
-Tests for graph export, visualization, and web server API.
+Tests for graph export, 9-state differential visualization, and web server API.
 """
 
 import numpy as np
-import json
 from grn_sim.visualization.graph_export import (
     export_graphviz_dot,
+    export_9state_graphviz_dot,
+    compute_new_stats_9state,
+    render_graphviz_svg,
     export_graph_json,
     export_comparison_graph_json,
     compute_detailed_confusion_matrix,
 )
-from grn_sim.web.server import GRNWebHandler, CURRENT_STATE
-from grn_sim.core.topology import generate_topology, TopologyType
+from grn_sim.web.server import _execute_simulation, _execute_inference, _build_sos_full_studio
+from grn_sim.core.topology import TopologyType
 from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.experiment import PerturbationSimulator
 
@@ -23,10 +25,35 @@ def test_graphviz_dot_export():
         [0, -1, 0],
     ])
     dot = export_graphviz_dot(adj, gene_names=["lexA", "recA", "ssb"])
-    assert "digraph \"GRN\"" in dot
-    assert "\"recA\" -> \"lexA\"" in dot
-    assert "arrowhead=\"vee\"" in dot   # Activation
-    assert "arrowhead=\"tee\"" in dot   # Inhibition
+    assert 'digraph "GRN"' in dot
+    assert '"recA" -> "lexA"' in dot
+    assert 'arrowhead="normal"' in dot   # Activation
+    assert 'arrowhead="tee"' in dot      # Inhibition
+
+
+def test_9state_stats_and_dot():
+    true_adj = np.array([
+        [0,  1, -1],
+        [1,  0,  0],
+        [0, -1,  0],
+    ])
+    pred_adj = np.array([
+        [1,  1,  0],
+        [-1, 0, -1],
+        [0,  1,  0],
+    ])
+    res = compute_new_stats_9state(true_adj, pred_adj)
+    st = res["tmp_statmat"]
+    assert "power" in st
+    assert "specificity" in st
+    assert "signed_ppv" in st
+    assert st["total_errors"] > 0
+
+    a_stats = np.array(res["a_stats"], dtype=int)
+    dot9 = export_9state_graphviz_dot(a_stats, ["G1", "G2", "G3"])
+    assert 'digraph "GRN_Comparison"' in dot9
+    svg = render_graphviz_svg(dot9, engine="dot", matrix=a_stats, gene_names=["G1", "G2", "G3"], is_9state=True)
+    assert "<svg" in svg
 
 
 def test_graph_json_export():
@@ -46,7 +73,6 @@ def test_comparison_graph_json():
         [0,  1],
         [-1, 0]
     ])
-    # Inferred has 1 correct TP, 1 sign error, and 1 FP
     pred_adj = np.array([
         [1,  1],
         [1,  0]
@@ -56,6 +82,7 @@ def test_comparison_graph_json():
     assert "TP_CORRECT" in statuses
     assert "TP_SIGN_ERR" in statuses
     assert "FP" in statuses
+    assert "state_counts" in comp
 
 
 def test_detailed_confusion_matrix():
@@ -72,16 +99,17 @@ def test_detailed_confusion_matrix():
 
 
 def test_end_to_end_web_pipeline():
-    # Simulate a small network
-    network = GeneNetwork.create(
-        n=6,
-        k_av=1.5,
-        net_type=TopologyType.RANDOM,
-        seed=42,
-    )
-    simulator = PerturbationSimulator(measurement_noise=0.01)
-    experiment = simulator.run(network, seed=42)
+    sim_resp = _execute_simulation({"num_genes": 8, "topology": "power_law", "k_av": 1.5, "seed": 42})
+    assert sim_resp["status"] == "success"
+    assert len(sim_resp["node_params"]) == 8
+    assert len(sim_resp["basal_trajectory"]) == 8
+    assert len(sim_resp["perturbation_trajectories"]) == 8
 
-    assert experiment.X.shape == (6, 6)
-    dot = export_graphviz_dot(network.topology.adjacency)
-    assert "digraph" in dot
+    inf_resp = _execute_inference(["s2g", "g2s", "vote"])
+    assert inf_resp["status"] == "success"
+    assert "s2g" in inf_resp["tmp_statmat"]
+    assert "aic_profile" in inf_resp
+
+    sos_resp = _build_sos_full_studio()
+    assert sos_resp["status"] == "success"
+    assert len(sos_resp["gene_names"]) == 9

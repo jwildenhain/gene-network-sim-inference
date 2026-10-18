@@ -1,0 +1,11 @@
+services:
+  grn-sim-web:
+    build: .
+    image: grn-sim-web:latest
+    container_name: grn-sim-phpiorn
+    ports:
+      - "8085:8080"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+    restart: unless-stopped

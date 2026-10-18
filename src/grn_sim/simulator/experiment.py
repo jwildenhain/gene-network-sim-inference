@@ -30,6 +30,8 @@ class SimulationExperiment:
     error_conc: np.ndarray              # (n, m) concentration measurement error
     error_pert: np.ndarray              # (n, m) perturbation error
     is_valid_steady_state: bool         # Whether all simulations reached valid steady state
+    basal_trajectory: Optional[np.ndarray] = None           # (n, steps) trajectory to basal steady state
+    perturbation_trajectories: Optional[list] = None        # list of (n, steps) trajectories per perturbed gene j
 
 
 class PerturbationSimulator:
@@ -62,7 +64,7 @@ class PerturbationSimulator:
             seed: Optional random seed for reproducible noise.
 
         Returns:
-            SimulationExperiment containing X, U, and true matrix.
+            SimulationExperiment containing X, U, trajectories, and true matrix.
         """
         rng = np.random.default_rng(seed)
         n = network.n
@@ -74,10 +76,10 @@ class PerturbationSimulator:
             sim_net = network
 
         # 1. Compute reference unperturbed steady state
-        x_ss, ss_ok, _ = self.solver.solve_to_steady_state(sim_net)
+        x_ss, ss_ok, basal_traj = self.solver.solve_to_steady_state(sim_net)
         if not ss_ok or np.any(x_ss <= 0):
             # Fallback retry with small perturbation if starting state hit zero
-            x_ss, ss_ok, _ = self.solver.solve_to_steady_state(sim_net, x0=np.ones(n))
+            x_ss, ss_ok, basal_traj = self.solver.solve_to_steady_state(sim_net, x0=np.ones(n))
 
         sim_net.steady_state_unperturbed = x_ss
 
@@ -88,6 +90,7 @@ class PerturbationSimulator:
         error_conc = np.zeros((n, n), dtype=float)
         error_pert = np.zeros((n, n), dtype=float)
         all_steady = ss_ok
+        pert_trajectories = []
 
         # 2. Perturb each gene sequentially
         for j in range(n):
@@ -105,11 +108,12 @@ class PerturbationSimulator:
             U[j, j] = u_vec[j]
 
             # Solve system from reference steady state under perturbation u_vec
-            x_pert, p_steady, _ = self.solver.solve_to_steady_state(
+            x_pert, p_steady, p_traj = self.solver.solve_to_steady_state(
                 sim_net,
                 x0=x_ss.copy(),
                 perturbation=u_vec,
             )
+            pert_trajectories.append(p_traj)
 
             if not p_steady:
                 all_steady = False
@@ -139,4 +143,6 @@ class PerturbationSimulator:
             error_conc=error_conc,
             error_pert=error_pert,
             is_valid_steady_state=all_steady,
+            basal_trajectory=basal_traj,
+            perturbation_trajectories=pert_trajectories,
         )

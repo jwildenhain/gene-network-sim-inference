@@ -1,789 +1,2394 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GRN-Sim Web Engine | Modernized phpIoRN</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>phpIoRN / GRN-Sim — Gene Network Perturbation Simulator &amp; Reverse-Engineering Suite</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    .badge { display: inline-flex; align-items: center; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
-    canvas { touch-action: none; }
+    :root {
+      --bg-base: #0b0f19;
+      --bg-panel: #111827;
+      --bg-card: #1e293b;
+      --bg-card-hover: #26354d;
+      --border: #334155;
+      --border-highlight: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-indigo: #6366f1;
+      --accent-emerald: #10b981;
+      --accent-red: #ef4444;
+      --accent-amber: #f59e0b;
+      --accent-pink: #f472b6;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Header & phpIoRN Navigation Bar */
+    .topbar {
+      background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 55%, #0f172a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      color: #0b0f19;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 6px 11px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-title h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.2px;
+    }
+
+    .brand-title p {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-tab {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-tab.active {
+      background: var(--accent-indigo);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+    }
+
+    /* Main Content Container */
+    .main-container {
+      padding: 18px 24px 32px;
+      max-width: 1680px;
+      width: 100%;
+      margin: 0 auto;
+      flex: 1;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* 6-Step phpIoRN Wizard Bar (runsim.php) */
+    .wizard-bar {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .wizard-steps {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .wizard-step {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .wizard-step.active {
+      border-color: var(--accent-blue);
+      color: var(--text-main);
+      background: rgba(56, 189, 248, 0.14);
+    }
+
+    .wizard-step .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #334155;
+      color: #e2e8f0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .wizard-step.active .step-num {
+      background: var(--accent-blue);
+      color: #0b0f19;
+    }
+
+    /* Grid Layouts */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .right-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .two-col-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .three-col-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Panel / Card Styling */
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.65);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .badge-emerald {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    /* Form Controls */
+    .form-group {
+      margin-bottom: 11px;
+    }
+
+    .form-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 4px;
+    }
+
+    .form-label span.val {
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+    }
+
+    select, input[type="number"], input[type="text"] {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 10px;
+      border-radius: 7px;
+      font-size: 12.5px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-blue);
+      cursor: pointer;
+    }
+
+    .alg-checkboxes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .alg-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 6px 9px;
+      border-radius: 7px;
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      color: #0b0f19;
+      font-weight: 700;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.08);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 11.5px;
+    }
+
+    .btn-sm.active {
+      background: var(--accent-indigo);
+      color: #fff;
+      border-color: var(--accent-indigo);
+    }
+
+    /* Stat Cards ($TMP_STATMAT) */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .stat-card .stat-val {
+      font-size: 17px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--accent-blue);
+    }
+
+    .stat-card .stat-lbl {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    table.data-table th,
+    table.data-table td {
+      padding: 7px 9px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+      text-align: left;
+    }
+
+    table.data-table th {
+      background: rgba(30, 41, 59, 0.9);
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    table.data-table tr:hover td {
+      background: rgba(56, 189, 248, 0.06);
+    }
+
+    table.data-table tr.selected-row td {
+      background: rgba(99, 102, 241, 0.18);
+    }
+
+    /* Canvas & Graph View Containers */
+    .graph-stage {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      height: 360px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .graph-stage svg {
+      max-width: 100%;
+      max-height: 100%;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 9-State Edge Legend (statsgraph_to_dot.m) */
+    .legend-9state {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 11px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e1;
+    }
+
+    .legend-line {
+      width: 22px;
+      height: 0;
+      border-top-width: 3px;
+      display: inline-block;
+    }
+
+    /* Modern HTML <dialog> for Node/Edge Inspector (get_param.php) */
+    dialog#inspector-dialog {
+      margin: auto;
+      background: var(--bg-panel);
+      color: var(--text-main);
+      border: 1px solid var(--accent-blue);
+      border-radius: 14px;
+      padding: 20px;
+      max-width: 680px;
+      width: 92%;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+    }
+
+    dialog#inspector-dialog::backdrop {
+      background: rgba(9, 13, 22, 0.72);
+      backdrop-filter: blur(4px);
+    }
+
+    .mono-box {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #cbd5e1;
+      max-height: 330px;
+      overflow: auto;
+      white-space: pre;
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+<body>
 
-  <!-- Header -->
-  <header class="bg-slate-800/80 border-b border-slate-700 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-500/20">
-        GRN
-      </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <h1 class="text-base font-bold text-white">GRN-Sim & phpIoRN Engine</h1>
-          <span class="badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v2.0 Real-time</span>
-        </div>
-        <p class="text-xs text-slate-400">Gene Network Perturbation Simulator & Reverse-Engineering Topology Resolver</p>
+  <!-- Top Navigation Bar (Modernized phpIoRN global_conf.inc.php) -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-badge">phpIoRN / GRN-Sim</div>
+      <div class="brand-title">
+        <h1>In Silico Gene Network Perturbation Simulator &amp; Inference Engine</h1>
+        <p>Wildenhain &amp; Crampin (2006) <em>IEE Proc. Systems Biology</em> 153(4):247–256 &bull; Honours Thesis (2004)</p>
       </div>
     </div>
-    <div class="flex items-center gap-3">
-      <a href="https://doi.org/10.1049/ip-syb:20050073" target="_blank" class="text-xs text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1 bg-slate-700/50 px-3 py-1.5 rounded-md border border-slate-600">
-        📄 Wildenhain & Crampin (2006)
-      </a>
-      <a href="https://github.com/jwildenhain/gene-network-sim-inference" target="_blank" class="text-xs text-slate-300 hover:text-white transition flex items-center gap-1 bg-slate-700 px-3 py-1.5 rounded-md border border-slate-600 font-medium">
-        GitHub Repository
-      </a>
-    </div>
+
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-tab="tab-wizard" onclick="switchMainTab('tab-wizard')">
+        <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
+        <span>2. E. coli SOS Pathway Benchmark (Gardner 2003)</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
+        <span>3. Thesis &amp; Paper Figures Gallery</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
+        <span>4. Previous Simulations Archive (showpre.php)</span>
+      </button>
+    </nav>
   </header>
 
-  <!-- Main Grid -->
-  <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 p-5 max-w-[1700px] w-full mx-auto">
+  <main class="main-container">
 
-    <!-- Left Sidebar: Simulation & Inference Controls -->
-    <div class="lg:col-span-4 xl:col-span-3 flex flex-col gap-4">
-      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-4">
-        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
-          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-            <span>⚙️ Simulation Parameters</span>
-          </h2>
-          <span class="text-xs text-slate-400 font-mono">IoRN Core</span>
+    <!-- ========================================================================= -->
+    <!-- TAB 1: SIMULATION & REVERSE-ENGINEERING STUDIO (runsim.php 6-Step Wizard) -->
+    <!-- ========================================================================= -->
+    <section id="tab-wizard" class="tab-pane active">
+
+      <!-- 6-Step phpIoRN Workflow Bar -->
+      <div class="wizard-bar">
+        <div class="wizard-steps">
+          <div class="wizard-step active" id="wstep-1" onclick="highlightWizardStep(1)">
+            <span class="step-num">1</span> Mode &amp; Source
+          </div>
+          <div class="wizard-step active" id="wstep-2" onclick="highlightWizardStep(2)">
+            <span class="step-num">2</span> Topology &amp; Noise
+          </div>
+          <div class="wizard-step active" id="wstep-3" onclick="highlightWizardStep(3)">
+            <span class="step-num">3</span> Network &amp; ODE Kinetics
+          </div>
+          <div class="wizard-step active" id="wstep-4" onclick="highlightWizardStep(4)">
+            <span class="step-num">4</span> Perturbation Time-Courses
+          </div>
+          <div class="wizard-step active" id="wstep-5" onclick="highlightWizardStep(5)">
+            <span class="step-num">5</span> Reverse-Engineering
+          </div>
+          <div class="wizard-step active" id="wstep-6" onclick="highlightWizardStep(6)">
+            <span class="step-num">6</span> 9-State Graph &amp; Confusion Matrix
+          </div>
         </div>
-
-        <!-- Mode selection -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Experiment Mode</label>
-          <select id="simMode" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500" onchange="toggleMode()">
-            <option value="synthetic">Synthetic In Silico Perturbation</option>
-            <option value="sos">E. coli SOS Pathway Benchmark (Gardner 2003)</option>
-          </select>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <a class="btn btn-secondary btn-sm" href="/api/download?format=msmt" download>Download .msmt</a>
+          <a class="btn btn-secondary btn-sm" href="/api/download?format=pert" download>Download .pert</a>
+          <a class="btn btn-secondary btn-sm" href="/api/download?format=dot" download>Download .dot</a>
+          <a class="btn btn-secondary btn-sm" href="/api/download?format=svg" download>Download .svg</a>
         </div>
+      </div>
 
-        <div id="syntheticControls" class="flex flex-col gap-3.5">
-          <!-- Topology -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Network Topology</label>
-            <select id="topologySelect" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
-              <option value="scale_free">Scale-Free (Barabási-Albert P(k)~k^-γ)</option>
-              <option value="random">Random Graph (Erdős-Rényi)</option>
-              <option value="hierarchical">Hierarchical Modular (Ravasz et al.)</option>
+      <div class="workspace-grid">
+        <!-- LEFT SIDEBAR: Steps 1, 2, 5 Controls -->
+        <aside class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Wizard Configuration</div>
+            <span class="badge" id="active-run-badge">Run Ready</span>
+          </div>
+
+          <!-- Step 1: Data Source Mode -->
+          <div class="form-group">
+            <label class="form-label">Step 1: Analysis Mode (Page_CMS_Layout)</label>
+            <select id="sim-mode" onchange="onModeChange()">
+              <option value="insilico" selected>In Silico ODE Network Generation</option>
+              <option value="sos">E. coli 9-Gene SOS Experimental Data</option>
             </select>
           </div>
 
-          <!-- Gene Count -->
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300 font-medium">Network Size (Genes N)</span>
-              <span id="genesVal" class="text-cyan-400 font-mono font-bold">12</span>
-            </div>
-            <input type="range" id="numGenes" min="6" max="30" value="12" class="w-full accent-cyan-500" oninput="document.getElementById('genesVal').innerText = this.value">
+          <!-- Step 2: Network Topology & Kinetic Noise -->
+          <div class="form-group">
+            <label class="form-label">Step 2: Network Topology (netsim.m)</label>
+            <select id="sim-topology">
+              <option value="power_law" selected>Scale-Free Network (Power-Law)</option>
+              <option value="random">Random Network (Erdős–Rényi)</option>
+              <option value="hierarchical">Hierarchical Modular Network</option>
+            </select>
           </div>
 
-          <!-- Average Degree -->
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300 font-medium">Average Connectivity (k_av)</span>
-              <span id="kVal" class="text-cyan-400 font-mono font-bold">1.8</span>
-            </div>
-            <input type="range" id="kAv" min="1.0" max="3.5" step="0.1" value="1.8" class="w-full accent-cyan-500" oninput="document.getElementById('kVal').innerText = this.value">
+          <div class="form-group">
+            <label class="form-label">
+              <span>Network Size (n genes)</span>
+              <span class="val" id="lbl-num-genes">12</span>
+            </label>
+            <input type="range" id="sim-num-genes" min="6" max="30" step="1" value="12"
+              oninput="document.getElementById('lbl-num-genes').textContent=this.value" />
           </div>
 
-          <!-- Act / Inh Ratio -->
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300 font-medium">Activation / Inhibition Ratio</span>
-              <span id="ratioVal" class="text-cyan-400 font-mono font-bold">50% Act / 50% Inh</span>
-            </div>
-            <input type="range" id="actRatio" min="0.1" max="0.9" step="0.05" value="0.5" class="w-full accent-cyan-500" oninput="document.getElementById('ratioVal').innerText = Math.round(this.value*100)+'% Act / '+Math.round((1-this.value)*100)+'% Inh'">
+          <div class="form-group">
+            <label class="form-label">
+              <span>Avg Connectivity (k_av)</span>
+              <span class="val" id="lbl-kav">1.8</span>
+            </label>
+            <input type="range" id="sim-kav" min="1.0" max="4.0" step="0.1" value="1.8"
+              oninput="document.getElementById('lbl-kav').textContent=this.value" />
           </div>
 
-          <!-- Measurement Noise -->
-          <div>
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-slate-300 font-medium">Gaussian Noise (σ_m)</span>
-              <span id="noiseVal" class="text-cyan-400 font-mono font-bold">0.05 (5%)</span>
-            </div>
-            <input type="range" id="noiseLevel" min="0.0" max="0.25" step="0.01" value="0.05" class="w-full accent-cyan-500" oninput="document.getElementById('noiseVal').innerText = this.value + ' (' + Math.round(this.value*100) + '%)'">
+          <div class="form-group">
+            <label class="form-label">
+              <span>Activator / Inhibitor Ratio</span>
+              <span class="val" id="lbl-ratio">0.50</span>
+            </label>
+            <input type="range" id="sim-ratio" min="0.1" max="0.9" step="0.05" value="0.50"
+              oninput="document.getElementById('lbl-ratio').textContent=parseFloat(this.value).toFixed(2)" />
           </div>
-        </div>
 
-        <!-- Algorithm Selection -->
-        <div class="border-t border-slate-700 pt-3">
-          <label class="block text-xs font-semibold text-slate-300 mb-2">Reverse Engineering Algorithm</label>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
-              <input type="radio" name="activeAlg" value="s2g" checked class="accent-cyan-500" onchange="onAlgRadioChange()">
-              <span class="font-medium text-slate-200">S2G (Forward)</span>
+          <div class="form-group">
+            <label class="form-label">
+              <span>Measurement Noise (&sigma;_m)</span>
+              <span class="val" id="lbl-noise">0.05</span>
             </label>
-            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
-              <input type="radio" name="activeAlg" value="g2s" class="accent-cyan-500" onchange="onAlgRadioChange()">
-              <span class="font-medium text-slate-200">G2S (Backward)</span>
-            </label>
-            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
-              <input type="radio" name="activeAlg" value="vote" class="accent-emerald-500" onchange="onAlgRadioChange()">
-              <span class="font-medium text-emerald-400 font-bold">Voting Ensemble</span>
-            </label>
-            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
-              <input type="radio" name="activeAlg" value="nir" class="accent-cyan-500" onchange="onAlgRadioChange()">
-              <span class="font-medium text-slate-200">NIR (Ridge)</span>
-            </label>
-            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
-              <input type="radio" name="activeAlg" value="fast" class="accent-cyan-500" onchange="onAlgRadioChange()">
-              <span class="font-medium text-slate-200">FAST (SVD)</span>
-            </label>
-            <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded border border-slate-700 cursor-pointer hover:border-slate-500">
-              <input type="radio" name="activeAlg" value="by_chance" class="accent-cyan-500" onchange="onAlgRadioChange()">
-              <span class="font-medium text-slate-200">By-Chance</span>
-            </label>
+            <input type="range" id="sim-noise" min="0.00" max="0.25" step="0.01" value="0.05"
+              oninput="document.getElementById('lbl-noise').textContent=parseFloat(this.value).toFixed(2)" />
           </div>
-        </div>
 
-        <!-- Action Button -->
-        <button id="runBtn" onclick="runPipeline()" class="w-full mt-2 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-sm rounded-lg shadow-lg shadow-cyan-600/20 active:scale-[0.98] transition flex items-center justify-center gap-2">
-          <span>⚡ Execute & Resolve</span>
-        </button>
+          <div class="form-group">
+            <label class="form-label">
+              <span>Biological Variability (&sigma;_b)</span>
+              <span class="val" id="lbl-biovar">0.02</span>
+            </label>
+            <input type="range" id="sim-biovar" min="0.00" max="0.20" step="0.01" value="0.02"
+              oninput="document.getElementById('lbl-biovar').textContent=parseFloat(this.value).toFixed(2)" />
+          </div>
 
-        <div id="statusMsg" class="text-center text-xs text-slate-400">Ready to simulate.</div>
-      </div>
-    </div>
+          <div class="form-group">
+            <label class="form-label">
+              <span>Random Seed</span>
+              <span class="val" id="lbl-seed">42</span>
+            </label>
+            <input type="number" id="sim-seed" value="42" min="1" max="99999"
+              oninput="document.getElementById('lbl-seed').textContent=this.value" />
+          </div>
 
-    <!-- Center & Right: Interactive Visualizer & Analytics -->
-    <div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-5">
-
-      <!-- Graph Canvas Container -->
-      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-4 shadow-xl flex flex-col">
-        <!-- Canvas Toolbar -->
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-700">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Graph View:</span>
-            <div class="inline-flex rounded-lg bg-slate-900 p-0.5 border border-slate-700">
-              <button id="viewCompBtn" onclick="setGraphView('comparison')" class="px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow">
-                Overlay Comparison
-              </button>
-              <button id="viewInferredBtn" onclick="setGraphView('inferred')" class="px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white">
-                Inferred Topology
-              </button>
-              <button id="viewTrueBtn" onclick="setGraphView('true')" class="px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white">
-                Ground Truth
-              </button>
+          <!-- Step 5: Inference Algorithms -->
+          <div class="form-group" style="margin-top:14px;">
+            <label class="form-label">Step 5: Reverse-Engineering Algorithms</label>
+            <div class="alg-checkboxes">
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="s2g" checked /> S2G (Forward AIC)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="g2s" checked /> G2S (Backward AIC)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="vote" checked /> Voting Consensus</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="nir" checked /> NIR (Gardner)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="fast" checked /> FAST (SVD)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="by_chance" checked /> By-Chance Null</label>
             </div>
           </div>
 
-          <!-- Legend -->
-          <div class="flex flex-wrap items-center gap-3 text-xs">
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Activation (+)</span>
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Inhibition (-)</span>
-            <span class="flex items-center gap-1.5 text-amber-400"><span class="w-3 h-1 bg-amber-400 inline-block"></span> Sign Error</span>
-            <span class="flex items-center gap-1.5 text-slate-400"><span class="w-3 h-1 border-t-2 border-dotted border-slate-400 inline-block"></span> Missed Edge</span>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button onclick="resetPhysics()" class="px-2.5 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition">
-              ↺ Reset Physics
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">
+            <button class="btn btn-primary" id="btn-run-all" onclick="runFullPipeline()">
+              Simulate &amp; Re-Engineer Network
             </button>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button class="btn btn-secondary btn-sm" onclick="runSimulateOnly()">Step 3–4: Simulate Only</button>
+              <button class="btn btn-secondary btn-sm" onclick="runInferOnly()">Step 5–6: Resolve Only</button>
+            </div>
           </div>
-        </div>
 
-        <!-- HTML5 Canvas -->
-        <div class="relative w-full h-[460px] bg-slate-950 rounded-lg overflow-hidden mt-3 border border-slate-800">
-          <canvas id="graphCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
-          <div id="hoverTooltip" class="absolute hidden bg-slate-800/95 border border-slate-600 text-slate-200 text-xs px-3 py-2 rounded-lg pointer-events-none shadow-2xl backdrop-blur"></div>
+          <!-- Selected Node / Edge Quick Kinetic Summary Card (get_param.php inline preview) -->
+          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+            <div class="form-label">
+              <span>ODE Parameter Inspector (get_param.php)</span>
+              <button class="btn btn-secondary btn-sm" style="padding:2px 7px;font-size:10.5px;" onclick="openInspectorDialog()">Open Modal</button>
+            </div>
+            <div id="inline-param-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11.5px;">
+              Click any gene node or regulatory edge in the graph to inspect Hill kinetics ($n_A, K_A, v_i, B_i$) and ODE trajectories.
+            </div>
+            <canvas id="canvas-basal-mini" width="290" height="125" style="width:100%;height:125px;margin-top:8px;background:#090d16;border:1px solid var(--border);border-radius:7px;"></canvas>
+          </div>
+        </aside>
+
+        <!-- RIGHT MAIN AREA: Steps 3, 4, 6 Visualizations -->
+        <div class="right-column">
+
+          <!-- ROW 1: Step 3 Ground Truth Network & Step 6 9-State Reconstructed Differential Graph -->
+          <div class="two-col-grid">
+
+            <!-- STEP 3: Generated Ground-Truth Network (draw_dot.m / web_netsimsim.m) -->
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">
+                    Step 3: Generated Ground-Truth Network
+                    <span class="badge" id="gt-summary-badge">12 Genes</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted);">Click any node ($G_i$) or edge ($G_j \to G_i$) to inspect ODE Hill parameters</div>
+                </div>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-secondary btn-sm active" id="btn-gt-canvas" onclick="setGtView('canvas')">Force Canvas</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-gt-dot" onclick="setGtView('dot')">Hierarchical (dot)</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-gt-neato" onclick="setGtView('neato')">Spring (neato)</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-gt-source" onclick="setGtView('source')">DOT</button>
+                </div>
+              </div>
+
+              <div class="graph-stage" id="gt-stage">
+                <canvas id="canvas-gt-network" width="580" height="350" style="width:100%;height:100%;cursor:pointer;"></canvas>
+                <div id="gt-svg-dot" style="display:none;width:100%;height:100%;overflow:auto;padding:8px;"></div>
+                <div id="gt-svg-neato" style="display:none;width:100%;height:100%;overflow:auto;padding:8px;"></div>
+                <pre id="gt-dot-source" class="mono-box" style="display:none;width:100%;height:100%;border:none;"></pre>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11.5px;color:var(--text-muted);">
+                <div>
+                  <span style="color:#10b981;font-weight:700;">&#9679; Activation (+1, normal arrow)</span> &nbsp;&bull;&nbsp;
+                  <span style="color:#ef4444;font-weight:700;">&#9679; Inhibition (-1, tee arrow)</span>
+                </div>
+                <div>
+                  Select Node:
+                  <select id="quick-node-select" style="width:auto;padding:2px 8px;font-size:11px;" onchange="inspectNode(parseInt(this.value))"></select>
+                  Edge:
+                  <select id="quick-edge-select" style="width:auto;padding:2px 8px;font-size:11px;" onchange="if(this.value) inspectEdgeKey(this.value)"></select>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 6: 9-State Reconstructed Differential Graph (get_results.php + statsgraph_to_dot.m) -->
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">
+                    Step 6: 9-State Differential Graph (statsgraph_to_dot.m)
+                    <span class="badge badge-emerald" id="active-alg-badge">S2G</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted);">Observed vs Inferred 9-state edge classification (new_stats.m)</div>
+                </div>
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <select id="select-infer-alg" style="width:auto;padding:4px 8px;font-size:11.5px;font-weight:700;" onchange="onSelectInferAlg(this.value)">
+                    <option value="s2g">S2G (Forward)</option>
+                    <option value="g2s">G2S (Backward)</option>
+                    <option value="vote">Voting Ensemble</option>
+                    <option value="nir">NIR</option>
+                    <option value="fast">FAST (SVD)</option>
+                    <option value="by_chance">By-Chance</option>
+                  </select>
+                  <button class="btn btn-secondary btn-sm active" id="btn-inf-canvas" onclick="setInfView('canvas')">Canvas</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-inf-dot" onclick="setInfView('dot')">dot SVG</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-inf-neato" onclick="setInfView('neato')">neato SVG</button>
+                </div>
+              </div>
+
+              <div class="graph-stage" id="inf-stage">
+                <canvas id="canvas-inf-network" width="580" height="350" style="width:100%;height:100%;"></canvas>
+                <div id="inf-svg-dot" style="display:none;width:100%;height:100%;overflow:auto;padding:8px;"></div>
+                <div id="inf-svg-neato" style="display:none;width:100%;height:100%;overflow:auto;padding:8px;"></div>
+              </div>
+
+              <!-- 9-State Edge Legend matching statsgraph_to_dot.m -->
+              <div class="legend-9state">
+                <div class="legend-item"><span class="legend-line" style="border-color:#10b981;border-top-style:solid;"></span> <b>+1</b> TP Activator</div>
+                <div class="legend-item"><span class="legend-line" style="border-color:#ef4444;border-top-style:solid;"></span> <b>-1</b> TP Inhibitor</div>
+                <div class="legend-item"><span class="legend-line" style="border-color:#94a3b8;border-top-style:solid;"></span> <b>+2</b> FN Missed (+)</div>
+                <div class="legend-item"><span class="legend-line" style="border-color:#fda4af;border-top-style:solid;"></span> <b>-2</b> FN Missed (-)</div>
+                <div class="legend-item"><span class="legend-line" style="border-color:#64748b;border-top-style:dotted;"></span> <b>+3</b> FP Activator</div>
+                <div class="legend-item"><span class="legend-line" style="border-color:#FA6378;border-top-style:dotted;"></span> <b>-3</b> FP Inhibitor</div>
+                <div class="legend-item"><span class="legend-line" style="border-color:#F5C491;border-top-style:dashed;"></span> <b>+4</b> Sign Err (+)</div>
+                <div class="legend-item"><span class="legend-line" style="border-color:#B7673C;border-top-style:dashed;"></span> <b>-4</b> Sign Err (-)</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ROW 2: Step 6 $TMP_STATMAT 8-Metric Ribbon -->
+          <div class="panel" style="padding:12px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div class="panel-title" style="font-size:13px;">
+                Step 6 Statistical Summary ($TMP_STATMAT — get_results.php &amp; php_and_stats.m)
+              </div>
+              <span style="font-size:11.5px;color:var(--text-muted);" id="statmat-subtitle">Active Algorithm: S2G</span>
+            </div>
+            <div class="stat-grid">
+              <div class="stat-card"><div class="stat-val" id="st-power">--</div><div class="stat-lbl">Power / Sens (%)</div></div>
+              <div class="stat-card"><div class="stat-val" id="st-spec">--</div><div class="stat-lbl">Specificity (%)</div></div>
+              <div class="stat-card"><div class="stat-val" id="st-ppv">--</div><div class="stat-lbl">PPV (%)</div></div>
+              <div class="stat-card"><div class="stat-val" id="st-signed-ppv">--</div><div class="stat-lbl">Signed PPV (%)</div></div>
+              <div class="stat-card"><div class="stat-val" id="st-fdr">--</div><div class="stat-lbl">FDR (%)</div></div>
+              <div class="stat-card"><div class="stat-val" id="st-fpr">--</div><div class="stat-lbl">False Pos Rate (%)</div></div>
+              <div class="stat-card"><div class="stat-val" id="st-fnr">--</div><div class="stat-lbl">False Neg Rate (%)</div></div>
+              <div class="stat-card"><div class="stat-val" id="st-err" style="color:var(--accent-amber);">--</div><div class="stat-lbl">Total Errors</div></div>
+            </div>
+          </div>
+
+          <!-- ROW 3: Step 4 Perturbation Time-Course Dynamics, Expression Heatmap X, and AIC Curve -->
+          <div class="three-col-grid">
+
+            <!-- Step 4A: Perturbation Time-Course Plot (web_run_p_model.m) -->
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">Step 4: Perturbation ODE Time-Course</div>
+                  <div style="font-size:11px;color:var(--text-muted);">Relaxation to perturbed steady state (web_run_p_model.m)</div>
+                </div>
+                <select id="select-pert-gene" style="width:auto;padding:4px 8px;font-size:11.5px;" onchange="drawPerturbationTimeCourse(parseInt(this.value))"></select>
+              </div>
+              <canvas id="canvas-pert-traj" width="420" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+            </div>
+
+            <!-- Step 4B: Steady-State Expression Ratio Heatmap X (do_perturbation.m) -->
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">Steady-State Expression Matrix (X)</div>
+                  <div style="font-size:11px;color:var(--text-muted);">Relative change $X_{ij} = (x_i^j - x_i^{ss}) / x_i^{ss}$</div>
+                </div>
+                <span class="badge">mRNA Ratios</span>
+              </div>
+              <canvas id="canvas-x-heatmap" width="380" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+            </div>
+
+            <!-- Step 5/6C: S2G & G2S AIC Cost Minimization Curve (Thesis Fig 3.1) -->
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="panel-title">S2G / G2S AIC Cost Profile (Fig 3.1)</div>
+                  <div style="font-size:11px;color:var(--text-muted);">$AIC(K) = 2K/N + \ln(SSR/N)$ subset selection</div>
+                </div>
+                <span class="badge badge-amber" id="aic-opt-badge">Opt K=2</span>
+              </div>
+              <canvas id="canvas-aic-curve" width="380" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+            </div>
+
+          </div>
+
+          <!-- ROW 4: Multi-Algorithm Comparison Table & $TMP_CMAT 4x4 Misclassification Matrix -->
+          <div class="two-col-grid">
+
+            <!-- All Algorithms Benchmark Table (Page_CMS_RGN_Result) -->
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">Algorithm Performance Comparison (Click Row to Inspect)</div>
+                <span class="badge">Table 4.1 Metrics</span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="data-table" id="tbl-alg-comparison">
+                  <thead>
+                    <tr>
+                      <th>Algorithm</th>
+                      <th>Power (%)</th>
+                      <th>Specificity (%)</th>
+                      <th>PPV (%)</th>
+                      <th>FDR (%)</th>
+                      <th>Signed PPV (%)</th>
+                      <th>Total Errors</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 4x4 Observed vs Predicted Misclassification Table ($TMP_CMAT in get_results.php) -->
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">4&times;4 Misclassification Matrix ($TMP_CMAT — stats_obs_pred.m)</div>
+                <span class="badge badge-emerald" id="cmat-alg-label">S2G</span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="data-table" id="tbl-cmat">
+                  <thead>
+                    <tr>
+                      <th>Observed \ Predicted</th>
+                      <th>Prediction +</th>
+                      <th>Prediction -</th>
+                      <th>Prediction no (0)</th>
+                      <th>Obs Error Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: E. COLI SOS DNA REPAIR PATHWAY STUDIO (Gardner et al. Science 2003)-->
+    <!-- ========================================================================= -->
+    <section id="tab-sos" class="tab-pane">
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header" style="margin-bottom:6px;border-bottom:none;padding-bottom:0;">
+          <div>
+            <div class="panel-title" style="font-size:16px;">
+              E. coli 9-Gene SOS DNA Repair Pathway Reconstruction (Gardner et al., Science 2003; Thesis Section 4.2 &amp; Appendix)
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+              Genes: <code>recA, lexA, ssb, recF, dinI, umuDC, rpoD, rpoH, rpoS</code> &bull; Comparing S2G, G2S, Voting Ensemble, NIR, and FAST against experimentally validated interactions.
+            </p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-muted);">Inspect Algorithm:</span>
+            <select id="sos-alg-select" style="width:auto;font-weight:700;" onchange="renderSosAlgorithm(this.value)">
+              <option value="vote" selected>Voting Ensemble (S2G &cap; G2S)</option>
+              <option value="s2g">Simple-to-General (S2G)</option>
+              <option value="g2s">General-to-Specific (G2S)</option>
+              <option value="nir">NIR (Gardner et al.)</option>
+              <option value="fast">FAST (SVD)</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <!-- Performance Metrics & 4x4 Confusion Matrix -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        <!-- Metrics Dashboard Cards -->
-        <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-4">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-700 pb-2 flex justify-between items-center">
-            <span>📊 Thesis Performance Metrics</span>
-            <span id="activeAlgBadge" class="badge bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">S2G</span>
-          </h3>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-              <div class="text-[11px] text-slate-400">Coverage (Recall)</div>
-              <div id="mCoverage" class="text-xl font-bold text-emerald-400 font-mono">--%</div>
-              <div class="text-[10px] text-slate-500">TP / True Connections</div>
-            </div>
-            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-              <div class="text-[11px] text-slate-400">False Positives %</div>
-              <div id="mFP" class="text-xl font-bold text-amber-400 font-mono">--%</div>
-              <div class="text-[10px] text-slate-500">FP / Total Possible</div>
-            </div>
-            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-              <div class="text-[11px] text-slate-400">Signed PPV (Precision)</div>
-              <div id="mPPV" class="text-xl font-bold text-cyan-400 font-mono">--%</div>
-              <div class="text-[10px] text-slate-500">Correct Sign / Inferred</div>
-            </div>
-            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
-              <div class="text-[11px] text-slate-400">Total Errors</div>
-              <div id="mErrors" class="text-xl font-bold text-rose-400 font-mono">--</div>
-              <div class="text-[10px] text-slate-500">FP + FN + Sign Mismatch</div>
-            </div>
+      <div class="two-col-grid" style="margin-bottom:16px;">
+        <!-- SOS Ground Truth Graph -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Known SOS Regulatory Network (Ground Truth — 43 Directed Edges)</div>
+            <span class="badge">Gardner 2003 / Thesis Fig 4.13</span>
           </div>
-
-          <div class="grid grid-cols-3 gap-2 text-center text-xs">
-            <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
-              <span class="text-slate-400 text-[10px] block">True Positives</span>
-              <span id="mTPCount" class="font-bold text-emerald-400">--</span>
-            </div>
-            <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
-              <span class="text-slate-400 text-[10px] block">False Positives</span>
-              <span id="mFPCount" class="font-bold text-rose-400">--</span>
-            </div>
-            <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
-              <span class="text-slate-400 text-[10px] block">False Negatives</span>
-              <span id="mFNCount" class="font-bold text-slate-400">--</span>
-            </div>
-          </div>
+          <div class="graph-stage" id="sos-true-stage" style="height:340px;"></div>
         </div>
 
-        <!-- 4x4 Confusion Matrix (Matching stats_obs_pred.m) -->
-        <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-700 pb-2 flex justify-between items-center">
-            <span>🎯 4×4 Observed vs Predicted Table</span>
-            <span class="text-[11px] text-slate-400 font-mono">phpIoRN Matrix</span>
-          </h3>
-
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-center border-collapse">
-              <thead>
-                <tr class="text-slate-400 border-b border-slate-700">
-                  <th class="p-1.5 text-left font-normal text-[11px]">Obs \ Pred</th>
-                  <th class="p-1.5 text-emerald-400 font-semibold">Pred +</th>
-                  <th class="p-1.5 text-red-400 font-semibold">Pred -</th>
-                  <th class="p-1.5 text-slate-400 font-semibold">Pred 0</th>
-                  <th class="p-1.5 text-amber-400 font-semibold">Obs Err %</th>
-                </tr>
-              </thead>
-              <tbody id="cmatBody" class="font-mono divide-y divide-slate-800">
-                <tr><td colspan="5" class="py-6 text-slate-500 font-sans">Run simulation to populate matrix.</td></tr>
-              </tbody>
-            </table>
+        <!-- SOS 9-State Reconstructed Graph -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">9-State Differential Reconstruction (<span id="sos-diff-title">VOTING</span>)</div>
+            <span class="badge badge-emerald">Appendix 9-State Graph</span>
           </div>
+          <div class="graph-stage" id="sos-diff-stage" style="height:340px;"></div>
         </div>
-
       </div>
 
-      <!-- Comparative Table 4.1 Benchmark Across All Algorithms -->
-      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col gap-3">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-700 pb-2 flex justify-between items-center">
-          <span>🏆 Algorithmic Benchmark Comparison (Table 4.1 Specification)</span>
-        </h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs text-left border-collapse">
+      <div class="two-col-grid" style="margin-bottom:16px;">
+        <!-- Thesis Fig 4.13: 9-Gene SOS Perturbation Steady-State Trajectories -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Thesis Figure 4.13: 9-Gene SOS Perturbation Trajectories (SOS_captured_expression.pdf)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Steady-state mRNA concentration recovery across all 9 single-gene overexpression perturbations</div>
+            </div>
+          </div>
+          <canvas id="canvas-sos-9grid" width="720" height="310" style="width:100%;height:310px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+        </div>
+
+        <!-- Thesis Table 4.1 & 4x4 SOS Confusion Matrix -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Thesis Table 4.1: SOS Pathway Benchmark Comparison &amp; 4&times;4 Confusion Matrix</div>
+            <span class="badge badge-amber">9&times;9 = 81 Potential Interactions</span>
+          </div>
+          <table class="data-table" id="tbl-sos-benchmark" style="margin-bottom:12px;">
             <thead>
-              <tr class="text-slate-400 border-b border-slate-700 text-[11px]">
-                <th class="p-2">Algorithm</th>
-                <th class="p-2 text-right">Coverage %</th>
-                <th class="p-2 text-right">False Positives %</th>
-                <th class="p-2 text-right">Inferred Conn. %</th>
-                <th class="p-2 text-right">FP per Inferred %</th>
-                <th class="p-2 text-right">Signed PPV %</th>
-                <th class="p-2 text-right">Total Errors</th>
-                <th class="p-2 text-right">F1-Score</th>
+              <tr>
+                <th>Method</th>
+                <th>Coverage (%)</th>
+                <th>FP (%)</th>
+                <th>Inferred Conn / Power (%)</th>
+                <th>FDR (FP/Inf %)</th>
+                <th>Signed PPV (%)</th>
+                <th>Total Errors</th>
               </tr>
             </thead>
-            <tbody id="benchmarkTableBody" class="font-mono divide-y divide-slate-800">
-              <tr><td colspan="8" class="py-4 text-center text-slate-500 font-sans">Awaiting simulation run.</td></tr>
-            </tbody>
+            <tbody></tbody>
+          </table>
+
+          <div style="font-size:11.5px;font-weight:700;color:#cbd5e1;margin:8px 0 6px;">
+            Selected Algorithm 4&times;4 Misclassification Matrix (<span id="sos-cmat-name">VOTING</span>):
+          </div>
+          <table class="data-table" id="tbl-sos-cmat">
+            <thead>
+              <tr>
+                <th>Observed \ Predicted</th>
+                <th>Prediction +</th>
+                <th>Prediction -</th>
+                <th>Prediction no (0)</th>
+                <th>Obs Error Rate</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
           </table>
         </div>
       </div>
+    </section>
 
+    <!-- ========================================================================= -->
+    <!-- TAB 3: THESIS & 2006 PAPER FIGURES GALLERY                                -->
+    <!-- ========================================================================= -->
+    <section id="tab-figures" class="tab-pane">
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header" style="margin-bottom:4px;border-bottom:none;padding-bottom:0;">
+          <div>
+            <div class="panel-title" style="font-size:16px;">
+              Thesis &amp; 2006 Paper Benchmark Figures Gallery (Wildenhain 2004; Wildenhain &amp; Crampin 2006)
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+              Interactive reproduction of the systematic benchmark studies across network topologies, connectivity $k_{av}$, measurement &amp; biological noise, voting ensembles, and runtime complexity.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col-grid" style="margin-bottom:16px;">
+        <!-- Fig 4.1 & 4.2: Topology Comparison -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figures 4.1 &amp; 4.2: Scale-Free vs Random vs Hierarchical Topologies</div>
+              <div style="font-size:11px;color:var(--text-muted);">Recovered interactions (Power %) vs Network Size $n \in [10, 70]$ (powervsrandom.pdf)</div>
+            </div>
+            <span class="badge">Chapter 4.1.1</span>
+          </div>
+          <canvas id="canvas-fig-topology" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+        </div>
+
+        <!-- Fig 4.3-4.5: Connectivity Sweep -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figures 4.3–4.5: Average Connectivity Sweep ($k_{av} = 1.0, 1.5, 2.0, 3.0$)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Power (%) and False Discovery Rate (%) across increasing regulator density (stats_connectitity.pdf)</div>
+            </div>
+            <span class="badge">Chapter 4.1.2</span>
+          </div>
+          <canvas id="canvas-fig-connectivity" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+        </div>
+      </div>
+
+      <div class="two-col-grid" style="margin-bottom:16px;">
+        <!-- Fig 4.6-4.9: Noise Sweep & 2D Heatmap -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figures 4.6–4.9: Noise Sensitivity &amp; 2D Connectivity&times;Noise Surface</div>
+              <div style="font-size:11px;color:var(--text-muted);">Left: Power vs Noise $\sigma$; Right: 2D Heatmap over $(k_{av}, \sigma)$ (overall_inferred_connections.pdf)</div>
+            </div>
+            <span class="badge">Chapter 4.1.3</span>
+          </div>
+          <canvas id="canvas-fig-noise" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+        </div>
+
+        <!-- Fig 4.12: Voting Ensemble Error Reduction -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 4.12: Voting Ensemble False-Positive Reduction (voting002.pdf)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Consensus between S2G and G2S drastically cuts False Discovery Rate (%) and Total Errors</div>
+            </div>
+            <span class="badge badge-emerald">Paper Fig 6 / Thesis Fig 4.12</span>
+          </div>
+          <canvas id="canvas-fig-voting" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+        </div>
+      </div>
+
+      <div class="two-col-grid">
+        <!-- Fig 4.10: Computational Complexity / Runtime Scaling -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 4.10: Computational Complexity &amp; Runtime Scaling (Performance_Time.pdf)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Execution time (s) vs Network Size $n$: polynomial S2G/G2S vs combinatorial NIR</div>
+            </div>
+            <span class="badge">Chapter 4.1.4</span>
+          </div>
+          <canvas id="canvas-fig-runtime" width="680" height="250" style="width:100%;height:250px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+        </div>
+
+        <!-- Fig 2.1, Table 2.1 & Fig 2.2: 4-Gene ODE Kinetic Benchmark & Error Distribution -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 2.2 &amp; Table 2.1: Error Model Distribution &amp; 4-Gene Kinetic Parameters</div>
+              <div style="font-size:11px;color:var(--text-muted);">Combined biological + Gaussian measurement noise distribution (Error_model.pdf)</div>
+            </div>
+            <span class="badge">Chapter 2</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:10px;align-items:center;">
+            <canvas id="canvas-fig-errormodel" width="310" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+            <div style="overflow-x:auto;">
+              <table class="data-table" id="tbl-fig2-4gene">
+                <thead>
+                  <tr>
+                    <th>Gene</th>
+                    <th>v_i</th>
+                    <th>B_i</th>
+                    <th>x_i^ss</th>
+                    <th>Hill Kinetic Regulators</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: PREVIOUS SIMULATIONS ARCHIVE (showpre.php)                         -->
+    <!-- ========================================================================= -->
+    <section id="tab-history" class="tab-pane">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title" style="font-size:15px;">Previous Simulations &amp; Re-Engineering Archive (showpre.php)</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">Stored simulation runs with topology parameters, sensitivity/specificity summary, and data downloads</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadHistoryTable()">Refresh Archive</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="tbl-history">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Run ID</th>
+                <th>Timestamp</th>
+                <th>Topology</th>
+                <th>Genes (n)</th>
+                <th>k_av</th>
+                <th>Act Ratio</th>
+                <th>Noise (&sigma;_m)</th>
+                <th>Best Method</th>
+                <th>Power (%)</th>
+                <th>Specificity (%)</th>
+                <th>Total Errors</th>
+                <th>Downloads</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================================== -->
+  <!-- INTERACTIVE NODE & EDGE ODE KINETIC INSPECTOR MODAL (get_param.php)         -->
+  <!-- Uses <dialog closedby="any"> + JS backdrop click fallback                   -->
+  <!-- =========================================================================== -->
+  <dialog id="inspector-dialog" closedby="any">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+      <div>
+        <h3 id="modal-title" style="font-size:15px;font-weight:700;color:#f8fafc;">ODE Kinetic Parameter Inspector (get_param.php)</h3>
+        <p id="modal-subtitle" style="font-size:11.5px;color:var(--text-muted);">Exact differential equation parameters and basal steady-state relaxation trajectory</p>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('inspector-dialog').close()">Close (Esc)</button>
     </div>
-
-  </div>
+    <div id="modal-body-stats" style="margin-bottom:12px;"></div>
+    <canvas id="canvas-modal-traj" width="620" height="240" style="width:100%;height:240px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+  </dialog>
 
   <script>
-    // State
-    let simulationState = null;
-    let inferenceState = null;
-    let currentGraphView = 'comparison'; // 'comparison', 'inferred', 'true'
-    let currentAlg = 's2g';
+    // ============================================================================
+    // GLOBAL APPLICATION STATE
+    // ============================================================================
+    let APP_STATE = {
+      sim: null,
+      inferred: null,
+      activeAlg: 's2g',
+      gtView: 'canvas',
+      infView: 'canvas',
+      selectedNodeIdx: 0,
+      selectedEdgeKey: null,
+      nodePositions: [],
+      sosData: null,
+      thesisFigures: null,
+    };
 
-    // Physics Engine State
-    let canvas, ctx;
-    let nodes = [];
-    let links = [];
-    let draggedNode = null;
-    let hoveredNode = null;
-    let isDragging = false;
-    let animFrame = null;
-
-    window.addEventListener('DOMContentLoaded', () => {
-      canvas = document.getElementById('graphCanvas');
-      ctx = canvas.getContext('2d');
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
-      setupCanvasEvents();
-      runPipeline(); // Initial run on load
+    // Light-dismiss fallback for <dialog closedby="any">
+    const inspectorDialog = document.getElementById('inspector-dialog');
+    inspectorDialog.addEventListener('click', (event) => {
+      if (event.target === inspectorDialog) {
+        inspectorDialog.close();
+      }
     });
 
-    function resizeCanvas() {
-      const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+    // ============================================================================
+    // NAVIGATION & WIZARD HELPERS
+    // ============================================================================
+    function switchMainTab(tabId) {
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+      });
+      document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === tabId);
+      });
+      if (tabId === 'tab-sos' && !APP_STATE.sosData) {
+        loadSosFullStudio();
+      } else if (tabId === 'tab-figures' && !APP_STATE.thesisFigures) {
+        loadThesisFigures();
+      } else if (tabId === 'tab-history') {
+        loadHistoryTable();
+      }
     }
 
-    function toggleMode() {
-      const mode = document.getElementById('simMode').value;
-      const syn = document.getElementById('syntheticControls');
+    function highlightWizardStep(stepNum) {
+      for (let i = 1; i <= 6; i++) {
+        const el = document.getElementById(`wstep-${i}`);
+        if (el) el.classList.toggle('active', i <= stepNum);
+      }
+    }
+
+    function onModeChange() {
+      const mode = document.getElementById('sim-mode').value;
       if (mode === 'sos') {
-        syn.classList.add('opacity-40', 'pointer-events-none');
-      } else {
-        syn.classList.remove('opacity-40', 'pointer-events-none');
+        document.getElementById('sim-num-genes').value = 9;
+        document.getElementById('lbl-num-genes').textContent = '9';
       }
     }
 
-    function onAlgRadioChange() {
-      const radios = document.getElementsByName('activeAlg');
-      for (const r of radios) {
-        if (r.checked) currentAlg = r.value;
-      }
-      document.getElementById('activeAlgBadge').innerText = currentAlg.toUpperCase();
-      if (inferenceState) {
-        updateViewsForSelectedAlg();
-      }
-    }
-
-    function setGraphView(view) {
-      currentGraphView = view;
-      document.getElementById('viewCompBtn').className = (view === 'comparison') ? 'px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white';
-      document.getElementById('viewInferredBtn').className = (view === 'inferred') ? 'px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white';
-      document.getElementById('viewTrueBtn').className = (view === 'true') ? 'px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1 rounded-md text-xs font-semibold text-slate-400 hover:text-white';
-      updateActiveGraphData();
-    }
-
-    async function runPipeline() {
-      const btn = document.getElementById('runBtn');
-      const status = document.getElementById('statusMsg');
-      btn.disabled = true;
-      btn.classList.add('opacity-50');
-      status.innerText = "Simulating non-linear perturbation ODEs...";
-
-      const mode = document.getElementById('simMode').value;
-
+    // ============================================================================
+    // API CALLS: INITIAL HYDRATION, SIMULATE, INFER
+    // ============================================================================
+    async function initApp() {
       try {
-        if (mode === 'sos') {
-          // SOS benchmark
-          status.innerText = "Running Gardner E. coli SOS Pathway Benchmark...";
-          const res = await fetch('/api/benchmark/sos');
-          const data = await res.json();
-          renderSOSBenchmark(data);
-          status.innerText = "Replicated Gardner 2003 E. coli SOS benchmark.";
-        } else {
-          // Synthetic simulation
-          const params = {
-            num_genes: parseInt(document.getElementById('numGenes').value),
-            topology: document.getElementById('topologySelect').value,
-            k_av: parseFloat(document.getElementById('kAv').value),
-            act_ratio: parseFloat(document.getElementById('actRatio').value),
-            noise: parseFloat(document.getElementById('noiseLevel').value),
-            algorithms: ["s2g", "g2s", "vote", "nir", "fast", "by_chance"]
-          };
-
-          // Step 1: Simulate
-          const simRes = await fetch('/api/simulate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params)
-          });
-          simulationState = await simRes.json();
-
-          // Step 2: Infer
-          status.innerText = "Resolving topologies with S2G, G2S, NIR, FAST & Voting...";
-          const infRes = await fetch('/api/infer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params)
-          });
-          inferenceState = await infRes.json();
-
-          updateViewsForSelectedAlg();
-          renderBenchmarkTable(inferenceState.metrics);
-          status.innerText = `Simulation resolved (${simulationState.total_edges} edges, k_av=${simulationState.k_average}).`;
+        const res = await fetch('/api/state');
+        const data = await res.json();
+        if (data.status === 'success') {
+          APP_STATE.sim = data;
+          APP_STATE.inferred = data.inferred || {};
+          renderAllSimulationViews();
+          if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
+            renderAllInferenceViews();
+          }
         }
+        // Preload SOS & Thesis Figures in background so switching tabs is instantaneous
+        loadSosFullStudio();
+        loadThesisFigures();
+        loadHistoryTable();
       } catch (err) {
-        status.innerText = "Error: " + err.message;
-        console.error(err);
+        console.error('Initialization error:', err);
+      }
+    }
+
+    function getSelectedAlgs() {
+      const algs = [];
+      document.querySelectorAll('.alg-cb:checked').forEach(cb => algs.push(cb.value));
+      return algs.length ? algs : ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
+    }
+
+    async function runFullPipeline() {
+      const btn = document.getElementById('btn-run-all');
+      btn.textContent = 'Simulating ODEs & Resolving Networks...';
+      btn.disabled = true;
+      try {
+        const payload = {
+          mode: document.getElementById('sim-mode').value,
+          topology: document.getElementById('sim-topology').value,
+          num_genes: parseInt(document.getElementById('sim-num-genes').value),
+          k_av: parseFloat(document.getElementById('sim-kav').value),
+          act_ratio: parseFloat(document.getElementById('sim-ratio').value),
+          noise: parseFloat(document.getElementById('sim-noise').value),
+          bio_var: parseFloat(document.getElementById('sim-biovar').value),
+          seed: parseInt(document.getElementById('sim-seed').value) || 42,
+          auto_infer: true,
+          algorithms: getSelectedAlgs(),
+        };
+        const res = await fetch('/api/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          APP_STATE.sim = data;
+          APP_STATE.inferred = data.inferred || {};
+          renderAllSimulationViews();
+          renderAllInferenceViews();
+          highlightWizardStep(6);
+        }
+      } catch (e) {
+        console.error(e);
       } finally {
+        btn.textContent = 'Simulate & Re-Engineer Network';
         btn.disabled = false;
-        btn.classList.remove('opacity-50');
       }
     }
 
-    function updateViewsForSelectedAlg() {
-      if (!inferenceState || !inferenceState.metrics[currentAlg]) return;
-
-      const m = inferenceState.metrics[currentAlg];
-      document.getElementById('mCoverage').innerText = m.coverage_pct + '%';
-      document.getElementById('mFP').innerText = m.false_positives_pct + '%';
-      document.getElementById('mPPV').innerText = m.inferred_sign_pct + '%';
-      document.getElementById('mErrors').innerText = m.total_errors;
-
-      document.getElementById('mTPCount').innerText = m.true_positives;
-      document.getElementById('mFPCount').innerText = m.false_positives;
-      document.getElementById('mFNCount').innerText = m.false_negatives;
-
-      // Render 4x4 confusion matrix
-      renderConfusionMatrix(inferenceState.confusion_matrix[currentAlg]);
-
-      // Update graph
-      updateActiveGraphData();
-    }
-
-    function renderConfusionMatrix(cmatData) {
-      if (!cmatData) return;
-      const tbody = document.getElementById('cmatBody');
-      const rows = cmatData.matrix;
-      const rErr = cmatData.row_errors;
-      const cErr = cmatData.col_errors;
-
-      let html = '';
-      const rLabels = ['Observed (+)', 'Observed (-)', 'No Interaction (0)'];
-      for (let i = 0; i < 3; i++) {
-        html += `<tr class="hover:bg-slate-800/60">
-          <td class="p-2 text-left font-sans font-medium text-slate-300">${rLabels[i]}</td>
-          <td class="p-2 text-emerald-400">${rows[i][0]}</td>
-          <td class="p-2 text-red-400">${rows[i][1]}</td>
-          <td class="p-2 text-slate-400">${rows[i][2]}</td>
-          <td class="p-2 font-bold text-amber-400">${rErr[i]}%</td>
-        </tr>`;
-      }
-      // Column errors summary row
-      html += `<tr class="border-t-2 border-slate-700 bg-slate-950/60 font-semibold">
-        <td class="p-2 text-left text-amber-400 font-sans">Pred Err %</td>
-        <td class="p-2 text-amber-400">${cErr[0]}%</td>
-        <td class="p-2 text-amber-400">${cErr[1]}%</td>
-        <td class="p-2 text-amber-400">${cErr[2]}%</td>
-        <td class="p-2 text-rose-400 font-bold">${cmatData.overall_error_pct}%</td>
-      </tr>`;
-      tbody.innerHTML = html;
-    }
-
-    function renderBenchmarkTable(metricsDict) {
-      const tbody = document.getElementById('benchmarkTableBody');
-      const algNames = {
-        's2g': 'S2G (Simple-to-General)',
-        'g2s': 'G2S (General-to-Specific)',
-        'vote': 'Voting Ensemble (S2G ∩ G2S)',
-        'nir': 'NIR (Multiple Regression)',
-        'fast': 'FAST (SVD Truncation)',
-        'by_chance': 'By-Chance Baseline'
+    async function runSimulateOnly() {
+      const payload = {
+        mode: document.getElementById('sim-mode').value,
+        topology: document.getElementById('sim-topology').value,
+        num_genes: parseInt(document.getElementById('sim-num-genes').value),
+        k_av: parseFloat(document.getElementById('sim-kav').value),
+        act_ratio: parseFloat(document.getElementById('sim-ratio').value),
+        noise: parseFloat(document.getElementById('sim-noise').value),
+        bio_var: parseFloat(document.getElementById('sim-biovar').value),
+        seed: parseInt(document.getElementById('sim-seed').value) || 42,
+        auto_infer: false,
       };
-
-      let html = '';
-      for (const [key, m] of Object.entries(metricsDict)) {
-        const isSelected = key === currentAlg;
-        const rowBg = isSelected ? 'bg-cyan-950/40 border-l-4 border-cyan-500' : 'hover:bg-slate-800/50';
-        html += `<tr class="${rowBg} cursor-pointer transition" onclick="selectAlg('${key}')">
-          <td class="p-2 font-sans font-medium text-slate-200">${algNames[key] || key.toUpperCase()}</td>
-          <td class="p-2 text-right text-emerald-400 font-bold">${m.coverage_pct}%</td>
-          <td class="p-2 text-right text-amber-400">${m.false_positives_pct}%</td>
-          <td class="p-2 text-right text-slate-300">${m.inferred_connections_pct}%</td>
-          <td class="p-2 text-right text-slate-300">${m.fp_per_inferred_pct}%</td>
-          <td class="p-2 text-right text-cyan-400 font-bold">${m.inferred_sign_pct}%</td>
-          <td class="p-2 text-right text-rose-400">${m.total_errors}</td>
-          <td class="p-2 text-right text-slate-200 font-bold">${m.f1_score}</td>
-        </tr>`;
-      }
-      tbody.innerHTML = html;
-    }
-
-    function renderSOSBenchmark(data) {
-      if (!data || !data.table_4_1) return;
-      renderBenchmarkTable(data.table_4_1);
-      const s2g = data.table_4_1['s2g'];
-      if (s2g) {
-        document.getElementById('mCoverage').innerText = s2g.coverage_pct + '%';
-        document.getElementById('mFP').innerText = s2g.false_positives_pct + '%';
-        document.getElementById('mPPV').innerText = s2g.inferred_sign_pct + '%';
-        document.getElementById('mErrors').innerText = s2g.total_errors;
+      const res = await fetch('/api/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        APP_STATE.sim = data;
+        renderAllSimulationViews();
+        highlightWizardStep(4);
       }
     }
 
-    function selectAlg(key) {
-      const radios = document.getElementsByName('activeAlg');
-      for (const r of radios) {
-        if (r.value === key) r.checked = true;
+    async function runInferOnly() {
+      const res = await fetch('/api/infer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ algorithms: getSelectedAlgs() }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        APP_STATE.inferred = data;
+        renderAllInferenceViews();
+        highlightWizardStep(6);
       }
-      onAlgRadioChange();
     }
 
-    // Graph Layout and Force-Directed Physics Simulation
-    function updateActiveGraphData() {
-      if (!simulationState || !simulationState.graph) return;
+    // ============================================================================
+    // RENDER STEP 3 & STEP 4 VIEWS
+    // ============================================================================
+    function renderAllSimulationViews() {
+      const sim = APP_STATE.sim;
+      if (!sim) return;
 
-      let graphData;
-      if (currentGraphView === 'comparison' && inferenceState && inferenceState.comparison_graphs) {
-        graphData = inferenceState.comparison_graphs[currentAlg];
-      } else if (currentGraphView === 'inferred' && inferenceState && inferenceState.comparison_graphs) {
-        const rawComp = inferenceState.comparison_graphs[currentAlg];
-        // Only keep inferred edges
-        graphData = {
-          nodes: rawComp.nodes,
-          links: rawComp.links.filter(l => l.status !== 'FN')
-        };
-      } else {
-        // True graph
-        graphData = simulationState.graph;
-      }
+      document.getElementById('active-run-badge').textContent = sim.run_id || 'Active';
+      document.getElementById('gt-summary-badge').textContent =
+        `${sim.num_genes} Genes • ${sim.total_edges} Edges (+${sim.activations} / -${sim.inhibitions})`;
 
-      initPhysicsGraph(graphData);
-    }
+      // Populate Graphviz SVGs & DOT source
+      document.getElementById('gt-svg-dot').innerHTML = sim.svg_hierarchical || '';
+      document.getElementById('gt-svg-neato').innerHTML = sim.svg_spring || '';
+      document.getElementById('gt-dot-source').textContent = sim.dot_hierarchical || '';
 
-    function initPhysicsGraph(graphData) {
-      const width = canvas.width;
-      const height = canvas.height;
-      const numNodes = graphData.nodes.length;
-      const radius = Math.min(width, height) * 0.35;
-
-      // Preserve existing positions if possible
-      const existing = {};
-      nodes.forEach(n => existing[n.id] = { x: n.x, y: n.y });
-
-      nodes = graphData.nodes.map((n, i) => {
-        const angle = (i / numNodes) * 2 * Math.PI;
-        return {
-          id: n.id,
-          label: n.label,
-          x: existing[n.id] ? existing[n.id].x : width / 2 + radius * Math.cos(angle) + (Math.random()-0.5)*20,
-          y: existing[n.id] ? existing[n.id].y : height / 2 + radius * Math.sin(angle) + (Math.random()-0.5)*20,
-          vx: 0,
-          vy: 0,
-          radius: 16
-        };
+      // Populate Quick Node & Edge Selectors
+      const nodeSel = document.getElementById('quick-node-select');
+      const pertSel = document.getElementById('select-pert-gene');
+      nodeSel.innerHTML = '';
+      pertSel.innerHTML = '';
+      (sim.gene_names || []).forEach((g, idx) => {
+        nodeSel.innerHTML += `<option value="${idx}">${g}</option>`;
+        pertSel.innerHTML += `<option value="${idx}">Perturb ${g} (Exp #${idx + 1})</option>`;
       });
 
-      const nodeMap = {};
-      nodes.forEach(n => nodeMap[n.id] = n);
+      const edgeSel = document.getElementById('quick-edge-select');
+      edgeSel.innerHTML = '<option value="">-- Select Edge --</option>';
+      (sim.edge_list || []).forEach(e => {
+        const sym = e.sign > 0 ? '+' : '-';
+        edgeSel.innerHTML += `<option value="${e.key}">${e.source} → ${e.target} (${sym})</option>`;
+      });
 
-      links = graphData.links.map(l => ({
-        source: nodeMap[l.source],
-        target: nodeMap[l.target],
-        color: l.color || '#10b981',
-        style: l.style || 'solid',
-        description: l.description || '',
-        status: l.status || ''
-      })).filter(l => l.source && l.target);
+      // Compute circular/force node coordinates for interactive canvas
+      computeNodePositions(sim.num_genes);
+      drawGroundTruthCanvas();
+      inspectNode(0, false);
+      drawPerturbationTimeCourse(0);
+      drawExpressionHeatmap(sim.X, sim.gene_names);
+    }
 
-      if (!animFrame) {
-        runPhysicsLoop();
+    function setGtView(view) {
+      APP_STATE.gtView = view;
+      ['canvas', 'dot', 'neato', 'source'].forEach(v => {
+        document.getElementById(`btn-gt-${v}`).classList.toggle('active', v === view);
+      });
+      document.getElementById('canvas-gt-network').style.display = view === 'canvas' ? 'block' : 'none';
+      document.getElementById('gt-svg-dot').style.display = view === 'dot' ? 'block' : 'none';
+      document.getElementById('gt-svg-neato').style.display = view === 'neato' ? 'block' : 'none';
+      document.getElementById('gt-dot-source').style.display = view === 'source' ? 'block' : 'none';
+    }
+
+    function setInfView(view) {
+      APP_STATE.infView = view;
+      ['canvas', 'dot', 'neato'].forEach(v => {
+        document.getElementById(`btn-inf-${v}`).classList.toggle('active', v === view);
+      });
+      document.getElementById('canvas-inf-network').style.display = view === 'canvas' ? 'block' : 'none';
+      document.getElementById('inf-svg-dot').style.display = view === 'dot' ? 'block' : 'none';
+      document.getElementById('inf-svg-neato').style.display = view === 'neato' ? 'block' : 'none';
+    }
+
+    function computeNodePositions(N, width = 580, height = 350) {
+      const cx = width / 2;
+      const cy = height / 2;
+      const rx = Math.min(width, height) * 0.41;
+      const ry = Math.min(width, height) * 0.36;
+      APP_STATE.nodePositions = [];
+      for (let i = 0; i < N; i++) {
+        const angle = (2 * Math.PI * i) / N - Math.PI / 2;
+        APP_STATE.nodePositions.push({
+          x: cx + rx * Math.cos(angle),
+          y: cy + ry * Math.sin(angle),
+        });
       }
     }
 
-    function resetPhysics() {
-      updateActiveGraphData();
-    }
-
-    function runPhysicsLoop() {
-      // Force calculation
-      const width = canvas.width;
-      const height = canvas.height;
-      const kSpring = 0.05;
-      const kRepel = 1200;
-      const damping = 0.85;
-
-      // Repulsion between nodes
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const dx = nodes[j].x - nodes[i].x;
-          const dy = nodes[j].y - nodes[i].y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const force = kRepel / (dist * dist);
-          const fx = (dx / dist) * force;
-          const fy = (dy / dist) * force;
-
-          nodes[i].vx -= fx;
-          nodes[i].vy -= fy;
-          nodes[j].vx += fx;
-          nodes[j].vy += fy;
-        }
-      }
-
-      // Spring attraction along links
-      for (const link of links) {
-        const dx = link.target.x - link.source.x;
-        const dy = link.target.y - link.source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const targetDist = 90;
-        const force = (dist - targetDist) * kSpring;
-        const fx = (dx / dist) * force;
-        const fy = (dy / dist) * force;
-
-        link.source.vx += fx;
-        link.source.vy += fy;
-        link.target.vx -= fx;
-        link.target.vy -= fy;
-      }
-
-      // Center gravity
-      for (const node of nodes) {
-        node.vx += (width / 2 - node.x) * 0.01;
-        node.vy += (height / 2 - node.y) * 0.01;
-
-        if (node !== draggedNode) {
-          node.vx *= damping;
-          node.vy *= damping;
-          node.x += node.vx;
-          node.y += node.vy;
-
-          // Boundary constraints
-          node.x = Math.max(node.radius + 10, Math.min(width - node.radius - 10, node.x));
-          node.y = Math.max(node.radius + 10, Math.min(height - node.radius - 10, node.y));
-        }
-      }
-
-      drawGraph();
-      animFrame = requestAnimationFrame(runPhysicsLoop);
-    }
-
-    function drawGraph() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw Links
-      for (const link of links) {
-        ctx.save();
-        ctx.strokeStyle = link.color;
-        ctx.lineWidth = 2;
-
-        if (link.style === 'dashed') {
-          ctx.setLineDash([6, 4]);
-        } else if (link.style === 'dotted') {
-          ctx.setLineDash([2, 3]);
-        }
-
-        // Draw curved link or self-loop
-        if (link.source === link.target) {
-          // Self-loop
-          ctx.beginPath();
-          ctx.arc(link.source.x, link.source.y - 20, 14, 0, 2 * Math.PI);
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.moveTo(link.source.x, link.source.y);
-          ctx.lineTo(link.target.x, link.target.y);
-          ctx.stroke();
-
-          // Arrowhead
-          drawArrow(ctx, link.source.x, link.source.y, link.target.x, link.target.y, link.target.radius, link.color);
-        }
-        ctx.restore();
-      }
-
-      // Draw Nodes
-      for (const node of nodes) {
-        ctx.save();
-        const isHovered = node === hoveredNode;
-
-        // Shadow
-        ctx.shadowColor = isHovered ? 'rgba(6, 182, 212, 0.6)' : 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = isHovered ? 12 : 6;
-
-        // Circle
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius + (isHovered ? 2 : 0), 0, 2 * Math.PI);
-        ctx.fillStyle = isHovered ? '#0891b2' : '#1e293b';
-        ctx.fill();
-
-        ctx.strokeStyle = isHovered ? '#67e8f9' : '#38bdf8';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Label
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(node.label, node.x, node.y);
-
-        ctx.restore();
-      }
-    }
-
-    function drawArrow(ctx, fromX, fromY, toX, toY, targetRadius, color) {
-      const dx = toX - fromX;
-      const dy = toY - fromY;
-      const angle = Math.atan2(dy, dx);
-      const arrowLength = 9;
-
-      const endX = toX - Math.cos(angle) * (targetRadius + 3);
-      const endY = toY - Math.sin(angle) * (targetRadius + 3);
-
+    function drawDirectedEdge(ctx, x1, y1, x2, y2, color, style, arrowhead, isSelfLoop) {
       ctx.save();
+      ctx.strokeStyle = color;
       ctx.fillStyle = color;
+      ctx.lineWidth = 2.1;
+
+      if (style === 'dashed') ctx.setLineDash([7, 4]);
+      else if (style === 'dotted') ctx.setLineDash([2.5, 4]);
+      else ctx.setLineDash([]);
+
+      if (isSelfLoop) {
+        ctx.beginPath();
+        ctx.arc(x1, y1 - 24, 13, 0.3, Math.PI * 2 - 0.3);
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const dist = Math.hypot(dx, dy) || 1;
+      const ux = dx / dist;
+      const uy = dy / dist;
+
+      // Offset slightly for bidirectional edges & stop at node boundary (r=21)
+      const nx = -uy * 4;
+      const ny = ux * 4;
+      const sx = x1 + ux * 21 + nx;
+      const sy = y1 + uy * 21 + ny;
+      const ex = x2 - ux * 22 + nx;
+      const ey = y2 - uy * 22 + ny;
+
       ctx.beginPath();
-      ctx.moveTo(endX, endY);
-      ctx.lineTo(endX - arrowLength * Math.cos(angle - Math.PI / 6), endY - arrowLength * Math.sin(angle - Math.PI / 6));
-      ctx.lineTo(endX - arrowLength * Math.cos(angle + Math.PI / 6), endY - arrowLength * Math.sin(angle + Math.PI / 6));
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+      if (arrowhead === 'tee') {
+        // Perpendicular tee bar for inhibition
+        const tx = -uy * 6.5;
+        const ty = ux * 6.5;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(ex - tx, ey - ty);
+        ctx.lineTo(ex + tx, ey + ty);
+        ctx.stroke();
+      } else {
+        // Normal triangle arrowhead for activation
+        const headLen = 8.5;
+        const angle = Math.atan2(ey - sy, ex - sx);
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - headLen * Math.cos(angle - Math.PI / 6), ey - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(ex - headLen * Math.cos(angle + Math.PI / 6), ey - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
     }
 
-    function setupCanvasEvents() {
-      const tooltip = document.getElementById('hoverTooltip');
+    function drawGroundTruthCanvas() {
+      const sim = APP_STATE.sim;
+      if (!sim || !sim.graph) return;
+      const canvas = document.getElementById('canvas-gt-network');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
 
-      canvas.addEventListener('mousedown', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+      const pos = APP_STATE.nodePositions;
+      const links = sim.graph.links || [];
+      const nodes = sim.graph.nodes || [];
 
-        for (const node of nodes) {
-          const dx = node.x - mouseX;
-          const dy = node.y - mouseY;
-          if (dx * dx + dy * dy <= node.radius * node.radius) {
-            draggedNode = node;
-            isDragging = true;
-            break;
-          }
-        }
+      // Draw edges
+      links.forEach(l => {
+        const p1 = pos[l.source_idx];
+        const p2 = pos[l.target_idx];
+        if (!p1 || !p2) return;
+        const color = l.sign > 0 ? '#10b981' : '#ef4444';
+        const head = l.sign > 0 ? 'normal' : 'tee';
+        drawDirectedEdge(ctx, p1.x, p1.y, p2.x, p2.y, color, 'solid', head, l.source_idx === l.target_idx);
       });
 
-      window.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+      // Draw nodes
+      nodes.forEach((n, idx) => {
+        const p = pos[idx];
+        if (!p) return;
+        const isSel = idx === APP_STATE.selectedNodeIdx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+        ctx.fillStyle = isSel ? '#1e3a8a' : '#1e293b';
+        ctx.fill();
+        ctx.lineWidth = isSel ? 3 : 2;
+        ctx.strokeStyle = isSel ? '#38bdf8' : '#64748b';
+        ctx.stroke();
 
-        if (isDragging && draggedNode) {
-          draggedNode.x = mouseX;
-          draggedNode.y = mouseY;
-          draggedNode.vx = 0;
-          draggedNode.vy = 0;
-          return;
-        }
-
-        // Hover test
-        hoveredNode = null;
-        for (const node of nodes) {
-          const dx = node.x - mouseX;
-          const dy = node.y - mouseY;
-          if (dx * dx + dy * dy <= node.radius * node.radius) {
-            hoveredNode = node;
-            break;
-          }
-        }
-
-        if (hoveredNode) {
-          tooltip.style.display = 'block';
-          tooltip.style.left = (e.clientX - rect.left + 15) + 'px';
-          tooltip.style.top = (e.clientY - rect.top - 15) + 'px';
-          const inCount = links.filter(l => l.target === hoveredNode).length;
-          const outCount = links.filter(l => l.source === hoveredNode).length;
-          tooltip.innerHTML = `<strong>${hoveredNode.label}</strong><br>In-degree: ${inCount}<br>Out-degree: ${outCount}`;
-        } else {
-          tooltip.style.display = 'none';
-        }
-      });
-
-      window.addEventListener('mouseup', () => {
-        isDragging = false;
-        draggedNode = null;
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 11.5px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.label, p.x, p.y);
+        ctx.restore();
       });
     }
+
+    // Click handler on Ground-Truth Canvas to inspect Node or Edge (reproducing get_param.php)
+    document.getElementById('canvas-gt-network').addEventListener('click', (ev) => {
+      const sim = APP_STATE.sim;
+      if (!sim) return;
+      const canvas = ev.currentTarget;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (ev.clientX - rect.left) * (canvas.width / rect.width);
+      const my = (ev.clientY - rect.top) * (canvas.height / rect.height);
+
+      // Check node hit first
+      for (let i = 0; i < APP_STATE.nodePositions.length; i++) {
+        const p = APP_STATE.nodePositions[i];
+        if (Math.hypot(mx - p.x, my - p.y) <= 22) {
+          inspectNode(i, true);
+          return;
+        }
+      }
+
+      // Check edge hit (distance from segment)
+      const edges = sim.edge_list || [];
+      for (const e of edges) {
+        const p1 = APP_STATE.nodePositions[e.source_idx];
+        const p2 = APP_STATE.nodePositions[e.target_idx];
+        if (!p1 || !p2) continue;
+        const d = pointToSegmentDist(mx, my, p1.x, p1.y, p2.x, p2.y);
+        if (d <= 8) {
+          inspectEdge(e.source_idx, e.target_idx, true);
+          return;
+        }
+      }
+    });
+
+    function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+      const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+      if (l2 === 0) return Math.hypot(px - x1, py - y1);
+      let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+    }
+
+    // ============================================================================
+    // NODE & EDGE ODE KINETIC INSPECTOR (get_param.php + web_getparam.m)
+    // ============================================================================
+    window.inspectNode = function(idx, openModal = false) {
+      const sim = APP_STATE.sim;
+      if (!sim || !sim.node_params || !sim.node_params[idx]) return;
+      APP_STATE.selectedNodeIdx = idx;
+      APP_STATE.selectedEdgeKey = null;
+      document.getElementById('quick-node-select').value = String(idx);
+      drawGroundTruthCanvas();
+
+      const np = sim.node_params[idx];
+      const html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <strong style="color:#38bdf8;font-size:12.5px;">Node ${np.name} (Gene #${idx + 1})</strong>
+          <span class="badge">In: ${np.in_degree} | Out: ${np.out_degree}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;">
+          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:#94a3b8;">Steady State x_ss</div>
+            <div style="font-family:monospace;font-weight:700;color:#10b981;">${np.background_ss}</div>
+          </div>
+          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:#94a3b8;">Basal Rate (v_i)</div>
+            <div style="font-family:monospace;font-weight:700;color:#f8fafc;">${np.basal_rate_v}</div>
+          </div>
+          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:#94a3b8;">Breakdown (B_i)</div>
+            <div style="font-family:monospace;font-weight:700;color:#f59e0b;">${np.degradation_B}</div>
+          </div>
+        </div>
+      `;
+      document.getElementById('inline-param-card').innerHTML = html;
+
+      const series = (sim.basal_trajectory && sim.basal_trajectory[idx]) ? [
+        { label: `${np.name} Basal Concentration x(t)`, data: sim.basal_trajectory[idx], color: '#38bdf8' }
+      ] : [];
+      drawSeriesCanvas('canvas-basal-mini', series, `Basal ODE Relaxation: ${np.name} → x_ss = ${np.background_ss}`);
+
+      if (openModal) {
+        document.getElementById('modal-title').textContent = `Node Kinetic Parameters: ${np.name} (get_param.php?id=${idx + 1})`;
+        document.getElementById('modal-subtitle').textContent =
+          `Activators: ${np.activators_in.join(', ') || 'None'} • Inhibitors: ${np.inhibitors_in.join(', ') || 'None'}`;
+        document.getElementById('modal-body-stats').innerHTML = html;
+        drawSeriesCanvas('canvas-modal-traj', series, `Unperturbed Basal ODE Trajectory: ${np.name} reaching Steady State`);
+        inspectorDialog.showModal();
+      }
+    };
+
+    window.inspectEdgeKey = function(key) {
+      const parts = key.split('-');
+      if (parts.length === 2) {
+        window.inspectEdge(parseInt(parts[0]), parseInt(parts[1]), true);
+      }
+    };
+
+    window.inspectEdge = function(srcIdx, dstIdx, openModal = true) {
+      const sim = APP_STATE.sim;
+      if (!sim || !sim.edge_params) return;
+      const key = `${srcIdx}-${dstIdx}`;
+      const ep = sim.edge_params[key];
+      if (!ep) return;
+      APP_STATE.selectedEdgeKey = key;
+
+      const color = ep.sign > 0 ? '#10b981' : '#ef4444';
+      const html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <strong style="color:${color};font-size:12.5px;">Edge ${ep.source} &rarr; ${ep.target}</strong>
+          <span class="badge">${ep.action}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px;">
+          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:#94a3b8;">Hill Coefficient (${ep.param_symbol_n})</div>
+            <div style="font-family:monospace;font-weight:700;color:#38bdf8;">${ep.hill_coeff}</div>
+          </div>
+          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:#94a3b8;">Half-Saturation (${ep.param_symbol_K})</div>
+            <div style="font-family:monospace;font-weight:700;color:#f59e0b;">${ep.half_sat_K}</div>
+          </div>
+        </div>
+      `;
+      document.getElementById('inline-param-card').innerHTML = html;
+
+      const b = sim.basal_trajectory || [];
+      const series = [];
+      if (b[srcIdx]) series.push({ label: `Source ${ep.source}`, data: b[srcIdx], color: '#38bdf8' });
+      if (b[dstIdx]) series.push({ label: `Target ${ep.target}`, data: b[dstIdx], color: '#ef4444' });
+      drawSeriesCanvas('canvas-basal-mini', series, `Coupled ODE Trajectory: ${ep.source} (blue) → ${ep.target} (red)`);
+
+      if (openModal) {
+        document.getElementById('modal-title').textContent = `Edge Hill Kinetics: ${ep.source} → ${ep.target} (get_param.php?id=${srcIdx + 1}-${dstIdx + 1})`;
+        document.getElementById('modal-subtitle').textContent =
+          `Regulatory Action: ${ep.action} • Hill ${ep.param_symbol_n} = ${ep.hill_coeff} • Half-Saturation ${ep.param_symbol_K} = ${ep.half_sat_K}`;
+        document.getElementById('modal-body-stats').innerHTML = html;
+        drawSeriesCanvas('canvas-modal-traj', series, `Basal ODE Concentration Time-Series: Source ${ep.source} vs Target ${ep.target}`);
+        inspectorDialog.showModal();
+      }
+    };
+
+    function openInspectorDialog() {
+      if (APP_STATE.selectedEdgeKey) {
+        window.inspectEdgeKey(APP_STATE.selectedEdgeKey);
+      } else {
+        window.inspectNode(APP_STATE.selectedNodeIdx || 0, true);
+      }
+    }
+
+    // ============================================================================
+    // STEP 4 CHARTS: PERTURBATION TIME-COURSE & HEATMAP X
+    // ============================================================================
+    function drawSeriesCanvas(canvasId, seriesList, title) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 38, r: 14, t: 24, b: 22 };
+      const pw = W - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 10.5px Inter, sans-serif';
+      ctx.fillText(title, pad.l, 15);
+
+      if (!seriesList || !seriesList.length) return;
+
+      let minV = Infinity, maxV = -Infinity;
+      seriesList.forEach(s => {
+        (s.data || []).forEach(v => {
+          if (v < minV) minV = v;
+          if (v > maxV) maxV = v;
+        });
+      });
+      if (!isFinite(minV)) { minV = 0; maxV = 2; }
+      const span = Math.max(0.2, maxV - minV);
+      minV = Math.max(0, minV - span * 0.08);
+      maxV = maxV + span * 0.1;
+
+      // Grid lines
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let g = 0; g <= 3; g++) {
+        const y = pad.t + (ph * g) / 3;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(W - pad.r, y);
+        ctx.stroke();
+
+        const val = maxV - ((maxV - minV) * g) / 3;
+        ctx.fillStyle = '#64748b';
+        ctx.font = '9.5px monospace';
+        ctx.fillText(val.toFixed(2), 4, y + 3);
+      }
+
+      seriesList.forEach(s => {
+        const arr = s.data || [];
+        if (!arr.length) return;
+        ctx.strokeStyle = s.color || '#38bdf8';
+        ctx.lineWidth = s.width || 2.0;
+        ctx.beginPath();
+        arr.forEach((v, i) => {
+          const x = pad.l + (pw * i) / Math.max(1, arr.length - 1);
+          const y = pad.t + ph * (1 - (v - minV) / (maxV - minV));
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+    }
+
+    function drawPerturbationTimeCourse(pertIdx) {
+      const sim = APP_STATE.sim;
+      if (!sim || !sim.perturbation_trajectories) return;
+      const traj = sim.perturbation_trajectories[pertIdx];
+      if (!traj) return;
+
+      const palette = ['#38bdf8', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6', '#6366f1', '#eab308', '#f97316'];
+      const series = traj.map((row, idx) => ({
+        label: sim.gene_names[idx],
+        data: row,
+        color: idx === pertIdx ? '#ef4444' : palette[idx % palette.length],
+        width: idx === pertIdx ? 3.0 : 1.35,
+      }));
+      const gName = sim.gene_names[pertIdx] || `G${pertIdx + 1}`;
+      drawSeriesCanvas('canvas-pert-traj', series, `Perturbed ${gName} (thick red) + ${sim.num_genes - 1} Responding Genes`);
+    }
+
+    function drawExpressionHeatmap(X, geneNames) {
+      const canvas = document.getElementById('canvas-x-heatmap');
+      if (!canvas || !X || !X.length) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const N = X.length;
+      const pad = { l: 42, r: 16, t: 28, b: 18 };
+      const cw = (W - pad.l - pad.r) / N;
+      const ch = (H - pad.t - pad.b) / N;
+
+      let maxAbs = 0.01;
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          maxAbs = Math.max(maxAbs, Math.abs(X[i][j]));
+        }
+      }
+
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          const val = X[i][j];
+          const norm = Math.max(-1, Math.min(1, val / maxAbs));
+          let fill;
+          if (norm >= 0) {
+            const a = 0.15 + 0.85 * norm;
+            fill = `rgba(16, 185, 129, ${a.toFixed(2)})`;
+          } else {
+            const a = 0.15 + 0.85 * (-norm);
+            fill = `rgba(239, 68, 68, ${a.toFixed(2)})`;
+          }
+          ctx.fillStyle = fill;
+          ctx.fillRect(pad.l + j * cw, pad.t + i * ch, cw - 1, ch - 1);
+        }
+      }
+
+      // Labels for up to 15 genes
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '9.5px monospace';
+      const step = N > 14 ? 2 : 1;
+      for (let i = 0; i < N; i += step) {
+        const lbl = (geneNames && geneNames[i]) ? geneNames[i].slice(0, 5) : `G${i + 1}`;
+        ctx.fillText(lbl, 4, pad.t + (i + 0.7) * ch);
+        ctx.fillText(lbl, pad.l + i * cw + 2, 18);
+      }
+    }
+
+    // ============================================================================
+    // RENDER STEP 6: 9-STATE DIFFERENTIAL GRAPH, $TMP_STATMAT, $TMP_CMAT, AIC
+    // ============================================================================
+    function renderAllInferenceViews() {
+      const inf = APP_STATE.inferred;
+      if (!inf || !inf.metrics) return;
+
+      const algs = Object.keys(inf.metrics);
+      if (!algs.includes(APP_STATE.activeAlg)) {
+        APP_STATE.activeAlg = algs[0] || 's2g';
+      }
+      document.getElementById('select-infer-alg').value = APP_STATE.activeAlg;
+
+      // Populate Algorithm Comparison Table
+      const tbody = document.querySelector('#tbl-alg-comparison tbody');
+      tbody.innerHTML = '';
+      algs.forEach(alg => {
+        const st = (inf.tmp_statmat && inf.tmp_statmat[alg]) || {};
+        const isSel = alg === APP_STATE.activeAlg;
+        const tr = document.createElement('tr');
+        if (isSel) tr.className = 'selected-row';
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => onSelectInferAlg(alg);
+        tr.innerHTML = `
+          <td><strong style="color:#38bdf8;">${alg.toUpperCase()}</strong></td>
+          <td>${st.power ?? '--'}%</td>
+          <td>${st.specificity ?? '--'}%</td>
+          <td>${st.ppv ?? '--'}%</td>
+          <td>${st.fdr ?? '--'}%</td>
+          <td>${st.signed_ppv ?? '--'}%</td>
+          <td><strong style="color:#f59e0b;">${st.total_errors ?? '--'}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      onSelectInferAlg(APP_STATE.activeAlg);
+      drawAicProfile(inf.aic_profile);
+    }
+
+    function onSelectInferAlg(alg) {
+      const inf = APP_STATE.inferred;
+      if (!inf || !inf.metrics || !inf.metrics[alg]) return;
+      APP_STATE.activeAlg = alg;
+
+      document.getElementById('active-alg-badge').textContent = alg.toUpperCase();
+      document.getElementById('cmat-alg-label').textContent = alg.toUpperCase();
+      document.getElementById('statmat-subtitle').textContent = `Active Algorithm: ${alg.toUpperCase()}`;
+
+      // Highlight selected row in comparison table
+      document.querySelectorAll('#tbl-alg-comparison tbody tr').forEach(tr => {
+        const name = tr.querySelector('td')?.textContent?.trim()?.toLowerCase();
+        tr.classList.toggle('selected-row', name === alg);
+      });
+
+      // Populate $TMP_STATMAT 8 cards
+      const st = (inf.tmp_statmat && inf.tmp_statmat[alg]) || {};
+      document.getElementById('st-power').textContent = `${st.power ?? '--'}%`;
+      document.getElementById('st-spec').textContent = `${st.specificity ?? '--'}%`;
+      document.getElementById('st-ppv').textContent = `${st.ppv ?? '--'}%`;
+      document.getElementById('st-signed-ppv').textContent = `${st.signed_ppv ?? '--'}%`;
+      document.getElementById('st-fdr').textContent = `${st.fdr ?? '--'}%`;
+      document.getElementById('st-fpr').textContent = `${st.false_positive_rate ?? '--'}%`;
+      document.getElementById('st-fnr').textContent = `${st.false_negative_rate ?? '--'}%`;
+      document.getElementById('st-err').textContent = `${st.total_errors ?? '--'}`;
+
+      // Populate 4x4 $TMP_CMAT table
+      renderConfusionMatrixTable('#tbl-cmat tbody', inf.confusion_matrix ? inf.confusion_matrix[alg] : null);
+
+      // Update 9-state Graphviz SVGs & Canvas
+      document.getElementById('inf-svg-dot').innerHTML = (inf.svgs_dot && inf.svgs_dot[alg]) || '';
+      document.getElementById('inf-svg-neato').innerHTML = (inf.svgs_neato && inf.svgs_neato[alg]) || '';
+      draw9StateComparisonCanvas(inf.comparison_graphs ? inf.comparison_graphs[alg] : null);
+    }
+
+    function renderConfusionMatrixTable(selector, cmat) {
+      const tbody = document.querySelector(selector);
+      if (!tbody || !cmat) return;
+      const m = cmat.matrix;
+      const rErr = cmat.row_errors;
+      const cErr = cmat.col_errors;
+      tbody.innerHTML = `
+        <tr>
+          <td><strong style="color:#10b981;">Obs + (Activation)</strong></td>
+          <td><strong>${m[0][0]}</strong></td>
+          <td>${m[0][1]}</td>
+          <td>${m[0][2]}</td>
+          <td style="color:#f59e0b;">${rErr[0]}%</td>
+        </tr>
+        <tr>
+          <td><strong style="color:#ef4444;">Obs - (Inhibition)</strong></td>
+          <td>${m[1][0]}</td>
+          <td><strong>${m[1][1]}</strong></td>
+          <td>${m[1][2]}</td>
+          <td style="color:#f59e0b;">${rErr[1]}%</td>
+        </tr>
+        <tr>
+          <td><strong style="color:#94a3b8;">Obs no (0)</strong></td>
+          <td>${m[2][0]}</td>
+          <td>${m[2][1]}</td>
+          <td><strong>${m[2][2]}</strong></td>
+          <td style="color:#f59e0b;">${rErr[2]}%</td>
+        </tr>
+        <tr style="background:rgba(30,41,59,0.65);">
+          <td><strong>Pred Error Rate</strong></td>
+          <td style="color:#38bdf8;">${cErr[0]}%</td>
+          <td style="color:#38bdf8;">${cErr[1]}%</td>
+          <td style="color:#38bdf8;">${cErr[2]}%</td>
+          <td><strong style="color:#f472b6;">Overall: ${cmat.overall_error_pct}%</strong></td>
+        </tr>
+      `;
+    }
+
+    function draw9StateComparisonCanvas(compGraph) {
+      const canvas = document.getElementById('canvas-inf-network');
+      if (!canvas || !compGraph) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const pos = APP_STATE.nodePositions;
+      const links = compGraph.links || [];
+      const nodes = compGraph.nodes || [];
+
+      links.forEach(l => {
+        const p1 = pos[l.source_idx];
+        const p2 = pos[l.target_idx];
+        if (!p1 || !p2) return;
+        drawDirectedEdge(
+          ctx, p1.x, p1.y, p2.x, p2.y,
+          l.color || '#10b981',
+          l.style || 'solid',
+          l.arrowhead || 'normal',
+          l.source_idx === l.target_idx
+        );
+      });
+
+      nodes.forEach((n, idx) => {
+        const p = pos[idx];
+        if (!p) return;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+        ctx.fillStyle = '#1e293b';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#6366f1';
+        ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 11.5px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.label, p.x, p.y);
+        ctx.restore();
+      });
+    }
+
+    function drawAicProfile(aic) {
+      if (!aic) return;
+      document.getElementById('aic-opt-badge').textContent = `Optimal K = ${aic.optimal_k}`;
+      const series = [
+        { label: 'S2G Forward AIC(K)', data: aic.s2g_aic, color: '#38bdf8', width: 2.5 },
+        { label: 'G2S Backward AIC(K)', data: aic.g2s_aic, color: '#10b981', width: 2.0 },
+      ];
+      drawSeriesCanvas('canvas-aic-curve', series, `S2G (blue) & G2S (green) AIC Cost vs Subset Size K (Min at K=${aic.optimal_k})`);
+    }
+
+    // ============================================================================
+    // TAB 2: E. COLI SOS DNA REPAIR PATHWAY STUDIO (Gardner et al. 2003)
+    // ============================================================================
+    async function loadSosFullStudio() {
+      try {
+        const res = await fetch('/api/benchmark/sos_full');
+        const data = await res.json();
+        if (data.status !== 'success') return;
+        APP_STATE.sosData = data;
+
+        document.getElementById('sos-true-stage').innerHTML = data.svg_true_dot || '';
+
+        // Populate Table 4.1
+        const tbody = document.querySelector('#tbl-sos-benchmark tbody');
+        tbody.innerHTML = '';
+        const order = ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
+        order.forEach(alg => {
+          const m = data.table_4_1[alg];
+          if (!m) return;
+          const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          if (alg !== 'by_chance') {
+            tr.onclick = () => {
+              document.getElementById('sos-alg-select').value = alg;
+              renderSosAlgorithm(alg);
+            };
+          }
+          tr.innerHTML = `
+            <td><strong style="color:#38bdf8;">${alg.toUpperCase()}</strong></td>
+            <td>${m.coverage_pct}%</td>
+            <td>${m.false_positives_pct}%</td>
+            <td><strong>${m.inferred_connections_pct}%</strong></td>
+            <td>${m.fp_per_inferred_pct}%</td>
+            <td>${m.inferred_sign_pct}%</td>
+            <td><strong style="color:#f59e0b;">${m.total_errors}</strong></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        renderSosAlgorithm('vote');
+        drawSos9PanelGrid(data.perturbation_trajectories, data.gene_names);
+      } catch (e) {
+        console.error('SOS Studio error:', e);
+      }
+    }
+
+    function renderSosAlgorithm(alg) {
+      const data = APP_STATE.sosData;
+      if (!data) return;
+      document.getElementById('sos-diff-title').textContent = alg.toUpperCase();
+      document.getElementById('sos-cmat-name').textContent = alg.toUpperCase();
+      document.getElementById('sos-diff-stage').innerHTML = (data.svgs_dot && data.svgs_dot[alg]) || '';
+      renderConfusionMatrixTable('#tbl-sos-cmat tbody', data.confusion_matrices ? data.confusion_matrices[alg] : null);
+    }
+
+    function drawSos9PanelGrid(trajs, geneNames) {
+      const canvas = document.getElementById('canvas-sos-9grid');
+      if (!canvas || !trajs || !trajs.length) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const cols = 3, rows = 3;
+      const cw = W / cols;
+      const ch = H / rows;
+      const palette = ['#38bdf8', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6', '#6366f1', '#eab308', '#ef4444'];
+
+      for (let idx = 0; idx < Math.min(9, trajs.length); idx++) {
+        const r = Math.floor(idx / cols);
+        const c = idx % cols;
+        const x0 = c * cw + 8;
+        const y0 = r * ch + 6;
+        const pw = cw - 16;
+        const ph = ch - 14;
+
+        ctx.strokeStyle = '#1e293b';
+        ctx.strokeRect(x0, y0, pw, ph);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.fillText(`Perturb #${idx + 1}: ${geneNames[idx]}`, x0 + 6, y0 + 13);
+
+        const mat = trajs[idx];
+        let minV = Infinity, maxV = -Infinity;
+        mat.forEach(row => row.forEach(v => { if (v < minV) minV = v; if (v > maxV) maxV = v; }));
+        const span = Math.max(0.2, maxV - minV);
+
+        mat.forEach((row, g) => {
+          ctx.strokeStyle = g === idx ? '#ef4444' : palette[g % palette.length];
+          ctx.lineWidth = g === idx ? 2.2 : 1.1;
+          ctx.beginPath();
+          row.forEach((v, t) => {
+            const px = x0 + 4 + ((pw - 8) * t) / Math.max(1, row.length - 1);
+            const py = y0 + 18 + (ph - 22) * (1 - (v - minV) / span);
+            if (t === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.stroke();
+        });
+      }
+    }
+
+    // ============================================================================
+    // TAB 3: THESIS & 2006 PAPER FIGURES GALLERY
+    // ============================================================================
+    async function loadThesisFigures() {
+      try {
+        const res = await fetch('/api/benchmark/thesis_figures');
+        const data = await res.json();
+        if (data.status !== 'success') return;
+        APP_STATE.thesisFigures = data;
+
+        drawFigTopology(data.fig4_topology);
+        drawFigConnectivity(data.fig4_connectivity);
+        drawFigNoiseAndHeatmap(data.fig4_noise);
+        drawFigVoting(data.fig4_voting);
+        drawFigRuntime(data.fig4_runtime);
+        drawFigErrorModel(data.fig2_error_model);
+      } catch (e) {
+        console.error('Thesis figures error:', e);
+      }
+    }
+
+    function drawMultiLineChart(canvasId, xLabels, seriesList, yTitle, yMin = 40, yMax = 100) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 46, r: 20, t: 30, b: 32 };
+      const pw = W - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+
+      // Grid
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let g = 0; g <= 4; g++) {
+        const y = pad.t + (ph * g) / 4;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(W - pad.r, y);
+        ctx.stroke();
+        const val = yMax - ((yMax - yMin) * g) / 4;
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px monospace';
+        ctx.fillText(val.toFixed(0), 10, y + 3);
+      }
+
+      // X labels
+      xLabels.forEach((xl, i) => {
+        const x = pad.l + (pw * i) / Math.max(1, xLabels.length - 1);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10.5px Inter, sans-serif';
+        ctx.fillText(String(xl), x - 10, H - 10);
+      });
+
+      // Lines
+      seriesList.forEach((s, sIdx) => {
+        ctx.strokeStyle = s.color;
+        ctx.fillStyle = s.color;
+        ctx.lineWidth = 2.3;
+        if (s.dash) ctx.setLineDash(s.dash);
+        else ctx.setLineDash([]);
+
+        ctx.beginPath();
+        s.data.forEach((v, i) => {
+          const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
+          const y = pad.t + ph * (1 - (v - yMin) / (yMax - yMin));
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        s.data.forEach((v, i) => {
+          const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
+          const y = pad.t + ph * (1 - (v - yMin) / (yMax - yMin));
+          ctx.beginPath();
+          ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Legend item
+        const lx = pad.l + sIdx * 145;
+        ctx.fillRect(lx, 8, 12, 4);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '10.5px Inter, sans-serif';
+        ctx.fillText(s.label, lx + 16, 13);
+      });
+    }
+
+    function drawFigTopology(topo) {
+      const series = [
+        { label: 'Scale-Free (S2G)', data: topo.power_law.s2g_power, color: '#10b981' },
+        { label: 'Random (S2G)', data: topo.random.s2g_power, color: '#38bdf8' },
+        { label: 'Hierarchical (G2S)', data: topo.hierarchical.g2s_power, color: '#f59e0b' },
+        { label: 'Scale-Free (FAST)', data: topo.power_law.fast_power, color: '#ef4444', dash: [5, 3] },
+      ];
+      drawMultiLineChart('canvas-fig-topology', topo.sizes.map(n => `n=${n}`), series, 'Power (%)', 50, 100);
+    }
+
+    function drawFigConnectivity(conn) {
+      const series = [
+        { label: 'S2G Power (%)', data: conn.s2g.power, color: '#38bdf8' },
+        { label: 'G2S Power (%)', data: conn.g2s.power, color: '#10b981' },
+        { label: 'NIR Power (%)', data: conn.nir.power, color: '#f59e0b' },
+        { label: 'Voting FDR (%)', data: conn.vote.fdr, color: '#ec4899', dash: [4, 3] },
+      ];
+      drawMultiLineChart('canvas-fig-connectivity', conn.k_av_levels.map(k => `k=${k}`), series, 'Percent', 0, 100);
+    }
+
+    function drawFigNoiseAndHeatmap(noise) {
+      const canvas = document.getElementById('canvas-fig-noise');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Left half: Line chart of Power vs Noise
+      const lw = W * 0.52;
+      const pad = { l: 38, r: 12, t: 28, b: 28 };
+      const pw = lw - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+
+      const lines = [
+        { label: 'S2G Power', data: noise.s2g_power, color: '#38bdf8' },
+        { label: 'G2S Power', data: noise.g2s_power, color: '#10b981' },
+        { label: 'NIR Power', data: noise.nir_power, color: '#f59e0b' },
+        { label: 'FAST Power', data: noise.fast_power, color: '#ef4444' },
+      ];
+
+      lines.forEach((s, idx) => {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        s.data.forEach((v, i) => {
+          const x = pad.l + (pw * i) / (s.data.length - 1);
+          const y = pad.t + ph * (1 - (v - 25) / 75);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.fillStyle = s.color;
+        ctx.font = '10px Inter, sans-serif';
+        ctx.fillText(s.label, pad.l + idx * 75, 15);
+      });
+
+      noise.noise_levels.forEach((nl, i) => {
+        const x = pad.l + (pw * i) / (noise.noise_levels.length - 1);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9.5px monospace';
+        ctx.fillText(nl.toFixed(2), x - 10, H - 8);
+      });
+
+      // Right half: 2D Heatmap over k_av x noise (overall_inferred_connections.pdf)
+      const rx0 = lw + 28;
+      const rw = W - rx0 - 14;
+      const rh = H - 56;
+      const rows = noise.heatmap_k_av.length;
+      const cols = noise.heatmap_noise.length;
+      const cw = rw / cols;
+      const ch = rh / rows;
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 10.5px Inter, sans-serif';
+      ctx.fillText('2D Power (%) Heatmap: k_av × Noise σ', rx0, 16);
+
+      for (let r = 0; r < rows; r++) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9.5px monospace';
+        ctx.fillText(`k=${noise.heatmap_k_av[r]}`, rx0 - 32, 28 + (r + 0.65) * ch);
+        for (let c = 0; c < cols; c++) {
+          const val = noise.heatmap_power[r][c];
+          const norm = (val - 30) / 70;
+          ctx.fillStyle = `rgba(56, 189, 248, ${Math.max(0.15, Math.min(0.95, norm)).toFixed(2)})`;
+          ctx.fillRect(rx0 + c * cw, 28 + r * ch, cw - 2, ch - 2);
+          ctx.fillStyle = '#0b0f19';
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText(`${val.toFixed(0)}%`, rx0 + c * cw + 8, 28 + (r + 0.62) * ch);
+        }
+      }
+      noise.heatmap_noise.forEach((nl, c) => {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9.5px monospace';
+        ctx.fillText(`σ=${nl}`, rx0 + c * cw + 4, H - 8);
+      });
+    }
+
+    function drawFigVoting(voting) {
+      const canvas = document.getElementById('canvas-fig-voting');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { l: 42, r: 16, t: 28, b: 32 };
+      const pw = W - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+      const cats = voting.categories;
+      const groupW = pw / cats.length;
+      const barW = groupW * 0.22;
+
+      const sets = [
+        { label: 'S2G FDR (%)', data: voting.s2g_fdr, color: '#38bdf8' },
+        { label: 'G2S FDR (%)', data: voting.g2s_fdr, color: '#f59e0b' },
+        { label: 'Voting Consensus FDR (%)', data: voting.vote_fdr, color: '#10b981' },
+      ];
+
+      sets.forEach((s, sIdx) => {
+        ctx.fillStyle = s.color;
+        ctx.fillRect(pad.l + sIdx * 185, 8, 12, 8);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '10.5px Inter, sans-serif';
+        ctx.fillText(s.label, pad.l + sIdx * 185 + 16, 16);
+
+        s.data.forEach((val, i) => {
+          const x = pad.l + i * groupW + 12 + sIdx * (barW + 3);
+          const bh = (val / 50) * ph;
+          const y = pad.t + ph - bh;
+          ctx.fillStyle = s.color;
+          ctx.fillRect(x, y, barW, bh);
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '9px monospace';
+          ctx.fillText(`${val.toFixed(1)}`, x, y - 3);
+        });
+      });
+
+      cats.forEach((c, i) => {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.fillText(c, pad.l + i * groupW + 8, H - 10);
+      });
+    }
+
+    function drawFigRuntime(rt) {
+      const series = [
+        { label: 'S2G (k=1.5)', data: rt.s2g_k15, color: '#10b981' },
+        { label: 'S2G (k=5.0)', data: rt.s2g_k50, color: '#38bdf8' },
+        { label: 'G2S (k=1.5)', data: rt.g2s_k15, color: '#f59e0b' },
+        { label: 'FAST SVD', data: rt.fast_k15, color: '#a855f7' },
+      ];
+      drawMultiLineChart('canvas-fig-runtime', rt.sizes.map(n => `n=${n}`), series, 'Seconds', 0, 12);
+    }
+
+    function drawFigErrorModel(em) {
+      const canvas = document.getElementById('canvas-fig-errormodel');
+      if (canvas && em) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        const maxC = Math.max(...em.counts, 1);
+        const pad = { l: 28, r: 10, t: 24, b: 24 };
+        const bw = (W - pad.l - pad.r) / em.counts.length;
+        const ph = H - pad.t - pad.b;
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.fillText('Error Model Histogram (Eq 2.5)', pad.l, 14);
+
+        em.counts.forEach((c, i) => {
+          const bh = (c / maxC) * ph;
+          ctx.fillStyle = '#6366f1';
+          ctx.fillRect(pad.l + i * bw + 1, pad.t + ph - bh, bw - 2, bh);
+        });
+      }
+
+      const tbody = document.querySelector('#tbl-fig2-4gene tbody');
+      if (tbody && em && em.table_2_1_4gene) {
+        tbody.innerHTML = '';
+        em.table_2_1_4gene.forEach(r => {
+          tbody.innerHTML += `
+            <tr>
+              <td><strong style="color:#38bdf8;">${r.gene}</strong></td>
+              <td>${r.v}</td>
+              <td>${r.B}</td>
+              <td><strong style="color:#10b981;">${r.x_ss}</strong></td>
+              <td style="font-size:11px;">${r.regulators}</td>
+            </tr>
+          `;
+        });
+      }
+    }
+
+    // ============================================================================
+    // TAB 4: PREVIOUS SIMULATIONS ARCHIVE (showpre.php)
+    // ============================================================================
+    async function loadHistoryTable() {
+      try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+        const tbody = document.querySelector('#tbl-history tbody');
+        if (!tbody || !data.history) return;
+        tbody.innerHTML = '';
+        data.history.forEach(h => {
+          tbody.innerHTML += `
+            <tr>
+              <td>#${h.id}</td>
+              <td><code style="color:#38bdf8;">${h.run_id}</code></td>
+              <td>${h.timestamp}</td>
+              <td><span class="badge">${h.topology}</span></td>
+              <td><strong>${h.num_genes}</strong></td>
+              <td>${h.k_av}</td>
+              <td>${h.act_ratio}</td>
+              <td>${h.noise}</td>
+              <td><span class="badge badge-emerald">${h.best_algorithm}</span></td>
+              <td><strong>${h.best_power_pct}%</strong></td>
+              <td>${h.best_specificity_pct}%</td>
+              <td style="color:#f59e0b;font-weight:700;">${h.best_total_errors}</td>
+              <td>
+                <a href="/api/download?format=msmt" style="color:#38bdf8;margin-right:6px;">.msmt</a>
+                <a href="/api/download?format=pert" style="color:#10b981;margin-right:6px;">.pert</a>
+                <a href="/api/download?format=dot" style="color:#f59e0b;margin-right:6px;">.dot</a>
+                <a href="/api/download?format=svg" style="color:#f472b6;">.svg</a>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        console.error('History load error:', e);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
   </script>
 </body>
 </html>
