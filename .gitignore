@@ -60,3 +60,6 @@ venv.bak/
 *.sqlite
 *.sqlite3
 *.db
+
+# Scratch and temporary scripts
+scratch/

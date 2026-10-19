@@ -16,7 +16,7 @@ import os
 import sys
 import time
 import urllib.parse
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import numpy as np
 
 from grn_sim.core.topology import generate_topology, TopologyType, NetworkTopology
@@ -28,6 +28,14 @@ from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
 from grn_sim.inference.by_chance import ByChance
+from grn_sim.inference.atlasshift import AtlasShift
+from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark
+from grn_sim.simulator.perturb_seq import (
+    simulate_perturb_seq_counts,
+    create_perturb_seq_anndata,
+    export_perturb_seq_h5ad,
+    HAS_ANNDATA,
+)
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.benchmarks.sos_pathway import (
     GENE_NAMES as SOS_GENE_NAMES,
@@ -427,6 +435,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "nir": NIRAlgorithm(k_interactions=k_est),
         "fast": FastSVD(k_interactions=k_est, add_diagonal_identity=is_sos),
         "by_chance": ByChance(k_interactions=k_est, seed=42),
+        "atlasshift": AtlasShift(de_threshold=0.15),
     }
 
     metrics_dict = {}
@@ -442,7 +451,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         if alg in alg_runners:
             t0 = time.perf_counter()
             # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3 and fast_modified
-            U_input = U if (is_sos or alg in ("s2g", "g2s", "vote", "by_chance")) else (-U)
+            U_input = U if (is_sos or alg in ("s2g", "g2s", "vote", "by_chance", "atlasshift")) else (-U)
             res = alg_runners[alg].fit(X, U_input)
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
             pred = res.adjacency_pred
@@ -602,6 +611,10 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         "svg_spring": sim_payload.get("svg_spring", ""),
         "msmt_text": sim_payload.get("msmt_text", ""),
         "pert_text": sim_payload.get("pert_text", ""),
+        "x_steady_unperturbed": sim_payload.get("x_steady_unperturbed", []),
+        "x_steady_perturbed": sim_payload.get("x_steady_perturbed", []),
+        "X": sim_payload.get("X", []),
+        "U": sim_payload.get("U", []),
         "inferred_results": inferred_payload,
     })
     SIMULATION_RUN_STORE[run_id] = {
@@ -1093,6 +1106,87 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
     return payload
 
 
+def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False) -> Dict[str, Any]:
+    """Computes or retrieves cached Virtual Cell Challenge 2026 vs Mechanistic GRN comparative benchmark."""
+    cache_key = f"vcc_{num_genes}_{k_av}_{seed}"
+    if not refresh and cache_key in BENCHMARK_CACHE:
+        return BENCHMARK_CACHE[cache_key]
+
+    payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed)
+    BENCHMARK_CACHE[cache_key] = payload
+    return payload
+
+
+def _build_perturb_seq_h5ad_bytes(run_id: Optional[str] = None, cells_per_condition: int = 400) -> Tuple[bytes, str]:
+    """Generates a single-cell Perturb-seq AnnData .h5ad binary file matching VCC 2026 (400 cells/condition)."""
+    import tempfile
+    from pathlib import Path
+
+    target_state = CURRENT_STATE
+    if run_id and run_id in SIMULATION_RUN_STORE:
+        target_state = SIMULATION_RUN_STORE[run_id]["state"]
+
+    exp = target_state.get("experiment")
+    gene_names = target_state.get("gene_names")
+    u_mat = None
+
+    if exp is not None:
+        ctrl = np.asarray(exp.reference_steady_state, dtype=float)
+        pert = np.asarray(exp.perturbed_states, dtype=float)
+        u_mat = exp.U
+    elif target_state.get("x_steady_unperturbed") and target_state.get("x_steady_perturbed"):
+        ctrl = np.asarray(target_state["x_steady_unperturbed"], dtype=float)
+        pert = np.asarray(target_state["x_steady_perturbed"], dtype=float)
+        u_mat = np.asarray(target_state.get("U", np.eye(len(ctrl))), dtype=float)
+    else:
+        # Generate simulation from settings or defaults
+        settings = dict(target_state.get("settings") or {"num_genes": 12, "topology": "power_law", "seed": 42})
+        _execute_simulation(settings)
+        target_state = CURRENT_STATE
+        exp = CURRENT_STATE["experiment"]
+        ctrl = np.asarray(exp.reference_steady_state, dtype=float)
+        pert = np.asarray(exp.perturbed_states, dtype=float)
+        u_mat = exp.U
+
+    if not gene_names:
+        gene_names = [f"Gene_{i+1:02d}" for i in range(len(ctrl))]
+
+    actual_run_id = target_state.get("run_id") or "vcc_perturb_seq"
+    mean_expr = np.column_stack([ctrl, pert])
+
+    adata = create_perturb_seq_anndata(
+        gene_names=gene_names,
+        mean_expression_matrix=mean_expr,
+        ground_truth_network=target_state.get("true_matrix"),
+        perturbation_matrix=u_mat,
+        cells_per_condition=cells_per_condition,
+        mean_library_depth=20000,
+        seed=target_state.get("seed", 42),
+    )
+
+    with tempfile.NamedTemporaryFile(suffix=".h5ad", delete=False) as tf:
+        temp_path = tf.name
+
+    filename = f"{actual_run_id}_perturb_seq_400cells.h5ad"
+    try:
+        saved_path = export_perturb_seq_h5ad(adata, temp_path)
+        actual_path = saved_path if saved_path.exists() else Path(temp_path)
+        if not actual_path.exists() and Path(temp_path + ".npz").exists():
+            actual_path = Path(temp_path + ".npz")
+            filename = f"{actual_run_id}_perturb_seq_400cells.npz"
+        with open(actual_path, "rb") as f:
+            data = f.read()
+    finally:
+        for p in [temp_path, temp_path + ".npz", temp_path.replace(".h5ad", ".npz")]:
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+
+    return data, filename
+
+
 def _bootstrap_initial_simulation():
     """Seeds an initial 12-gene Scale-Free simulation + inference + archive history on server startup."""
     try:
@@ -1310,6 +1404,36 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             return
 
+        elif path == "/api/benchmark/vcc_atlasshift":
+            try:
+                n_g = int(query.get("num_genes", [12])[0])
+                k_av = float(query.get("k_av", [1.8])[0])
+                sd = int(query.get("seed", [2026])[0])
+                rf = query.get("refresh", ["0"])[0] in ("1", "true")
+                payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf)
+                self._set_headers(200)
+                self.wfile.write(json.dumps(payload).encode("utf-8"))
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/export/perturb_seq_h5ad":
+            try:
+                req_run_id = query.get("run_id", [None])[0]
+                cells = int(query.get("cells_per_condition", [400])[0])
+                data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells)
+                self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
+                self.wfile.write(data)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
         elif path == "/api/history":
             db_history = load_all_history_from_db()
             if db_history:
@@ -1361,6 +1485,16 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 content = target_state.get("svg_hierarchical", "")
                 self._set_headers(200, "image/svg+xml; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.svg"'})
                 self.wfile.write(content.encode("utf-8"))
+                return
+            elif fmt == "h5ad":
+                try:
+                    cells = int(query.get("cells_per_condition", [400])[0])
+                    data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells)
+                    self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
+                    self.wfile.write(data)
+                except Exception as e:
+                    self._set_headers(500)
+                    self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                 return
 
         self._set_headers(404, "text/plain")

@@ -9,6 +9,7 @@ from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.by_chance import ByChance
 from grn_sim.inference.ensemble import VotingEnsemble
+from grn_sim.inference.atlasshift import AtlasShift
 
 __all__ = [
     "BaseInferenceAlgorithm",
@@ -19,4 +20,6 @@ __all__ = [
     "FastSVD",
     "ByChance",
     "VotingEnsemble",
+    "AtlasShift",
 ]
+

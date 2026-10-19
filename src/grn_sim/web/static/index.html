@@ -729,6 +729,9 @@
         <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
           <span>4. Previous Simulations Archive (showpre.php)</span>
         </button>
+        <button class="nav-tab" data-tab="tab-vcc" onclick="switchMainTab('tab-vcc')">
+          <span>5. Virtual Cell Challenge &amp; AtlasShift</span>
+        </button>
       </nav>
 
       <!-- Top-Right Light/Dark Mode Toggle Button -->
@@ -773,6 +776,7 @@
           <a class="btn btn-secondary btn-sm" href="/api/download?format=pert" download>Download .pert</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=dot" download>Download .dot</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=svg" download>Download .svg</a>
+          <a class="btn btn-secondary btn-sm" href="/api/download?format=h5ad" download title="Single-cell Perturb-seq AnnData .h5ad (400 cells/cond)">Download .h5ad</a>
         </div>
       </div>
 
@@ -869,6 +873,7 @@
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="vote" checked /> Voting Consensus</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="nir" checked /> NIR (Gardner)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="fast" checked /> FAST (SVD)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="atlasshift" checked /> AtlasShift (VCC 2026)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="by_chance" checked /> By-Chance Null</label>
             </div>
           </div>
@@ -958,6 +963,7 @@
                     <option value="vote">Voting Ensemble</option>
                     <option value="nir">NIR</option>
                     <option value="fast">FAST (SVD)</option>
+                    <option value="atlasshift">AtlasShift (VCC 2026)</option>
                     <option value="by_chance">By-Chance</option>
                   </select>
                   <button class="btn btn-secondary btn-sm active" id="btn-inf-canvas" onclick="setInfView('canvas')">Canvas</button>
@@ -1506,6 +1512,166 @@
       </div>
     </section>
 
+    <!-- ========================================================================= -->
+    <!-- TAB 5: VIRTUAL CELL CHALLENGE 2026 & ATLASSHIFT COMPARATIVE BENCHMARK     -->
+    <!-- ========================================================================= -->
+    <section id="tab-vcc" class="tab-pane">
+      <div class="panel" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(2,132,199,0.06));border:1px solid rgba(139,92,246,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+          <div style="flex:1 1 500px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span class="badge" style="background:#8b5cf6;color:#fff;font-weight:700;">VCC 2026 BENCHMARK</span>
+              <span class="badge badge-emerald">AtlasShift (#82 Public LB)</span>
+              <span class="badge badge-blue">Mechanistic Dynamical GRN (phpIoRN)</span>
+            </div>
+            <h2 style="font-size:17px;font-weight:700;color:var(--text-main);margin-bottom:4px;">
+              Arc Institute Virtual Cell Challenge 2026 vs. Mechanistic Dynamical Reverse-Engineering
+            </h2>
+            <p style="font-size:12px;color:var(--text-muted);max-width:960px;line-height:1.5;">
+              Direct comparative benchmark comparing <strong>Empirical Cross-Atlas Perturbation Transfer</strong> (<em>AtlasShift</em> by Kaipeng Meng, Arc Institute VCC 2026) against <strong>Mechanistic Dynamical GRN Inference</strong> (<em>phpIoRN</em>: S2G, G2S, Voting Ensemble, NIR, FAST). Highlights the core architectural divergence: empirical weighted averaging across cell lines vs. causal dynamical Jacobian inversion predicting unseen Out-of-Distribution (OOD) perturbations and regulatory rewiring decay.
+            </p>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;">Genes:</label>
+              <select id="vcc-num-genes" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;">
+                <option value="8">8 Genes</option>
+                <option value="12" selected>12 Genes</option>
+                <option value="16">16 Genes</option>
+                <option value="24">24 Genes</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;">k_av:</label>
+              <select id="vcc-kav" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;">
+                <option value="1.5">1.5</option>
+                <option value="1.8" selected>1.8</option>
+                <option value="2.2">2.2</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-run-vcc" onclick="loadVccBenchmarkData(true)" style="padding:6px 14px;font-weight:700;">
+              &#9654; Re-run Benchmark
+            </button>
+            <a class="btn btn-secondary btn-sm" id="btn-vcc-dl-h5ad" href="/api/export/perturb_seq_h5ad?cells_per_condition=400" download style="border-color:#8b5cf6;color:#8b5cf6;padding:6px 12px;font-weight:700;" title="Download 400 cells/condition single-cell Perturb-seq AnnData file (.h5ad)">
+              &#128190; Export Perturb-seq .h5ad
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparative Summary Cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-bottom:14px;">
+        <!-- In-Distribution Card -->
+        <div class="panel" style="padding:14px;">
+          <div class="panel-header">
+            <div class="panel-title">&#9989; In-Distribution Response (Seen Perturbations)</div>
+            <span class="badge badge-emerald">High Overlap</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">
+            Target perturbed in source atlases (K562, HCT116, HEK293T).
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--stage-bg);padding:10px;border-radius:6px;">
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Mechanistic (Vote)</div>
+              <div style="font-size:16px;font-weight:800;color:var(--accent-blue);" id="vcc-seen-mech-r">--</div>
+              <div style="font-size:10px;color:var(--text-muted);" id="vcc-seen-mech-rmse">RMSE: --</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">AtlasShift (Empirical)</div>
+              <div style="font-size:16px;font-weight:800;color:#8b5cf6;" id="vcc-seen-atlas-r">--</div>
+              <div style="font-size:10px;color:var(--text-muted);" id="vcc-seen-atlas-rmse">RMSE: --</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Out-of-Distribution Card -->
+        <div class="panel" style="padding:14px;">
+          <div class="panel-header">
+            <div class="panel-title">&#9888;&#65039; Out-of-Distribution (OOD Unseen Knockdowns)</div>
+            <span class="badge badge-amber">Generalization Gap</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">
+            Unseen perturbation target in destination context (0 atlas observations).
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--stage-bg);padding:10px;border-radius:6px;">
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Mechanistic (Vote)</div>
+              <div style="font-size:16px;font-weight:800;color:var(--accent-blue);" id="vcc-ood-mech-r">--</div>
+              <div style="font-size:10px;color:var(--text-muted);" id="vcc-ood-mech-cos">Cosine: --</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">AtlasShift (Empirical)</div>
+              <div style="font-size:16px;font-weight:800;color:#ef4444;" id="vcc-ood-atlas-r">0.000</div>
+              <div style="font-size:10px;color:#ef4444;">No Prior &rarr; &Delta; = 0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Single-cell AnnData Specification Card -->
+        <div class="panel" style="padding:14px;">
+          <div class="panel-header">
+            <div class="panel-title">&#129516; Single-Cell Perturb-seq AnnData (.h5ad)</div>
+            <span class="badge badge-blue">400 cells/cond</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+            Matches 10x Genomics Chromium &amp; VCC 2026 data formats:
+          </div>
+          <ul style="font-size:11px;color:var(--text-main);padding-left:16px;margin:0 0 10px 0;line-height:1.4;">
+            <li><strong>X / layers:</strong> Raw integer UMI counts &amp; normalized CPM</li>
+            <li><strong>obs:</strong> Barcodes, condition, perturbation target</li>
+            <li><strong>var:</strong> Gene names, mean control CPM</li>
+            <li><strong>uns:</strong> Ground truth causal Jacobian matrix &amp; metadata</li>
+          </ul>
+          <a class="btn btn-primary btn-sm" href="/api/export/perturb_seq_h5ad" download style="display:inline-block;text-align:center;width:100%;">
+            Download .h5ad File
+          </a>
+        </div>
+      </div>
+
+      <!-- Main Comparison Grid: Table on Left, Rewire Decay on Right -->
+      <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-bottom:14px;">
+        <!-- Left: Comparative Edge Recovery Table -->
+        <div class="panel" style="padding:14px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Causal Network Topology Edge Recovery Benchmark</div>
+              <div style="font-size:11px;color:var(--text-muted);">Inferred signed adjacency matrix vs ground truth Jacobian ($T_{ij} \in \{-1, 0, +1\}$)</div>
+            </div>
+            <span class="badge badge-emerald">Table 1</span>
+          </div>
+          <table class="data-table" id="tbl-vcc-summary">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Scientific Paradigm</th>
+                <th>Coverage (%)</th>
+                <th>FDR (%)</th>
+                <th>Power (%)</th>
+                <th>Total Errors</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Right: Rewiring Sensitivity Canvas Chart -->
+        <div class="panel" style="padding:14px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Context Rewiring Sensitivity Sweep (&rho; &isin; [0%, 50%])</div>
+              <div style="font-size:11px;color:var(--text-muted);">Mean Pearson r as destination regulatory wiring diverges from source atlases</div>
+            </div>
+            <span class="badge badge-amber">Decay Curve</span>
+          </div>
+          <canvas id="canvas-vcc-rewire" width="560" height="260" style="width:100%;height:260px;background:var(--stage-bg);border-radius:6px;"></canvas>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">
+            <strong>Interpretation:</strong> As the destination cell context rewires regulatory edges, AtlasShift's empirical transfer accuracy degrades because it assumes conserved responses. In contrast, Mechanistic GRNs identify network rewiring directly from local perturbation data.
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- =========================================================================== -->
@@ -1541,6 +1707,7 @@
       thesisFigures: null,
       archiveDetail: null,
       archiveActiveAlg: 'vote',
+      vccData: null,
     };
 
     // Light-dismiss fallback for <dialog closedby="any">
@@ -1651,6 +1818,9 @@
         drawFigRuntime(tf.fig4_runtime);
         drawFigErrorModel(tf.fig2_error_model);
       }
+      if (APP_STATE.vccData && APP_STATE.vccData.rewire_decay) {
+        drawVccRewiringChart(APP_STATE.vccData.rewire_decay);
+      }
     }
 
     // ============================================================================
@@ -1669,6 +1839,8 @@
         loadThesisFigures();
       } else if (tabId === 'tab-history') {
         loadHistoryTable();
+      } else if (tabId === 'tab-vcc' && !APP_STATE.vccData) {
+        loadVccBenchmarkData();
       }
     }
 
@@ -2706,11 +2878,17 @@
           ctx.fill();
         });
 
-        const lx = pad.l + sIdx * 145;
-        ctx.fillRect(lx, 8, 12, 4);
+      });
+
+      let legendX = pad.l;
+      seriesList.forEach((s) => {
+        ctx.fillStyle = s.color;
+        ctx.fillRect(legendX, 8, 12, 4);
         ctx.fillStyle = tc.textMain;
         ctx.font = '10.5px Inter, sans-serif';
-        ctx.fillText(s.label, lx + 16, 13);
+        ctx.fillText(s.label, legendX + 16, 13);
+        const textWidth = ctx.measureText(s.label).width;
+        legendX += textWidth + 24;
       });
     }
 
@@ -3110,6 +3288,97 @@
 
       document.getElementById('hist-diff-svg-stage').innerHTML = (inf.svgs_dot && inf.svgs_dot[alg]) || '';
       renderConfusionMatrixTable('#tbl-hist-cmat tbody', inf.confusion_matrix ? inf.confusion_matrix[alg] : null);
+    }
+
+    // ============================================================================
+    // TAB 5: VIRTUAL CELL CHALLENGE 2026 & ATLASSHIFT BENCHMARK
+    // ============================================================================
+    function loadVccBenchmarkData(refresh = false) {
+      const n = document.getElementById('vcc-num-genes')?.value || 12;
+      const kav = document.getElementById('vcc-kav')?.value || 1.8;
+      const btn = document.getElementById('btn-run-vcc');
+      if (btn) btn.disabled = true;
+
+      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}`)
+        .then(r => r.json())
+        .then(data => {
+          if (btn) btn.disabled = false;
+          if (data.status !== 'success') return;
+          APP_STATE.vccData = data;
+          renderVccBenchmarkUI(data);
+        })
+        .catch(err => {
+          if (btn) btn.disabled = false;
+          console.error("VCC benchmark load error:", err);
+        });
+    }
+
+    function renderVccBenchmarkUI(data) {
+      if (!data) return;
+
+      // 1. Table
+      const tbody = document.querySelector('#tbl-vcc-summary tbody');
+      if (tbody && data.summary_table) {
+        tbody.innerHTML = '';
+        data.summary_table.forEach(row => {
+          const isAtlas = row.algorithm === 'ATLASSHIFT';
+          const isVote = row.algorithm === 'VOTE';
+          const tr = document.createElement('tr');
+          if (isAtlas) tr.style.background = 'rgba(139, 92, 246, 0.08)';
+          else if (isVote) tr.style.background = 'rgba(2, 132, 199, 0.08)';
+
+          const badgeColor = isAtlas ? '#8b5cf6' : (row.paradigm.includes('Mechanistic') ? 'var(--accent-blue)' : 'var(--text-muted)');
+          tr.innerHTML = `
+            <td><strong style="color:${badgeColor};">${row.algorithm}</strong></td>
+            <td><span style="font-size:11px;color:var(--text-muted);">${row.paradigm}</span></td>
+            <td><strong>${row.coverage_pct}%</strong></td>
+            <td><span style="color:${row.fdr_pct > 60 ? 'var(--accent-pink)' : 'var(--text-main)'};">${row.fdr_pct}%</span></td>
+            <td><span style="color:#10b981;font-weight:700;">${row.power_pct}%</span></td>
+            <td><strong style="color:var(--accent-amber);">${row.total_errors}</strong></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // 2. Seen & OOD metrics
+      const seen = data.in_distribution;
+      const ood = data.out_of_distribution;
+      if (seen) {
+        const el = document.getElementById('vcc-seen-mech-r');
+        if (el) el.textContent = `r = ${seen.mechanistic.pearson_r.toFixed(3)}`;
+        const elR = document.getElementById('vcc-seen-mech-rmse');
+        if (elR) elR.textContent = `RMSE: ${seen.mechanistic.rmse.toFixed(3)}`;
+
+        const elA = document.getElementById('vcc-seen-atlas-r');
+        if (elA) elA.textContent = `r = ${seen.atlasshift.pearson_r.toFixed(3)}`;
+        const elAR = document.getElementById('vcc-seen-atlas-rmse');
+        if (elAR) elAR.textContent = `RMSE: ${seen.atlasshift.rmse.toFixed(3)}`;
+      }
+
+      if (ood) {
+        const el = document.getElementById('vcc-ood-mech-r');
+        if (el) el.textContent = `r = ${ood.mechanistic.pearson_r.toFixed(3)}`;
+        const elC = document.getElementById('vcc-ood-mech-cos');
+        if (elC) elC.textContent = `Cosine: ${ood.mechanistic.cosine_sim.toFixed(3)}`;
+
+        const elA = document.getElementById('vcc-ood-atlas-r');
+        if (elA) elA.textContent = `r = ${ood.atlasshift.pearson_r.toFixed(3)}`;
+      }
+
+      // 3. Rewiring Decay Chart
+      if (data.rewire_decay) {
+        drawVccRewiringChart(data.rewire_decay);
+      }
+    }
+
+    function drawVccRewiringChart(rewire) {
+      if (!rewire) return;
+      const xLabels = rewire.rewire_rates.map(r => `${r}% rewire`);
+      const series = [
+        { label: 'AtlasShift (Empirical Transfer)', data: rewire.atlasshift_r, color: '#8b5cf6' },
+        { label: 'Mechanistic GRN (phpIoRN)', data: rewire.mechanistic_r, color: '#0284c7' },
+      ];
+      drawMultiLineChart('canvas-vcc-rewire', xLabels, series, 'Pearson r', 0.0, 1.0);
     }
 
     window.addEventListener('DOMContentLoaded', initApp);

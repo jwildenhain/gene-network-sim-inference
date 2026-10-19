@@ -16,6 +16,8 @@ from grn_sim.web.server import (
     _execute_simulation,
     _execute_inference,
     _build_sos_full_studio,
+    _build_vcc_benchmark_payload,
+    _build_perturb_seq_h5ad_bytes,
     _load_archived_run,
     SIMULATION_RUN_STORE,
 )
@@ -111,9 +113,10 @@ def test_end_to_end_web_pipeline():
     assert len(sim_resp["basal_trajectory"]) == 8
     assert len(sim_resp["perturbation_trajectories"]) == 8
 
-    inf_resp = _execute_inference(["s2g", "g2s", "vote"])
+    inf_resp = _execute_inference(["s2g", "g2s", "vote", "atlasshift"])
     assert inf_resp["status"] == "success"
     assert "s2g" in inf_resp["tmp_statmat"]
+    assert "atlasshift" in inf_resp["tmp_statmat"]
     assert "aic_profile" in inf_resp
 
     run_id = sim_resp["run_id"]
@@ -124,8 +127,18 @@ def test_end_to_end_web_pipeline():
     assert loaded["settings"]["num_genes"] == 8
     assert loaded["settings"]["topology"] == "power_law"
     assert "s2g" in loaded["inferred"]["tmp_statmat"]
+    assert "atlasshift" in loaded["inferred"]["tmp_statmat"]
 
     sos_resp = _build_sos_full_studio()
     assert sos_resp["status"] == "success"
     assert len(sos_resp["gene_names"]) == 9
+
+    vcc_resp = _build_vcc_benchmark_payload(num_genes=6, k_av=1.5, seed=42)
+    assert vcc_resp["status"] == "success"
+    assert "summary_table" in vcc_resp
+    assert any(r["algorithm"] == "ATLASSHIFT" for r in vcc_resp["summary_table"])
+
+    h5ad_bytes, filename = _build_perturb_seq_h5ad_bytes(run_id=run_id, cells_per_condition=10)
+    assert len(h5ad_bytes) > 0
+    assert filename.endswith((".h5ad", ".npz"))
 
