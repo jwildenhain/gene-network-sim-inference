@@ -73,6 +73,7 @@ CURRENT_STATE: Dict[str, Any] = {
 
 # Archive of runs matching `showpre.php`
 SIMULATION_HISTORY: List[Dict[str, Any]] = []
+SIMULATION_RUN_STORE: Dict[str, Dict[str, Any]] = {}
 
 # Cache for computed benchmark figures
 BENCHMARK_CACHE: Dict[str, Any] = {}
@@ -301,9 +302,24 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
     pert_text = format_matrix_tsv(experiment.U)
 
     run_id = f"iorn-{int(time.time() * 1000) % 1000000:06d}"
+    time.sleep(0.002)  # Ensure unique millisecond run_id across rapid bootstrap runs
+
+    input_settings = {
+        "mode": mode,
+        "topology": "power_law" if mode == "sos" else topo_str,
+        "num_genes": num_genes,
+        "k_av": round(float(k_av), 2),
+        "act_ratio": round(float(act_ratio), 2),
+        "noise": round(float(noise_level), 2),
+        "bio_var": round(float(bio_var), 2),
+        "seed": seed if seed is not None else 42,
+    }
 
     CURRENT_STATE.update({
         "run_id": run_id,
+        "mode": mode,
+        "seed": seed if seed is not None else 42,
+        "settings": input_settings,
         "network": network,
         "experiment": experiment,
         "true_matrix": adj,
@@ -327,10 +343,11 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "inferred_results": {},
     })
 
-    return {
+    sim_payload = {
         "status": "success",
         "run_id": run_id,
         "mode": mode,
+        "settings": input_settings,
         "num_genes": num_genes,
         "gene_names": gene_names,
         "topology": topo_str,
@@ -338,6 +355,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "act_ratio": CURRENT_STATE["act_ratio"],
         "noise": noise_level,
         "bio_var": bio_var,
+        "seed": input_settings["seed"],
         "total_edges": int(np.sum(adj != 0)),
         "activations": int(np.sum(adj > 0)),
         "inhibitions": int(np.sum(adj < 0)),
@@ -361,6 +379,15 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "pert_text": pert_text,
         "expression_ratios_shape": list(experiment.X.shape),
     }
+
+    SIMULATION_RUN_STORE[run_id] = {
+        "state": dict(CURRENT_STATE),
+        "sim_payload": sim_payload,
+        "inferred_payload": {},
+        "settings": dict(input_settings),
+    }
+
+    return sim_payload
 
 
 def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
@@ -453,27 +480,39 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     }
     CURRENT_STATE["inferred_results"] = result_payload
 
-    # Record in SIMULATION_HISTORY (matching `showpre.php`)
+    run_id = CURRENT_STATE["run_id"]
     best_alg = min(metrics_dict.keys(), key=lambda k: metrics_dict[k]["total_errors"]) if metrics_dict else primary_alg
+    settings = dict(CURRENT_STATE.get("settings") or {})
+    settings["algorithms"] = list(metrics_dict.keys())
+
+    if run_id in SIMULATION_RUN_STORE:
+        SIMULATION_RUN_STORE[run_id]["inferred_payload"] = result_payload
+        SIMULATION_RUN_STORE[run_id]["state"] = dict(CURRENT_STATE)
+        SIMULATION_RUN_STORE[run_id]["settings"] = settings
+
+    # Record in SIMULATION_HISTORY (matching `showpre.php`)
     history_entry = {
         "id": len(SIMULATION_HISTORY) + 1,
-        "run_id": CURRENT_STATE["run_id"],
+        "run_id": run_id,
         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "mode": CURRENT_STATE.get("mode", "insilico"),
         "topology": CURRENT_STATE["topology"],
         "num_genes": len(gene_names),
         "k_av": CURRENT_STATE["k_av"],
         "act_ratio": CURRENT_STATE["act_ratio"],
         "noise": CURRENT_STATE["noise"],
         "bio_var": CURRENT_STATE["bio_var"],
+        "seed": CURRENT_STATE.get("seed", 42),
+        "settings": settings,
         "algorithms": list(metrics_dict.keys()),
         "best_algorithm": best_alg.upper(),
+        "best_alg_key": best_alg,
         "best_power_pct": tmp_statmat_dict[best_alg]["power"] if best_alg in tmp_statmat_dict else 0.0,
         "best_specificity_pct": tmp_statmat_dict[best_alg]["specificity"] if best_alg in tmp_statmat_dict else 0.0,
         "best_total_errors": metrics_dict[best_alg]["total_errors"] if best_alg in metrics_dict else 0,
         "metrics_summary": tmp_statmat_dict,
     }
-    # Avoid duplicate run_id entry; update if exists
-    existing_idx = next((idx for idx, h in enumerate(SIMULATION_HISTORY) if h["run_id"] == CURRENT_STATE["run_id"]), None)
+    existing_idx = next((idx for idx, h in enumerate(SIMULATION_HISTORY) if h["run_id"] == run_id), None)
     if existing_idx is not None:
         history_entry["id"] = SIMULATION_HISTORY[existing_idx]["id"]
         SIMULATION_HISTORY[existing_idx] = history_entry
@@ -481,6 +520,18 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         SIMULATION_HISTORY.insert(0, history_entry)
 
     return result_payload
+
+
+def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Loads an archived simulation run into CURRENT_STATE and returns its full payload."""
+    if not run_id or run_id not in SIMULATION_RUN_STORE:
+        return None
+    stored = SIMULATION_RUN_STORE[run_id]
+    CURRENT_STATE.update(stored["state"])
+    sim_payload = dict(stored["sim_payload"])
+    sim_payload["settings"] = dict(stored.get("settings", sim_payload.get("settings", {})))
+    sim_payload["inferred"] = stored["inferred_payload"]
+    return sim_payload
 
 
 def _build_sos_full_studio() -> Dict[str, Any]:
@@ -774,6 +825,9 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             resp = {
                 "status": "success",
                 "run_id": CURRENT_STATE["run_id"],
+                "mode": CURRENT_STATE.get("mode", "insilico"),
+                "seed": CURRENT_STATE.get("seed", 42),
+                "settings": CURRENT_STATE.get("settings", {}),
                 "num_genes": len(gene_names),
                 "gene_names": gene_names,
                 "topology": CURRENT_STATE["topology"],
@@ -897,30 +951,46 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             self._set_headers(200)
             self.wfile.write(json.dumps({
                 "status": "success",
+                "active_run_id": CURRENT_STATE.get("run_id"),
                 "history": SIMULATION_HISTORY,
             }).encode("utf-8"))
             return
 
+        elif path == "/api/history/load":
+            req_run_id = query.get("run_id", [None])[0]
+            loaded = _load_archived_run(req_run_id)
+            if loaded:
+                self._set_headers(200)
+                self.wfile.write(json.dumps(loaded).encode("utf-8"))
+            else:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": f"Run {req_run_id} not found in archive"}).encode("utf-8"))
+            return
+
         elif path == "/api/download":
             fmt = query.get("format", ["msmt"])[0]
-            run_id = CURRENT_STATE.get("run_id") or "grn"
+            req_run_id = query.get("run_id", [None])[0]
+            target_state = CURRENT_STATE
+            if req_run_id and req_run_id in SIMULATION_RUN_STORE:
+                target_state = SIMULATION_RUN_STORE[req_run_id]["state"]
+            run_id = target_state.get("run_id") or "grn"
             if fmt == "msmt":
-                content = CURRENT_STATE.get("msmt_text", "")
+                content = target_state.get("msmt_text", "")
                 self._set_headers(200, "text/plain; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.msmt"'})
                 self.wfile.write(content.encode("utf-8"))
                 return
             elif fmt == "pert":
-                content = CURRENT_STATE.get("pert_text", "")
+                content = target_state.get("pert_text", "")
                 self._set_headers(200, "text/plain; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.pert"'})
                 self.wfile.write(content.encode("utf-8"))
                 return
             elif fmt == "dot":
-                content = CURRENT_STATE.get("dot_hierarchical", "")
+                content = target_state.get("dot_hierarchical", "")
                 self._set_headers(200, "text/vnd.graphviz; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.dot"'})
                 self.wfile.write(content.encode("utf-8"))
                 return
             elif fmt == "svg":
-                content = CURRENT_STATE.get("svg_hierarchical", "")
+                content = target_state.get("svg_hierarchical", "")
                 self._set_headers(200, "image/svg+xml; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.svg"'})
                 self.wfile.write(content.encode("utf-8"))
                 return
@@ -949,6 +1019,20 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 traceback.print_exc()
                 self._set_headers(500)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/history/load":
+            req_run_id = params.get("run_id")
+            if req_run_id and req_run_id in SIMULATION_RUN_STORE:
+                stored = SIMULATION_RUN_STORE[req_run_id]
+                CURRENT_STATE.update(stored["state"])
+                sim_payload = dict(stored["sim_payload"])
+                sim_payload["inferred"] = stored["inferred_payload"]
+                self._set_headers(200)
+                self.wfile.write(json.dumps(sim_payload).encode("utf-8"))
+            else:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": f"Run {req_run_id} not found in archive"}).encode("utf-8"))
             return
 
         elif path == "/api/infer":

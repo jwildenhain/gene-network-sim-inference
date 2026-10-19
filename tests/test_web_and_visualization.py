@@ -12,7 +12,13 @@ from grn_sim.visualization.graph_export import (
     export_comparison_graph_json,
     compute_detailed_confusion_matrix,
 )
-from grn_sim.web.server import _execute_simulation, _execute_inference, _build_sos_full_studio
+from grn_sim.web.server import (
+    _execute_simulation,
+    _execute_inference,
+    _build_sos_full_studio,
+    _load_archived_run,
+    SIMULATION_RUN_STORE,
+)
 from grn_sim.core.topology import TopologyType
 from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.experiment import PerturbationSimulator
@@ -110,6 +116,16 @@ def test_end_to_end_web_pipeline():
     assert "s2g" in inf_resp["tmp_statmat"]
     assert "aic_profile" in inf_resp
 
+    run_id = sim_resp["run_id"]
+    assert run_id in SIMULATION_RUN_STORE
+    loaded = _load_archived_run(run_id)
+    assert loaded["status"] == "success"
+    assert loaded["run_id"] == run_id
+    assert loaded["settings"]["num_genes"] == 8
+    assert loaded["settings"]["topology"] == "power_law"
+    assert "s2g" in loaded["inferred"]["tmp_statmat"]
+
     sos_resp = _build_sos_full_studio()
     assert sos_resp["status"] == "success"
     assert len(sos_resp["gene_names"]) == 9
+

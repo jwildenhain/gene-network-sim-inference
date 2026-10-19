@@ -3,25 +3,111 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    try {
+      document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark";
+    } catch (e) {}
+  </script>
   <title>phpIoRN / GRN-Sim — Gene Network Perturbation Simulator &amp; Reverse-Engineering Suite</title>
   <style>
     :root {
-      --bg-base: #0b0f19;
-      --bg-panel: #111827;
-      --bg-card: #1e293b;
-      --bg-card-hover: #26354d;
-      --border: #334155;
-      --border-highlight: #38bdf8;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --accent-blue: #38bdf8;
-      --accent-indigo: #6366f1;
+      /* Light & Dark design tokens with prefers-color-scheme fallback and light-dark() */
+      --bg-base-light: #f1f5f9;
+      --bg-base-dark: #0b0f19;
+      --bg-panel-light: #ffffff;
+      --bg-panel-dark: #111827;
+      --bg-card-light: #f8fafc;
+      --bg-card-dark: #1e293b;
+      --bg-stage-light: #f8fafc;
+      --bg-stage-dark: #090d16;
+      --border-light: #cbd5e1;
+      --border-dark: #334155;
+      --text-main-light: #0f172a;
+      --text-main-dark: #f8fafc;
+      --text-muted-light: #475569;
+      --text-muted-dark: #94a3b8;
+      --topbar-bg-light: linear-gradient(90deg, #ffffff 0%, #eef2ff 55%, #ffffff 100%);
+      --topbar-bg-dark: linear-gradient(90deg, #0f172a 0%, #1e1b4b 55%, #0f172a 100%);
+
+      --bg-base: var(--bg-base-light);
+      --bg-panel: var(--bg-panel-light);
+      --bg-card: var(--bg-card-light);
+      --bg-stage: var(--bg-stage-light);
+      --border: var(--border-light);
+      --text-main: var(--text-main-light);
+      --text-muted: var(--text-muted-light);
+      --topbar-bg: var(--topbar-bg-light);
+
+      --accent-blue: #0284c7;
+      --accent-indigo: #4f46e5;
       --accent-emerald: #10b981;
       --accent-red: #ef4444;
-      --accent-amber: #f59e0b;
-      --accent-pink: #f472b6;
+      --accent-amber: #d97706;
+      --accent-pink: #ec4899;
+
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+      @media (prefers-color-scheme: dark) {
+        --bg-base: var(--bg-base-dark);
+        --bg-panel: var(--bg-panel-dark);
+        --bg-card: var(--bg-card-dark);
+        --bg-stage: var(--bg-stage-dark);
+        --border: var(--border-dark);
+        --text-main: var(--text-main-dark);
+        --text-muted: var(--text-muted-dark);
+        --topbar-bg: var(--topbar-bg-dark);
+        --accent-blue: #38bdf8;
+        --accent-indigo: #6366f1;
+        --accent-amber: #f59e0b;
+      }
+
+      color-scheme: light dark;
+      accent-color: var(--accent-blue);
+
+      &:has(> head > meta[name="color-scheme"][content="dark"]) {
+        color-scheme: dark;
+        --bg-base: var(--bg-base-dark);
+        --bg-panel: var(--bg-panel-dark);
+        --bg-card: var(--bg-card-dark);
+        --bg-stage: var(--bg-stage-dark);
+        --border: var(--border-dark);
+        --text-main: var(--text-main-dark);
+        --text-muted: var(--text-muted-dark);
+        --topbar-bg: var(--topbar-bg-dark);
+        --accent-blue: #38bdf8;
+        --accent-indigo: #6366f1;
+        --accent-amber: #f59e0b;
+      }
+
+      &:has(> head > meta[name="color-scheme"][content="light"]) {
+        color-scheme: light;
+        --bg-base: var(--bg-base-light);
+        --bg-panel: var(--bg-panel-light);
+        --bg-card: var(--bg-card-light);
+        --bg-stage: var(--bg-stage-light);
+        --border: var(--border-light);
+        --text-main: var(--text-main-light);
+        --text-muted: var(--text-muted-light);
+        --topbar-bg: var(--topbar-bg-light);
+        --accent-blue: #0284c7;
+        --accent-indigo: #4f46e5;
+        --accent-amber: #d97706;
+      }
+
+      @supports (color: light-dark(white, black)) {
+        --bg-base: light-dark(var(--bg-base-light), var(--bg-base-dark));
+        --bg-panel: light-dark(var(--bg-panel-light), var(--bg-panel-dark));
+        --bg-card: light-dark(var(--bg-card-light), var(--bg-card-dark));
+        --bg-stage: light-dark(var(--bg-stage-light), var(--bg-stage-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+        --text-main: light-dark(var(--text-main-light), var(--text-main-dark));
+        --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
+        --accent-blue: light-dark(#0284c7, #38bdf8);
+        --accent-indigo: light-dark(#4f46e5, #6366f1);
+        --accent-amber: light-dark(#d97706, #f59e0b);
+      }
     }
 
     * {
@@ -38,11 +124,12 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
 
     /* Top Header & phpIoRN Navigation Bar */
     .topbar {
-      background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 55%, #0f172a 100%);
+      background: var(--topbar-bg);
       border-bottom: 1px solid var(--border);
       padding: 12px 24px;
       display: flex;
@@ -63,7 +150,7 @@
 
     .brand-badge {
       background: linear-gradient(135deg, #38bdf8, #6366f1);
-      color: #0b0f19;
+      color: #ffffff;
       font-weight: 800;
       font-size: 14px;
       padding: 6px 11px;
@@ -72,9 +159,9 @@
     }
 
     .brand-title h1 {
-      font-size: 17px;
+      font-size: 16.5px;
       font-weight: 700;
-      color: #f8fafc;
+      color: var(--text-main);
       letter-spacing: -0.2px;
     }
 
@@ -83,10 +170,17 @@
       color: var(--text-muted);
     }
 
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
     .nav-tabs {
       display: flex;
       gap: 6px;
-      background: rgba(15, 23, 42, 0.75);
+      background: var(--bg-card);
       padding: 4px;
       border-radius: 10px;
       border: 1px solid var(--border);
@@ -96,7 +190,7 @@
       background: transparent;
       color: var(--text-muted);
       border: none;
-      padding: 7px 14px;
+      padding: 7px 13px;
       border-radius: 7px;
       font-size: 12.5px;
       font-weight: 600;
@@ -109,13 +203,33 @@
 
     .nav-tab:hover {
       color: var(--text-main);
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(99, 102, 241, 0.08);
     }
 
     .nav-tab.active {
       background: var(--accent-indigo);
       color: #ffffff;
-      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Top-Right Theme Toggle Button */
+    .theme-toggle-btn {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 7px 13px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s ease;
+    }
+
+    .theme-toggle-btn:hover {
+      border-color: var(--accent-blue);
     }
 
     /* Main Content Container */
@@ -181,8 +295,8 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: #334155;
-      color: #e2e8f0;
+      background: var(--border);
+      color: var(--text-main);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -192,7 +306,7 @@
 
     .wizard-step.active .step-num {
       background: var(--accent-blue);
-      color: #0b0f19;
+      color: #ffffff;
     }
 
     /* Grid Layouts */
@@ -227,6 +341,7 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     }
 
     .panel-header {
@@ -235,7 +350,7 @@
       justify-content: space-between;
       margin-bottom: 12px;
       padding-bottom: 10px;
-      border-bottom: 1px solid rgba(51, 65, 85, 0.65);
+      border-bottom: 1px solid var(--border);
       gap: 8px;
       flex-wrap: wrap;
     }
@@ -243,7 +358,7 @@
     .panel-title {
       font-size: 14px;
       font-weight: 700;
-      color: #f8fafc;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -256,19 +371,19 @@
       border-radius: 999px;
       background: rgba(56, 189, 248, 0.15);
       color: var(--accent-blue);
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      border: 1px solid rgba(56, 189, 248, 0.35);
     }
 
     .badge-emerald {
       background: rgba(16, 185, 129, 0.15);
       color: var(--accent-emerald);
-      border-color: rgba(16, 185, 129, 0.3);
+      border-color: rgba(16, 185, 129, 0.35);
     }
 
     .badge-amber {
       background: rgba(245, 158, 11, 0.15);
       color: var(--accent-amber);
-      border-color: rgba(245, 158, 11, 0.3);
+      border-color: rgba(245, 158, 11, 0.35);
     }
 
     /* Form Controls */
@@ -281,7 +396,7 @@
       justify-content: space-between;
       font-size: 12px;
       font-weight: 600;
-      color: #cbd5e1;
+      color: var(--text-main);
       margin-bottom: 4px;
     }
 
@@ -323,6 +438,7 @@
       border-radius: 7px;
       font-size: 11.5px;
       cursor: pointer;
+      color: var(--text-main);
     }
 
     .btn {
@@ -337,11 +453,12 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
+      text-decoration: none;
     }
 
     .btn-primary {
       background: linear-gradient(135deg, #38bdf8, #6366f1);
-      color: #0b0f19;
+      color: #ffffff;
       font-weight: 700;
       width: 100%;
     }
@@ -409,31 +526,32 @@
 
     table.data-table th,
     table.data-table td {
-      padding: 7px 9px;
-      border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+      padding: 8px 9px;
+      border-bottom: 1px solid var(--border);
       text-align: left;
+      color: var(--text-main);
     }
 
     table.data-table th {
-      background: rgba(30, 41, 59, 0.9);
-      color: #cbd5e1;
-      font-weight: 600;
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-weight: 700;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.3px;
     }
 
     table.data-table tr:hover td {
-      background: rgba(56, 189, 248, 0.06);
+      background: rgba(56, 189, 248, 0.08);
     }
 
     table.data-table tr.selected-row td {
-      background: rgba(99, 102, 241, 0.18);
+      background: rgba(99, 102, 241, 0.16);
     }
 
     /* Canvas & Graph View Containers */
     .graph-stage {
-      background: #090d16;
+      background: var(--bg-stage);
       border: 1px solid var(--border);
       border-radius: 10px;
       height: 360px;
@@ -451,6 +569,21 @@
       height: 100%;
     }
 
+    /* Adapt Graphviz SVG node fill/text in Light Mode */
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage svg ellipse {
+      fill: #e0f2fe !important;
+      stroke: #0284c7 !important;
+    }
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage svg text {
+      fill: #0f172a !important;
+    }
+
+    .chart-canvas {
+      background: var(--bg-stage);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
     /* 9-State Edge Legend (statsgraph_to_dot.m) */
     .legend-9state {
       display: grid;
@@ -458,7 +591,7 @@
       gap: 6px;
       margin-top: 10px;
       padding: 8px 10px;
-      background: rgba(15, 23, 42, 0.8);
+      background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 8px;
       font-size: 11px;
@@ -468,7 +601,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      color: #cbd5e1;
+      color: var(--text-main);
     }
 
     .legend-line {
@@ -488,25 +621,54 @@
       padding: 20px;
       max-width: 680px;
       width: 92%;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
     }
 
     dialog#inspector-dialog::backdrop {
-      background: rgba(9, 13, 22, 0.72);
+      background: rgba(9, 13, 22, 0.65);
       backdrop-filter: blur(4px);
     }
 
     .mono-box {
-      background: #090d16;
+      background: var(--bg-stage);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 10px;
       font-family: var(--font-mono);
       font-size: 11px;
-      color: #cbd5e1;
+      color: var(--text-main);
       max-height: 330px;
       overflow: auto;
       white-space: pre;
+    }
+
+    .settings-pill-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .settings-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+    }
+
+    .settings-pill .sp-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .settings-pill .sp-val {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      margin-top: 2px;
     }
   </style>
 </head>
@@ -522,20 +684,28 @@
       </div>
     </div>
 
-    <nav class="nav-tabs" role="tablist">
-      <button class="nav-tab active" data-tab="tab-wizard" onclick="switchMainTab('tab-wizard')">
-        <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
+    <div class="topbar-right">
+      <nav class="nav-tabs" role="tablist">
+        <button class="nav-tab active" data-tab="tab-wizard" onclick="switchMainTab('tab-wizard')">
+          <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
+          <span>2. E. coli SOS Pathway Benchmark (Gardner 2003)</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
+          <span>3. Thesis &amp; Paper Figures Gallery</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
+          <span>4. Previous Simulations Archive (showpre.php)</span>
+        </button>
+      </nav>
+
+      <!-- Top-Right Light/Dark Mode Toggle Button -->
+      <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="toggleColorScheme()" title="Toggle Light / Dark Mode">
+        <span id="theme-toggle-icon">&#9728;&#65039;</span>
+        <span id="theme-toggle-label">Light Mode</span>
       </button>
-      <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
-        <span>2. E. coli SOS Pathway Benchmark (Gardner 2003)</span>
-      </button>
-      <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
-        <span>3. Thesis &amp; Paper Figures Gallery</span>
-      </button>
-      <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
-        <span>4. Previous Simulations Archive (showpre.php)</span>
-      </button>
-    </nav>
+    </div>
   </header>
 
   <main class="main-container">
@@ -688,7 +858,7 @@
             <div id="inline-param-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11.5px;">
               Click any gene node or regulatory edge in the graph to inspect Hill kinetics ($n_A, K_A, v_i, B_i$) and ODE trajectories.
             </div>
-            <canvas id="canvas-basal-mini" width="290" height="125" style="width:100%;height:125px;margin-top:8px;background:#090d16;border:1px solid var(--border);border-radius:7px;"></canvas>
+            <canvas id="canvas-basal-mini" class="chart-canvas" width="290" height="125" style="width:100%;height:125px;margin-top:8px;"></canvas>
           </div>
         </aside>
 
@@ -815,7 +985,7 @@
                 </div>
                 <select id="select-pert-gene" style="width:auto;padding:4px 8px;font-size:11.5px;" onchange="drawPerturbationTimeCourse(parseInt(this.value))"></select>
               </div>
-              <canvas id="canvas-pert-traj" width="420" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+              <canvas id="canvas-pert-traj" class="chart-canvas" width="420" height="230" style="width:100%;height:230px;"></canvas>
             </div>
 
             <!-- Step 4B: Steady-State Expression Ratio Heatmap X (do_perturbation.m) -->
@@ -827,7 +997,7 @@
                 </div>
                 <span class="badge">mRNA Ratios</span>
               </div>
-              <canvas id="canvas-x-heatmap" width="380" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+              <canvas id="canvas-x-heatmap" class="chart-canvas" width="380" height="230" style="width:100%;height:230px;"></canvas>
             </div>
 
             <!-- Step 5/6C: S2G & G2S AIC Cost Minimization Curve (Thesis Fig 3.1) -->
@@ -839,7 +1009,7 @@
                 </div>
                 <span class="badge badge-amber" id="aic-opt-badge">Opt K=2</span>
               </div>
-              <canvas id="canvas-aic-curve" width="380" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+              <canvas id="canvas-aic-curve" class="chart-canvas" width="380" height="230" style="width:100%;height:230px;"></canvas>
             </div>
 
           </div>
@@ -955,7 +1125,7 @@
               <div style="font-size:11px;color:var(--text-muted);">Steady-state mRNA concentration recovery across all 9 single-gene overexpression perturbations</div>
             </div>
           </div>
-          <canvas id="canvas-sos-9grid" width="720" height="310" style="width:100%;height:310px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+          <canvas id="canvas-sos-9grid" class="chart-canvas" width="720" height="310" style="width:100%;height:310px;"></canvas>
         </div>
 
         <!-- Thesis Table 4.1 & 4x4 SOS Confusion Matrix -->
@@ -979,7 +1149,7 @@
             <tbody></tbody>
           </table>
 
-          <div style="font-size:11.5px;font-weight:700;color:#cbd5e1;margin:8px 0 6px;">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text-main);margin:8px 0 6px;">
             Selected Algorithm 4&times;4 Misclassification Matrix (<span id="sos-cmat-name">VOTING</span>):
           </div>
           <table class="data-table" id="tbl-sos-cmat">
@@ -1025,7 +1195,7 @@
             </div>
             <span class="badge">Chapter 4.1.1</span>
           </div>
-          <canvas id="canvas-fig-topology" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+          <canvas id="canvas-fig-topology" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
         </div>
 
         <!-- Fig 4.3-4.5: Connectivity Sweep -->
@@ -1037,7 +1207,7 @@
             </div>
             <span class="badge">Chapter 4.1.2</span>
           </div>
-          <canvas id="canvas-fig-connectivity" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+          <canvas id="canvas-fig-connectivity" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
         </div>
       </div>
 
@@ -1051,7 +1221,7 @@
             </div>
             <span class="badge">Chapter 4.1.3</span>
           </div>
-          <canvas id="canvas-fig-noise" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+          <canvas id="canvas-fig-noise" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
         </div>
 
         <!-- Fig 4.12: Voting Ensemble Error Reduction -->
@@ -1063,7 +1233,7 @@
             </div>
             <span class="badge badge-emerald">Paper Fig 6 / Thesis Fig 4.12</span>
           </div>
-          <canvas id="canvas-fig-voting" width="680" height="260" style="width:100%;height:260px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+          <canvas id="canvas-fig-voting" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
         </div>
       </div>
 
@@ -1077,7 +1247,7 @@
             </div>
             <span class="badge">Chapter 4.1.4</span>
           </div>
-          <canvas id="canvas-fig-runtime" width="680" height="250" style="width:100%;height:250px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+          <canvas id="canvas-fig-runtime" class="chart-canvas" width="680" height="250" style="width:100%;height:250px;"></canvas>
         </div>
 
         <!-- Fig 2.1, Table 2.1 & Fig 2.2: 4-Gene ODE Kinetic Benchmark & Error Distribution -->
@@ -1090,7 +1260,7 @@
             <span class="badge">Chapter 2</span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:10px;align-items:center;">
-            <canvas id="canvas-fig-errormodel" width="310" height="230" style="width:100%;height:230px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+            <canvas id="canvas-fig-errormodel" class="chart-canvas" width="310" height="230" style="width:100%;height:230px;"></canvas>
             <div style="overflow-x:auto;">
               <table class="data-table" id="tbl-fig2-4gene">
                 <thead>
@@ -1114,11 +1284,11 @@
     <!-- TAB 4: PREVIOUS SIMULATIONS ARCHIVE (showpre.php)                         -->
     <!-- ========================================================================= -->
     <section id="tab-history" class="tab-pane">
-      <div class="panel">
+      <div class="panel" style="margin-bottom:16px;">
         <div class="panel-header">
           <div>
             <div class="panel-title" style="font-size:15px;">Previous Simulations &amp; Re-Engineering Archive (showpre.php)</div>
-            <div style="font-size:11.5px;color:var(--text-muted);">Stored simulation runs with topology parameters, sensitivity/specificity summary, and data downloads</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">Click any simulation row below to load its exact settings and inspect its full network &amp; statistical results in detail</div>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="loadHistoryTable()">Refresh Archive</button>
         </div>
@@ -1139,10 +1309,125 @@
                 <th>Specificity (%)</th>
                 <th>Total Errors</th>
                 <th>Downloads</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Detailed Run View Panel (Populated when clicking any archived run row) -->
+      <div class="panel" id="history-detail-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title" style="font-size:15px;">
+              Archived Run Detailed Inspector: <span class="badge" id="hist-detail-runid">--</span>
+              <span class="badge badge-emerald" id="hist-detail-topo">--</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-muted);" id="hist-detail-subtitle">
+              Click any row in the archive table above to inspect its full settings, networks, and 4&times;4 confusion matrix.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:11.5px;color:var(--text-muted);">Algorithm View:</span>
+            <select id="hist-detail-alg" style="width:auto;font-weight:700;padding:4px 8px;font-size:12px;" onchange="renderArchiveDetailAlg(this.value)">
+              <option value="s2g">S2G (Forward)</option>
+              <option value="g2s">G2S (Backward)</option>
+              <option value="vote">Voting Ensemble</option>
+              <option value="nir">NIR</option>
+              <option value="fast">FAST (SVD)</option>
+              <option value="by_chance">By-Chance</option>
+            </select>
+            <button class="btn btn-primary btn-sm" style="width:auto;padding:6px 14px;" onclick="openArchiveRunInStudio()">
+              Open Settings &amp; Edit in Studio (Tab 1) &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Run Settings Summary Ribbon -->
+        <div class="settings-pill-grid" id="hist-settings-pills">
+          <div class="settings-pill"><div class="sp-lbl">Mode</div><div class="sp-val" id="hsp-mode">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">Topology</div><div class="sp-val" id="hsp-topo">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">Network Size (n)</div><div class="sp-val" id="hsp-n">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">Connectivity (k_av)</div><div class="sp-val" id="hsp-kav">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">Act / Inh Ratio</div><div class="sp-val" id="hsp-ratio">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">Meas. Noise (&sigma;_m)</div><div class="sp-val" id="hsp-noise">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">Bio Variability (&sigma;_b)</div><div class="sp-val" id="hsp-biovar">--</div></div>
+        </div>
+
+        <!-- 8-Metric $TMP_STATMAT Ribbon for Selected Archived Run -->
+        <div class="stat-grid" style="margin-bottom:16px;">
+          <div class="stat-card"><div class="stat-val" id="hst-power">--</div><div class="stat-lbl">Power / Sens (%)</div></div>
+          <div class="stat-card"><div class="stat-val" id="hst-spec">--</div><div class="stat-lbl">Specificity (%)</div></div>
+          <div class="stat-card"><div class="stat-val" id="hst-ppv">--</div><div class="stat-lbl">PPV (%)</div></div>
+          <div class="stat-card"><div class="stat-val" id="hst-signed-ppv">--</div><div class="stat-lbl">Signed PPV (%)</div></div>
+          <div class="stat-card"><div class="stat-val" id="hst-fdr">--</div><div class="stat-lbl">FDR (%)</div></div>
+          <div class="stat-card"><div class="stat-val" id="hst-fpr">--</div><div class="stat-lbl">False Pos Rate (%)</div></div>
+          <div class="stat-card"><div class="stat-val" id="hst-fnr">--</div><div class="stat-lbl">False Neg Rate (%)</div></div>
+          <div class="stat-card"><div class="stat-val" id="hst-err" style="color:var(--accent-amber);">--</div><div class="stat-lbl">Total Errors</div></div>
+        </div>
+
+        <!-- Side-by-Side Ground Truth SVG & 9-State Differential Graph SVG -->
+        <div class="two-col-grid" style="margin-bottom:16px;">
+          <div class="panel" style="padding:12px;">
+            <div class="panel-header" style="margin-bottom:8px;">
+              <div class="panel-title">Archived Ground-Truth Network (Hierarchical dot SVG)</div>
+              <span class="badge" id="hist-gt-edges-badge">-- Edges</span>
+            </div>
+            <div class="graph-stage" id="hist-gt-svg-stage" style="height:310px;"></div>
+          </div>
+
+          <div class="panel" style="padding:12px;">
+            <div class="panel-header" style="margin-bottom:8px;">
+              <div class="panel-title">Archived 9-State Differential Reconstruction (<span id="hist-diff-alg-badge">VOTE</span>)</div>
+              <span class="badge badge-emerald">statsgraph_to_dot.m</span>
+            </div>
+            <div class="graph-stage" id="hist-diff-svg-stage" style="height:310px;"></div>
+          </div>
+        </div>
+
+        <!-- All Algorithms Comparison Table & 4x4 Confusion Matrix for Selected Archived Run -->
+        <div class="two-col-grid">
+          <div class="panel" style="padding:12px;">
+            <div class="panel-header">
+              <div class="panel-title">All Algorithms Performance on This Run (Click Row to Switch)</div>
+              <span class="badge">get_results.php</span>
+            </div>
+            <table class="data-table" id="tbl-hist-alg-comparison">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Power (%)</th>
+                  <th>Specificity (%)</th>
+                  <th>PPV (%)</th>
+                  <th>FDR (%)</th>
+                  <th>Signed PPV (%)</th>
+                  <th>Total Errors</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="panel" style="padding:12px;">
+            <div class="panel-header">
+              <div class="panel-title">4&times;4 Misclassification Matrix ($TMP_CMAT — <span id="hist-cmat-alg">VOTE</span>)</div>
+              <span class="badge badge-amber">stats_obs_pred.m</span>
+            </div>
+            <table class="data-table" id="tbl-hist-cmat">
+              <thead>
+                <tr>
+                  <th>Observed \ Predicted</th>
+                  <th>Prediction +</th>
+                  <th>Prediction -</th>
+                  <th>Prediction no (0)</th>
+                  <th>Obs Error Rate</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -1156,13 +1441,13 @@
   <dialog id="inspector-dialog" closedby="any">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
       <div>
-        <h3 id="modal-title" style="font-size:15px;font-weight:700;color:#f8fafc;">ODE Kinetic Parameter Inspector (get_param.php)</h3>
+        <h3 id="modal-title" style="font-size:15px;font-weight:700;color:var(--text-main);">ODE Kinetic Parameter Inspector (get_param.php)</h3>
         <p id="modal-subtitle" style="font-size:11.5px;color:var(--text-muted);">Exact differential equation parameters and basal steady-state relaxation trajectory</p>
       </div>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('inspector-dialog').close()">Close (Esc)</button>
     </div>
     <div id="modal-body-stats" style="margin-bottom:12px;"></div>
-    <canvas id="canvas-modal-traj" width="620" height="240" style="width:100%;height:240px;background:#090d16;border:1px solid var(--border);border-radius:8px;"></canvas>
+    <canvas id="canvas-modal-traj" class="chart-canvas" width="620" height="240" style="width:100%;height:240px;"></canvas>
   </dialog>
 
   <script>
@@ -1180,6 +1465,8 @@
       nodePositions: [],
       sosData: null,
       thesisFigures: null,
+      archiveDetail: null,
+      archiveActiveAlg: 'vote',
     };
 
     // Light-dismiss fallback for <dialog closedby="any">
@@ -1189,6 +1476,103 @@
         inspectorDialog.close();
       }
     });
+
+    // ============================================================================
+    // LIGHT / DARK MODE TOGGLE (modern-web-guidance: dark-mode-toggle)
+    // ============================================================================
+    function getResolvedScheme() {
+      const meta = document.querySelector('meta[name="color-scheme"]');
+      const content = meta ? meta.content : 'light dark';
+      if (content === 'dark' || content === 'light') return content;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function isLightMode() {
+      return getResolvedScheme() === 'light';
+    }
+
+    function getThemeColors() {
+      const light = isLightMode();
+      return {
+        grid: light ? '#e2e8f0' : '#1e293b',
+        textMuted: light ? '#475569' : '#94a3b8',
+        textMain: light ? '#0f172a' : '#f8fafc',
+        nodeFill: light ? '#e0f2fe' : '#1e293b',
+        nodeSelFill: light ? '#bae6fd' : '#1e3a8a',
+        nodeStroke: light ? '#0284c7' : '#64748b',
+        nodeSelStroke: light ? '#0369a1' : '#38bdf8',
+      };
+    }
+
+    function updateThemeToggleButtonUI() {
+      const scheme = getResolvedScheme();
+      const iconEl = document.getElementById('theme-toggle-icon');
+      const lblEl = document.getElementById('theme-toggle-label');
+      if (!iconEl || !lblEl) return;
+      if (scheme === 'dark') {
+        iconEl.innerHTML = '&#9728;&#65039;';
+        lblEl.textContent = 'Light Mode';
+      } else {
+        iconEl.innerHTML = '&#127769;';
+        lblEl.textContent = 'Dark Mode';
+      }
+    }
+
+    function toggleColorScheme() {
+      const meta = document.querySelector('meta[name="color-scheme"]');
+      const currentRendered = getResolvedScheme();
+      const target = currentRendered === 'dark' ? 'light' : 'dark';
+      const systemPref = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+      try {
+        if (target === systemPref) {
+          localStorage.removeItem('color-scheme');
+          meta.content = 'light dark';
+        } else {
+          localStorage.setItem('color-scheme', target);
+          meta.content = target;
+        }
+      } catch (e) {
+        meta.content = target;
+      }
+
+      updateThemeToggleButtonUI();
+      rerenderAllCanvasesForTheme();
+    }
+
+    window.addEventListener('storage', (ev) => {
+      if (ev.key === 'color-scheme') {
+        const meta = document.querySelector('meta[name="color-scheme"]');
+        if (meta) meta.content = ev.newValue ?? 'light dark';
+        updateThemeToggleButtonUI();
+        rerenderAllCanvasesForTheme();
+      }
+    });
+
+    function rerenderAllCanvasesForTheme() {
+      if (APP_STATE.sim) {
+        drawGroundTruthCanvas();
+        inspectNode(APP_STATE.selectedNodeIdx || 0, false);
+        drawPerturbationTimeCourse(parseInt(document.getElementById('select-pert-gene').value) || 0);
+        drawExpressionHeatmap(APP_STATE.sim.X, APP_STATE.sim.gene_names);
+      }
+      if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
+        onSelectInferAlg(APP_STATE.activeAlg);
+        drawAicProfile(APP_STATE.inferred.aic_profile);
+      }
+      if (APP_STATE.sosData) {
+        drawSos9PanelGrid(APP_STATE.sosData.perturbation_trajectories, APP_STATE.sosData.gene_names);
+      }
+      if (APP_STATE.thesisFigures) {
+        const tf = APP_STATE.thesisFigures;
+        drawFigTopology(tf.fig4_topology);
+        drawFigConnectivity(tf.fig4_connectivity);
+        drawFigNoiseAndHeatmap(tf.fig4_noise);
+        drawFigVoting(tf.fig4_voting);
+        drawFigRuntime(tf.fig4_runtime);
+        drawFigErrorModel(tf.fig2_error_model);
+      }
+    }
 
     // ============================================================================
     // NAVIGATION & WIZARD HELPERS
@@ -1224,22 +1608,56 @@
       }
     }
 
+    function applySettingsToForm(settings, sim) {
+      const s = settings || {};
+      const mode = s.mode || (sim && sim.mode) || 'insilico';
+      const topo = s.topology || (sim && sim.topology === 'biological_sos' ? 'power_law' : (sim && sim.topology)) || 'power_law';
+      const n = s.num_genes || (sim && sim.num_genes) || 12;
+      const kav = s.k_av ?? (sim && sim.k_average) ?? 1.8;
+      const ratio = s.act_ratio ?? (sim && sim.act_ratio) ?? 0.5;
+      const noise = s.noise ?? (sim && sim.noise) ?? 0.05;
+      const biovar = s.bio_var ?? (sim && sim.bio_var) ?? 0.02;
+      const seed = s.seed ?? (sim && sim.seed) ?? 42;
+
+      document.getElementById('sim-mode').value = mode;
+      document.getElementById('sim-topology').value = topo === 'biological_sos' ? 'power_law' : topo;
+      document.getElementById('sim-num-genes').value = n;
+      document.getElementById('lbl-num-genes').textContent = String(n);
+      document.getElementById('sim-kav').value = kav;
+      document.getElementById('lbl-kav').textContent = String(kav);
+      document.getElementById('sim-ratio').value = ratio;
+      document.getElementById('lbl-ratio').textContent = parseFloat(ratio).toFixed(2);
+      document.getElementById('sim-noise').value = noise;
+      document.getElementById('lbl-noise').textContent = parseFloat(noise).toFixed(2);
+      document.getElementById('sim-biovar').value = biovar;
+      document.getElementById('lbl-biovar').textContent = parseFloat(biovar).toFixed(2);
+      document.getElementById('sim-seed').value = seed;
+      document.getElementById('lbl-seed').textContent = String(seed);
+
+      if (Array.isArray(s.algorithms) && s.algorithms.length) {
+        document.querySelectorAll('.alg-cb').forEach(cb => {
+          cb.checked = s.algorithms.includes(cb.value);
+        });
+      }
+    }
+
     // ============================================================================
     // API CALLS: INITIAL HYDRATION, SIMULATE, INFER
     // ============================================================================
     async function initApp() {
+      updateThemeToggleButtonUI();
       try {
         const res = await fetch('/api/state');
         const data = await res.json();
         if (data.status === 'success') {
           APP_STATE.sim = data;
           APP_STATE.inferred = data.inferred || {};
+          applySettingsToForm(data.settings, data);
           renderAllSimulationViews();
           if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
             renderAllInferenceViews();
           }
         }
-        // Preload SOS & Thesis Figures in background so switching tabs is instantaneous
         loadSosFullStudio();
         loadThesisFigures();
         loadHistoryTable();
@@ -1342,12 +1760,10 @@
       document.getElementById('gt-summary-badge').textContent =
         `${sim.num_genes} Genes • ${sim.total_edges} Edges (+${sim.activations} / -${sim.inhibitions})`;
 
-      // Populate Graphviz SVGs & DOT source
       document.getElementById('gt-svg-dot').innerHTML = sim.svg_hierarchical || '';
       document.getElementById('gt-svg-neato').innerHTML = sim.svg_spring || '';
       document.getElementById('gt-dot-source').textContent = sim.dot_hierarchical || '';
 
-      // Populate Quick Node & Edge Selectors
       const nodeSel = document.getElementById('quick-node-select');
       const pertSel = document.getElementById('select-pert-gene');
       nodeSel.innerHTML = '';
@@ -1364,7 +1780,6 @@
         edgeSel.innerHTML += `<option value="${e.key}">${e.source} → ${e.target} (${sym})</option>`;
       });
 
-      // Compute circular/force node coordinates for interactive canvas
       computeNodePositions(sim.num_genes);
       drawGroundTruthCanvas();
       inspectNode(0, false);
@@ -1432,7 +1847,6 @@
       const ux = dx / dist;
       const uy = dy / dist;
 
-      // Offset slightly for bidirectional edges & stop at node boundary (r=21)
       const nx = -uy * 4;
       const ny = ux * 4;
       const sx = x1 + ux * 21 + nx;
@@ -1447,7 +1861,6 @@
 
       ctx.setLineDash([]);
       if (arrowhead === 'tee') {
-        // Perpendicular tee bar for inhibition
         const tx = -uy * 6.5;
         const ty = ux * 6.5;
         ctx.lineWidth = 2.6;
@@ -1456,7 +1869,6 @@
         ctx.lineTo(ex + tx, ey + ty);
         ctx.stroke();
       } else {
-        // Normal triangle arrowhead for activation
         const headLen = 8.5;
         const angle = Math.atan2(ey - sy, ex - sx);
         ctx.beginPath();
@@ -1478,11 +1890,11 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
+      const tc = getThemeColors();
       const pos = APP_STATE.nodePositions;
       const links = sim.graph.links || [];
       const nodes = sim.graph.nodes || [];
 
-      // Draw edges
       links.forEach(l => {
         const p1 = pos[l.source_idx];
         const p2 = pos[l.target_idx];
@@ -1492,7 +1904,6 @@
         drawDirectedEdge(ctx, p1.x, p1.y, p2.x, p2.y, color, 'solid', head, l.source_idx === l.target_idx);
       });
 
-      // Draw nodes
       nodes.forEach((n, idx) => {
         const p = pos[idx];
         if (!p) return;
@@ -1500,13 +1911,13 @@
         ctx.save();
         ctx.beginPath();
         ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-        ctx.fillStyle = isSel ? '#1e3a8a' : '#1e293b';
+        ctx.fillStyle = isSel ? tc.nodeSelFill : tc.nodeFill;
         ctx.fill();
         ctx.lineWidth = isSel ? 3 : 2;
-        ctx.strokeStyle = isSel ? '#38bdf8' : '#64748b';
+        ctx.strokeStyle = isSel ? tc.nodeSelStroke : tc.nodeStroke;
         ctx.stroke();
 
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = tc.textMain;
         ctx.font = 'bold 11.5px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -1515,7 +1926,6 @@
       });
     }
 
-    // Click handler on Ground-Truth Canvas to inspect Node or Edge (reproducing get_param.php)
     document.getElementById('canvas-gt-network').addEventListener('click', (ev) => {
       const sim = APP_STATE.sim;
       if (!sim) return;
@@ -1524,7 +1934,6 @@
       const mx = (ev.clientX - rect.left) * (canvas.width / rect.width);
       const my = (ev.clientY - rect.top) * (canvas.height / rect.height);
 
-      // Check node hit first
       for (let i = 0; i < APP_STATE.nodePositions.length; i++) {
         const p = APP_STATE.nodePositions[i];
         if (Math.hypot(mx - p.x, my - p.y) <= 22) {
@@ -1533,7 +1942,6 @@
         }
       }
 
-      // Check edge hit (distance from segment)
       const edges = sim.edge_list || [];
       for (const e of edges) {
         const p1 = APP_STATE.nodePositions[e.source_idx];
@@ -1569,28 +1977,28 @@
       const np = sim.node_params[idx];
       const html = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <strong style="color:#38bdf8;font-size:12.5px;">Node ${np.name} (Gene #${idx + 1})</strong>
+          <strong style="color:var(--accent-blue);font-size:12.5px;">Node ${np.name} (Gene #${idx + 1})</strong>
           <span class="badge">In: ${np.in_degree} | Out: ${np.out_degree}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;">
-          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
-            <div style="font-size:10px;color:#94a3b8;">Steady State x_ss</div>
+          <div style="background:var(--bg-stage);border:1px solid var(--border);padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:var(--text-muted);">Steady State x_ss</div>
             <div style="font-family:monospace;font-weight:700;color:#10b981;">${np.background_ss}</div>
           </div>
-          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
-            <div style="font-size:10px;color:#94a3b8;">Basal Rate (v_i)</div>
-            <div style="font-family:monospace;font-weight:700;color:#f8fafc;">${np.basal_rate_v}</div>
+          <div style="background:var(--bg-stage);border:1px solid var(--border);padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:var(--text-muted);">Basal Rate (v_i)</div>
+            <div style="font-family:monospace;font-weight:700;color:var(--text-main);">${np.basal_rate_v}</div>
           </div>
-          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
-            <div style="font-size:10px;color:#94a3b8;">Breakdown (B_i)</div>
-            <div style="font-family:monospace;font-weight:700;color:#f59e0b;">${np.degradation_B}</div>
+          <div style="background:var(--bg-stage);border:1px solid var(--border);padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:var(--text-muted);">Breakdown (B_i)</div>
+            <div style="font-family:monospace;font-weight:700;color:var(--accent-amber);">${np.degradation_B}</div>
           </div>
         </div>
       `;
       document.getElementById('inline-param-card').innerHTML = html;
 
       const series = (sim.basal_trajectory && sim.basal_trajectory[idx]) ? [
-        { label: `${np.name} Basal Concentration x(t)`, data: sim.basal_trajectory[idx], color: '#38bdf8' }
+        { label: `${np.name} Basal Concentration x(t)`, data: sim.basal_trajectory[idx], color: '#0284c7' }
       ] : [];
       drawSeriesCanvas('canvas-basal-mini', series, `Basal ODE Relaxation: ${np.name} → x_ss = ${np.background_ss}`);
 
@@ -1626,13 +2034,13 @@
           <span class="badge">${ep.action}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px;">
-          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
-            <div style="font-size:10px;color:#94a3b8;">Hill Coefficient (${ep.param_symbol_n})</div>
-            <div style="font-family:monospace;font-weight:700;color:#38bdf8;">${ep.hill_coeff}</div>
+          <div style="background:var(--bg-stage);border:1px solid var(--border);padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:var(--text-muted);">Hill Coefficient (${ep.param_symbol_n})</div>
+            <div style="font-family:monospace;font-weight:700;color:var(--accent-blue);">${ep.hill_coeff}</div>
           </div>
-          <div style="background:#0f172a;padding:5px 7px;border-radius:6px;">
-            <div style="font-size:10px;color:#94a3b8;">Half-Saturation (${ep.param_symbol_K})</div>
-            <div style="font-family:monospace;font-weight:700;color:#f59e0b;">${ep.half_sat_K}</div>
+          <div style="background:var(--bg-stage);border:1px solid var(--border);padding:5px 7px;border-radius:6px;">
+            <div style="font-size:10px;color:var(--text-muted);">Half-Saturation (${ep.param_symbol_K})</div>
+            <div style="font-family:monospace;font-weight:700;color:var(--accent-amber);">${ep.half_sat_K}</div>
           </div>
         </div>
       `;
@@ -1640,7 +2048,7 @@
 
       const b = sim.basal_trajectory || [];
       const series = [];
-      if (b[srcIdx]) series.push({ label: `Source ${ep.source}`, data: b[srcIdx], color: '#38bdf8' });
+      if (b[srcIdx]) series.push({ label: `Source ${ep.source}`, data: b[srcIdx], color: '#0284c7' });
       if (b[dstIdx]) series.push({ label: `Target ${ep.target}`, data: b[dstIdx], color: '#ef4444' });
       drawSeriesCanvas('canvas-basal-mini', series, `Coupled ODE Trajectory: ${ep.source} (blue) → ${ep.target} (red)`);
 
@@ -1673,11 +2081,12 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
+      const tc = getThemeColors();
       const pad = { l: 38, r: 14, t: 24, b: 22 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
 
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = tc.textMuted;
       ctx.font = '600 10.5px Inter, sans-serif';
       ctx.fillText(title, pad.l, 15);
 
@@ -1695,8 +2104,7 @@
       minV = Math.max(0, minV - span * 0.08);
       maxV = maxV + span * 0.1;
 
-      // Grid lines
-      ctx.strokeStyle = '#1e293b';
+      ctx.strokeStyle = tc.grid;
       ctx.lineWidth = 1;
       for (let g = 0; g <= 3; g++) {
         const y = pad.t + (ph * g) / 3;
@@ -1706,7 +2114,7 @@
         ctx.stroke();
 
         const val = maxV - ((maxV - minV) * g) / 3;
-        ctx.fillStyle = '#64748b';
+        ctx.fillStyle = tc.textMuted;
         ctx.font = '9.5px monospace';
         ctx.fillText(val.toFixed(2), 4, y + 3);
       }
@@ -1714,7 +2122,7 @@
       seriesList.forEach(s => {
         const arr = s.data || [];
         if (!arr.length) return;
-        ctx.strokeStyle = s.color || '#38bdf8';
+        ctx.strokeStyle = s.color || '#0284c7';
         ctx.lineWidth = s.width || 2.0;
         ctx.beginPath();
         arr.forEach((v, i) => {
@@ -1733,7 +2141,7 @@
       const traj = sim.perturbation_trajectories[pertIdx];
       if (!traj) return;
 
-      const palette = ['#38bdf8', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6', '#6366f1', '#eab308', '#f97316'];
+      const palette = ['#0284c7', '#10b981', '#d97706', '#9333ea', '#db2777', '#0d9488', '#4f46e5', '#ca8a04', '#ea580c'];
       const series = traj.map((row, idx) => ({
         label: sim.gene_names[idx],
         data: row,
@@ -1752,6 +2160,7 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
+      const tc = getThemeColors();
       const N = X.length;
       const pad = { l: 42, r: 16, t: 28, b: 18 };
       const cw = (W - pad.l - pad.r) / N;
@@ -1781,8 +2190,7 @@
         }
       }
 
-      // Labels for up to 15 genes
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = tc.textMuted;
       ctx.font = '9.5px monospace';
       const step = N > 14 ? 2 : 1;
       for (let i = 0; i < N; i += step) {
@@ -1805,7 +2213,6 @@
       }
       document.getElementById('select-infer-alg').value = APP_STATE.activeAlg;
 
-      // Populate Algorithm Comparison Table
       const tbody = document.querySelector('#tbl-alg-comparison tbody');
       tbody.innerHTML = '';
       algs.forEach(alg => {
@@ -1816,13 +2223,13 @@
         tr.style.cursor = 'pointer';
         tr.onclick = () => onSelectInferAlg(alg);
         tr.innerHTML = `
-          <td><strong style="color:#38bdf8;">${alg.toUpperCase()}</strong></td>
+          <td><strong style="color:var(--accent-blue);">${alg.toUpperCase()}</strong></td>
           <td>${st.power ?? '--'}%</td>
           <td>${st.specificity ?? '--'}%</td>
           <td>${st.ppv ?? '--'}%</td>
           <td>${st.fdr ?? '--'}%</td>
           <td>${st.signed_ppv ?? '--'}%</td>
-          <td><strong style="color:#f59e0b;">${st.total_errors ?? '--'}</strong></td>
+          <td><strong style="color:var(--accent-amber);">${st.total_errors ?? '--'}</strong></td>
         `;
         tbody.appendChild(tr);
       });
@@ -1835,18 +2242,17 @@
       const inf = APP_STATE.inferred;
       if (!inf || !inf.metrics || !inf.metrics[alg]) return;
       APP_STATE.activeAlg = alg;
+      document.getElementById('select-infer-alg').value = alg;
 
       document.getElementById('active-alg-badge').textContent = alg.toUpperCase();
       document.getElementById('cmat-alg-label').textContent = alg.toUpperCase();
       document.getElementById('statmat-subtitle').textContent = `Active Algorithm: ${alg.toUpperCase()}`;
 
-      // Highlight selected row in comparison table
       document.querySelectorAll('#tbl-alg-comparison tbody tr').forEach(tr => {
         const name = tr.querySelector('td')?.textContent?.trim()?.toLowerCase();
         tr.classList.toggle('selected-row', name === alg);
       });
 
-      // Populate $TMP_STATMAT 8 cards
       const st = (inf.tmp_statmat && inf.tmp_statmat[alg]) || {};
       document.getElementById('st-power').textContent = `${st.power ?? '--'}%`;
       document.getElementById('st-spec').textContent = `${st.specificity ?? '--'}%`;
@@ -1857,10 +2263,8 @@
       document.getElementById('st-fnr').textContent = `${st.false_negative_rate ?? '--'}%`;
       document.getElementById('st-err').textContent = `${st.total_errors ?? '--'}`;
 
-      // Populate 4x4 $TMP_CMAT table
       renderConfusionMatrixTable('#tbl-cmat tbody', inf.confusion_matrix ? inf.confusion_matrix[alg] : null);
 
-      // Update 9-state Graphviz SVGs & Canvas
       document.getElementById('inf-svg-dot').innerHTML = (inf.svgs_dot && inf.svgs_dot[alg]) || '';
       document.getElementById('inf-svg-neato').innerHTML = (inf.svgs_neato && inf.svgs_neato[alg]) || '';
       draw9StateComparisonCanvas(inf.comparison_graphs ? inf.comparison_graphs[alg] : null);
@@ -1878,28 +2282,28 @@
           <td><strong>${m[0][0]}</strong></td>
           <td>${m[0][1]}</td>
           <td>${m[0][2]}</td>
-          <td style="color:#f59e0b;">${rErr[0]}%</td>
+          <td style="color:var(--accent-amber);">${rErr[0]}%</td>
         </tr>
         <tr>
           <td><strong style="color:#ef4444;">Obs - (Inhibition)</strong></td>
           <td>${m[1][0]}</td>
           <td><strong>${m[1][1]}</strong></td>
           <td>${m[1][2]}</td>
-          <td style="color:#f59e0b;">${rErr[1]}%</td>
+          <td style="color:var(--accent-amber);">${rErr[1]}%</td>
         </tr>
         <tr>
-          <td><strong style="color:#94a3b8;">Obs no (0)</strong></td>
+          <td><strong style="color:var(--text-muted);">Obs no (0)</strong></td>
           <td>${m[2][0]}</td>
           <td>${m[2][1]}</td>
           <td><strong>${m[2][2]}</strong></td>
-          <td style="color:#f59e0b;">${rErr[2]}%</td>
+          <td style="color:var(--accent-amber);">${rErr[2]}%</td>
         </tr>
-        <tr style="background:rgba(30,41,59,0.65);">
+        <tr style="background:var(--bg-card);">
           <td><strong>Pred Error Rate</strong></td>
-          <td style="color:#38bdf8;">${cErr[0]}%</td>
-          <td style="color:#38bdf8;">${cErr[1]}%</td>
-          <td style="color:#38bdf8;">${cErr[2]}%</td>
-          <td><strong style="color:#f472b6;">Overall: ${cmat.overall_error_pct}%</strong></td>
+          <td style="color:var(--accent-blue);">${cErr[0]}%</td>
+          <td style="color:var(--accent-blue);">${cErr[1]}%</td>
+          <td style="color:var(--accent-blue);">${cErr[2]}%</td>
+          <td><strong style="color:var(--accent-pink);">Overall: ${cmat.overall_error_pct}%</strong></td>
         </tr>
       `;
     }
@@ -1912,6 +2316,7 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
+      const tc = getThemeColors();
       const pos = APP_STATE.nodePositions;
       const links = compGraph.links || [];
       const nodes = compGraph.nodes || [];
@@ -1935,13 +2340,13 @@
         ctx.save();
         ctx.beginPath();
         ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = tc.nodeFill;
         ctx.fill();
         ctx.lineWidth = 2;
         ctx.strokeStyle = '#6366f1';
         ctx.stroke();
 
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = tc.textMain;
         ctx.font = 'bold 11.5px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -1954,7 +2359,7 @@
       if (!aic) return;
       document.getElementById('aic-opt-badge').textContent = `Optimal K = ${aic.optimal_k}`;
       const series = [
-        { label: 'S2G Forward AIC(K)', data: aic.s2g_aic, color: '#38bdf8', width: 2.5 },
+        { label: 'S2G Forward AIC(K)', data: aic.s2g_aic, color: '#0284c7', width: 2.5 },
         { label: 'G2S Backward AIC(K)', data: aic.g2s_aic, color: '#10b981', width: 2.0 },
       ];
       drawSeriesCanvas('canvas-aic-curve', series, `S2G (blue) & G2S (green) AIC Cost vs Subset Size K (Min at K=${aic.optimal_k})`);
@@ -1972,7 +2377,6 @@
 
         document.getElementById('sos-true-stage').innerHTML = data.svg_true_dot || '';
 
-        // Populate Table 4.1
         const tbody = document.querySelector('#tbl-sos-benchmark tbody');
         tbody.innerHTML = '';
         const order = ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
@@ -1988,13 +2392,13 @@
             };
           }
           tr.innerHTML = `
-            <td><strong style="color:#38bdf8;">${alg.toUpperCase()}</strong></td>
+            <td><strong style="color:var(--accent-blue);">${alg.toUpperCase()}</strong></td>
             <td>${m.coverage_pct}%</td>
             <td>${m.false_positives_pct}%</td>
             <td><strong>${m.inferred_connections_pct}%</strong></td>
             <td>${m.fp_per_inferred_pct}%</td>
             <td>${m.inferred_sign_pct}%</td>
-            <td><strong style="color:#f59e0b;">${m.total_errors}</strong></td>
+            <td><strong style="color:var(--accent-amber);">${m.total_errors}</strong></td>
           `;
           tbody.appendChild(tr);
         });
@@ -2023,10 +2427,11 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
+      const tc = getThemeColors();
       const cols = 3, rows = 3;
       const cw = W / cols;
       const ch = H / rows;
-      const palette = ['#38bdf8', '#10b981', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6', '#6366f1', '#eab308', '#ef4444'];
+      const palette = ['#0284c7', '#10b981', '#d97706', '#9333ea', '#db2777', '#0d9488', '#4f46e5', '#ca8a04', '#ef4444'];
 
       for (let idx = 0; idx < Math.min(9, trajs.length); idx++) {
         const r = Math.floor(idx / cols);
@@ -2036,10 +2441,10 @@
         const pw = cw - 16;
         const ph = ch - 14;
 
-        ctx.strokeStyle = '#1e293b';
+        ctx.strokeStyle = tc.grid;
         ctx.strokeRect(x0, y0, pw, ph);
 
-        ctx.fillStyle = '#cbd5e1';
+        ctx.fillStyle = tc.textMain;
         ctx.font = 'bold 10px Inter, sans-serif';
         ctx.fillText(`Perturb #${idx + 1}: ${geneNames[idx]}`, x0 + 6, y0 + 13);
 
@@ -2092,12 +2497,12 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
+      const tc = getThemeColors();
       const pad = { l: 46, r: 20, t: 30, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
 
-      // Grid
-      ctx.strokeStyle = '#1e293b';
+      ctx.strokeStyle = tc.grid;
       ctx.lineWidth = 1;
       for (let g = 0; g <= 4; g++) {
         const y = pad.t + (ph * g) / 4;
@@ -2106,20 +2511,18 @@
         ctx.lineTo(W - pad.r, y);
         ctx.stroke();
         const val = yMax - ((yMax - yMin) * g) / 4;
-        ctx.fillStyle = '#64748b';
+        ctx.fillStyle = tc.textMuted;
         ctx.font = '10px monospace';
         ctx.fillText(val.toFixed(0), 10, y + 3);
       }
 
-      // X labels
       xLabels.forEach((xl, i) => {
         const x = pad.l + (pw * i) / Math.max(1, xLabels.length - 1);
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = tc.textMuted;
         ctx.font = '10.5px Inter, sans-serif';
         ctx.fillText(String(xl), x - 10, H - 10);
       });
 
-      // Lines
       seriesList.forEach((s, sIdx) => {
         ctx.strokeStyle = s.color;
         ctx.fillStyle = s.color;
@@ -2145,10 +2548,9 @@
           ctx.fill();
         });
 
-        // Legend item
         const lx = pad.l + sIdx * 145;
         ctx.fillRect(lx, 8, 12, 4);
-        ctx.fillStyle = '#cbd5e1';
+        ctx.fillStyle = tc.textMain;
         ctx.font = '10.5px Inter, sans-serif';
         ctx.fillText(s.label, lx + 16, 13);
       });
@@ -2157,8 +2559,8 @@
     function drawFigTopology(topo) {
       const series = [
         { label: 'Scale-Free (S2G)', data: topo.power_law.s2g_power, color: '#10b981' },
-        { label: 'Random (S2G)', data: topo.random.s2g_power, color: '#38bdf8' },
-        { label: 'Hierarchical (G2S)', data: topo.hierarchical.g2s_power, color: '#f59e0b' },
+        { label: 'Random (S2G)', data: topo.random.s2g_power, color: '#0284c7' },
+        { label: 'Hierarchical (G2S)', data: topo.hierarchical.g2s_power, color: '#d97706' },
         { label: 'Scale-Free (FAST)', data: topo.power_law.fast_power, color: '#ef4444', dash: [5, 3] },
       ];
       drawMultiLineChart('canvas-fig-topology', topo.sizes.map(n => `n=${n}`), series, 'Power (%)', 50, 100);
@@ -2166,9 +2568,9 @@
 
     function drawFigConnectivity(conn) {
       const series = [
-        { label: 'S2G Power (%)', data: conn.s2g.power, color: '#38bdf8' },
+        { label: 'S2G Power (%)', data: conn.s2g.power, color: '#0284c7' },
         { label: 'G2S Power (%)', data: conn.g2s.power, color: '#10b981' },
-        { label: 'NIR Power (%)', data: conn.nir.power, color: '#f59e0b' },
+        { label: 'NIR Power (%)', data: conn.nir.power, color: '#d97706' },
         { label: 'Voting FDR (%)', data: conn.vote.fdr, color: '#ec4899', dash: [4, 3] },
       ];
       drawMultiLineChart('canvas-fig-connectivity', conn.k_av_levels.map(k => `k=${k}`), series, 'Percent', 0, 100);
@@ -2182,16 +2584,16 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Left half: Line chart of Power vs Noise
+      const tc = getThemeColors();
       const lw = W * 0.52;
       const pad = { l: 38, r: 12, t: 28, b: 28 };
       const pw = lw - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
 
       const lines = [
-        { label: 'S2G Power', data: noise.s2g_power, color: '#38bdf8' },
+        { label: 'S2G Power', data: noise.s2g_power, color: '#0284c7' },
         { label: 'G2S Power', data: noise.g2s_power, color: '#10b981' },
-        { label: 'NIR Power', data: noise.nir_power, color: '#f59e0b' },
+        { label: 'NIR Power', data: noise.nir_power, color: '#d97706' },
         { label: 'FAST Power', data: noise.fast_power, color: '#ef4444' },
       ];
 
@@ -2213,12 +2615,11 @@
 
       noise.noise_levels.forEach((nl, i) => {
         const x = pad.l + (pw * i) / (noise.noise_levels.length - 1);
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = tc.textMuted;
         ctx.font = '9.5px monospace';
         ctx.fillText(nl.toFixed(2), x - 10, H - 8);
       });
 
-      // Right half: 2D Heatmap over k_av x noise (overall_inferred_connections.pdf)
       const rx0 = lw + 28;
       const rw = W - rx0 - 14;
       const rh = H - 56;
@@ -2227,18 +2628,18 @@
       const cw = rw / cols;
       const ch = rh / rows;
 
-      ctx.fillStyle = '#cbd5e1';
+      ctx.fillStyle = tc.textMain;
       ctx.font = 'bold 10.5px Inter, sans-serif';
       ctx.fillText('2D Power (%) Heatmap: k_av × Noise σ', rx0, 16);
 
       for (let r = 0; r < rows; r++) {
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = tc.textMuted;
         ctx.font = '9.5px monospace';
         ctx.fillText(`k=${noise.heatmap_k_av[r]}`, rx0 - 32, 28 + (r + 0.65) * ch);
         for (let c = 0; c < cols; c++) {
           const val = noise.heatmap_power[r][c];
           const norm = (val - 30) / 70;
-          ctx.fillStyle = `rgba(56, 189, 248, ${Math.max(0.15, Math.min(0.95, norm)).toFixed(2)})`;
+          ctx.fillStyle = `rgba(56, 189, 248, ${Math.max(0.18, Math.min(0.95, norm)).toFixed(2)})`;
           ctx.fillRect(rx0 + c * cw, 28 + r * ch, cw - 2, ch - 2);
           ctx.fillStyle = '#0b0f19';
           ctx.font = 'bold 10px monospace';
@@ -2246,7 +2647,7 @@
         }
       }
       noise.heatmap_noise.forEach((nl, c) => {
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = tc.textMuted;
         ctx.font = '9.5px monospace';
         ctx.fillText(`σ=${nl}`, rx0 + c * cw + 4, H - 8);
       });
@@ -2260,6 +2661,7 @@
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
+      const tc = getThemeColors();
       const pad = { l: 42, r: 16, t: 28, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
@@ -2268,15 +2670,15 @@
       const barW = groupW * 0.22;
 
       const sets = [
-        { label: 'S2G FDR (%)', data: voting.s2g_fdr, color: '#38bdf8' },
-        { label: 'G2S FDR (%)', data: voting.g2s_fdr, color: '#f59e0b' },
+        { label: 'S2G FDR (%)', data: voting.s2g_fdr, color: '#0284c7' },
+        { label: 'G2S FDR (%)', data: voting.g2s_fdr, color: '#d97706' },
         { label: 'Voting Consensus FDR (%)', data: voting.vote_fdr, color: '#10b981' },
       ];
 
       sets.forEach((s, sIdx) => {
         ctx.fillStyle = s.color;
         ctx.fillRect(pad.l + sIdx * 185, 8, 12, 8);
-        ctx.fillStyle = '#cbd5e1';
+        ctx.fillStyle = tc.textMain;
         ctx.font = '10.5px Inter, sans-serif';
         ctx.fillText(s.label, pad.l + sIdx * 185 + 16, 16);
 
@@ -2286,14 +2688,14 @@
           const y = pad.t + ph - bh;
           ctx.fillStyle = s.color;
           ctx.fillRect(x, y, barW, bh);
-          ctx.fillStyle = '#e2e8f0';
+          ctx.fillStyle = tc.textMain;
           ctx.font = '9px monospace';
           ctx.fillText(`${val.toFixed(1)}`, x, y - 3);
         });
       });
 
       cats.forEach((c, i) => {
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = tc.textMuted;
         ctx.font = '10px Inter, sans-serif';
         ctx.fillText(c, pad.l + i * groupW + 8, H - 10);
       });
@@ -2302,15 +2704,16 @@
     function drawFigRuntime(rt) {
       const series = [
         { label: 'S2G (k=1.5)', data: rt.s2g_k15, color: '#10b981' },
-        { label: 'S2G (k=5.0)', data: rt.s2g_k50, color: '#38bdf8' },
-        { label: 'G2S (k=1.5)', data: rt.g2s_k15, color: '#f59e0b' },
-        { label: 'FAST SVD', data: rt.fast_k15, color: '#a855f7' },
+        { label: 'S2G (k=5.0)', data: rt.s2g_k50, color: '#0284c7' },
+        { label: 'G2S (k=1.5)', data: rt.g2s_k15, color: '#d97706' },
+        { label: 'FAST SVD', data: rt.fast_k15, color: '#9333ea' },
       ];
       drawMultiLineChart('canvas-fig-runtime', rt.sizes.map(n => `n=${n}`), series, 'Seconds', 0, 12);
     }
 
     function drawFigErrorModel(em) {
       const canvas = document.getElementById('canvas-fig-errormodel');
+      const tc = getThemeColors();
       if (canvas && em) {
         const ctx = canvas.getContext('2d');
         const W = canvas.width;
@@ -2321,7 +2724,7 @@
         const bw = (W - pad.l - pad.r) / em.counts.length;
         const ph = H - pad.t - pad.b;
 
-        ctx.fillStyle = '#cbd5e1';
+        ctx.fillStyle = tc.textMain;
         ctx.font = 'bold 10px Inter, sans-serif';
         ctx.fillText('Error Model Histogram (Eq 2.5)', pad.l, 14);
 
@@ -2338,7 +2741,7 @@
         em.table_2_1_4gene.forEach(r => {
           tbody.innerHTML += `
             <tr>
-              <td><strong style="color:#38bdf8;">${r.gene}</strong></td>
+              <td><strong style="color:var(--accent-blue);">${r.gene}</strong></td>
               <td>${r.v}</td>
               <td>${r.B}</td>
               <td><strong style="color:#10b981;">${r.x_ss}</strong></td>
@@ -2350,7 +2753,7 @@
     }
 
     // ============================================================================
-    // TAB 4: PREVIOUS SIMULATIONS ARCHIVE (showpre.php)
+    // TAB 4: PREVIOUS SIMULATIONS ARCHIVE & DETAILED RUN INSPECTOR (showpre.php)
     // ============================================================================
     async function loadHistoryTable() {
       try {
@@ -2359,33 +2762,177 @@
         const tbody = document.querySelector('#tbl-history tbody');
         if (!tbody || !data.history) return;
         tbody.innerHTML = '';
+
+        const activeRunId = (APP_STATE.archiveDetail && APP_STATE.archiveDetail.run_id) || data.active_run_id;
+
         data.history.forEach(h => {
-          tbody.innerHTML += `
-            <tr>
-              <td>#${h.id}</td>
-              <td><code style="color:#38bdf8;">${h.run_id}</code></td>
-              <td>${h.timestamp}</td>
-              <td><span class="badge">${h.topology}</span></td>
-              <td><strong>${h.num_genes}</strong></td>
-              <td>${h.k_av}</td>
-              <td>${h.act_ratio}</td>
-              <td>${h.noise}</td>
-              <td><span class="badge badge-emerald">${h.best_algorithm}</span></td>
-              <td><strong>${h.best_power_pct}%</strong></td>
-              <td>${h.best_specificity_pct}%</td>
-              <td style="color:#f59e0b;font-weight:700;">${h.best_total_errors}</td>
-              <td>
-                <a href="/api/download?format=msmt" style="color:#38bdf8;margin-right:6px;">.msmt</a>
-                <a href="/api/download?format=pert" style="color:#10b981;margin-right:6px;">.pert</a>
-                <a href="/api/download?format=dot" style="color:#f59e0b;margin-right:6px;">.dot</a>
-                <a href="/api/download?format=svg" style="color:#f472b6;">.svg</a>
-              </td>
-            </tr>
+          const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          if (h.run_id === activeRunId) tr.className = 'selected-row';
+          tr.onclick = (ev) => {
+            if (ev.target.tagName === 'A' || ev.target.tagName === 'BUTTON') return;
+            selectArchiveRun(h.run_id, false);
+          };
+          tr.innerHTML = `
+            <td>#${h.id}</td>
+            <td><code style="color:var(--accent-blue);font-weight:700;">${h.run_id}</code></td>
+            <td>${h.timestamp}</td>
+            <td><span class="badge">${h.topology}</span></td>
+            <td><strong>${h.num_genes}</strong></td>
+            <td>${h.k_av}</td>
+            <td>${h.act_ratio}</td>
+            <td>${h.noise}</td>
+            <td><span class="badge badge-emerald">${h.best_algorithm}</span></td>
+            <td><strong>${h.best_power_pct}%</strong></td>
+            <td>${h.best_specificity_pct}%</td>
+            <td style="color:var(--accent-amber);font-weight:700;">${h.best_total_errors}</td>
+            <td>
+              <a href="/api/download?format=msmt&run_id=${h.run_id}" style="color:var(--accent-blue);margin-right:6px;">.msmt</a>
+              <a href="/api/download?format=pert&run_id=${h.run_id}" style="color:#10b981;margin-right:6px;">.pert</a>
+              <a href="/api/download?format=dot&run_id=${h.run_id}" style="color:var(--accent-amber);margin-right:6px;">.dot</a>
+              <a href="/api/download?format=svg&run_id=${h.run_id}" style="color:var(--accent-pink);">.svg</a>
+            </td>
+            <td style="display:flex;gap:6px;">
+              <button class="btn btn-secondary btn-sm" onclick="selectArchiveRun('${h.run_id}', false)">View Details</button>
+              <button class="btn btn-primary btn-sm" style="width:auto;" onclick="selectArchiveRun('${h.run_id}', true)">Open in Studio</button>
+            </td>
           `;
+          tbody.appendChild(tr);
         });
+
+        // Automatically load the first run into the Tab 4 Detailed Run Inspector if none loaded yet
+        if (!APP_STATE.archiveDetail && data.history.length > 0) {
+          await selectArchiveRun(data.history[0].run_id, false);
+        }
       } catch (e) {
         console.error('History load error:', e);
       }
+    }
+
+    async function selectArchiveRun(runId, switchToStudio = false) {
+      try {
+        const res = await fetch(`/api/history/load?run_id=${encodeURIComponent(runId)}`);
+        const data = await res.json();
+        if (data.status !== 'success') return;
+
+        // Update both the Archive Detail View and the Studio State + Settings
+        APP_STATE.archiveDetail = data;
+        APP_STATE.sim = data;
+        APP_STATE.inferred = data.inferred || {};
+
+        // Populate Wizard sidebar settings with this run's exact parameters
+        applySettingsToForm(data.settings, data);
+        renderAllSimulationViews();
+        if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
+          renderAllInferenceViews();
+        }
+
+        // Highlight selected row in #tbl-history
+        document.querySelectorAll('#tbl-history tbody tr').forEach(tr => {
+          const codeText = tr.querySelector('code')?.textContent?.trim();
+          tr.classList.toggle('selected-row', codeText === runId);
+        });
+
+        // Populate Tab 4 Detailed Inspector
+        renderArchiveDetailPanel(data);
+
+        if (switchToStudio) {
+          switchMainTab('tab-wizard');
+        }
+      } catch (e) {
+        console.error('Error loading archived run:', e);
+      }
+    }
+
+    function openArchiveRunInStudio() {
+      if (APP_STATE.archiveDetail) {
+        switchMainTab('tab-wizard');
+      }
+    }
+
+    function renderArchiveDetailPanel(data) {
+      if (!data) return;
+      const s = data.settings || {};
+      const inf = data.inferred || {};
+
+      document.getElementById('hist-detail-runid').textContent = data.run_id;
+      document.getElementById('hist-detail-topo').textContent = data.topology;
+      document.getElementById('hist-detail-subtitle').textContent =
+        `Loaded Run ${data.run_id} (${data.num_genes} genes, ${data.total_edges} true edges: +${data.activations} / -${data.inhibitions}) — Wizard settings synchronized.`;
+
+      document.getElementById('hsp-mode').textContent = s.mode || data.mode || 'insilico';
+      document.getElementById('hsp-topo').textContent = data.topology;
+      document.getElementById('hsp-n').textContent = `${data.num_genes} genes`;
+      document.getElementById('hsp-kav').textContent = `${data.k_average}`;
+      document.getElementById('hsp-ratio').textContent = `${data.act_ratio}`;
+      document.getElementById('hsp-noise').textContent = `${data.noise}`;
+      document.getElementById('hsp-biovar').textContent = `${data.bio_var}`;
+
+      document.getElementById('hist-gt-edges-badge').textContent =
+        `${data.total_edges} Edges (+${data.activations} / -${data.inhibitions})`;
+      document.getElementById('hist-gt-svg-stage').innerHTML = data.svg_hierarchical || '';
+
+      // Determine best algorithm for this run
+      const metrics = inf.metrics || {};
+      const algs = Object.keys(metrics);
+      if (!algs.length) return;
+
+      let bestAlg = algs[0];
+      algs.forEach(a => {
+        if (metrics[a].total_errors < metrics[bestAlg].total_errors) bestAlg = a;
+      });
+
+      // Populate All-Algorithms Table in Archive Detail Panel
+      const tbody = document.querySelector('#tbl-hist-alg-comparison tbody');
+      tbody.innerHTML = '';
+      algs.forEach(alg => {
+        const st = (inf.tmp_statmat && inf.tmp_statmat[alg]) || {};
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.dataset.alg = alg;
+        tr.onclick = () => renderArchiveDetailAlg(alg);
+        tr.innerHTML = `
+          <td><strong style="color:var(--accent-blue);">${alg.toUpperCase()}</strong></td>
+          <td>${st.power ?? '--'}%</td>
+          <td>${st.specificity ?? '--'}%</td>
+          <td>${st.ppv ?? '--'}%</td>
+          <td>${st.fdr ?? '--'}%</td>
+          <td>${st.signed_ppv ?? '--'}%</td>
+          <td><strong style="color:var(--accent-amber);">${st.total_errors ?? '--'}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      renderArchiveDetailAlg(bestAlg);
+    }
+
+    function renderArchiveDetailAlg(alg) {
+      const data = APP_STATE.archiveDetail;
+      if (!data || !data.inferred) return;
+      const inf = data.inferred;
+      if (!inf.tmp_statmat || !inf.tmp_statmat[alg]) return;
+
+      APP_STATE.archiveActiveAlg = alg;
+      document.getElementById('hist-detail-alg').value = alg;
+      document.getElementById('hist-diff-alg-badge').textContent = alg.toUpperCase();
+      document.getElementById('hist-cmat-alg').textContent = alg.toUpperCase();
+
+      document.querySelectorAll('#tbl-hist-alg-comparison tbody tr').forEach(tr => {
+        tr.classList.toggle('selected-row', tr.dataset.alg === alg);
+      });
+
+      const st = inf.tmp_statmat[alg];
+      document.getElementById('hst-power').textContent = `${st.power ?? '--'}%`;
+      document.getElementById('hst-spec').textContent = `${st.specificity ?? '--'}%`;
+      document.getElementById('hst-ppv').textContent = `${st.ppv ?? '--'}%`;
+      document.getElementById('hst-signed-ppv').textContent = `${st.signed_ppv ?? '--'}%`;
+      document.getElementById('hst-fdr').textContent = `${st.fdr ?? '--'}%`;
+      document.getElementById('hst-fpr').textContent = `${st.false_positive_rate ?? '--'}%`;
+      document.getElementById('hst-fnr').textContent = `${st.false_negative_rate ?? '--'}%`;
+      document.getElementById('hst-err').textContent = `${st.total_errors ?? '--'}`;
+
+      document.getElementById('hist-diff-svg-stage').innerHTML = (inf.svgs_dot && inf.svgs_dot[alg]) || '';
+      renderConfusionMatrixTable('#tbl-hist-cmat tbody', inf.confusion_matrix ? inf.confusion_matrix[alg] : null);
     }
 
     window.addEventListener('DOMContentLoaded', initApp);
