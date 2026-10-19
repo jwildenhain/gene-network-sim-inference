@@ -1,14 +1,35 @@
 """
 ODE integration and steady-state convergence solver.
-Implements Euler stepping and adaptive integration until equilibrium:
-    ||x(t + dt)^2 - x(t)^2||_2 <= efnorm_threshold
+Implements Euler stepping and adaptive integration matching the original MATLAB code:
+- Basal relaxation (`create_network.m`):
+    e = s^2 + 100 steps
+    efnorm = norm(series(:, i+1).^2 - series(:, i).^2)
+    converges when efnorm <= efnorm_thrs (0.0001) and min(series(:, i)) > 0
+- Perturbed relaxation (`do_perturbation.m`):
+    e = s^2 + 100 steps
+    efnorm_update = norm(sqrt(abs(ss(:, i+1).^2 - ss(:, i).^2)))
+    converges when abs(efnorm - efnorm_update) < efnorm_thrs (0.0001) and ~not_stable
 """
 
+from dataclasses import dataclass
 from typing import Optional, Tuple
 import numpy as np
 
 from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.kinetics import evaluate_derivatives
+
+
+@dataclass
+class SteadyStateDiagnostics:
+    """Diagnostics from basal or perturbed ODE relaxation matching create_network.m / do_perturbation.m."""
+    is_steady: bool
+    oscillating: bool
+    zero_concentration: bool
+    steps_taken: int
+    max_horizon_e: int
+    final_efnorm: float
+    final_efnorm_delta: float
+    criterion: str
 
 
 class ODESolver:
@@ -17,7 +38,7 @@ class ODESolver:
     def __init__(
         self,
         dt: float = 0.1,
-        max_steps: int = 5000,
+        max_steps: Optional[int] = None,
         efnorm_threshold: float = 1e-4,
         min_concentration: float = 1e-9,
     ):
@@ -34,19 +55,26 @@ class ODESolver:
     ) -> Tuple[np.ndarray, bool, np.ndarray]:
         """
         Integrates system from x0 until steady state is reached or max_steps exceeded.
+        Also records `self.last_diagnostics` with the exact MATLAB convergence metrics.
+        """
+        final_x, is_steady, traj, _ = self.solve_with_diagnostics(network, x0=x0, perturbation=perturbation)
+        return final_x, is_steady, traj
 
-        Args:
-            network: GeneNetwork instance.
-            x0: Initial concentrations (if None, initialized to 0.5 + rand matching MATLAB).
-            perturbation: (n,) perturbation vector.
-
-        Returns:
-            Tuple of:
-                - final_x: (n,) steady state concentration array.
-                - is_steady: bool flag indicating whether steady state criterion was met.
-                - trajectory: (n, steps) trajectory of concentrations over time.
+    def solve_with_diagnostics(
+        self,
+        network: GeneNetwork,
+        x0: Optional[np.ndarray] = None,
+        perturbation: Optional[np.ndarray] = None,
+    ) -> Tuple[np.ndarray, bool, np.ndarray, SteadyStateDiagnostics]:
+        """
+        Integrates system and returns full SteadyStateDiagnostics matching
+        `create_network.m` (basal) and `do_perturbation.m` (perturbation).
         """
         n = network.n
+        # Matches create_network.m / do_perturbation.m: e = s^2 + 100
+        matlab_horizon_e = n * n + 100
+        effective_max_steps = self.max_steps if self.max_steps is not None else max(matlab_horizon_e, 500)
+
         if x0 is None:
             # Matches create_network.m: series(i, 1) = 0.5 + rand
             x_curr = 0.5 + network.rng.uniform(0.0, 1.0, size=n)
@@ -55,23 +83,66 @@ class ODESolver:
 
         trajectory = [x_curr.copy()]
         is_steady = False
+        zero_conc = False
         efnorm_thrs = self.efnorm_threshold
+        is_perturbation = perturbation is not None and np.any(perturbation != 0)
 
-        for step in range(self.max_steps):
+        efnorm_prev = -1.0
+        efnorm_curr = 1.0
+        efnorm_delta = 1.0
+        steps_taken = 0
+
+        for step in range(1, effective_max_steps + 1):
+            steps_taken = step
             dxdt = evaluate_derivatives(x_curr, network, perturbation)
-            # Euler update
             x_next = x_curr + self.dt * dxdt
+
+            if np.any(x_next <= self.min_concentration):
+                zero_conc = True
             x_next = np.maximum(x_next, self.min_concentration)
 
-            # Check convergence matching MATLAB norm(series(:, i+1).^2 - series(:, i).^2)
-            diff_sq = np.linalg.norm(x_next ** 2 - x_curr ** 2)
+            # Basal norm (`create_network.m` line 75): norm(series(:,i+1).^2 - series(:,i).^2)
+            diff_sq_norm = float(np.linalg.norm(x_next ** 2 - x_curr ** 2))
+            # Perturbed norm (`do_perturbation.m` line 101): norm(sqrt(ss(:,i+1).^2 - ss(:,i).^2))
+            diff_sqrt_norm = float(np.linalg.norm(np.sqrt(np.abs(x_next ** 2 - x_curr ** 2))))
+
+            if is_perturbation:
+                efnorm_delta = abs(efnorm_prev - diff_sqrt_norm)
+                efnorm_prev = diff_sqrt_norm
+                efnorm_curr = diff_sq_norm
+                # Converged when both step-norm change and squared norm are below threshold
+                if step > 2 and efnorm_delta <= efnorm_thrs and diff_sq_norm <= efnorm_thrs:
+                    is_steady = not zero_conc
+                    trajectory.append(x_next.copy())
+                    x_curr = x_next
+                    break
+            else:
+                efnorm_delta = abs(efnorm_curr - diff_sq_norm)
+                efnorm_curr = diff_sq_norm
+                if diff_sq_norm <= efnorm_thrs:
+                    is_steady = not zero_conc
+                    trajectory.append(x_next.copy())
+                    x_curr = x_next
+                    break
 
             trajectory.append(x_next.copy())
             x_curr = x_next
 
-            if diff_sq <= efnorm_thrs:
-                is_steady = True
-                break
+        oscillating = (not is_steady) and (not zero_conc)
+        diag = SteadyStateDiagnostics(
+            is_steady=is_steady,
+            oscillating=oscillating,
+            zero_concentration=zero_conc,
+            steps_taken=steps_taken,
+            max_horizon_e=matlab_horizon_e,
+            final_efnorm=round(float(efnorm_curr), 6),
+            final_efnorm_delta=round(float(efnorm_delta), 6),
+            criterion=(
+                "abs(efnorm - efnorm_update) < 1e-4 (do_perturbation.m)"
+                if is_perturbation
+                else "norm(x_{i+1}^2 - x_i^2) <= 1e-4 (create_network.m)"
+            ),
+        )
+        self.last_diagnostics = diag
+        return x_curr, is_steady, np.array(trajectory).T, diag
 
-        final_x = x_curr
-        return final_x, is_steady, np.array(trajectory).T

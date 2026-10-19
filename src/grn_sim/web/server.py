@@ -45,6 +45,13 @@ from grn_sim.visualization.graph_export import (
     compute_detailed_confusion_matrix,
     format_matrix_tsv,
 )
+from grn_sim.web.database import (
+    init_db,
+    save_simulation_to_db,
+    load_all_history_from_db,
+    load_run_from_db,
+    get_db_stats,
+)
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -68,10 +75,11 @@ CURRENT_STATE: Dict[str, Any] = {
     "edge_params": {},
     "basal_trajectory": [],
     "perturbation_trajectories": [],
+    "steady_state_diagnostics": {},
     "inferred_results": {},
 }
 
-# Archive of runs matching `showpre.php`
+# Archive of runs matching `showpre.php` (backed by SQLite `rgn_db.sqlite`)
 SIMULATION_HISTORY: List[Dict[str, Any]] = []
 SIMULATION_RUN_STORE: Dict[str, Dict[str, Any]] = {}
 
@@ -263,6 +271,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             is_valid_steady_state=True,
             basal_trajectory=sim_exp.basal_trajectory,
             perturbation_trajectories=sim_exp.perturbation_trajectories,
+            steady_state_diagnostics=sim_exp.steady_state_diagnostics,
         )
     else:
         if topo_str == "random":
@@ -291,6 +300,10 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         gene_names = [f"G{i+1}" for i in range(num_genes)]
 
     kin = _extract_kinetics_and_trajectories(network, experiment, gene_names)
+    ss_diag = experiment.steady_state_diagnostics or {
+        "is_valid_steady_state": bool(experiment.is_valid_steady_state),
+        "oscillating_detected": not bool(experiment.is_valid_steady_state),
+    }
 
     dot_hier = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
     dot_spring = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
@@ -334,6 +347,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "edge_list": kin["edge_list"],
         "basal_trajectory": kin["basal_trajectory"],
         "perturbation_trajectories": kin["perturbation_trajectories"],
+        "steady_state_diagnostics": ss_diag,
         "dot_hierarchical": dot_hier,
         "dot_spring": dot_spring,
         "svg_hierarchical": svg_hier,
@@ -369,6 +383,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "edge_list": kin["edge_list"],
         "basal_trajectory": kin["basal_trajectory"],
         "perturbation_trajectories": kin["perturbation_trajectories"],
+        "steady_state_diagnostics": ss_diag,
         "graph": graph_json,
         "dot": dot_spring,
         "dot_hierarchical": dot_hier,
@@ -387,11 +402,14 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "settings": dict(input_settings),
     }
 
+    # Persist initial network record to SQLite `rgn_db.sqlite`
+    save_simulation_to_db(run_id=run_id, sim_payload=sim_payload)
+
     return sim_payload
 
 
 def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
-    """Runs selected reverse-engineering algorithms on CURRENT_STATE and records to SIMULATION_HISTORY."""
+    """Runs selected reverse-engineering algorithms on CURRENT_STATE and records to SIMULATION_HISTORY and SQLite `rgn_db`."""
     experiment = CURRENT_STATE["experiment"]
     true_matrix = CURRENT_STATE["true_matrix"]
     gene_names = CURRENT_STATE["gene_names"]
@@ -484,6 +502,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     best_alg = min(metrics_dict.keys(), key=lambda k: metrics_dict[k]["total_errors"]) if metrics_dict else primary_alg
     settings = dict(CURRENT_STATE.get("settings") or {})
     settings["algorithms"] = list(metrics_dict.keys())
+    ss_diag = CURRENT_STATE.get("steady_state_diagnostics") or {}
 
     if run_id in SIMULATION_RUN_STORE:
         SIMULATION_RUN_STORE[run_id]["inferred_payload"] = result_payload
@@ -503,6 +522,9 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "noise": CURRENT_STATE["noise"],
         "bio_var": CURRENT_STATE["bio_var"],
         "seed": CURRENT_STATE.get("seed", 42),
+        "steady_state": bool(ss_diag.get("is_valid_steady_state", True)),
+        "oscillating": bool(ss_diag.get("oscillating_detected", False)),
+        "steady_state_diagnostics": ss_diag,
         "settings": settings,
         "algorithms": list(metrics_dict.keys()),
         "best_algorithm": best_alg.upper(),
@@ -519,18 +541,72 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     else:
         SIMULATION_HISTORY.insert(0, history_entry)
 
+    # Persist full simulation + reverse-engineering run to SQLite `rgn_db.sqlite`
+    sim_payload_for_db = SIMULATION_RUN_STORE.get(run_id, {}).get("sim_payload", {})
+    save_simulation_to_db(
+        run_id=run_id,
+        sim_payload=sim_payload_for_db,
+        inferred_payload=result_payload,
+        history_entry=history_entry,
+    )
+
     return result_payload
 
 
 def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
-    """Loads an archived simulation run into CURRENT_STATE and returns its full payload."""
-    if not run_id or run_id not in SIMULATION_RUN_STORE:
+    """Loads an archived simulation run into CURRENT_STATE (from memory or SQLite `rgn_db.sqlite`) and returns its full payload."""
+    if not run_id:
         return None
-    stored = SIMULATION_RUN_STORE[run_id]
-    CURRENT_STATE.update(stored["state"])
-    sim_payload = dict(stored["sim_payload"])
-    sim_payload["settings"] = dict(stored.get("settings", sim_payload.get("settings", {})))
-    sim_payload["inferred"] = stored["inferred_payload"]
+    if run_id in SIMULATION_RUN_STORE:
+        stored = SIMULATION_RUN_STORE[run_id]
+        CURRENT_STATE.update(stored["state"])
+        sim_payload = dict(stored["sim_payload"])
+        sim_payload["settings"] = dict(stored.get("settings", sim_payload.get("settings", {})))
+        sim_payload["inferred"] = stored["inferred_payload"]
+        return sim_payload
+
+    db_record = load_run_from_db(run_id)
+    if not db_record or not db_record.get("sim_payload"):
+        return None
+    sim_payload = dict(db_record["sim_payload"])
+    inferred_payload = dict(db_record.get("inferred_payload") or {})
+    settings = dict(db_record.get("settings") or sim_payload.get("settings") or {})
+    sim_payload["settings"] = settings
+    sim_payload["inferred"] = inferred_payload
+
+    adj_arr = np.array(sim_payload.get("true_matrix", []), dtype=int)
+    CURRENT_STATE.update({
+        "run_id": run_id,
+        "mode": sim_payload.get("mode", "insilico"),
+        "seed": sim_payload.get("seed", 42),
+        "settings": settings,
+        "true_matrix": adj_arr,
+        "gene_names": sim_payload.get("gene_names", []),
+        "topology": sim_payload.get("topology", "power_law"),
+        "k_av": sim_payload.get("k_average", 1.8),
+        "act_ratio": sim_payload.get("act_ratio", 0.5),
+        "noise": sim_payload.get("noise", 0.05),
+        "bio_var": sim_payload.get("bio_var", 0.02),
+        "node_params": sim_payload.get("node_params", []),
+        "edge_params": sim_payload.get("edge_params", {}),
+        "edge_list": sim_payload.get("edge_list", []),
+        "basal_trajectory": sim_payload.get("basal_trajectory", []),
+        "perturbation_trajectories": sim_payload.get("perturbation_trajectories", []),
+        "steady_state_diagnostics": sim_payload.get("steady_state_diagnostics", {}),
+        "dot_hierarchical": sim_payload.get("dot_hierarchical", ""),
+        "dot_spring": sim_payload.get("dot_spring", ""),
+        "svg_hierarchical": sim_payload.get("svg_hierarchical", ""),
+        "svg_spring": sim_payload.get("svg_spring", ""),
+        "msmt_text": sim_payload.get("msmt_text", ""),
+        "pert_text": sim_payload.get("pert_text", ""),
+        "inferred_results": inferred_payload,
+    })
+    SIMULATION_RUN_STORE[run_id] = {
+        "state": dict(CURRENT_STATE),
+        "sim_payload": sim_payload,
+        "inferred_payload": inferred_payload,
+        "settings": settings,
+    }
     return sim_payload
 
 
@@ -749,6 +825,17 @@ def _build_thesis_figures_data() -> Dict[str, Any]:
 def _bootstrap_initial_simulation():
     """Seeds an initial 12-gene Scale-Free simulation + inference + archive history on server startup."""
     try:
+        init_db()
+        existing_db_history = load_all_history_from_db()
+        if existing_db_history:
+            SIMULATION_HISTORY.clear()
+            SIMULATION_HISTORY.extend(existing_db_history)
+            latest_run_id = existing_db_history[0].get("run_id")
+            if latest_run_id:
+                _load_archived_run(latest_run_id)
+                if CURRENT_STATE["true_matrix"] is not None:
+                    return
+
         # Seed historical runs for showpre.php
         presets = [
             {"num_genes": 10, "topology": "random", "k_av": 1.5, "act_ratio": 0.6, "noise": 0.02, "seed": 11},
@@ -804,12 +891,14 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/status":
             has_sim = CURRENT_STATE["true_matrix"] is not None
+            db_stats = get_db_stats()
             resp = {
                 "status": "ready",
                 "has_active_simulation": has_sim,
                 "run_id": CURRENT_STATE.get("run_id"),
                 "num_genes": len(CURRENT_STATE["gene_names"]) if has_sim else 0,
                 "history_count": len(SIMULATION_HISTORY),
+                "database": db_stats,
             }
             self._set_headers(200)
             self.wfile.write(json.dumps(resp).encode("utf-8"))
@@ -839,13 +928,14 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 "activations": int(np.sum(adj > 0)),
                 "inhibitions": int(np.sum(adj < 0)),
                 "true_matrix": adj.tolist(),
-                "X": np.round(exp.X, 4).tolist(),
-                "U": np.round(exp.U, 4).tolist(),
+                "X": np.round(exp.X, 4).tolist() if exp is not None else [],
+                "U": np.round(exp.U, 4).tolist() if exp is not None else [],
                 "node_params": CURRENT_STATE["node_params"],
                 "edge_params": CURRENT_STATE["edge_params"],
                 "edge_list": CURRENT_STATE.get("edge_list", []),
                 "basal_trajectory": CURRENT_STATE["basal_trajectory"],
                 "perturbation_trajectories": CURRENT_STATE["perturbation_trajectories"],
+                "steady_state_diagnostics": CURRENT_STATE.get("steady_state_diagnostics", {}),
                 "graph": export_graph_json(adj, gene_names),
                 "dot_hierarchical": CURRENT_STATE.get("dot_hierarchical", ""),
                 "dot_spring": CURRENT_STATE.get("dot_spring", ""),
@@ -948,10 +1038,15 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             return
 
         elif path == "/api/history":
+            db_history = load_all_history_from_db()
+            if db_history:
+                SIMULATION_HISTORY.clear()
+                SIMULATION_HISTORY.extend(db_history)
             self._set_headers(200)
             self.wfile.write(json.dumps({
                 "status": "success",
                 "active_run_id": CURRENT_STATE.get("run_id"),
+                "database": get_db_stats(),
                 "history": SIMULATION_HISTORY,
             }).encode("utf-8"))
             return

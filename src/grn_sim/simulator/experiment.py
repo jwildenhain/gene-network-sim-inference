@@ -32,6 +32,7 @@ class SimulationExperiment:
     is_valid_steady_state: bool         # Whether all simulations reached valid steady state
     basal_trajectory: Optional[np.ndarray] = None           # (n, steps) trajectory to basal steady state
     perturbation_trajectories: Optional[list] = None        # list of (n, steps) trajectories per perturbed gene j
+    steady_state_diagnostics: Optional[dict] = None         # Detailed oscillation / efnorm diagnostics
 
 
 class PerturbationSimulator:
@@ -76,10 +77,10 @@ class PerturbationSimulator:
             sim_net = network
 
         # 1. Compute reference unperturbed steady state
-        x_ss, ss_ok, basal_traj = self.solver.solve_to_steady_state(sim_net)
+        x_ss, ss_ok, basal_traj, basal_diag = self.solver.solve_with_diagnostics(sim_net)
         if not ss_ok or np.any(x_ss <= 0):
             # Fallback retry with small perturbation if starting state hit zero
-            x_ss, ss_ok, basal_traj = self.solver.solve_to_steady_state(sim_net, x0=np.ones(n))
+            x_ss, ss_ok, basal_traj, basal_diag = self.solver.solve_with_diagnostics(sim_net, x0=np.ones(n))
 
         sim_net.steady_state_unperturbed = x_ss
 
@@ -91,6 +92,8 @@ class PerturbationSimulator:
         error_pert = np.zeros((n, n), dtype=float)
         all_steady = ss_ok
         pert_trajectories = []
+        pert_diags = []
+        oscillating_perturbations = 0
 
         # 2. Perturb each gene sequentially
         for j in range(n):
@@ -108,15 +111,26 @@ class PerturbationSimulator:
             U[j, j] = u_vec[j]
 
             # Solve system from reference steady state under perturbation u_vec
-            x_pert, p_steady, p_traj = self.solver.solve_to_steady_state(
+            x_pert, p_steady, p_traj, p_diag = self.solver.solve_with_diagnostics(
                 sim_net,
                 x0=x_ss.copy(),
                 perturbation=u_vec,
             )
             pert_trajectories.append(p_traj)
+            pert_diags.append({
+                "gene_idx": j,
+                "is_steady": p_diag.is_steady,
+                "oscillating": p_diag.oscillating,
+                "zero_concentration": p_diag.zero_concentration,
+                "steps_taken": p_diag.steps_taken,
+                "final_efnorm": p_diag.final_efnorm,
+                "final_efnorm_delta": p_diag.final_efnorm_delta,
+            })
 
             if not p_steady:
                 all_steady = False
+            if p_diag.oscillating:
+                oscillating_perturbations += 1
 
             # Apply measurement noise to observed steady state
             if self.measurement_noise > 0.0:
@@ -133,6 +147,23 @@ class PerturbationSimulator:
             safe_ss = np.maximum(x_ss, 1e-12)
             X[:, j] = (x_meas / safe_ss) - 1.0
 
+        diag_summary = {
+            "is_valid_steady_state": all_steady,
+            "oscillating_detected": bool(basal_diag.oscillating or oscillating_perturbations > 0),
+            "oscillating_perturbations_count": oscillating_perturbations,
+            "matlab_horizon_e": basal_diag.max_horizon_e,
+            "efnorm_threshold": self.solver.efnorm_threshold,
+            "basal": {
+                "is_steady": basal_diag.is_steady,
+                "oscillating": basal_diag.oscillating,
+                "zero_concentration": basal_diag.zero_concentration,
+                "steps_taken": basal_diag.steps_taken,
+                "final_efnorm": basal_diag.final_efnorm,
+                "criterion": basal_diag.criterion,
+            },
+            "perturbations": pert_diags,
+        }
+
         return SimulationExperiment(
             network=sim_net,
             true_matrix=network.topology.adjacency.copy(),
@@ -145,4 +176,6 @@ class PerturbationSimulator:
             is_valid_steady_state=all_steady,
             basal_trajectory=basal_traj,
             perturbation_trajectories=pert_trajectories,
+            steady_state_diagnostics=diag_summary,
         )
+

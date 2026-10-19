@@ -781,7 +781,10 @@
         <aside class="panel">
           <div class="panel-header">
             <div class="panel-title">Wizard Configuration</div>
-            <span class="badge" id="active-run-badge">Run Ready</span>
+            <div style="display:flex;gap:5px;align-items:center;">
+              <span class="badge badge-emerald" id="steady-state-badge" title="ODE Steady-State & Oscillation Detection (create_network.m / do_perturbation.m)">Steady State OK</span>
+              <span class="badge" id="active-run-badge">Run Ready</span>
+            </div>
           </div>
 
           <!-- Step 1: Data Source Mode -->
@@ -1318,7 +1321,10 @@
       <div class="panel" style="margin-bottom:16px;">
         <div class="panel-header">
           <div>
-            <div class="panel-title" style="font-size:15px;">Previous Simulations &amp; Re-Engineering Archive (showpre.php)</div>
+            <div class="panel-title" style="font-size:15px;">
+              Previous Simulations &amp; Re-Engineering Archive (showpre.php &bull; SQLite <code>rgn_db</code>)
+              <span class="badge badge-emerald" id="db-status-badge" style="margin-left:6px;">SQLite Persisted</span>
+            </div>
             <div style="font-size:11.5px;color:var(--text-muted);">Click any simulation row below to load its exact settings and inspect its full network &amp; statistical results in detail</div>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="loadHistoryTable()">Refresh Archive</button>
@@ -1335,6 +1341,7 @@
                 <th>k_av</th>
                 <th>Act Ratio</th>
                 <th>Noise (&sigma;_m)</th>
+                <th>ODE Equilibrium</th>
                 <th>Best Method</th>
                 <th>Power (%)</th>
                 <th>Specificity (%)</th>
@@ -1377,14 +1384,15 @@
         </div>
 
         <!-- Run Settings Summary Ribbon -->
-        <div class="settings-pill-grid" id="hist-settings-pills">
+        <div class="settings-pill-grid" id="hist-settings-pills" style="grid-template-columns:repeat(8,1fr);">
           <div class="settings-pill"><div class="sp-lbl">Mode</div><div class="sp-val" id="hsp-mode">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Topology</div><div class="sp-val" id="hsp-topo">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Network Size (n)</div><div class="sp-val" id="hsp-n">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Connectivity (k_av)</div><div class="sp-val" id="hsp-kav">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Act / Inh Ratio</div><div class="sp-val" id="hsp-ratio">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Meas. Noise (&sigma;_m)</div><div class="sp-val" id="hsp-noise">--</div></div>
-          <div class="settings-pill"><div class="sp-lbl">Bio Variability (&sigma;_b)</div><div class="sp-val" id="hsp-biovar">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">Random Seed</div><div class="sp-val" id="hsp-biovar">--</div></div>
+          <div class="settings-pill"><div class="sp-lbl">ODE Convergence</div><div class="sp-val" id="hsp-steady">--</div></div>
         </div>
 
         <!-- 8-Metric $TMP_STATMAT Ribbon for Selected Archived Run -->
@@ -1793,6 +1801,20 @@
       if (!sim) return;
 
       document.getElementById('active-run-badge').textContent = sim.run_id || 'Active';
+      const ssBadge = document.getElementById('steady-state-badge');
+      if (ssBadge) {
+        const diag = sim.steady_state_diagnostics || {};
+        const osc = Boolean(diag.oscillating_detected);
+        const steps = diag.basal ? diag.basal.steps_taken : '--';
+        const maxE = diag.matlab_horizon_e || (sim.num_genes * sim.num_genes + 100);
+        if (osc) {
+          ssBadge.textContent = `Oscillating (${diag.oscillating_perturbations_count || 1} pert > e=${maxE})`;
+          ssBadge.className = 'badge badge-amber';
+        } else {
+          ssBadge.textContent = `Steady State (${steps}/${maxE} steps, efnorm≤1e-4)`;
+          ssBadge.className = 'badge badge-emerald';
+        }
+      }
       document.getElementById('gt-summary-badge').textContent =
         `${sim.num_genes} Genes • ${sim.total_edges} Edges (+${sim.activations} / -${sim.inhibitions})`;
 
@@ -2802,6 +2824,11 @@
         if (!tbody || !data.history) return;
         tbody.innerHTML = '';
 
+        const dbBadge = document.getElementById('db-status-badge');
+        if (dbBadge && data.database) {
+          dbBadge.textContent = `SQLite rgn_db (${data.database.nw_rows} nw / ${data.database.alg_rows} alg rows)`;
+        }
+
         const activeRunId = (APP_STATE.archiveDetail && APP_STATE.archiveDetail.run_id) || data.active_run_id;
 
         data.history.forEach(h => {
@@ -2812,6 +2839,10 @@
             if (ev.target.tagName === 'A' || ev.target.tagName === 'BUTTON') return;
             selectArchiveRun(h.run_id, false);
           };
+          const osc = Boolean(h.oscillating);
+          const eqHtml = osc
+            ? `<span class="badge badge-amber">Oscillating</span>`
+            : `<span class="badge badge-emerald">Steady State</span>`;
           tr.innerHTML = `
             <td>#${h.id}</td>
             <td><code style="color:var(--accent-blue);font-weight:700;">${h.run_id}</code></td>
@@ -2821,6 +2852,7 @@
             <td>${h.k_av}</td>
             <td>${h.act_ratio}</td>
             <td>${h.noise}</td>
+            <td>${eqHtml}</td>
             <td><span class="badge badge-emerald">${h.best_algorithm}</span></td>
             <td><strong>${h.best_power_pct}%</strong></td>
             <td>${h.best_specificity_pct}%</td>
@@ -2893,11 +2925,12 @@
       if (!data) return;
       const s = data.settings || {};
       const inf = data.inferred || {};
+      const diag = data.steady_state_diagnostics || {};
 
       document.getElementById('hist-detail-runid').textContent = data.run_id;
       document.getElementById('hist-detail-topo').textContent = data.topology;
       document.getElementById('hist-detail-subtitle').textContent =
-        `Loaded Run ${data.run_id} (${data.num_genes} genes, ${data.total_edges} true edges: +${data.activations} / -${data.inhibitions}) — Wizard settings synchronized.`;
+        `Loaded Run ${data.run_id} (${data.num_genes} genes, ${data.total_edges} true edges: +${data.activations} / -${data.inhibitions}, seed=${data.seed ?? s.seed ?? 42}) — Stored in SQLite rgn_db.`;
 
       document.getElementById('hsp-mode').textContent = s.mode || data.mode || 'insilico';
       document.getElementById('hsp-topo').textContent = data.topology;
@@ -2905,7 +2938,12 @@
       document.getElementById('hsp-kav').textContent = `${data.k_average}`;
       document.getElementById('hsp-ratio').textContent = `${data.act_ratio}`;
       document.getElementById('hsp-noise').textContent = `${data.noise}`;
-      document.getElementById('hsp-biovar').textContent = `${data.bio_var}`;
+      document.getElementById('hsp-biovar').textContent = `Seed ${data.seed ?? s.seed ?? 42}`;
+      const hspSteady = document.getElementById('hsp-steady');
+      if (hspSteady) {
+        const steps = diag.basal ? diag.basal.steps_taken : '--';
+        hspSteady.textContent = diag.oscillating_detected ? 'Oscillating' : `Steady (${steps} steps)`;
+      }
 
       document.getElementById('hist-gt-edges-badge').textContent =
         `${data.total_edges} Edges (+${data.activations} / -${data.inhibitions})`;
