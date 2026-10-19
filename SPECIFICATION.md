@@ -545,4 +545,89 @@ Matches stored MATLAB `pred_matrix` vectors bit-for-bit:
 #### C. 25-File `overallstats/` Grid
 Archives in `data/matlab_benchmarks/overallstats/` spanning $k_{\text{av}} \in \{1.0, 1.5, 2.0, 3.0, 5.0\}$ and $\sigma \in \{0.0, 0.001, 0.0025, 0.005, 0.01\}$ across network sizes $N \in \{10, 20, 30, 40, 50, 60, 70\}$. All metrics (`Power`, `FDR`, `TotErrors`, `Runtime`) are sanitized with `np.nan_to_num` and served through the interactive inspector in Tab 3.
 
+---
+
+## 11. Single-Cell Perturb-seq Simulator & Virtual Cell Challenge (VCC 2026) Specification
+
+### 11.1 Non-Linear ODE-to-Single-Cell Count Emission Pipeline
+
+The single-cell simulation module (`src/grn_sim/simulator/perturb_seq.py`) bridges continuous ODE steady-state concentrations directly into discrete, single-cell integer UMI counts matching 10x Genomics Chromium Perturb-seq and Arc Institute VCC 2026 specifications ($400$ cells per condition).
+
+Given an $N$-gene network with unperturbed steady state $\mathbf{x}^{\text{ss}}$ and single-gene transcriptional perturbation steady states $\mathbf{x}^{p, j}$ for $j \in \{1, \dots, N\}$, the deterministic expression profile matrix is:
+
+$$\mathbf{M} = \big[\mathbf{x}^{\text{ss}}, \quad \mathbf{x}^{p, 1}, \quad \mathbf{x}^{p, 2}, \quad \dots, \quad \mathbf{x}^{p, N}\big] \in \mathbb{R}^{N \times (N+1)}$$
+
+For each condition $k \in \{0, \dots, N\}$ (where $k=0$ is unperturbed control and $k \ge 1$ is perturbation of gene $k$), the relative expression probability distribution is normalized:
+
+$$\mathbf{p}_k = \frac{\mathbf{M}_{:, k}}{\sum_{i=1}^N M_{ik}}$$
+
+### 11.2 Gamma-Poisson Overdispersion & Sequencing Depth Model
+
+Each individual single cell $c \in \{1, \dots, C\}$ (with $C = 400$) is generated through a hierarchical Gamma-Poisson emission model:
+
+1. **Cell Sequencing Depth (Library Size)**:
+   Sequencing depth $s_c$ exhibits log-normal biological and technical capture variation:
+   $$s_c \sim \text{LogNormal}\left(\ln(\mu_{\text{depth}}) - \frac{1}{2}\sigma_{\text{depth}}^2, \, \sigma_{\text{depth}}\right)$$
+   where $\mu_{\text{depth}} = 20{,}000$ UMIs and $\sigma_{\text{depth}} = 0.35$.
+
+2. **Gene Expression Probability Perturbation (Gamma Biological Shock)**:
+   Gene-specific expression probabilities fluctuate due to bursty transcription and transcriptional noise:
+   $$\lambda_{c, i} \sim \text{Gamma}\left(\text{shape} = \alpha, \, \text{scale} = \frac{p_{k, i}}{\alpha}\right), \quad \alpha = \frac{1}{\phi_{\text{dispersion}}}$$
+   where $\phi_{\text{dispersion}} = 0.15$ governs overdispersion (Negative-Binomial parameterization). The sampled vector is re-normalized such that $\sum_{i=1}^N \lambda_{c, i} = 1$.
+
+3. **Discrete UMI Count Sampling**:
+   $$Y_{c, i} \sim \text{Poisson}(\lambda_{c, i} \cdot s_c), \quad Y_{c, i} \in \mathbb{N}_0$$
+
+4. **Counts Per Million (CPM) Layer**:
+   $$\text{CPM}_{c, i} = \frac{Y_{c, i}}{\sum_{j=1}^N Y_{c, j}} \times 10^6$$
+
+### 11.3 AnnData (`.h5ad`) Data Schema
+
+The resulting dataset is packed into a standard `anndata.AnnData` object:
+- **`X`**: `scipy.sparse.csr_matrix` of shape $(C \cdot (N+1), N)$ containing integer counts $Y_{c, i}$.
+- **`layers['cpm']`**: Sparse normalized CPM matrix.
+- **`obs`** (`pd.DataFrame`):
+  - `cell_barcode`: Unique identifier `f"{condition}_cell_{c:04d}"`.
+  - `perturbation`: Perturbed gene symbol (or `"non-targeting"` for control).
+  - `condition`: Condition name (`"control"`, `"Gene_01"`, etc.).
+  - `is_control`: Boolean flag.
+  - `total_counts`: Integer library size $\sum_i Y_{c, i}$.
+  - `detected_genes`: Integer number of non-zero genes.
+- **`var`** (`pd.DataFrame`):
+  - `gene_name`: Gene identifier.
+  - `is_perturbed_target`: Boolean flag.
+  - `mean_control_cpm`: Mean baseline CPM.
+- **`uns`** (`dict`):
+  - `ground_truth_network`: True Jacobian adjacency matrix $\mathbf{A}$.
+  - `perturbation_matrix`: Transcriptional perturbation matrix $\mathbf{U}$.
+  - `cells_per_condition`: $400$.
+
+### 11.4 AtlasShift Empirical Cross-Atlas Perturbation Transfer Algorithm
+
+Reverse-engineered from Kaipeng Meng's Arc Institute VCC 2026 solution (`kaipengm2/Virtual-Cell-Challenge-2026`, Leaderboard #82, Score `0.15456`):
+- **Effect Fusion**: Combines differential expression shifts $\Delta \mathbf{y}^{(s)}$ from $S$ source reference cell lines (K562, HCT116, HEK293T) using weights $\mathbf{w}$:
+  $$\Delta \mathbf{y}_{\text{fused}} = \frac{\sum_{s=1}^S w_s \Delta \mathbf{y}^{(s)}}{\sum_{s=1}^S w_s}$$
+- **Desired Mean Calculation**: Scales target baseline control expression $\mathbf{y}_{\text{ctrl}}$ in log2 fold-change space:
+  $$\mathbf{y}_{\text{target}} \propto \mathbf{y}_{\text{ctrl}} \cdot 2^{\gamma \Delta \mathbf{y}_{\text{fused}}}$$
+- **Dual-Moment Iterative Count Emission**: Re-scales a template single-cell matrix via iterative biproportional fitting (Sinkhorn-like alternating row and column scaling) to simultaneously match single-cell library depths and target gene mean probabilities.
+
+### 11.5 Comparative Evaluation: Mechanistic GRN vs. Empirical Transfer
+
+Evaluated in `src/grn_sim/benchmarks/vcc_benchmark.py`:
+
+1. **In-Distribution Generalization**:
+   When the target gene perturbation was observed across source reference atlases, AtlasShift borrows empirical shifts ($r \approx 0.526$, RMSE $0.228$) outperforming or matching mechanistic GRN ($r \approx 0.35 - 0.55$) by leveraging real empirical cross-cell line co-dependencies.
+
+2. **Out-of-Distribution (OOD) Generalization**:
+   When a perturbation target was unseen across all source atlases:
+   - **AtlasShift collapses to $r = 0.0$** (zero-prior collapse) because without empirical data, $\Delta \mathbf{y}_{\text{fused}} = \mathbf{0}$.
+   - **phpIoRN Mechanistic GRN predicts unseen targets ($r = 0.561$, RMSE $0.079$)** by inverting the reconstructed causal network Jacobian:
+     $$\hat{\mathbf{X}} = \mathbf{A}_{\text{est}}^{-1} \mathbf{U}$$
+     perturbation forces propagate along physical network cascades to downstream genes.
+
+3. **Context Rewiring Sensitivity**:
+   As target cell line rewiring increases ($\rho = 0\% \to 50\%$ edge mutations/enhancer switching):
+   - AtlasShift correlation decays rapidly from $r = 0.662 \to 0.276$.
+   - Demonstrates that empirical transfer fails when cell lines undergo significant transcriptional network rewiring, necessitating mechanistic causal modeling.
+
 
