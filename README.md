@@ -77,22 +77,40 @@ Replication of the 9-gene *E. coli* SOS DNA Repair Pathway (Gardner et al., *Sci
 * **Noise & Biological Variability Models (`do_biovariability.m`, `error_model.m`)**:
   * Biological variability across $M$ replicates ($\zeta \sim \mathcal{N}(0, \sigma_b^2)$) and Gaussian measurement noise ($\epsilon \sim \mathcal{N}(0, \sigma_m^2)$).
 
-### 2. Network Inference & Reverse Engineering Algorithms
+### 2. Network Inference & Reverse Engineering Algorithms (100% MATLAB Numerical Equivalence)
 * **S2G (Simple-to-General — `s2g.m` / `getvar.m`)**:
-  * Greedy forward basis selection with swap replacement (`getanother`), minimizing the MDL/AIC log penalty $C(k) = N \ln(\text{MSE}) + k \ln(N)$.
+  * Column-normalized basis regression ($B = X / \|X_j\|_2$) with swap replacement loop (`getanother`), minimizing the MDL log-error penalty $C(k) = N \ln(\overline{E^2}) + k \ln(N)$.
 * **G2S (General-to-Specific — `g2s.m` / `gen2spec.m`)**:
-  * Systematic backward elimination starting from full connectivity, minimizing AIC $C_{\text{AIC}}(k) = \text{SSE} + k$.
+  * Systematic backward elimination starting from full connectivity with single-variable drop optimization (`dropanother`), minimizing AIC $C_{\text{AIC}}(k) = \sum E^2 + k$.
 * **NIR (Network Identification by multiple Regression — `nir_v3.m`)**:
-  * Top-$D$ beam search over sparse regulatory subsets with errors-in-variables Tikhonov regularization (Gardner et al., *Science* 2003).
+  * Gardner et al. (*Science* 2003) greedy forward top-$D$ search over sparse regulatory subsets with Tikhonov ridge regularization.
 * **FAST (`fast.m` / `fast_modified.m`)**:
-  * Singular Value Decomposition (SVD) pseudo-inverse truncation with self-regulation correction (`+ I_N`) and degree-guided sparsity thresholding (Farina et al.).
+  * Singular Value Decomposition (SVD) pseudo-inverse reconstruction ($A_0 = (X - U) V_r S_r^{-1} U_r^T - I$) with self-regulation adjustment and degree-guided truncation (Farina et al.).
 * **Voting Ensemble (`do_vote.m`)**:
-  * Strict consensus operator combining S2G and G2S predictions where `sign(S2G) == sign(G2S)`.
+  * Strict consensus operator combining S2G and G2S predictions where $\text{sign}(\text{S2G}) == \text{sign}(\text{G2S})$, cutting false discovery rates drastically.
 * **By-Chance (`by_chance.m`)**:
-  * Random null baseline matching expected connectivity density and activator/inhibitor ratio.
+  * Random null baseline maintaining expected network connectivity density and activator/inhibitor balance.
 
-### 3. Persistent SQLite Archive (`dumpdb.sql` / `database.py`)
-* Stores every simulation run and per-algorithm evaluation into `data/rgn_db.sqlite` using the original `phpIoRN` relational schema (`nw` table for network parameters + `alg` table for per-algorithm metrics), plus full JSON state recovery for instant inspection in Tab 4 (`showpre.php`).
+#### Verified 100% Match to Thesis Table 4.1 (*E. coli* SOS Benchmark)
+Tested in [`tests/test_inference.py::test_matlab_equivalence_sos_table_4_1`](tests/test_inference.py):
+
+| Algorithm | Coverage % | False Positives % | Inferred Conn. (Power %) | FDR (FP/Inferred %) | Inferred Sign % | Total Errors | $3 \times 3$ Confusion Matrix Match (Appendix A.4–A.7) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **S2G** | `56.79%` | `8.64%` | `42.86%` | `25.00%` | `12.35%` | **`46`** | `[[6, 8, 17], [3, 4, 11], [2, 5, 25]]` (100% Identical) |
+| **G2S** | `38.27%` | `16.05%` | `24.49%` | `52.00%` | `6.17%` | **`57`** | `[[5, 4, 22], [3, 0, 15], [5, 8, 19]]` (100% Identical) |
+| **FAST** | `55.56%` | `19.75%` | `59.18%` | `35.56%` | `23.46%` | **`46`** | `[[16, 4, 11], [6, 3, 9], [13, 3, 16]]` (100% Identical) |
+| **NIR** | `62.96%` | `16.05%` | `65.31%` | `28.89%` | `25.93%` | **`41`** | `[[17, 7, 7], [4, 4, 10], [11, 2, 19]]` (100% Identical) |
+
+#### Verified Bit-for-Bit Match to 60-Gene MATLAB Run (`random_nz60_run5_iot2_sig0.mat`)
+Tested in [`tests/test_inference.py::test_matlab_equivalence_60_gene_archive`](tests/test_inference.py):
+- **S2G**: Inferred $3 \times 3$ confusion vector matches stored MATLAB vector `pred_matrix_sg[:, -1]` bit-for-bit: `[22, 0, 70, 0, 33, 59, 5, 0, 3411]`.
+- **NIR**: Inferred $3 \times 3$ confusion vector matches stored MATLAB vector `pred_matrix_gardener[:, -1]` bit-for-bit: `[15, 2, 99, 2, 22, 40, 10, 9, 3401]`.
+
+### 3. Persistent SQLite Archive & Thesis Figures Gallery
+* **Persistent SQLite Archive (`dumpdb.sql` / `database.py`)**:
+  Stores every simulation run and per-algorithm evaluation into `data/rgn_db.sqlite` using the original `phpIoRN` relational schema (`nw` table for network parameters + `alg` table for per-algorithm metrics), plus full JSON state recovery for instant inspection in Tab 4 (`showpre.php`).
+* **Thesis & Paper Figures Gallery (Dual Engine)**:
+  Tab 3 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
 
 ---
 
@@ -122,10 +140,10 @@ pip install -e ".[dev]"
 python3 -m grn_sim.web.server --host 0.0.0.0 --port 8085
 ```
 
-### Run Unit & Playwright E2E Tests
+### Run Verification Test Suite
 ```bash
-# Run core unit & MATLAB equivalence tests
-pytest tests/test_grn.py -v
+# Run all 22 unit, ODE, topology, and MATLAB-equivalence verification tests
+pytest -v
 
 # Run full Playwright E2E browser + SQLite persistence test against live server
 pytest tests/test_playwright_e2e.py -v -s
@@ -137,7 +155,7 @@ pytest tests/test_playwright_e2e.py -v -s
 
 ```text
 gene-network-sim-inference/
-├── Dockerfile                # Container image with Python + Graphviz + SQLite
+├── Dockerfile                # Container image with Python 3.11 + Graphviz + SQLite
 ├── LICENSE                   # MIT License
 ├── README.md                 # Complete documentation, screenshots & citation
 ├── SPECIFICATION.md          # Mathematical & algorithmic reverse-engineering spec
@@ -148,7 +166,14 @@ gene-network-sim-inference/
 ├── data/
 │   ├── results_gapa_20021209_and_mmc_dbl.mat  # Gardner 2003 E. coli SOS dataset
 │   ├── SOSdata.txt           # Tabular SOS expression & perturbation data
-│   └── rgn_db.sqlite         # Persistent SQLite simulation archive (nw & alg tables)
+│   ├── rgn_db.sqlite         # Persistent SQLite simulation archive (nw & alg tables)
+│   └── matlab_benchmarks/    # 31 Authentic 2004 MATLAB benchmark .mat archives:
+│       ├── DIAG_random_nz60_iot2_std0_mean.mat
+│       ├── DIAG_sf_nz60_iot2_std0_mean.mat
+│       ├── DIAG_h_nz60_iot2_std0_mean.mat
+│       ├── DIAG_noise_nz48_iot0_std0_mean.mat
+│       ├── random_nz60_run5_iot2_sig0.mat
+│       └── overallstats/     # 25 archives across k_av in [1, 1.5, 2, 3, 5] & sigma in [0..0.01]
 ├── src/
 │   └── grn_sim/
 │       ├── core/             # Network models & topology generators (ER, BA, Hierarchical)
@@ -160,7 +185,12 @@ gene-network-sim-inference/
 │       ├── web/              # phpIoRN 2.0 HTTP server, SQLite DB, Graphviz SVG & UI
 │       └── cli.py            # CLI entry point
 └── tests/
-    ├── test_grn.py           # Core mathematical & algorithmic pytest suite
+    ├── test_inference.py     # Inference algorithms & 100% MATLAB equivalence tests
+    ├── test_metrics.py       # Table 4.1 & stats_obs_pred.m evaluation metrics tests
+    ├── test_simulator.py     # ODE solver, Hill kinetics, oscillation & noise tests
+    ├── test_sos_benchmark.py # E. coli SOS pathway benchmark replication tests
+    ├── test_topology.py      # Random, Scale-Free, and Hierarchical graph tests
+    ├── test_web_and_visualization.py # Web server, Graphviz DOT & API tests
     └── test_playwright_e2e.py # Full Playwright browser + SQLite E2E test
 ```
 

@@ -55,3 +55,8 @@ venv.bak/
 *.swp
 *.swo
 *~
+
+# SQLite databases / local run archives
+*.sqlite
+*.sqlite3
+*.db

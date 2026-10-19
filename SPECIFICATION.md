@@ -471,3 +471,78 @@ To port this simulation and inference framework to a modern, robust scientific P
 3. **Limit-Cycle & Damped Oscillation Spectral Diagnostics (`ode_solver.py`)**:
    Evaluates the Jacobian $\mathbf{J} = \frac{\partial \mathbf{f}}{\partial \mathbf{x}}$ at the terminal state and computes eigenvalues $\lambda_i = \alpha_i \pm i\omega_i$ plus sign-flips in $dx_i/dt$ over the last 30% of the trajectory to classify regimes into `STEADY_STATE`, `DAMPED_OSCILLATION`, `LIMIT_CYCLE_OSCILLATION`, or `UNSTABLE_DIVERGENT`.
 
+---
+
+## 10. 100% MATLAB Numerical Equivalence & Benchmark Archive Matrix
+
+To guarantee exact reproducibility with the original 2004 MATLAB codebase and published benchmark curves, the Python implementation adheres to the following bit-for-bit mathematical and data-structure conventions:
+
+### 10.1 Algorithm Formulation Details
+
+#### 10.1.1 S2G (`s2g.m` & `getvar.m`)
+- **Column Normalization**:
+  The candidate regulator basis matrix $X$ is normalized column-wise by Euclidean 2-norm:
+  $$B = \left[ \frac{X_{*, 1}}{\|X_{*, 1}\|_2}, \dots, \frac{X_{*, N}}{\|X_{*, N}\|_2} \right]$$
+- **Log MDL Penalty**:
+  For target gene $i$, given selected candidate index set $\mathcal{I}_k$ of size $k$:
+  $$\mathbf{a}_k = B_{*, \mathcal{I}_k}^{\dagger} \, (-P_{i, *}^T)$$
+  $$\mathbf{e} = B_{*, \mathcal{I}_k} \mathbf{a}_k - (-P_{i, *}^T)$$
+  $$C_{\text{MDL}}(k) = N \ln\left( \frac{1}{N} \sum_{m=1}^N e_m^2 \right) + k \ln(N)$$
+- **Forward Swap Loop (`getanother`)**:
+  Once a candidate $j^*$ is chosen by forward greedy selection, an inner single-variable replacement loop tests swapping each variable in $\mathcal{I}_k$ with any remaining variable in $\{1 \dots N\} \setminus \mathcal{I}_k$.
+- **Stopping Rule & Unconditional Trim**:
+  Forward selection terminates when $C_{\text{MDL}}(k) \ge C_{\text{MDL}}(k-1)$. In accordance with `getvar.m` line 80, the variable added in the terminal rejected step is unconditionally pruned: $\mathcal{I} \leftarrow \mathcal{I}_{1 \dots k-1}$.
+- **Storage Convention**:
+  The unnormalized regression coefficients are stored into column $i$ of the estimated Jacobian:
+  $$A_{\text{est}}[\mathcal{I}, i] = \mathbf{a}_0$$
+  matching the system convention $T_{j, k}$ (regulator in row $j$, target in column $k$).
+
+#### 10.1.2 G2S (`g2s.m` & `gen2spec.m`)
+- **Backward Elimination**:
+  Starts with full connectivity $\mathcal{I} = \{1 \dots N\}$.
+- **AIC Penalty**:
+  $$C_{\text{AIC}}(k) = \sum_{m=1}^N e_m^2 + k$$
+- **Single-Deletion Swap Optimization (`dropanother`)**:
+  At each elimination step, the variable whose removal yields the lowest residual sum of squares is pruned, followed by a swap check (`dropanother`).
+- **Acceleration**:
+  For $N \le 25$, exact refitting via `lstsq` is performed. For $N > 25$, Sherman-Morrison rank-1 downdating is used to evaluate all candidate leave-one-out models in $O(N^2)$ time.
+
+#### 10.1.3 FAST (`fast.m` & `fast_modified.m`)
+- **SVD Pseudo-Inverse**:
+  Given SVD of the perturbation matrix $X = U_r S_r V_r^T$:
+  $$A_0 = (X - U) V_r S_r^{-1} U_r^T - I_N$$
+  For experimental benchmarks where self-degradation is embedded in the background state (e.g. Gardner 2003 *E. coli* SOS), `fast_modified.m` adds $+ I_N$.
+- **Sparsity Truncation**:
+  For each gene, only the top $k_{\text{interactions}}$ coefficients with largest absolute magnitude are retained; all others are set to 0.
+
+#### 10.1.4 NIR (`nir_v3.m`)
+- **Top-$D$ Greedy Search**:
+  Iterates over candidate subsets of size $k_{\text{interactions}} \le 3$, ranking subsets by error-in-variables residual norm.
+- **Tie-Breaking**:
+  Identical mergesort sorting order ensures identical subset selection to MATLAB when singular values or SSE values are tied.
+
+---
+
+### 10.2 Empirical Verification Matrix
+
+The Python implementation is verified against both published experimental datasets and stored 2004 MATLAB simulation archives:
+
+#### A. 9-Gene *E. coli* SOS DNA Repair Pathway (`tests/test_inference.py`)
+Matches Thesis Table 4.1 (`chap4.tex` lines 169–175) and Appendix Figures A.4–A.7 (`TablesAppendix.tex` lines 50–116):
+
+| Algorithm | Coverage % | False Positives % | Inferred Connections % | FDR (FP/Inferred %) | Inferred Sign % | Total Errors | $3 \times 3$ Confusion Matrix Match |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **S2G** | 56.79% | 8.64% | 42.86% | 25.00% | 12.35% | **46** | `[[6, 8, 17], [3, 4, 11], [2, 5, 25]]` |
+| **G2S** | 38.27% | 16.05% | 24.49% | 52.00% | 6.17% | **57** | `[[5, 4, 22], [3, 0, 15], [5, 8, 19]]` |
+| **FAST** | 55.56% | 19.75% | 59.18% | 35.56% | 23.46% | **46** | `[[16, 4, 11], [6, 3, 9], [13, 3, 16]]` |
+| **NIR** | 62.96% | 16.05% | 65.31% | 28.89% | 25.93% | **41** | `[[17, 7, 7], [4, 4, 10], [11, 2, 19]]` |
+
+#### B. 60-Gene Synthetic Benchmark Run (`random_nz60_run5_iot2_sig0.mat`)
+Matches stored MATLAB `pred_matrix` vectors bit-for-bit:
+- **S2G**: `pred_matrix_sg[:, -1] = [22, 0, 70, 0, 33, 59, 5, 0, 3411]` (Exact match)
+- **NIR**: `pred_matrix_gardener[:, -1] = [15, 2, 99, 2, 22, 40, 10, 9, 3401]` (Exact match)
+
+#### C. 25-File `overallstats/` Grid
+Archives in `data/matlab_benchmarks/overallstats/` spanning $k_{\text{av}} \in \{1.0, 1.5, 2.0, 3.0, 5.0\}$ and $\sigma \in \{0.0, 0.001, 0.0025, 0.005, 0.01\}$ across network sizes $N \in \{10, 20, 30, 40, 50, 60, 70\}$. All metrics (`Power`, `FDR`, `TotErrors`, `Runtime`) are sanitized with `np.nan_to_num` and served through the interactive inspector in Tab 3.
+
+
