@@ -143,11 +143,17 @@ def run_sos_benchmark(
         false_positives=int(np.round(np.mean([m.false_positives for m in bc_metrics_list]))),
         true_negatives=int(np.round(np.mean([m.true_negatives for m in bc_metrics_list]))),
         false_negatives=int(np.round(np.mean([m.false_negatives for m in bc_metrics_list]))),
+        signed_true_positives=int(np.round(np.mean([m.signed_true_positives for m in bc_metrics_list]))),
         sign_errors=int(np.round(np.mean([m.sign_errors for m in bc_metrics_list]))),
         precision=float(np.mean([m.precision for m in bc_metrics_list])),
         recall=float(np.mean([m.recall for m in bc_metrics_list])),
         f1_score=float(np.mean([m.f1_score for m in bc_metrics_list])),
         accuracy=float(np.mean([m.accuracy for m in bc_metrics_list])),
+        fpr=float(np.mean([m.fpr for m in bc_metrics_list])),
+        fnr=float(np.mean([m.fnr for m in bc_metrics_list])),
+        specificity=float(np.mean([m.specificity for m in bc_metrics_list])),
+        fdr=float(np.mean([m.fdr for m in bc_metrics_list])),
+        signed_ppv=float(np.mean([m.signed_ppv for m in bc_metrics_list])),
     )
 
     return results

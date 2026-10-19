@@ -5,7 +5,6 @@ and ridge regression.
 """
 
 import time
-import itertools
 from typing import Optional, List, Tuple
 import numpy as np
 
@@ -14,19 +13,20 @@ from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 
 class NIRAlgorithm(BaseInferenceAlgorithm):
     """
-    Network Identification by Multiple Regression (NIR).
+    Network Identification by Multiple Regression (NIR) matching nir_v3.m:
     Finds a fixed number K of regulatory connections per gene by minimizing
-    the sum of squared errors (SSE) using multiple linear regression and optional ridge penalty.
+    the sum of squared errors (SSE) using forward-topD greedy search and
+    multiple linear regression.
     """
 
     def __init__(
         self,
         k_interactions: int = 2,
-        top_d: int = 10,
+        top_d: Optional[int] = None,
         ridge: float = 0.0,
         cond_max: float = 1000.0,
         use_perturbation_values: bool = True,
-        threshold: float = 1e-4,
+        threshold: float = 0.0,
     ):
         super().__init__(name="nir")
         self.k_interactions = k_interactions
@@ -42,108 +42,114 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         X: np.ndarray,
         P: np.ndarray,
         K: int,
-    ) -> Tuple[np.ndarray, np.ndarray, float]:
+        D: int,
+    ) -> Tuple[np.ndarray, np.ndarray, float, bool]:
         """
-        Solves row i using forward top-D greedy search matching nir_v3.m.
+        Solves row i using forward top-D greedy search matching nir_v3.m lines 49-130.
         """
         N, M = X.shape
         u = P[i, :].copy()
         Xtmp = X.copy()
-        nopert = 0
+        nopert = False
 
-        # Check if gene i was perturbed
-        if not np.any(np.abs(u) > 1e-12):
-            # Extract row i as target response
+        if not self.use_perturbation_values:
+            keep_cols = [c for c in range(M) if abs(u[c]) <= 1e-15]
+            Xtmp = X[:, keep_cols]
+            u = np.zeros(len(keep_cols), dtype=float)
+
+        # If gene i is not perturbed, extract row i and use as perturbation (nir_v3.m lines 69-75)
+        if not np.any(np.abs(u) > 1e-15):
             u = -Xtmp[i, :].copy()
-            # Remove gene i from predictors
-            keep_indices = [idx for idx in range(N) if idx != i]
-            Xtmp = Xtmp[keep_indices, :]
-            nopert = 1
+            keep_rows = [r for r in range(N) if r != i]
+            Xtmp = Xtmp[keep_rows, :]
+            nopert = True
 
         Ntmp = Xtmp.shape[0]
-        Ktmp = max(1, min(K - nopert, Ntmp))
+        Ktmp = max(1, min(K - (1 if nopert else 0), Ntmp))
+        D_eff = max(1, min(D, Ntmp))
 
-        # Forward top-D search
-        top_d_combos: List[List[int]] = []
-        n_coeff = 0
+        topD: Optional[np.ndarray] = None
+        ncoeff = 0
+        best_combo = np.array([], dtype=int)
+        best_coeffs = np.array([], dtype=float)
+        best_sse = np.inf
 
-        while n_coeff < Ktmp:
-            if n_coeff == 0:
-                candidates = [[c] for c in range(Ntmp)]
+        while ncoeff < Ktmp:
+            nnewcombo = Ntmp - ncoeff
+            if ncoeff == 0:
+                subN = np.arange(Ntmp, dtype=int)[:, None]
             else:
-                candidates = []
-                for prev in top_d_combos:
-                    for cand in range(Ntmp):
-                        if cand not in prev:
-                            candidates.append(prev + [cand])
+                assert topD is not None
+                d_cur = topD.shape[0]
+                subN = np.zeros((d_cur * nnewcombo, ncoeff + 1), dtype=int)
+                all_idx = np.arange(Ntmp, dtype=int)
+                for ii in range(d_cur):
+                    rem = np.setdiff1d(all_idx, topD[ii, :], assume_unique=False)
+                    start_r = ii * nnewcombo
+                    end_r = (ii + 1) * nnewcombo
+                    subN[start_r:end_r, :ncoeff] = topD[ii, :]
+                    subN[start_r:end_r, ncoeff] = rem
 
-            # Eliminate duplicates by sorted tuple
-            unique_candidates = [list(c) for c in {tuple(sorted(c)): c for c in candidates}.values()]
+            combinations = subN.shape[0]
+            aest = np.zeros((combinations, ncoeff + 1), dtype=float)
+            SSEK_tmp = np.full(combinations, np.inf, dtype=float)
+            reg_eye = self.ridge * np.eye(ncoeff + 1)
 
-            combo_sse = []
-            combo_coeffs = []
-
-            for combo in unique_candidates:
-                Z = Xtmp[combo, :]  # (len(combo), M)
+            for j in range(combinations):
+                Z = Xtmp[subN[j, :], :]
                 ZZt = Z @ Z.T
-                cond_val = np.linalg.cond(ZZt) if ZZt.size > 0 else 1.0
-
+                cond_val = np.linalg.cond(ZZt) if ZZt.size > 1 else (1.0 if ZZt[0, 0] > 0 else np.inf)
                 if cond_val <= self.cond_max:
-                    reg = self.ridge * np.eye(len(combo))
-                    # a = -u * Z^T * (Z * Z^T + reg)^{-1}
                     try:
-                        inv_mat = np.linalg.inv(ZZt + reg)
-                        a_cand = -u @ Z.T @ inv_mat
-                        sse = float(np.sum((u + a_cand @ Z) ** 2))
+                        aest[j, :] = -u @ Z.T @ np.linalg.inv(ZZt + reg_eye)
+                        SSEK_tmp[j] = float(np.sum((u + aest[j, :] @ Z) ** 2))
                     except np.linalg.LinAlgError:
-                        a_cand = np.zeros(len(combo))
-                        sse = np.inf
-                else:
-                    a_cand = np.zeros(len(combo))
-                    sse = np.inf
+                        pass
 
-                combo_sse.append(sse)
-                combo_coeffs.append(a_cand)
+            # Sort errors (mergesort preserves MATLAB's stable tie-breaking order)
+            srtidxSSE = np.argsort(SSEK_tmp, kind="mergesort")
+            d_keep = min(D_eff, combinations)
+            topDidx = srtidxSSE[:d_keep]
+            topD = subN[topDidx, :]
 
-            sorted_indices = np.argsort(combo_sse)
-            d_keep = min(self.top_d, len(sorted_indices))
-            top_d_combos = [unique_candidates[sorted_indices[d]] for d in range(d_keep)]
+            if ncoeff == Ktmp - 1:
+                best_combo = topD[0, :].copy()
+                best_coeffs = aest[topDidx[0], :].copy()
+                best_sse = float(SSEK_tmp[topDidx[0]])
 
-            if n_coeff == Ktmp - 1:
-                best_idx = sorted_indices[0]
-                best_combo = unique_candidates[best_idx]
-                best_coeffs = combo_coeffs[best_idx]
-                best_sse = combo_sse[best_idx]
+            ncoeff += 1
 
-            n_coeff += 1
-
-        # Adjust indices if row was extracted
-        final_indices = np.array(best_combo, dtype=int)
         if nopert:
-            # Shift indices back
-            final_indices = np.array([idx if idx < i else idx + 1 for idx in final_indices])
+            best_combo = np.where(best_combo >= i, best_combo + 1, best_combo)
 
-        return final_indices, best_coeffs, best_sse
+        return best_combo, best_coeffs, best_sse, nopert
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
-        Fits regulatory interaction matrix using NIR.
+        Fits regulatory interaction matrix using NIR matching nir_v3.m.
         """
         start_time = time.time()
-        N, M = X.shape
-        K = kwargs.get("k", self.k_interactions)
-        # Cap K at N - 1
-        K = min(K, N)
+        X_f = np.real(X).astype(float)
+        U_f = np.real(U).astype(float)
+        N, M = X_f.shape
+        K = int(kwargs.get("k", self.k_interactions))
+        K = max(1, min(K, N))
+        D = int(kwargs.get("top_d", self.top_d if self.top_d is not None else min(N, 10)))
 
         A_est = np.zeros((N, N), dtype=float)
-        diagnostics = {"sse": []}
+        diagnostics = {"sse": [], "r2": []}
 
         for i in range(N):
-            indices, coeffs, sse = self._fit_single_row(i, X, U, K)
+            indices, coeffs, sse, nopert = self._fit_single_row(i, X_f, U_f, K, D)
+            if nopert:
+                A_est[i, i] = -1.0
             for idx, c in zip(indices, coeffs):
                 if abs(c) > self.threshold:
                     A_est[i, idx] = c
+            sse0 = float(np.sum(U_f[i, :] ** 2))
+            r2 = 1.0 - (sse / sse0) if sse0 > 1e-15 else 0.0
             diagnostics["sse"].append(sse)
+            diagnostics["r2"].append(r2)
 
         adj = np.zeros((N, N), dtype=int)
         adj[A_est > self.threshold] = 1

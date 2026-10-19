@@ -18,7 +18,6 @@ import json
 import os
 import sqlite3
 import urllib.request
-from playwright.sync_api import sync_playwright
 
 
 APP_URL = os.environ.get("GRN_SIM_URL", "http://localhost:8085")
@@ -27,6 +26,7 @@ DB_PATH = "/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_infer
 
 
 def run_playwright_e2e_new_simulation_and_db_test():
+    from playwright.sync_api import sync_playwright
     os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
     # 1. Check initial database row counts via /api/status

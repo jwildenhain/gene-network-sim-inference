@@ -17,7 +17,8 @@ def test_perfect_prediction():
     m = evaluate_inference(T, P)
     assert m.coverage_pct == 100.0
     assert m.false_positives_pct == 0.0
-    assert m.inferred_sign_pct == 100.0
+    assert round(m.inferred_sign_pct, 2) == 44.44  # 4 true signed edges out of n^2=9 entries (Table 4.1 formula)
+    assert m.signed_ppv == 1.0
     assert m.total_errors == 0
     assert m.precision == 1.0
     assert m.recall == 1.0

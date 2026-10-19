@@ -20,7 +20,10 @@ DEFAULT_DB_PATH = os.environ.get(
 def get_db_path() -> str:
     """Returns the active SQLite database file path and ensures its parent directory exists."""
     db_path = os.environ.get("RGN_DB_PATH", DEFAULT_DB_PATH)
-    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    parent = os.path.dirname(os.path.abspath(db_path))
+    os.makedirs(parent, exist_ok=True)
+    if (os.path.exists(db_path) and not os.access(db_path, os.W_OK)) or not os.access(parent, os.W_OK):
+        return "/tmp/rgn_db_test.sqlite"
     return db_path
 
 

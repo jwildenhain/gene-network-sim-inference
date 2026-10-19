@@ -1207,14 +1207,49 @@
     <!-- ========================================================================= -->
     <section id="tab-figures" class="tab-pane">
       <div class="panel" style="margin-bottom:16px;">
-        <div class="panel-header" style="margin-bottom:4px;border-bottom:none;padding-bottom:0;">
+        <div class="panel-header" style="margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
-            <div class="panel-title" style="font-size:16px;">
+            <div class="panel-title" style="font-size:16px;display:flex;align-items:center;gap:8px;">
               Thesis &amp; 2006 Paper Benchmark Figures Gallery (Wildenhain 2004; Wildenhain &amp; Crampin 2006)
+              <span class="badge badge-emerald" id="badge-fig-source">Authentic MATLAB .mat Archives</span>
             </div>
-            <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
-              Interactive reproduction of the systematic benchmark studies across network topologies, connectivity $k_{av}$, measurement &amp; biological noise, voting ensembles, and runtime complexity.
+            <p id="desc-fig-source" style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+              Loaded directly from original 2004 MATLAB benchmark archives (<code>data/matlab_benchmarks/DIAG_*.mat</code> &amp; 25 <code>overallstats/DIAG_nz70_iot*_std*_mean.mat</code> files).
             </p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="btn-fig-src-matlab" class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="loadThesisFigures('matlab_mat')">
+              📂 Stored MATLAB .mat Archives
+            </button>
+            <button id="btn-fig-src-python" class="btn btn-outline" style="padding:6px 12px;font-size:12px;" onclick="loadThesisFigures('python_live')">
+              ⚡ Compute Live Python Sweep
+            </button>
+          </div>
+        </div>
+        <div id="fig-overallstats-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;padding-top:4px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-weight:600;color:var(--text-main);">Inspect <code>overallstats/</code> Archive ($N \in [10..70]$):</span>
+            <label style="color:var(--text-muted);">Connectivity $k_{av}$:
+              <select id="sel-overall-iot" onchange="updateOverallStatsInspector()" style="margin-left:4px;padding:2px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-main);border:1px solid var(--border);">
+                <option value="1">1.0</option>
+                <option value="1.5">1.5</option>
+                <option value="2" selected>2.0</option>
+                <option value="3">3.0</option>
+                <option value="5">5.0</option>
+              </select>
+            </label>
+            <label style="color:var(--text-muted);">Noise $\sigma$:
+              <select id="sel-overall-std" onchange="updateOverallStatsInspector()" style="margin-left:4px;padding:2px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-main);border:1px solid var(--border);">
+                <option value="0" selected>0.0</option>
+                <option value="0.001">0.001</option>
+                <option value="0.0025">0.0025</option>
+                <option value="0.005">0.005</option>
+                <option value="0.01">0.01</option>
+              </select>
+            </label>
+          </div>
+          <div id="overallstats-readout" style="font-family:monospace;font-size:11.5px;color:var(--accent-cyan);">
+            Loading DIAG_nz70_iot2_std0_mean.mat...
           </div>
         </div>
       </div>
@@ -2531,13 +2566,56 @@
     // ============================================================================
     // TAB 3: THESIS & 2006 PAPER FIGURES GALLERY
     // ============================================================================
-    async function loadThesisFigures() {
+    async function loadThesisFigures(source = 'matlab_mat') {
       try {
-        const res = await fetch('/api/benchmark/thesis_figures');
+        const btnMat = document.getElementById('btn-fig-src-matlab');
+        const btnPy = document.getElementById('btn-fig-src-python');
+        const badge = document.getElementById('badge-fig-source');
+        const desc = document.getElementById('desc-fig-source');
+
+        if (source === 'python_live') {
+          if (btnPy) {
+            btnPy.className = 'btn btn-primary';
+            btnPy.textContent = '⏳ Computing Live Python Sweep...';
+          }
+          if (btnMat) btnMat.className = 'btn btn-outline';
+          if (badge) {
+            badge.textContent = 'Computing Live Python Sweep...';
+            badge.className = 'badge badge-amber';
+          }
+        } else {
+          if (btnMat) btnMat.className = 'btn btn-primary';
+          if (btnPy) {
+            btnPy.className = 'btn btn-outline';
+            btnPy.textContent = '⚡ Compute Live Python Sweep';
+          }
+        }
+
+        const res = await fetch(`/api/benchmark/thesis_figures?source=${encodeURIComponent(source)}`);
         const data = await res.json();
         if (data.status !== 'success') return;
         APP_STATE.thesisFigures = data;
 
+        if (source === 'python_live') {
+          if (btnPy) btnPy.textContent = '⚡ Compute Live Python Sweep';
+          if (badge) {
+            badge.textContent = 'Live Python Multi-Network Sweep';
+            badge.className = 'badge badge-cyan';
+          }
+          if (desc) {
+            desc.innerHTML = 'Computed live in Python by simulating Random, Scale-Free &amp; Hierarchical Hill-ODE networks and running <code>S2G</code>, <code>G2S</code>, <code>NIR</code>, <code>FAST</code> &amp; <code>Voting</code>.';
+          }
+        } else {
+          if (badge) {
+            badge.textContent = 'Authentic MATLAB .mat Archives';
+            badge.className = 'badge badge-emerald';
+          }
+          if (desc) {
+            desc.innerHTML = 'Loaded directly from original 2004 MATLAB benchmark archives (<code>data/matlab_benchmarks/DIAG_*.mat</code> &amp; 25 <code>overallstats/DIAG_nz70_iot*_std*_mean.mat</code> files).';
+          }
+        }
+
+        updateOverallStatsInspector();
         drawFigTopology(data.fig4_topology);
         drawFigConnectivity(data.fig4_connectivity);
         drawFigNoiseAndHeatmap(data.fig4_noise);
@@ -2547,6 +2625,26 @@
       } catch (e) {
         console.error('Thesis figures error:', e);
       }
+    }
+
+    function updateOverallStatsInspector() {
+      const data = APP_STATE.thesisFigures;
+      const readout = document.getElementById('overallstats-readout');
+      if (!readout || !data || !data.overallstats_grid) return;
+      const iot = document.getElementById('sel-overall-iot')?.value || '2';
+      const std = document.getElementById('sel-overall-std')?.value || '0';
+      const key = `k${iot}_std${std}`;
+      const entry = data.overallstats_grid[key];
+      if (!entry) {
+        readout.textContent = `Archive ${key} not available in current mode`;
+        return;
+      }
+      const s2g70 = entry.s2g_power[entry.s2g_power.length - 1];
+      const g2s70 = entry.g2s_power[entry.g2s_power.length - 1];
+      const fast70 = entry.fast_power[entry.fast_power.length - 1];
+      const fdr70 = entry.s2g_fdr[entry.s2g_fdr.length - 1];
+      const fname = entry.file || `DIAG_nz70_iot${iot}_std${std}_mean.mat`;
+      readout.innerHTML = `<strong>${fname}</strong> (N=70): S2G Power=<strong>${s2g70}%</strong> (FDR=${fdr70}%) | G2S Power=<strong>${g2s70}%</strong> | FAST Power=<strong>${fast70}%</strong>`;
     }
 
     function drawMultiLineChart(canvasId, xLabels, seriesList, yTitle, yMin = 40, yMax = 100) {
@@ -2573,7 +2671,7 @@
         const val = yMax - ((yMax - yMin) * g) / 4;
         ctx.fillStyle = tc.textMuted;
         ctx.font = '10px monospace';
-        ctx.fillText(val.toFixed(0), 10, y + 3);
+        ctx.fillText(val < 10 ? val.toFixed(1) : val.toFixed(0), 10, y + 3);
       }
 
       xLabels.forEach((xl, i) => {
@@ -2593,7 +2691,7 @@
         ctx.beginPath();
         s.data.forEach((v, i) => {
           const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
-          const y = pad.t + ph * (1 - (v - yMin) / (yMax - yMin));
+          const y = pad.t + ph * (1 - (v - yMin) / Math.max(1e-6, yMax - yMin));
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
@@ -2602,7 +2700,7 @@
 
         s.data.forEach((v, i) => {
           const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
-          const y = pad.t + ph * (1 - (v - yMin) / (yMax - yMin));
+          const y = pad.t + ph * (1 - (v - yMin) / Math.max(1e-6, yMax - yMin));
           ctx.beginPath();
           ctx.arc(x, y, 3.2, 0, Math.PI * 2);
           ctx.fill();
@@ -2623,7 +2721,7 @@
         { label: 'Hierarchical (G2S)', data: topo.hierarchical.g2s_power, color: '#d97706' },
         { label: 'Scale-Free (FAST)', data: topo.power_law.fast_power, color: '#ef4444', dash: [5, 3] },
       ];
-      drawMultiLineChart('canvas-fig-topology', topo.sizes.map(n => `n=${n}`), series, 'Power (%)', 50, 100);
+      drawMultiLineChart('canvas-fig-topology', topo.sizes.map(n => `n=${n}`), series, 'Power (%)', 0, 100);
     }
 
     function drawFigConnectivity(conn) {
@@ -2662,8 +2760,8 @@
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         s.data.forEach((v, i) => {
-          const x = pad.l + (pw * i) / (s.data.length - 1);
-          const y = pad.t + ph * (1 - (v - 25) / 75);
+          const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
+          const y = pad.t + ph * (1 - v / 100);
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
@@ -2674,10 +2772,10 @@
       });
 
       noise.noise_levels.forEach((nl, i) => {
-        const x = pad.l + (pw * i) / (noise.noise_levels.length - 1);
+        const x = pad.l + (pw * i) / Math.max(1, noise.noise_levels.length - 1);
         ctx.fillStyle = tc.textMuted;
         ctx.font = '9.5px monospace';
-        ctx.fillText(nl.toFixed(2), x - 10, H - 8);
+        ctx.fillText(Number(nl).toFixed(nl > 0 && nl < 0.01 ? 3 : 2), x - 10, H - 8);
       });
 
       const rx0 = lw + 28;
@@ -2698,18 +2796,18 @@
         ctx.fillText(`k=${noise.heatmap_k_av[r]}`, rx0 - 32, 28 + (r + 0.65) * ch);
         for (let c = 0; c < cols; c++) {
           const val = noise.heatmap_power[r][c];
-          const norm = (val - 30) / 70;
-          ctx.fillStyle = `rgba(56, 189, 248, ${Math.max(0.18, Math.min(0.95, norm)).toFixed(2)})`;
+          const norm = val / 85;
+          ctx.fillStyle = `rgba(56, 189, 248, ${Math.max(0.22, Math.min(0.95, norm)).toFixed(2)})`;
           ctx.fillRect(rx0 + c * cw, 28 + r * ch, cw - 2, ch - 2);
           ctx.fillStyle = '#0b0f19';
           ctx.font = 'bold 10px monospace';
-          ctx.fillText(`${val.toFixed(0)}%`, rx0 + c * cw + 8, 28 + (r + 0.62) * ch);
+          ctx.fillText(`${val.toFixed(0)}%`, rx0 + c * cw + 6, 28 + (r + 0.62) * ch);
         }
       }
       noise.heatmap_noise.forEach((nl, c) => {
         ctx.fillStyle = tc.textMuted;
-        ctx.font = '9.5px monospace';
-        ctx.fillText(`σ=${nl}`, rx0 + c * cw + 4, H - 8);
+        ctx.font = '9px monospace';
+        ctx.fillText(`σ=${nl}`, rx0 + c * cw + 2, H - 8);
       });
     }
 
@@ -2744,7 +2842,7 @@
 
         s.data.forEach((val, i) => {
           const x = pad.l + i * groupW + 12 + sIdx * (barW + 3);
-          const bh = (val / 50) * ph;
+          const bh = (Math.min(50, val) / 50) * ph;
           const y = pad.t + ph - bh;
           ctx.fillStyle = s.color;
           ctx.fillRect(x, y, barW, bh);
@@ -2768,7 +2866,9 @@
         { label: 'G2S (k=1.5)', data: rt.g2s_k15, color: '#d97706' },
         { label: 'FAST SVD', data: rt.fast_k15, color: '#9333ea' },
       ];
-      drawMultiLineChart('canvas-fig-runtime', rt.sizes.map(n => `n=${n}`), series, 'Seconds', 0, 12);
+      const maxVal = Math.max(...rt.s2g_k15, ...rt.s2g_k50, ...rt.g2s_k15, ...rt.fast_k15, 0.1);
+      const yMax = maxVal > 2 ? Math.ceil(maxVal * 1.1) : Math.max(0.2, Number((maxVal * 1.2).toFixed(2)));
+      drawMultiLineChart('canvas-fig-runtime', rt.sizes.map(n => `n=${n}`), series, 'Seconds', 0, yMax);
     }
 
     function drawFigErrorModel(em) {

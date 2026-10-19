@@ -1,7 +1,7 @@
 """
 Simple-to-General (S2G) reverse engineering algorithm.
-Implements the forward-backward basis selection with Akaike Information Criterion (AIC)
-and Minimum Description Length (MDL) penalty from thesis Chapter 3 and getvar.m.
+Implements the exact MATLAB s2g.m and getvar.m forward-backward basis selection
+with Minimum Description Length (MDL) / AIC log penalty from thesis Chapter 3.
 """
 
 import time
@@ -13,155 +13,169 @@ from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 
 class SimpleToGeneral(BaseInferenceAlgorithm):
     """
-    Simple-to-General (S2G) algorithm based on Crampin et al. / Judd & Mees.
-    Iteratively adds basis functions with maximal projection of residual error,
-    removes negligible basis functions, and stops when AIC is minimized.
+    Simple-to-General (S2G) algorithm matching s2g.m and getvar.m (Crampin et al. / Judd & Mees).
+    Iteratively adds basis functions from columns of X with maximal projection of residual error,
+    swaps out negligible basis functions via getanother(), and stops when the MDL/AIC log penalty
+    C(k) = N * log(mean(E^2)) + k * log(N) stops improving.
     """
 
     def __init__(
         self,
-        criterion: str = "aic",  # "aic" or "mdl"
+        criterion: str = "mdl",  # "mdl" (exact getvar.m line 96) or "aic"
         max_interactions: Optional[int] = None,
         normalize_bases: bool = True,
-        threshold: float = 1e-4,
+        threshold: float = 0.0,
+        matlab_mode: bool = True,
     ):
         super().__init__(name="s2g")
         self.criterion = criterion.lower()
         self.max_interactions = max_interactions
         self.normalize_bases = normalize_bases
         self.threshold = threshold
+        self.matlab_mode = matlab_mode
 
-    def _penalty(self, E: np.ndarray, k: int, n_samples: int) -> float:
-        """Computes cost function for residual vector E and k parameters."""
-        rss = float(np.sum(E ** 2))
-        if self.criterion == "mdl":
-            # N * log(mean(E^2)) + k * log(N)
-            mse = max(rss / n_samples, 1e-12)
-            return n_samples * np.log(mse) + k * np.log(n_samples)
-        else:
-            # Thesis Eq 3.14: AIC^K = (1 / n) * E^T * E + K
-            return (rss / n_samples) + float(k)
+    def _penalty(self, E: np.ndarray, k: int) -> float:
+        """
+        Computes cost function matching getvar.m lines 93-96:
+            function C = penalty(E, k)
+            N = length(E);
+            S = mean(E.^2);
+            C = N*log(S) + (k)*log(N);
+        """
+        n_len = len(E)
+        s_mse = float(np.mean(E ** 2))
+        if self.criterion == "aic":
+            return float(np.sum(E ** 2)) + float(k)
+        s_safe = max(s_mse, 1e-300)
+        return float(n_len * np.log(s_safe) + k * np.log(n_len))
 
-    def _fit_single_target(
+    def _getanother(
         self,
-        y: np.ndarray,      # (m,) target values (-u_i)
-        X: np.ndarray,      # (n, m) design matrix (features = genes)
+        y: np.ndarray,
+        V: np.ndarray,
+        ind: List[int],
+        E: np.ndarray,
+    ) -> Tuple[List[int], np.ndarray, np.ndarray]:
+        """
+        Exact port of getanother(y, V, ind, E) in getvar.m lines 49-89.
+        """
+        k = len(ind)
+        n_cols = V.shape[1]
+        iin = -1
+        iout = -2
+        ind_ext = list(ind) + [0]
+        a = np.zeros(k + 1, dtype=float)
+
+        max_iter = max(n_cols * 4, 20)
+        it = 0
+        while iout != iin and it < max_iter:
+            it += 1
+            # Project to identify next iin: mu = abs(V' * E)
+            mu = np.abs(V.T @ E)
+            if it > n_cols:
+                # Prevent infinite 2-cycle due to floating-point ties
+                for existing in ind_ext[:k]:
+                    mu[existing] = -1.0
+            iin = int(np.argmax(mu))
+            ind_ext[k] = iin
+
+            # Update basis set
+            Vb = V[:, ind_ext]
+
+            # Identify iout with lowest absolute coefficient
+            a = np.linalg.pinv(Vb) @ y
+            aa = np.abs(a)
+            imin = int(np.argmin(aa))
+            iout = ind_ext[imin]
+
+            # Remove basis if iout ~= iin
+            if iout != iin:
+                ind_ext[imin] = iin
+                Vk = V[:, ind_ext[:k]]
+                ak = np.linalg.pinv(Vk) @ y
+                yh = Vk @ ak
+                E = yh - y
+            else:
+                yh = Vb @ a
+                E = yh - y
+
+        return ind_ext, a, E
+
+    def _getvar(
+        self,
+        y: np.ndarray,
+        X: np.ndarray,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Fits sparse linear regression for a single gene using simple-to-general selection.
-        Returns:
-            (selected_indices, coefficients)
+        Exact port of [ind, a, S] = getvar(y, X) in getvar.m lines 1-47.
         """
-        n_features, n_samples = X.shape
-        V = X.copy()
-
-        # Normalize bases if requested
+        N, M = X.shape
         if self.normalize_bases:
-            norms = np.sqrt(np.sum(V ** 2, axis=1, keepdims=True))
-            norms[norms < 1e-12] = 1.0
-            V = V / norms
+            xnorm = np.sqrt(np.sum(X ** 2, axis=0))
+            xnorm_safe = np.where(xnorm > 1e-15, xnorm, 1.0)
+            V = X / xnorm_safe[None, :]
+        else:
+            V = X.copy()
 
-        max_k = self.max_interactions or n_features
+        max_k = min(self.max_interactions or M, M)
 
-        # Step 1: Select first basis vector with maximum absolute projection
-        # V is (n_features, n_samples), y is (n_samples,)
-        mu = np.abs(V @ y)
-        first_idx = int(np.argmax(mu))
-        current_indices = [first_idx]
-
-        # Initial least squares on first basis
-        Vb = V[current_indices, :].T  # (n_samples, 1)
-        a = np.linalg.pinv(Vb) @ y
-        E = (Vb @ a) - y
-        s_current = self._penalty(E, 1, n_samples)
-
-        history_indices = [list(current_indices)]
-        history_costs = [s_current]
-
-        # Step 2: Add and prune basis functions while cost improves
+        # Calculate first basis vector (getvar.m lines 23-33)
         k = 1
-        while k < max_k:
-            s_old = s_current
-            # Search for best candidate to add and candidate to remove
-            iin = -1
-            iout = -2
-            loop_guard = 0
-            temp_ind = list(current_indices)
+        mu = np.abs(V.T @ y)
+        iin = int(np.argmax(mu))
+        ind = [iin]
+        Vb = V[:, ind]
+        a = np.linalg.pinv(Vb) @ y
+        yh = Vb @ a
+        E = yh - y
+        s_k = self._penalty(E, 1)
+        s_old = s_k + 1.0
 
-            while iin != iout and loop_guard < n_features * 2:
-                loop_guard += 1
-                # Project residuals to identify next iin
-                mu = np.abs(V @ E)
-                # Zero out projection of already selected indices to avoid duplicates
-                for idx in temp_ind:
-                    mu[idx] = -1.0
-                if np.all(mu < 0):
-                    break
-                iin = int(np.argmax(mu))
-                candidate_ind = temp_ind + [iin]
+        while s_k < s_old and k <= max_k:
+            s_prev = s_k
+            ind, a, E = self._getanother(y, V, ind, E)
+            k += 1
+            s_k = self._penalty(E, k)
+            s_old = s_prev
 
-                # Update basis set and identify iout with lowest absolute coefficient
-                Vb = V[candidate_ind, :].T
-                a_cand = np.linalg.pinv(Vb) @ y
-                amin_idx = int(np.argmin(np.abs(a_cand)))
-                iout = candidate_ind[amin_idx]
+        # ind = ind(1:end-1) (getvar.m line 44)
+        ind = ind[:-1]
 
-                if iout != iin:
-                    # Replace candidate
-                    temp_ind[amin_idx] = iin
-                    Vk = V[temp_ind, :].T
-                    ak = np.linalg.pinv(Vk) @ y
-                    E = (Vk @ ak) - y
-                else:
-                    yh = Vb @ a_cand
-                    E = yh - y
-                    temp_ind = candidate_ind
-
-            current_indices = temp_ind
-            k = len(current_indices)
-            s_current = self._penalty(E, k, n_samples)
-
-            history_indices.append(list(current_indices))
-            history_costs.append(s_current)
-
-            # Stopping condition: if cost did not improve, terminate
-            if s_current >= s_old:
-                break
-
-        # Best set of indices across history
-        best_step = int(np.argmin(history_costs))
-        best_indices = history_indices[best_step]
-
-        if len(best_indices) == 0:
-            return np.array([], dtype=int), np.array([], dtype=float)
-
-        # Refit on original un-normalized X
-        Xb = X[best_indices, :].T  # (n_samples, k)
+        Xb = X[:, ind]
         final_a = np.linalg.pinv(Xb) @ y
-        return np.array(best_indices, dtype=int), final_a
+        return np.array(ind, dtype=int), final_a
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
-        Fits the entire interaction matrix row by row.
-        Solves A * X = -U  =>  a_i * X = -u_i
+        Fits the interaction matrix matching s2g.m / s2g_and_g2s.m:
+            Z = X;
+            for i=1:N
+                [ind0, a0, S0] = getvar(U(i,:)', Z);
+                A_sg(ind0, i) = a0;
+            end
         """
         start_time = time.time()
-        n = X.shape[0]
+        X_f = np.real(X).astype(float)
+        U_f = np.real(U).astype(float)
+        n = X_f.shape[0]
         A_est = np.zeros((n, n), dtype=float)
 
         for i in range(n):
-            # Target is -u_i (the i-th row of perturbation matrix)
-            y = -U[i, :]
-            # If all zeros (e.g. unperturbed or implicit), fallback to -X[i, :]
-            if np.all(np.abs(y) < 1e-12):
-                y = -X[i, :]
+            y = U_f[i, :].copy()
+            if np.all(np.abs(y) < 1e-15):
+                y = X_f[i, :].copy()
 
-            indices, coeffs = self._fit_single_target(y, X)
-            for idx, c in zip(indices, coeffs):
-                if abs(c) > self.threshold:
-                    A_est[i, idx] = c
+            if self.matlab_mode:
+                indices, coeffs = self._getvar(y, X_f)
+                for idx, c in zip(indices, coeffs):
+                    if abs(c) > self.threshold:
+                        A_est[idx, i] = c
+            else:
+                indices, coeffs = self._getvar(-y, X_f.T)
+                for idx, c in zip(indices, coeffs):
+                    if abs(c) > self.threshold:
+                        A_est[i, idx] = c
 
-        # Adjacency: sign of estimated coefficients
         adj = np.zeros((n, n), dtype=int)
         adj[A_est > self.threshold] = 1
         adj[A_est < -self.threshold] = -1
@@ -172,5 +186,5 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
             A_est=A_est,
             adjacency_pred=adj,
             time_elapsed=elapsed,
-            diagnostics={"criterion": self.criterion},
+            diagnostics={"criterion": self.criterion, "matlab_mode": self.matlab_mode},
         )
