@@ -1,12 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
   <script>
     try {
-      document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark";
+      const saved = localStorage.getItem("color-scheme");
+      const sys = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      const resolved = (saved === "dark" || saved === "light") ? saved : sys;
+      document.querySelector('meta[name="color-scheme"]').content = resolved;
+      document.documentElement.setAttribute("data-theme", resolved);
     } catch (e) {}
   </script>
   <title>phpIoRN / GRN-Sim — Gene Network Perturbation Simulator &amp; Reverse-Engineering Suite</title>
@@ -19,7 +23,7 @@
       --bg-panel-dark: #111827;
       --bg-card-light: #f8fafc;
       --bg-card-dark: #1e293b;
-      --bg-stage-light: #f8fafc;
+      --bg-stage-light: #ffffff;
       --bg-stage-dark: #090d16;
       --border-light: #cbd5e1;
       --border-dark: #334155;
@@ -49,52 +53,8 @@
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-      @media (prefers-color-scheme: dark) {
-        --bg-base: var(--bg-base-dark);
-        --bg-panel: var(--bg-panel-dark);
-        --bg-card: var(--bg-card-dark);
-        --bg-stage: var(--bg-stage-dark);
-        --border: var(--border-dark);
-        --text-main: var(--text-main-dark);
-        --text-muted: var(--text-muted-dark);
-        --topbar-bg: var(--topbar-bg-dark);
-        --accent-blue: #38bdf8;
-        --accent-indigo: #6366f1;
-        --accent-amber: #f59e0b;
-      }
-
       color-scheme: light dark;
       accent-color: var(--accent-blue);
-
-      &:has(> head > meta[name="color-scheme"][content="dark"]) {
-        color-scheme: dark;
-        --bg-base: var(--bg-base-dark);
-        --bg-panel: var(--bg-panel-dark);
-        --bg-card: var(--bg-card-dark);
-        --bg-stage: var(--bg-stage-dark);
-        --border: var(--border-dark);
-        --text-main: var(--text-main-dark);
-        --text-muted: var(--text-muted-dark);
-        --topbar-bg: var(--topbar-bg-dark);
-        --accent-blue: #38bdf8;
-        --accent-indigo: #6366f1;
-        --accent-amber: #f59e0b;
-      }
-
-      &:has(> head > meta[name="color-scheme"][content="light"]) {
-        color-scheme: light;
-        --bg-base: var(--bg-base-light);
-        --bg-panel: var(--bg-panel-light);
-        --bg-card: var(--bg-card-light);
-        --bg-stage: var(--bg-stage-light);
-        --border: var(--border-light);
-        --text-main: var(--text-main-light);
-        --text-muted: var(--text-muted-light);
-        --topbar-bg: var(--topbar-bg-light);
-        --accent-blue: #0284c7;
-        --accent-indigo: #4f46e5;
-        --accent-amber: #d97706;
-      }
 
       @supports (color: light-dark(white, black)) {
         --bg-base: light-dark(var(--bg-base-light), var(--bg-base-dark));
@@ -108,6 +68,55 @@
         --accent-indigo: light-dark(#4f46e5, #6366f1);
         --accent-amber: light-dark(#d97706, #f59e0b);
       }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg-base: var(--bg-base-dark);
+        --bg-panel: var(--bg-panel-dark);
+        --bg-card: var(--bg-card-dark);
+        --bg-stage: var(--bg-stage-dark);
+        --border: var(--border-dark);
+        --text-main: var(--text-main-dark);
+        --text-muted: var(--text-muted-dark);
+        --topbar-bg: var(--topbar-bg-dark);
+        --accent-blue: #38bdf8;
+        --accent-indigo: #6366f1;
+        --accent-amber: #f59e0b;
+      }
+    }
+
+    :root[data-theme="dark"],
+    :root:has(> head > meta[name="color-scheme"][content="dark"]) {
+      color-scheme: dark;
+      --bg-base: var(--bg-base-dark);
+      --bg-panel: var(--bg-panel-dark);
+      --bg-card: var(--bg-card-dark);
+      --bg-stage: var(--bg-stage-dark);
+      --border: var(--border-dark);
+      --text-main: var(--text-main-dark);
+      --text-muted: var(--text-muted-dark);
+      --topbar-bg: var(--topbar-bg-dark);
+      --accent-blue: #38bdf8;
+      --accent-indigo: #6366f1;
+      --accent-amber: #f59e0b;
+    }
+
+    :root[data-theme="light"],
+    :root:has(> head > meta[name="color-scheme"][content="light"]) {
+      color-scheme: light;
+      --bg-base: var(--bg-base-light);
+      --bg-panel: var(--bg-panel-light);
+      --bg-card: var(--bg-card-light);
+      --bg-stage: var(--bg-stage-light);
+      --border: var(--border-light);
+      --text-main: var(--text-main-light);
+      --text-muted: var(--text-muted-light);
+      --topbar-bg: var(--topbar-bg-light);
+      --accent-blue: #0284c7;
+      --accent-indigo: #4f46e5;
+      --accent-amber: #d97706;
     }
 
     * {
@@ -567,13 +576,35 @@
       max-height: 100%;
       width: 100%;
       height: 100%;
+      background: var(--bg-stage);
     }
 
-    /* Adapt Graphviz SVG node fill/text in Light Mode */
+    /* Adapt Graphviz SVG & stage background, node fill, and text in Light Mode */
+    :root[data-theme="light"] .graph-stage,
+    :root[data-theme="light"] .graph-stage canvas,
+    :root[data-theme="light"] .graph-stage svg,
+    :root[data-theme="light"] .chart-canvas,
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage,
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage canvas,
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage svg,
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .chart-canvas {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+    }
+
+    :root[data-theme="light"] .graph-stage svg > g.graph > polygon,
+    :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage svg > g.graph > polygon {
+      fill: #ffffff !important;
+      stroke: none !important;
+    }
+
+    :root[data-theme="light"] .graph-stage svg ellipse,
     :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage svg ellipse {
       fill: #e0f2fe !important;
       stroke: #0284c7 !important;
     }
+
+    :root[data-theme="light"] .graph-stage svg text,
     :root:has(> head > meta[name="color-scheme"][content="light"]) .graph-stage svg text {
       fill: #0f172a !important;
     }
@@ -1481,6 +1512,8 @@
     // LIGHT / DARK MODE TOGGLE (modern-web-guidance: dark-mode-toggle)
     // ============================================================================
     function getResolvedScheme() {
+      const attr = document.documentElement.getAttribute('data-theme');
+      if (attr === 'dark' || attr === 'light') return attr;
       const meta = document.querySelector('meta[name="color-scheme"]');
       const content = meta ? meta.content : 'light dark';
       if (content === 'dark' || content === 'light') return content;
@@ -1494,6 +1527,7 @@
     function getThemeColors() {
       const light = isLightMode();
       return {
+        stageBg: light ? '#ffffff' : '#090d16',
         grid: light ? '#e2e8f0' : '#1e293b',
         textMuted: light ? '#475569' : '#94a3b8',
         textMain: light ? '#0f172a' : '#f8fafc',
@@ -1506,15 +1540,21 @@
 
     function updateThemeToggleButtonUI() {
       const scheme = getResolvedScheme();
+      document.documentElement.setAttribute('data-theme', scheme);
+      const meta = document.querySelector('meta[name="color-scheme"]');
+      if (meta) meta.content = scheme;
       const iconEl = document.getElementById('theme-toggle-icon');
       const lblEl = document.getElementById('theme-toggle-label');
+      const btnEl = document.getElementById('theme-toggle-btn');
       if (!iconEl || !lblEl) return;
-      if (scheme === 'dark') {
+      if (scheme === 'light') {
         iconEl.innerHTML = '&#9728;&#65039;';
         lblEl.textContent = 'Light Mode';
+        if (btnEl) btnEl.title = 'Active: Light Mode (Click to switch to Dark Mode)';
       } else {
         iconEl.innerHTML = '&#127769;';
         lblEl.textContent = 'Dark Mode';
+        if (btnEl) btnEl.title = 'Active: Dark Mode (Click to switch to Light Mode)';
       }
     }
 
@@ -1522,19 +1562,13 @@
       const meta = document.querySelector('meta[name="color-scheme"]');
       const currentRendered = getResolvedScheme();
       const target = currentRendered === 'dark' ? 'light' : 'dark';
-      const systemPref = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
       try {
-        if (target === systemPref) {
-          localStorage.removeItem('color-scheme');
-          meta.content = 'light dark';
-        } else {
-          localStorage.setItem('color-scheme', target);
-          meta.content = target;
-        }
-      } catch (e) {
-        meta.content = target;
-      }
+        localStorage.setItem('color-scheme', target);
+      } catch (e) {}
+
+      if (meta) meta.content = target;
+      document.documentElement.setAttribute('data-theme', target);
 
       updateThemeToggleButtonUI();
       rerenderAllCanvasesForTheme();
@@ -1542,8 +1576,10 @@
 
     window.addEventListener('storage', (ev) => {
       if (ev.key === 'color-scheme') {
+        const nextScheme = (ev.newValue === 'dark' || ev.newValue === 'light') ? ev.newValue : 'light';
         const meta = document.querySelector('meta[name="color-scheme"]');
-        if (meta) meta.content = ev.newValue ?? 'light dark';
+        if (meta) meta.content = nextScheme;
+        document.documentElement.setAttribute('data-theme', nextScheme);
         updateThemeToggleButtonUI();
         rerenderAllCanvasesForTheme();
       }
@@ -1888,9 +1924,10 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
       const pos = APP_STATE.nodePositions;
       const links = sim.graph.links || [];
       const nodes = sim.graph.nodes || [];
@@ -2079,9 +2116,9 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
       const pad = { l: 38, r: 14, t: 24, b: 22 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
@@ -2158,9 +2195,9 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
       const N = X.length;
       const pad = { l: 42, r: 16, t: 28, b: 18 };
       const cw = (W - pad.l - pad.r) / N;
@@ -2314,9 +2351,10 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
       const pos = APP_STATE.nodePositions;
       const links = compGraph.links || [];
       const nodes = compGraph.nodes || [];
@@ -2425,9 +2463,9 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
       const cols = 3, rows = 3;
       const cw = W / cols;
       const ch = H / rows;
@@ -2495,9 +2533,9 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
       const pad = { l: 46, r: 20, t: 30, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
@@ -2582,9 +2620,9 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
       const lw = W * 0.52;
       const pad = { l: 38, r: 12, t: 28, b: 28 };
       const pw = lw - pad.l - pad.r;
@@ -2659,9 +2697,9 @@
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
       const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
       const pad = { l: 42, r: 16, t: 28, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
@@ -2718,7 +2756,8 @@
         const ctx = canvas.getContext('2d');
         const W = canvas.width;
         const H = canvas.height;
-        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = tc.stageBg;
+        ctx.fillRect(0, 0, W, H);
         const maxC = Math.max(...em.counts, 1);
         const pad = { l: 28, r: 10, t: 24, b: 24 };
         const bw = (W - pad.l - pad.r) / em.counts.length;
