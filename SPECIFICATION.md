@@ -448,3 +448,26 @@ To port this simulation and inference framework to a modern, robust scientific P
 5. **Validation Suite:**
    - Unit tests against the exact Gardner 2003 9-gene matrices $\mathbf{X}$, $\mathbf{P}$, $\mathbf{A}_t$, and $\mathbf{A}_g$.
    - Regression verification matching the outputs of `new_stats.m` and `stats_obs_pred.m`.
+
+---
+
+## 9. `phpIoRN 2.0` Web Application, Oscillation Diagnostics & MATLAB Numerical Equivalence
+
+### 9.1 Original `phpIoRN` MATLAB Bridge Workflow (`toronto_backup2/thesis/`)
+- **`get_network.php` $\rightarrow$ `web_getparam.m` + `web_netsimsim.m`**:
+  Reads environment variables (`SIM_NETSIZE`, `SIM_NETTYPE`, `SIM_CON`, `SIM_ARATIO`, `MATLAB_FILENAME`), calls `netsim.m` + `create_network.m`, exports initial Graphviz DOT topology (`graph_to_dot.m`), and saves `graphs/mat/<id>.m`.
+- **`run_sim.php` $\rightarrow$ `web_run_p_model.m` + `web_run_rgn.m`**:
+  1. `web_run_p_model.m` iterates $j = 1 \dots N$, runs `do_perturbation(test, n, N^2+100, j, 1, 1, 0, 0)`, renders SVG perturbation curves (`plot2svg`), writes `graphs/node/<id>_<j>.php`, and exports `.msmt` and `.pert` ASCII tab-separated matrices.
+  2. `web_run_rgn.m` runs selected algorithms (`s2g.m`, `g2s.m`, `do_vote.m`, `nir_v3.m`, `fast_modified.m`) and calls `php_and_stats.m` to write `$TMP_STATMAT` and `$TMP_CMAT` PHP arrays alongside `statsgraph_to_dot.m` 9-state DOT files.
+- **Persistent SQLite Archive (`dumpdb.sql` $\rightarrow$ `database.py`)**:
+  Persists all runs in `data/rgn_db.sqlite` across `nw` (`name`, `type`, `size`, `con`, `aratio`, `biovar`, `noise`, `time`, `ip`) and `alg` (`nw_id`, `alg`, `fpr`, `fnr`, `spec`, `sens`, `ppv`, `fdr`, `sppv`, `note`).
+
+### 9.2 Oscillation & Steady-State Detection (`create_network.m` & `do_perturbation.m`)
+1. **Unperturbed Background Convergence (`create_network.m`)**:
+   Integrates over horizon $e = s^2 + 100$ steps and checks:
+   $$\text{efnorm}(i) = \left\| \mathbf{x}(i+1)^2 - \mathbf{x}(i)^2 \right\|_2 \le 10^{-4}, \quad \min(\mathbf{x}) > 0$$
+2. **Perturbed Trajectory Convergence (`do_perturbation.m`)**:
+   Checks both $\text{efnorm}(t) \le 10^{-4}$ and $\left| \text{efnorm}(t) - \text{efnorm}(t-1) \right| < 10^{-4}$ (`not_stable == 0`).
+3. **Limit-Cycle & Damped Oscillation Spectral Diagnostics (`ode_solver.py`)**:
+   Evaluates the Jacobian $\mathbf{J} = \frac{\partial \mathbf{f}}{\partial \mathbf{x}}$ at the terminal state and computes eigenvalues $\lambda_i = \alpha_i \pm i\omega_i$ plus sign-flips in $dx_i/dt$ over the last 30% of the trajectory to classify regimes into `STEADY_STATE`, `DAMPED_OSCILLATION`, `LIMIT_CYCLE_OSCILLATION`, or `UNSTABLE_DIVERGENT`.
+

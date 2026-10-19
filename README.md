@@ -1,13 +1,13 @@
-# GRN-Sim: Gene Regulatory Network Perturbation Simulator & Reverse Engineering Suite
+# GRN-Sim & phpIoRN 2.0: Gene Regulatory Network Perturbation Simulator & Reverse Engineering Suite
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](Dockerfile)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)]()
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A high-performance Python framework for non-linear gene regulatory network (GRN) perturbation simulation and network topology inference. 
+A full-stack Python framework and interactive web simulation studio (**phpIoRN 2.0**) for non-linear gene regulatory network (GRN) perturbation simulation, oscillation/steady-state detection, and network topology reverse engineering.
 
-This package is a modern, modular reverse-engineering and expansion of the foundational research published by **Jan Wildenhain** and **Edmund J. Crampin**, stemming from the Bachelor of Honours Thesis:
+This package is a faithful, modern reverse-engineering and expansion of the foundational MATLAB + `phpIoRN` research software developed by **Jan Wildenhain** and **Edmund J. Crampin**, stemming from the Bachelor of Honours Thesis:
 > **"In Silico Modelling of Gene Networks and Reverse Engineering of Transcriptional Networks"**  
 > *Jan Wildenhain (2004/2005)*
 
@@ -36,150 +36,99 @@ If you use this software or its methodology in your research, please cite the pr
 
 ---
 
+## 📸 Visual Tour (`phpIoRN 2.0` Web Application)
+
+### 1. Simulation & Inference Wizard Studio (Dark & Light Themes)
+Full 3-step `phpIoRN` simulation workflow (`get_network.php` → `run_sim.php` → `show_sim.php`) featuring force-directed / circular / hierarchical graph layouts, steady-state vs. oscillation diagnostics, $3 \times 3 + \text{marginals}$ Observed vs. Predicted misclassification matrices (`$TMP_CMAT`), 8-metric performance bars (`$TMP_STATMAT`), and `.msmt` / `.pert` / `.dot` / `.json` exports:
+
+| Dark Theme (`Simulation Studio`) | Light Theme (`Simulation Studio`) |
+| :---: | :---: |
+| ![Simulation Studio Dark](docs/screenshots/01_simulation_studio_dark.png) | ![Simulation Studio Light](docs/screenshots/02_simulation_studio_light.png) |
+
+### 2. Native Graphviz `dot`/`neato` 9-State Classification SVG & Interactive ODE/Hill Popups
+Exact reproduction of `statsgraph_to_dot.m` 9-state edge styling (`TP+`, `TP-`, `FP+`, `FP-`, `FN+`, `FN-`, `SignErr +-`, `SignErr -+`) and interactive `popups.php` modals when clicking any gene node or regulatory edge:
+
+| Graphviz 9-State SVG (`statsgraph_to_dot.m`) | Node ODE Trajectory Inspector (`popups.php?type=node`) | Edge Hill Kinetics Curve (`popups.php?type=edge`) |
+| :---: | :---: | :---: |
+| ![Graphviz 9-State SVG](docs/screenshots/03_graphviz_dot_9state.png) | ![ODE Trajectory Inspector](docs/screenshots/04_ode_kinetic_inspector.png) | ![Edge Hill Kinetics Curve](docs/screenshots/05_edge_hill_inspector.png) |
+
+### 3. *E. coli* SOS DNA Repair Benchmark, Thesis Figures Gallery & Persistent SQLite Archive
+Replication of the 9-gene *E. coli* SOS DNA Repair Pathway (Gardner et al., *Science* 2003; Thesis Table 4.1), Thesis & Paper Figures Gallery, and persistent SQLite database archive (`nw` + `alg` tables from `dumpdb.sql`) with interactive run inspection (`showpre.php`):
+
+| *E. coli* SOS Pathway (Table 4.1) | Thesis & Paper Figures Gallery | SQLite Simulation Archive (`showpre.php`) |
+| :---: | :---: | :---: |
+| ![E. coli SOS Pathway](docs/screenshots/06_ecoli_sos_pathway.png) | ![Thesis and Paper Figures Gallery](docs/screenshots/07_thesis_paper_figures_gallery.png) | ![SQLite Simulation Archive Inspector](docs/screenshots/08_sqlite_archive_detail.png) |
+
+---
+
 ## 🔬 Core Capabilities
 
 ### 1. In Silico Non-Linear GRN Perturbation Simulator
 * **Network Topologies**:
-  * **Random (Erdős–Rényi)**: Constant attachment probability.
-  * **Scale-Free (Barabási–Albert)**: Preferential attachment yielding power-law degree distributions $P(k) \sim k^{-\gamma}$.
-  * **Hierarchical Modular**: Recursive scale-invariant motif duplication with peripheral rewiring.
-* **Non-linear Hill Kinetics**:
+  * **Random (Erdős–Rényi)**: Constant attachment probability (`netsim.m` Type 1).
+  * **Scale-Free (Barabási–Albert)**: Preferential attachment yielding power-law degree distributions $P(k) \sim k^{-\gamma}$ (`netsim.m` Type 2).
+  * **Hierarchical Modular**: Recursive scale-invariant motif duplication with peripheral rewiring (`netsim.m` Type 3).
+* **Non-linear Hill Kinetics (`create_network.m` / `do_perturbation.m`)**:
   $$\frac{dx_i}{dt} = v_i \prod_{j \in \text{Inh}} \left(\frac{K_{ij}^{m_j}}{I_j^{m_j} + K_{ij}^{m_j}}\right) \prod_{k \in \text{Act}} \left(1 + \frac{A_k^{m_k}}{A_k^{m_k} + Ka_k^{m_k}}\right) - b_i x_i + u_i$$
-* **Multi-experiment Perturbation Protocols**:
-  * Steady-state pre-equilibration ($\frac{dx_i}{dt} = 0$).
-  * Systematic single-gene transcriptional perturbations (overexpression & down-regulation).
-  * Dynamic ODE integration using adaptive Runge-Kutta / Radau solvers (`scipy.integrate.solve_ivp`).
-  * Combined noise model: biological parameter variability ($\sim \mathcal{N}(0, \sigma_b^2)$) and experimental Gaussian measurement noise ($\sim \mathcal{N}(0, \sigma_m^2)$).
+* **Oscillation & Steady-State Diagnostics (`create_network.m` & `do_perturbation.m`)**:
+  * Integrates over horizon $e = s^2 + 100$ steps and checks exact squared-state Euclidean norm convergence:
+    $$\text{efnorm}(t) = \left\| \mathbf{x}(t+1)^2 - \mathbf{x}(t)^2 \right\|_2 \le 10^{-4}$$
+  * Evaluates Jacobian eigenvalues $\lambda_i = \alpha_i \pm i\omega_i$ at the terminal state to detect limit-cycle oscillations ($\max \text{Re}(\lambda) \ge 0, |\text{Im}(\lambda)| > 0$, zero-crossings in $dx_i/dt$) and damped oscillations (`abs(efnorm - efnorm_update) < 1e-4` convergence check).
+* **Noise & Biological Variability Models (`do_biovariability.m`, `error_model.m`)**:
+  * Biological variability across $M$ replicates ($\zeta \sim \mathcal{N}(0, \sigma_b^2)$) and Gaussian measurement noise ($\epsilon \sim \mathcal{N}(0, \sigma_m^2)$).
 
 ### 2. Network Inference & Reverse Engineering Algorithms
-* **S2G (Simple-to-General)**:
-  * Greedy forward basis selection followed by backward pruning.
-  * Parsimony-guided model selection using Akaike Information Criterion (AIC) and Minimum Description Length (MDL).
-* **G2S (General-to-Specific)**:
-  * Systematic backward elimination starting from full connectivity, minimizing AIC.
-* **NIR (Network Identification by multiple Regression)**:
-  * Top-$D$ beam search over sparse regulatory subsets with Tikhonov ridge regression (Gardner et al., *Science* 2003).
-* **FAST**:
-  * Singular Value Decomposition (SVD) and pseudo-inverse truncation for underdetermined or ill-conditioned systems.
-* **Voting Ensemble**:
-  * Strict consensus operator combining S2G and G2S predictions, suppressing false positive rates while maintaining high precision.
-* **By-Chance**:
-  * Monte Carlo null model for statistical significance benchmarking.
+* **S2G (Simple-to-General — `s2g.m` / `getvar.m`)**:
+  * Greedy forward basis selection with swap replacement (`getanother`), minimizing the MDL/AIC log penalty $C(k) = N \ln(\text{MSE}) + k \ln(N)$.
+* **G2S (General-to-Specific — `g2s.m` / `gen2spec.m`)**:
+  * Systematic backward elimination starting from full connectivity, minimizing AIC $C_{\text{AIC}}(k) = \text{SSE} + k$.
+* **NIR (Network Identification by multiple Regression — `nir_v3.m`)**:
+  * Top-$D$ beam search over sparse regulatory subsets with errors-in-variables Tikhonov regularization (Gardner et al., *Science* 2003).
+* **FAST (`fast.m` / `fast_modified.m`)**:
+  * Singular Value Decomposition (SVD) pseudo-inverse truncation with self-regulation correction (`+ I_N`) and degree-guided sparsity thresholding (Farina et al.).
+* **Voting Ensemble (`do_vote.m`)**:
+  * Strict consensus operator combining S2G and G2S predictions where `sign(S2G) == sign(G2S)`.
+* **By-Chance (`by_chance.m`)**:
+  * Random null baseline matching expected connectivity density and activator/inhibitor ratio.
 
-### 3. Benchmarks & Real Biological Data
-* Direct replication of the **9-gene *E. coli* SOS DNA Repair Pathway** from Gardner et al. (*Science* 2003).
-* Re-creation of **Table 4.1** from the original thesis: exact performance comparisons across S2G, G2S, NIR, and Ensemble models.
-
-### 4. Autonomous Multi-Agent SDLC Architecture
-* Integrated collaborative agent system:
-  * `SimulationAgent`: Configures topologies, kinetics, and perturbation experiments.
-  * `InferenceAgent`: Executes algorithmic inference pipelines and ensembles.
-  * `EvaluationAgent`: Computes confusion matrices, ROC metrics, coverage, and signed PPV.
-  * `CoordinatorAgent`: Orchestrates parameter sweeps and automated report generation.
+### 3. Persistent SQLite Archive (`dumpdb.sql` / `database.py`)
+* Stores every simulation run and per-algorithm evaluation into `data/rgn_db.sqlite` using the original `phpIoRN` relational schema (`nw` table for network parameters + `alg` table for per-algorithm metrics), plus full JSON state recovery for instant inspection in Tab 4 (`showpre.php`).
 
 ---
 
-## 🏛 Historical Background: From phpIoRN to `grn-sim`
+## 🐳 Running with Docker (Recommended)
 
-In 2004–2005, an early web implementation named **phpIoRN / phpMyIoRN** (*Inference of Regulatory Networks*) was built to interface with MATLAB in the background. The PHP frontend gathered user parameters, spawned headless MATLAB workers (`matlab -nodisplay -nojvm -nosplash`), and dynamically rendered SVG/PNG network graphs via Graphviz (`dot` / `neato`) alongside PHP-formatted confusion matrices.
+Build and launch the full `phpIoRN 2.0` web application (including Graphviz `dot`/`neato` and SQLite persistence):
 
-This modern Python package completely supersedes the legacy MATLAB/PHP stack with a native, zero-dependency, pure-Python architecture, parallel execution support, and modern scientific computing standards (`numpy`, `scipy`).
+```bash
+docker build -t grn-sim-phpiorn:latest .
+docker run -d --name grn-sim-phpiorn -p 8085:8080 -v $(pwd)/data:/app/data grn-sim-phpiorn:latest
+```
+
+Then open **http://localhost:8085** in your browser.
 
 ---
 
-## 🚀 Installation
+## 🚀 Local Python Installation & CLI
 
 ```bash
 git clone https://github.com/jwildenhain/gene-network-sim-inference.git
 cd gene-network-sim-inference
-pip install -e .
-```
-
-To install development dependencies (pytest):
-```bash
 pip install -e ".[dev]"
 ```
 
----
-
-## 💻 Quickstart
-
-### Python API
-
-```python
-import numpy as np
-from grn_sim.core.topology import TopologyGenerator
-from grn_sim.core.network import GeneRegulatoryNetwork
-from grn_sim.simulator.experiment import PerturbationExperiment
-from grn_sim.inference.s2g import S2GInference
-from grn_sim.inference.ensemble import VotingEnsemble
-from grn_sim.evaluation.metrics import BenchmarkMetrics
-
-# 1. Generate a Scale-Free network of 10 genes
-topo = TopologyGenerator(random_state=42)
-adj = topo.generate_scale_free(num_genes=10, k_average=2.0, act_ratio=0.5)
-
-# 2. Simulate steady-state perturbation experiment
-grn = GeneRegulatoryNetwork(adj)
-experiment = PerturbationExperiment(grn, noise_level=0.05, random_state=42)
-dataset = experiment.run_perturbation_series()
-
-# 3. Infer network structure using S2G
-s2g = S2GInference()
-inferred_matrix = s2g.infer(dataset.expression_ratios, dataset.perturbation_matrix)
-
-# 4. Evaluate performance against ground truth
-metrics = BenchmarkMetrics.compute(grn.adjacency_matrix, inferred_matrix)
-print(f"Coverage: {metrics['coverage']:.2%}")
-print(f"False Positive Rate: {metrics['false_positive_rate']:.2%}")
-print(f"Signed PPV: {metrics['signed_ppv']:.2%}")
-```
-
-### Command Line Interface (CLI)
-
+### Launch the Web Server Directly
 ```bash
-# Run the interactive end-to-end prototype demo
-python3 demo.py
-
-# Replicate the E. coli SOS Pathway Benchmark (Table 4.1)
-grn-sim sos-benchmark
-
-# Run an automated multi-agent simulation sweep
-grn-sim multi-agent --genes 15 --topology power_law --k-av 2.0 --noise 0.05
-
-# Run test suite
-pytest -v
+python3 -m grn_sim.web.server --host 0.0.0.0 --port 8085
 ```
 
----
-
-## 📊 Verification & Test Suite
-
-The test suite validates the mathematical solver, Hill kinetics, each inference algorithm, and the *E. coli* SOS pathway replication:
-
+### Run Unit & Playwright E2E Tests
 ```bash
-pytest
-```
-```text
-============================= test session starts ==============================
-collected 14 items
+# Run core unit & MATLAB equivalence tests
+pytest tests/test_grn.py -v
 
-tests/test_grn.py::test_network_topologies PASSED                        [  7%]
-tests/test_grn.py::test_kinetics_evaluation PASSED                       [ 14%]
-tests/test_grn.py::test_ode_steady_state PASSED                          [ 21%]
-tests/test_grn.py::test_perturbation_experiment PASSED                   [ 28%]
-tests/test_grn.py::test_noise_models PASSED                              [ 35%]
-tests/test_grn.py::test_s2g_inference PASSED                             [ 42%]
-tests/test_grn.py::test_g2s_inference PASSED                             [ 50%]
-tests/test_grn.py::test_nir_inference PASSED                             [ 57%]
-tests/test_grn.py::test_fast_inference PASSED                            [ 64%]
-tests/test_grn.py::test_voting_ensemble PASSED                           [ 71%]
-tests/test_grn.py::test_by_chance PASSED                                 [ 78%]
-tests/test_grn.py::test_evaluation_metrics PASSED                        [ 85%]
-tests/test_grn.py::test_sos_pathway_benchmark PASSED                     [ 92%]
-tests/test_grn.py::test_multi_agent_system PASSED                         [100%]
-
-============================== 14 passed in 3.42s ==============================
+# Run full Playwright E2E browser + SQLite persistence test against live server
+pytest tests/test_playwright_e2e.py -v -s
 ```
 
 ---
@@ -188,25 +137,31 @@ tests/test_grn.py::test_multi_agent_system PASSED                         [100%]
 
 ```text
 gene-network-sim-inference/
+├── Dockerfile                # Container image with Python + Graphviz + SQLite
 ├── LICENSE                   # MIT License
-├── README.md                 # Complete documentation & citation
-├── SPECIFICATION.md          # 32 KB comprehensive mathematical reverse-engineering spec
+├── README.md                 # Complete documentation, screenshots & citation
+├── SPECIFICATION.md          # Mathematical & algorithmic reverse-engineering spec
 ├── pyproject.toml            # Package configuration (PEP 517/518)
-├── demo.py                   # Full interactive demo script
+├── demo.py                   # Interactive CLI demo script
+├── docs/
+│   └── screenshots/          # Verified Docker & Playwright UI screenshots
 ├── data/
-│   ├── results_gapa_20021209_and_mmc_dbl.mat  # Gardner 2003 SOS pathway dataset
-│   └── SOSdata.txt
+│   ├── results_gapa_20021209_and_mmc_dbl.mat  # Gardner 2003 E. coli SOS dataset
+│   ├── SOSdata.txt           # Tabular SOS expression & perturbation data
+│   └── rgn_db.sqlite         # Persistent SQLite simulation archive (nw & alg tables)
 ├── src/
 │   └── grn_sim/
-│       ├── core/             # Network models & topology generators
-│       ├── simulator/        # Hill kinetics, ODE solver, noise models, perturbation experiment
+│       ├── core/             # Network models & topology generators (ER, BA, Hierarchical)
+│       ├── simulator/        # Hill kinetics, ODE solver, oscillation diagnostics, noise
 │       ├── inference/        # S2G, G2S, NIR, FAST, ByChance, Voting Ensemble
-│       ├── evaluation/       # Confusion matrix, ROC, Signed PPV, Coverage
+│       ├── evaluation/       # Confusion matrix, ROC, Signed PPV, Coverage (Table 4.1)
 │       ├── benchmarks/       # SOS pathway replication & parameter sweeps
-│       ├── agents/           # Multi-agent autonomous SDLC system
+│       ├── agents/           # Multi-agent autonomous SDLC orchestration
+│       ├── web/              # phpIoRN 2.0 HTTP server, SQLite DB, Graphviz SVG & UI
 │       └── cli.py            # CLI entry point
 └── tests/
-    └── test_grn.py           # Comprehensive pytest suite
+    ├── test_grn.py           # Core mathematical & algorithmic pytest suite
+    └── test_playwright_e2e.py # Full Playwright browser + SQLite E2E test
 ```
 
 ---
