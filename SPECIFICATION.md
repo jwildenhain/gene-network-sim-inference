@@ -48,6 +48,23 @@ The total number of kinetic parameters in a network of $n$ genes and $l$ directe
 | Inhibitor Hill coefficient | $m_{ji}$ | `n_i(j, k)` | $\mathcal{U}[0.0, 5.0]$ | $1.0 + 5.0 \times \mathcal{U}[0, 1] \in [1.0, 6.0]$ |
 | Initial mRNA concentrations | $\mathbf{s}_0$ | `series(:, 1)` | $\mathcal{U}[10.0, 20.0]$ | $0.5 + \mathcal{U}[0, 1] \in [0.5, 1.5]$ |
 
+### 1.4 Multi-Paradigm Simulation Dynamics Engines (`src/grn_sim/simulator/model_engine.py`)
+
+To systematically compare mechanistic modeling against modern neural and empirical techniques, `phpIoRN 2.0` implements four distinct simulation dynamics paradigms:
+
+1. **Non-linear Hill ODE (`hill_nonlinear`)**:
+   Solves the classical coupled differential equations (Eq 2.2, 2.3) using Runge-Kutta 4/5 (`scipy.integrate.solve_ivp` with RK45) until the steady-state convergence norm $\|\mathbf{x}(t+1)^2 - \mathbf{x}(t)^2\|_2 \le 10^{-4}$ is reached.
+2. **CellBox Continuous Neural ODE (`cellbox_neural_ode`)**:
+   Simulates continuous relaxation dynamics according to:
+   $$\frac{d x_i}{dt} = \tanh\left( \sum_{j=1}^n W_{ij} x_j + b_i + u_i \right) - \alpha_i x_i$$
+   where $W_{ij} = \gamma T_{ij}$, degradation constants $\alpha_i \approx 1.0$, and saturation bounds prevent unphysical explosion.
+3. **Linear Dynamical System (`linear_jacobian`)**:
+   Computes analytical steady states via direct matrix inversion of the Jacobian:
+   $$\mathbf{x} = (\mathbf{B} - \mathbf{A})^{-1} (\mathbf{v} + \mathbf{u})$$
+   where $\mathbf{B} = \text{diag}(b_1, \dots, b_n)$ and $\mathbf{A} = \gamma \mathbf{T}^T$. Guarantees stable convergence when spectral radius $\rho(\mathbf{B}^{-1} \mathbf{A}) < 1$.
+4. **Single-Cell Perturb-seq Count Simulator (`perturb_seq_counts`)**:
+   Generates discrete integer single-cell UMI counts for 400 cells per condition (unperturbed control $+ n$ single-gene perturbations) under biological Gamma-Poisson overdispersion and log-normal sequencing depth variance ($s_c \sim \text{LogNormal}(9.9, 0.2)$). Output format strictly adheres to standard AnnData `.h5ad` structures matching 10x Genomics and VCC 2026.
+
 ---
 
 ## 2. Network Topology Models
@@ -247,6 +264,49 @@ Combines S2G and G2S to eliminate false positives:
   0 & \text{otherwise}
   \end{cases}$$
 - An interaction is accepted if and only if both S2G and G2S agree on its existence and sign.
+
+### 5.7 CellBox: Continuous Neural ODE Relaxation (`src/grn_sim/inference/cellbox.py`)
+Infers the regulatory interaction matrix $\mathbf{W} \in \mathbb{R}^{n \times n}$ by modeling continuous dynamical relaxation:
+$$\frac{dx_i}{dt} = \phi\left( \sum_{j=1}^n W_{ij} x_j + u_i \right) - \alpha_i x_i$$
+At steady state, the concentration satisfies $x_i = \frac{1}{\alpha_i} \phi(\sum_j W_{ij} x_j + u_i)$.
+- **Loss Function:**
+  $$\mathcal{L}(W, \alpha) = \frac{1}{M} \sum_{m=1}^M \|\hat{\mathbf{x}}_m - \mathbf{x}_m\|_2^2 + \lambda_1 \|W\|_1 + \lambda_2 \|W\|_2^2$$
+- Implemented with native PyTorch automatic differentiation (or SciPy L-BFGS-B fallback) with cosine annealing learning rate schedule and threshold discretization.
+
+### 5.8 GENIE3: Regression Tree Ensemble (`src/grn_sim/inference/genie3.py`)
+Decomposes the network reverse-engineering problem into $n$ separate non-linear feature importance regressions (Huynh-Thu et al., *PLoS ONE* 2010):
+- For each target gene $i$, a tree ensemble (`ExtraTreesRegressor` / `RandomForestRegressor`) predicts $x_i$ from all potential regulators $\mathbf{x}_{-i}$:
+  $$x_i = f_i(\mathbf{x}_{-i}) + \epsilon_i$$
+- Regulatory edge weights correspond to feature importances $w_{ji} = \text{MDI}(x_j \to x_i)$.
+- Directional signs are determined via the empirical perturbation sensitivity:
+  $$\text{sign}(A_{ji}) = \text{sign}\left( \text{Corr}(x_j, x_i) \right)$$
+
+### 5.9 Network Deconvolution (ND) (`src/grn_sim/inference/network_deconv.py`)
+Analytically separates direct causal regulatory interactions from indirect transitive correlations (Feizi et al., *Nat Biotechnol* 2013):
+- Given an observed symmetric or directed correlation matrix $\mathbf{G}_{obs}$:
+  $$\mathbf{G}_{dir} = \mathbf{G}_{obs} (\mathbf{I} + \mathbf{G}_{obs})^{-1}$$
+- Solved via eigen-decomposition $\mathbf{G}_{obs} = \mathbf{V} \mathbf{\Lambda}_{obs} \mathbf{V}^T$, where direct eigenvalues satisfy $\lambda_{dir} = \frac{\lambda_{obs}}{1 + \lambda_{obs}}$.
+- Edge signs and directions are preserved by projecting back onto the perturbation response matrix.
+
+### 5.10 Kaggle Multi-Output RidgeCV (`src/grn_sim/inference/ridge_cv.py`)
+Multi-target $L_2$-regularized regression baseline reproducing the 1st-place approach in modern perturbation challenges:
+$$\min_{\mathbf{A}} \|\mathbf{X} \mathbf{A}^T + \mathbf{U}\|_2^2 + \alpha \|\mathbf{A}\|_F^2$$
+- Performs cross-validated grid search over $\alpha \in [10^{-3}, 10^3]$ to optimize out-of-sample generalization error.
+- Enforces row-wise sparsity truncation to top-$K$ strongest interactions per gene.
+
+### 5.11 CPA-Lite: Latent Perturbation Autoencoder (`src/grn_sim/inference/cpa_lite.py`)
+Compositional Perturbation Autoencoder (Lotfollahi et al., *Nat Biotechnol* 2023) modeling transcriptional response in a low-dimensional bottleneck:
+- **Encoder:** $\mathbf{z} = \mathbf{E}(\mathbf{x}) \in \mathbb{R}^d$ ($d \ll n$).
+- **Latent Arithmetic:** $\mathbf{z}_{pert} = \mathbf{z}_{ctrl} + \Delta \mathbf{z}_j$.
+- **Decoder:** $\hat{\mathbf{x}} = \mathbf{D}(\mathbf{z}_{pert})$.
+- The effective gene regulatory influence matrix is derived from the sensitivity Jacobian:
+  $$\mathbf{A}_{est} = \mathbf{D}_{linear}^T \mathbf{E}_{linear}$$
+
+### 5.12 AtlasShift: Cross-Atlas Covariate Transfer (`src/grn_sim/inference/atlasshift.py`)
+Empirical transfer algorithm (Kaipeng Meng, Arc Institute VCC 2026 Leaderboard #82) estimating target response by transferring observed differential expression shifts across cell atlases:
+$$\hat{\mathbf{y}}_{\text{dest}} = \bar{\mathbf{y}}_{\text{dest, ctrl}} + \sum_{s \in \text{sources}} w_s \cdot (\bar{\mathbf{y}}_{s, \text{pert}} - \bar{\mathbf{y}}_{s, \text{ctrl}})$$
+- Excellent in-distribution accuracy when target perturbations are pre-observed in source atlases.
+- Provides a direct empirical baseline against mechanistic ODE models for OOD generalization and rewiring analysis.
 
 ---
 
@@ -629,5 +689,48 @@ Evaluated in `src/grn_sim/benchmarks/vcc_benchmark.py`:
    As target cell line rewiring increases ($\rho = 0\% \to 50\%$ edge mutations/enhancer switching):
    - AtlasShift correlation decays rapidly from $r = 0.662 \to 0.276$.
    - Demonstrates that empirical transfer fails when cell lines undergo significant transcriptional network rewiring, necessitating mechanistic causal modeling.
+
+---
+
+## 12. Real-World Benchmark Datasets Catalog Specification (`src/grn_sim/benchmarks/benchmark_datasets.py`)
+
+`phpIoRN 2.0` integrates a comprehensive catalog of 4 benchmark datasets representing microbial, in silico, and single-cell human perturbation paradigms.
+
+### 12.1 E. coli SOS DNA Repair (`ecoli_sos`)
+- **Organism:** *Escherichia coli*
+- **Dimensions:** $N = 9$ genes, $M = 9$ single-gene perturbation experiments.
+- **Gene Set:** `recA, lexA, ssb, recF, dinI, umuDC, rpoD, rpoH, rpoS`.
+- **Ground Truth:** 43 directed interactions verified by Gardner et al. (*Science* 2003) and Jan Wildenhain Honours Thesis (Table 4.1).
+- **Perturbations:** Normalized relative mRNA expression changes under UV-irradiation and single-gene plasmid overexpression.
+
+### 12.2 DREAM4 In Silico Gold Standard Network (`dream4_10gene`)
+- **Organism:** In silico synthetic benchmark generated from *E. coli* and *S. cerevisiae* subgraphs.
+- **Dimensions:** $N = 10$ genes, $M = 10$ knockout perturbation conditions.
+- **Gene Set:** `G1, G2, G3, G4, G5, G6, G7, G8, G9, G10`.
+- **Ground Truth:** 11 directed interactions including transcriptional feedback loops (e.g. $G_{10} \to G_1$, $G_5 \dashv G_1$).
+- **Dynamics:** Non-linear biochemical simulation with cooperative binding and translation delays.
+
+### 12.3 Norman et al. 2019 Hematopoiesis TF Circuit (`norman_2019_tf16`)
+- **Organism / Cell Line:** Human K562 erythroleukemic cell line.
+- **Dimensions:** $N = 16$ genes, $M = 16$ single/combinatorial CRISPRa perturbation conditions.
+- **Gene Set:** Key hematopoietic lineage specification transcription factors:
+  `GATA1, SPI1 (PU.1), CEBPA, KLF1, RUNX1, TAL1, LMO2, ZFPM1 (FOG1), GATA2, ETV6, IKZF1, MEF2C, FOXO1, EP300, CREBBP, MYB`.
+- **Ground Truth:** 25 curated directed regulatory interactions capturing the canonical GATA1-SPI1 mutual antagonism circuit governing erythroid vs. myeloid cell fate decisions.
+- **AnnData:** Accompanied by matched 400 cells/condition single-cell count matrices.
+
+### 12.4 Replogle et al. 2022 Core p53 Circuit (`replogle_2022_p53`)
+- **Organism / Cell Lines:** Human K562 (chronic myelogenous leukemia) vs. hTERT-RPE1 (retinal pigment epithelial cells).
+- **Dimensions:** $N = 12$ genes, $M = 12$ CRISPRi essential-gene perturbations.
+- **Gene Set:** Core p53 pathway and cell cycle checkpoint regulators:
+  `TP53, MDM2, CDKN1A (p21), ATM, CHEK2, BAX, BBC3 (PUMA), PMAIP1 (NOXA), GADD45A, CDK2, CCNE1, RB1`.
+- **Ground Truth:** 23 directed causal interactions describing p53 activation, MDM2 negative feedback autoregulation, and downstream CDK2/Rb arrest cascades.
+- **Cross-Cell Line Tasks:** Matches the multi-context task formulation of the Virtual Cell Challenge 2026.
+
+### 12.5 Benchmark Catalog REST API Contract
+Accessible via:
+- `GET /api/benchmark/catalog`: Returns JSON array of all registered benchmarks with metadata.
+- `GET /api/benchmark/dataset?id={dataset_id}`: Returns complete expressions $\mathbf{X}$, perturbations $\mathbf{U}$, true matrix $\mathbf{A}_{\text{true}}$, Graphviz DOT/SVG layouts, and 12-algorithm comparison metrics.
+- `POST /api/benchmark/load_to_studio`: Loads any benchmark dataset into the Tab 1 interactive simulation studio for real-time ODE inspection and parameter exploration.
+
 
 

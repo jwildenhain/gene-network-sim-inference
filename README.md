@@ -66,6 +66,17 @@ Direct comparative benchmarking between Mechanistic Causal GRN modeling (`phpIoR
 | :---: | :---: | :---: |
 | ![AtlasShift in Studio](docs/screenshots/09_tab1_atlasshift_inference_studio.png) | ![VCC Benchmark Dark](docs/screenshots/10_tab5_vcc_atlasshift_benchmark_dark.png) | ![VCC Benchmark Light](docs/screenshots/11_tab5_vcc_atlasshift_benchmark_light.png) |
 
+### 5. Multi-Paradigm Simulation Engines & Real-World Benchmarks Studio (Tabs 1 & 2)
+Complete integration of 4 simulation dynamics engines (`hill_nonlinear`, `cellbox_neural_ode`, `linear_jacobian`, `perturb_seq_counts`), 12 reverse-engineering inference algorithms (`S2G`, `G2S`, `Voting`, `CellBox`, `GENIE3`, `NetDeconv`, `RidgeCV`, `CPALite`, `AtlasShift`, `NIR`, `FAST`, `By-Chance`), and real-world benchmark datasets (`ecoli_sos`, `dream4_10gene`, `norman_2019_tf16`, `replogle_2022_p53`):
+
+| Tab 1: Multi-Paradigm Studio (Dark) | Tab 1: Multi-Paradigm Studio (Light) | Tab 2: Real-World Benchmarks Studio |
+| :---: | :---: | :---: |
+| ![Multi-Paradigm Studio Dark](docs/screenshots/12_tab1_multiparadigm_studio_dark.png) | ![Multi-Paradigm Studio Light](docs/screenshots/13_tab1_multiparadigm_studio_light.png) | ![Real-World Benchmarks Studio](docs/screenshots/14_tab2_benchmarks_studio_sos.png) |
+
+| Tab 2: Norman 2019 16-TF Perturb-seq Benchmark | Tab 1: Loaded Real-World Norman Circuit in Studio |
+| :---: | :---: |
+| ![Norman 2019 Perturb-seq Benchmark](docs/screenshots/15_tab2_benchmarks_norman_tf16.png) | ![Norman 2019 Loaded in Studio](docs/screenshots/16_tab1_loaded_norman_tf16_studio.png) |
+
 ---
 
 ## 🔬 Core Capabilities
@@ -75,6 +86,11 @@ Direct comparative benchmarking between Mechanistic Causal GRN modeling (`phpIoR
   * **Random (Erdős–Rényi)**: Constant attachment probability (`netsim.m` Type 1).
   * **Scale-Free (Barabási–Albert)**: Preferential attachment yielding power-law degree distributions $P(k) \sim k^{-\gamma}$ (`netsim.m` Type 2).
   * **Hierarchical Modular**: Recursive scale-invariant motif duplication with peripheral rewiring (`netsim.m` Type 3).
+* **Multi-Paradigm Simulation Dynamics Engines (`src/grn_sim/simulator/model_engine.py`)**:
+  * **Non-linear Hill ODE (`hill_nonlinear`)**: Classical thesis kinetics with cooperative activation/inhibition, enzymatic degradation, and basal production.
+  * **CellBox Neural ODE (`cellbox_neural_ode`)**: Continuous neural ODE relaxation $\dot{x}_i = \phi(\sum_j W_{ij} x_j + u_i) - \alpha_i x_i$ integrated via Runge-Kutta 4/5.
+  * **Linear Dynamical System (`linear_jacobian`)**: Linear dynamical Jacobian matrix inversion solving $\mathbf{x} = (B - A)^{-1} (v + u)$.
+  * **Single-Cell Perturb-seq Counts (`perturb_seq_counts`)**: Bridges ODE steady states into discrete integer UMI counts with Gamma-Poisson overdispersion (400 cells/condition) matching 10x Genomics Chromium scRNA-seq and VCC 2026.
 * **Non-linear Hill Kinetics (`create_network.m` / `do_perturbation.m`)**:
   $$\frac{dx_i}{dt} = v_i \prod_{j \in \text{Inh}} \left(\frac{K_{ij}^{m_j}}{I_j^{m_j} + K_{ij}^{m_j}}\right) \prod_{k \in \text{Act}} \left(1 + \frac{A_k^{m_k}}{A_k^{m_k} + Ka_k^{m_k}}\right) - b_i x_i + u_i$$
 * **Oscillation & Steady-State Diagnostics (`create_network.m` & `do_perturbation.m`)**:
@@ -84,17 +100,29 @@ Direct comparative benchmarking between Mechanistic Causal GRN modeling (`phpIoR
 * **Noise & Biological Variability Models (`do_biovariability.m`, `error_model.m`)**:
   * Biological variability across $M$ replicates ($\zeta \sim \mathcal{N}(0, \sigma_b^2)$) and Gaussian measurement noise ($\epsilon \sim \mathcal{N}(0, \sigma_m^2)$).
 
-### 2. Network Inference & Reverse Engineering Algorithms (100% MATLAB Numerical Equivalence)
+### 2. Network Inference & Reverse Engineering Algorithms (12 Functional Paradigms)
 * **S2G (Simple-to-General — `s2g.m` / `getvar.m`)**:
   * Column-normalized basis regression ($B = X / \|X_j\|_2$) with swap replacement loop (`getanother`), minimizing the MDL log-error penalty $C(k) = N \ln(\overline{E^2}) + k \ln(N)$.
 * **G2S (General-to-Specific — `g2s.m` / `gen2spec.m`)**:
   * Systematic backward elimination starting from full connectivity with single-variable drop optimization (`dropanother`), minimizing AIC $C_{\text{AIC}}(k) = \sum E^2 + k$.
+* **Voting Ensemble (`do_vote.m`)**:
+  * Strict consensus operator combining S2G and G2S predictions where $\text{sign}(\text{S2G}) == \text{sign}(\text{G2S})$, cutting false discovery rates drastically.
+* **CellBox Neural ODE (`src/grn_sim/inference/cellbox.py`)**:
+  * Learns the continuous interaction matrix $W$ by simulating non-linear relaxation trajectories $\dot{x}_i = \tanh(\sum_j W_{ij} x_j + u_i) - \alpha_i x_i$ with $L_1$ Lasso sparsity regularisation (PyTorch / SciPy).
+* **GENIE3 (`src/grn_sim/inference/genie3.py`)**:
+  * State-of-the-art tree ensemble method (Huynh-Thu et al.) decomposing network inference into $N$ feature importance regressions using `ExtraTreesRegressor` / `RandomForestRegressor`, signed via perturbation correlation.
+* **Network Deconvolution (`src/grn_sim/inference/network_deconv.py`)**:
+  * Analytically separates direct causal regulatory links from transitive indirect correlations (Feizi et al., *Nat Biotechnol* 2013) via spectral deconvolution $G_{\text{dir}} = G_{\text{obs}} (I + G_{\text{obs}})^{-1}$.
+* **Kaggle Multi-Output RidgeCV (`src/grn_sim/inference/ridge_cv.py`)**:
+  * Multi-target cross-validated $L_2$ regularized regression across $\alpha \in [10^{-3}, 10^3]$, reproducing the top-ranking Kaggle Virtual Cell benchmark baseline.
+* **CPA-Lite (`src/grn_sim/inference/cpa_lite.py`)**:
+  * Compositional perturbation autoencoder (Lotfollahi et al., *Nat Biotechnol* 2023) modeling interventions as additive latent perturbation shifts $z_{\text{pert}} = z_{\text{ctrl}} + \Delta z$.
+* **AtlasShift (`src/grn_sim/inference/atlasshift.py`)**:
+  * Empirical cross-atlas covariate shift transfer algorithm (Meng et al. Arc Institute, VCC 2026 Leaderboard #82).
 * **NIR (Network Identification by multiple Regression — `nir_v3.m`)**:
   * Gardner et al. (*Science* 2003) greedy forward top-$D$ search over sparse regulatory subsets with Tikhonov ridge regularization.
 * **FAST (`fast.m` / `fast_modified.m`)**:
   * Singular Value Decomposition (SVD) pseudo-inverse reconstruction ($A_0 = (X - U) V_r S_r^{-1} U_r^T - I$) with self-regulation adjustment and degree-guided truncation (Farina et al.).
-* **Voting Ensemble (`do_vote.m`)**:
-  * Strict consensus operator combining S2G and G2S predictions where $\text{sign}(\text{S2G}) == \text{sign}(\text{G2S})$, cutting false discovery rates drastically.
 * **By-Chance (`by_chance.m`)**:
   * Random null baseline maintaining expected network connectivity density and activator/inhibitor balance.
 
@@ -113,13 +141,24 @@ Tested in [`tests/test_inference.py::test_matlab_equivalence_60_gene_archive`](t
 - **S2G**: Inferred $3 \times 3$ confusion vector matches stored MATLAB vector `pred_matrix_sg[:, -1]` bit-for-bit: `[22, 0, 70, 0, 33, 59, 5, 0, 3411]`.
 - **NIR**: Inferred $3 \times 3$ confusion vector matches stored MATLAB vector `pred_matrix_gardener[:, -1]` bit-for-bit: `[15, 2, 99, 2, 22, 40, 10, 9, 3401]`.
 
-### 3. Persistent SQLite Archive & Thesis Figures Gallery
+### 3. Real-World & In Silico Benchmark Datasets Registry (`src/grn_sim/benchmarks/benchmark_datasets.py`)
+`phpIoRN 2.0` integrates a comprehensive suite of experimentally validated and in silico gold standard GRN benchmark datasets accessible in Tab 2 and via the REST API:
+* **E. coli SOS DNA Repair (`ecoli_sos`)**:
+  * 9 genes (`recA, lexA, ssb, recF, dinI, umuDC, rpoD, rpoH, rpoS`), 43 experimentally validated directed interactions (Gardner et al., *Science* 2003; Thesis Table 4.1).
+* **DREAM4 In Silico Gold Standard (`dream4_10gene`)**:
+  * 10 genes canonical gold standard regulatory network with signed causal feedback loops from the DREAM4 In Silico Network Challenge.
+* **Norman et al. 2019 Combinatorial Perturb-seq (`norman_2019_tf16`)**:
+  * 16 master transcriptional regulators (`GATA1, SPI1, CEBPA, KLF1, RUNX1, etc.`) in K562 erythroid-myeloid lineage commitment with mutual antagonism circuits.
+* **Replogle et al. 2022 Core p53 Circuit (`replogle_2022_p53`)**:
+  * 12 core p53 / DNA damage / cell cycle checkpoint regulators (`TP53, MDM2, CDKN1A, ATM, CHEK2, etc.`) profiled across K562 and RPE1 cell lines.
+
+### 4. Persistent SQLite Archive & Thesis Figures Gallery
 * **Persistent SQLite Archive (`dumpdb.sql` / `database.py`)**:
   Stores every simulation run and per-algorithm evaluation into `data/rgn_db.sqlite` using the original `phpIoRN` relational schema (`nw` table for network parameters + `alg` table for per-algorithm metrics), plus full JSON state recovery for instant inspection in Tab 4 (`showpre.php`).
 * **Thesis & Paper Figures Gallery (Dual Engine)**:
   Tab 3 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
 
-### 4. Single-Cell Perturb-seq Generation & Arc Institute Virtual Cell Challenge (VCC 2026)
+### 5. Single-Cell Perturb-seq Generation & Arc Institute Virtual Cell Challenge (VCC 2026)
 
 #### 4.1 Single-Cell Perturb-seq Generation Mode Using the phpIoRN ODE Simulator
 In addition to bulk steady-state ratios, `phpIoRN 2.0` provides an integrated **Single-Cell Perturb-seq Simulation Mode** (`src/grn_sim/simulator/perturb_seq.py`). Rather than generating generic synthetic count distributions, this module bridges the **exact dynamical steady states computed by the non-linear Hill ODE solver** into discrete single-cell UMI counts matching 10x Genomics Chromium Perturb-seq and Arc Institute VCC 2026 specifications (400 single cells per condition).

@@ -721,7 +721,7 @@
           <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
         </button>
         <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
-          <span>2. E. coli SOS Pathway Benchmark (Gardner 2003)</span>
+          <span>2. Real-World Benchmarks (SOS, DREAM4, Perturb-seq)</span>
         </button>
         <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
           <span>3. Thesis &amp; Paper Figures Gallery</span>
@@ -811,6 +811,16 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">Simulation Dynamics Engine</label>
+            <select id="sim-kinetics-engine">
+              <option value="hill_nonlinear" selected>Non-linear Hill ODE (Thesis Kinetics)</option>
+              <option value="cellbox_neural_ode">CellBox Continuous Neural ODE Relaxation</option>
+              <option value="linear_jacobian">Linear Dynamical System (Jacobian Matrix Inverse)</option>
+              <option value="perturb_seq_counts">Single-Cell Perturb-seq Counts (Gamma-Poisson)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">
               <span>Network Size (n genes)</span>
               <span class="val" id="lbl-num-genes">12</span>
@@ -871,9 +881,14 @@
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="s2g" checked /> S2G (Forward AIC)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="g2s" checked /> G2S (Backward AIC)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="vote" checked /> Voting Consensus</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="cellbox" checked /> CellBox Neural ODE</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="genie3" checked /> GENIE3 Ensemble</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="netdeconv" checked /> Net Deconvolution</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="ridge_cv" checked /> Kaggle RidgeCV</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="cpa_lite" checked /> CPA-Lite Latent</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="atlasshift" checked /> AtlasShift (VCC)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="nir" checked /> NIR (Gardner)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="fast" checked /> FAST (SVD)</label>
-              <label class="alg-check"><input type="checkbox" class="alg-cb" value="atlasshift" checked /> AtlasShift (VCC 2026)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="by_chance" checked /> By-Chance Null</label>
             </div>
           </div>
@@ -958,12 +973,17 @@
                 </div>
                 <div style="display:flex;gap:4px;align-items:center;">
                   <select id="select-infer-alg" style="width:auto;padding:4px 8px;font-size:11.5px;font-weight:700;" onchange="onSelectInferAlg(this.value)">
+                    <option value="vote">Voting Ensemble</option>
                     <option value="s2g">S2G (Forward)</option>
                     <option value="g2s">G2S (Backward)</option>
-                    <option value="vote">Voting Ensemble</option>
-                    <option value="nir">NIR</option>
+                    <option value="cellbox">CellBox Neural ODE</option>
+                    <option value="genie3">GENIE3 Ensemble</option>
+                    <option value="netdeconv">Net Deconvolution</option>
+                    <option value="ridge_cv">Kaggle RidgeCV</option>
+                    <option value="cpa_lite">CPA-Lite Latent</option>
+                    <option value="atlasshift">AtlasShift (VCC)</option>
+                    <option value="nir">NIR (Gardner)</option>
                     <option value="fast">FAST (SVD)</option>
-                    <option value="atlasshift">AtlasShift (VCC 2026)</option>
                     <option value="by_chance">By-Chance</option>
                   </select>
                   <button class="btn btn-secondary btn-sm active" id="btn-inf-canvas" onclick="setInfView('canvas')">Canvas</button>
@@ -1110,69 +1130,99 @@
     </section>
 
     <!-- ========================================================================= -->
-    <!-- TAB 2: E. COLI SOS DNA REPAIR PATHWAY STUDIO (Gardner et al. Science 2003)-->
+    <!-- TAB 2: REAL-WORLD & IN SILICO BENCHMARK STUDIO (SOS, DREAM4, Perturb-seq) -->
     <!-- ========================================================================= -->
     <section id="tab-sos" class="tab-pane">
       <div class="panel" style="margin-bottom:16px;">
-        <div class="panel-header" style="margin-bottom:6px;border-bottom:none;padding-bottom:0;">
+        <div class="panel-header" style="margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
-            <div class="panel-title" style="font-size:16px;">
-              E. coli 9-Gene SOS DNA Repair Pathway Reconstruction (Gardner et al., Science 2003; Thesis Section 4.2 &amp; Appendix)
+            <div class="panel-title" style="font-size:16px;display:flex;align-items:center;gap:8px;">
+              <span id="benchmark-header-title">Real-World Perturbation Benchmarks Studio</span>
+              <span class="badge badge-emerald" id="benchmark-header-badge">E. coli SOS (Gardner 2003)</span>
             </div>
-            <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
-              Genes: <code>recA, lexA, ssb, recF, dinI, umuDC, rpoD, rpoH, rpoS</code> &bull; Comparing S2G, G2S, Voting Ensemble, NIR, and FAST against experimentally validated interactions.
+            <p id="benchmark-header-desc" style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+              Genes: <code>recA, lexA, ssb, recF, dinI, umuDC, rpoD, rpoH, rpoS</code> &bull; Comparing 12 causal reverse-engineering algorithms against experimentally verified interactions.
             </p>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <span style="font-size:12px;color:var(--text-muted);">Inspect Algorithm:</span>
-            <select id="sos-alg-select" style="width:auto;font-weight:700;" onchange="renderSosAlgorithm(this.value)">
-              <option value="vote" selected>Voting Ensemble (S2G &cap; G2S)</option>
-              <option value="s2g">Simple-to-General (S2G)</option>
-              <option value="g2s">General-to-Specific (G2S)</option>
-              <option value="nir">NIR (Gardner et al.)</option>
-              <option value="fast">FAST (SVD)</option>
-            </select>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="btn-load-bench-studio" onclick="loadBenchmarkIntoStudio()" title="Load this benchmark dataset into Tab 1 for continuous simulation &amp; parameter inspection">
+              📥 Load Dataset into Tab 1 Studio
+            </button>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-muted);">Inspect Algorithm:</span>
+              <select id="sos-alg-select" style="width:auto;font-weight:700;" onchange="renderSosAlgorithm(this.value)">
+                <option value="vote" selected>Voting Ensemble</option>
+                <option value="cellbox">CellBox Neural ODE</option>
+                <option value="genie3">GENIE3 Ensemble</option>
+                <option value="s2g">S2G (Forward AIC)</option>
+                <option value="g2s">G2S (Backward AIC)</option>
+                <option value="netdeconv">Network Deconvolution</option>
+                <option value="ridge_cv">Kaggle RidgeCV</option>
+                <option value="cpa_lite">CPA-Lite Latent</option>
+                <option value="atlasshift">AtlasShift (VCC)</option>
+                <option value="nir">NIR (Gardner et al.)</option>
+                <option value="fast">FAST (SVD)</option>
+                <option value="by_chance">By-Chance Null</option>
+              </select>
+            </div>
           </div>
+        </div>
+
+        <!-- Benchmark Dataset Selector Pills -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Select Benchmark Dataset:</span>
+          <button class="btn btn-secondary btn-sm active" id="pill-ds-ecoli_sos" onclick="switchBenchmarkDataset('ecoli_sos')">
+            🔬 E. coli SOS Pathway (9 Genes, Gardner 2003)
+          </button>
+          <button class="btn btn-secondary btn-sm" id="pill-ds-dream4_10gene" onclick="switchBenchmarkDataset('dream4_10gene')">
+            🏆 DREAM4 In Silico Gold Standard (10 Genes)
+          </button>
+          <button class="btn btn-secondary btn-sm" id="pill-ds-norman_2019_tf16" onclick="switchBenchmarkDataset('norman_2019_tf16')">
+            🧬 Norman 2019 Perturb-seq (16 TFs, K562)
+          </button>
+          <button class="btn btn-secondary btn-sm" id="pill-ds-replogle_2022_p53" onclick="switchBenchmarkDataset('replogle_2022_p53')">
+            🧪 Replogle 2022 p53 Circuit (12 Genes, K562/RPE1)
+          </button>
         </div>
       </div>
 
       <div class="two-col-grid" style="margin-bottom:16px;">
-        <!-- SOS Ground Truth Graph -->
+        <!-- Benchmark Ground Truth Graph -->
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Known SOS Regulatory Network (Ground Truth — 43 Directed Edges)</div>
-            <span class="badge">Gardner 2003 / Thesis Fig 4.13</span>
+            <div class="panel-title" id="sos-true-title">Known SOS Regulatory Network (Ground Truth)</div>
+            <span class="badge" id="sos-true-badge">43 Directed Edges</span>
           </div>
           <div class="graph-stage" id="sos-true-stage" style="height:340px;"></div>
         </div>
 
-        <!-- SOS 9-State Reconstructed Graph -->
+        <!-- Benchmark 9-State Reconstructed Graph -->
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">9-State Differential Reconstruction (<span id="sos-diff-title">VOTING</span>)</div>
-            <span class="badge badge-emerald">Appendix 9-State Graph</span>
+            <span class="badge badge-emerald">9-State Differential Graph</span>
           </div>
           <div class="graph-stage" id="sos-diff-stage" style="height:340px;"></div>
         </div>
       </div>
 
       <div class="two-col-grid" style="margin-bottom:16px;">
-        <!-- Thesis Fig 4.13: 9-Gene SOS Perturbation Steady-State Trajectories -->
+        <!-- Perturbation Steady-State Trajectories Grid -->
         <div class="panel">
           <div class="panel-header">
             <div>
-              <div class="panel-title">Thesis Figure 4.13: 9-Gene SOS Perturbation Trajectories (SOS_captured_expression.pdf)</div>
-              <div style="font-size:11px;color:var(--text-muted);">Steady-state mRNA concentration recovery across all 9 single-gene overexpression perturbations</div>
+              <div class="panel-title" id="sos-traj-title">Perturbation Trajectories &amp; Expression Profiles</div>
+              <div style="font-size:11px;color:var(--text-muted);" id="sos-traj-subtitle">Steady-state concentration recovery across single-gene perturbation conditions</div>
             </div>
           </div>
           <canvas id="canvas-sos-9grid" class="chart-canvas" width="720" height="310" style="width:100%;height:310px;"></canvas>
         </div>
 
-        <!-- Thesis Table 4.1 & 4x4 SOS Confusion Matrix -->
+        <!-- Benchmark Method Comparison & 4x4 Confusion Matrix -->
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Thesis Table 4.1: SOS Pathway Benchmark Comparison &amp; 4&times;4 Confusion Matrix</div>
-            <span class="badge badge-amber">9&times;9 = 81 Potential Interactions</span>
+            <div class="panel-title" id="sos-bench-tbl-title">Benchmark Method Comparison &amp; 4&times;4 Confusion Matrix</div>
+            <span class="badge badge-amber" id="sos-bench-tbl-badge">Potential Interactions</span>
           </div>
           <table class="data-table" id="tbl-sos-benchmark" style="margin-bottom:12px;">
             <thead>
@@ -1704,6 +1754,7 @@
       selectedEdgeKey: null,
       nodePositions: [],
       sosData: null,
+      activeBenchmark: 'ecoli_sos',
       thesisFigures: null,
       archiveDetail: null,
       archiveActiveAlg: 'vote',
@@ -1834,7 +1885,7 @@
         pane.classList.toggle('active', pane.id === tabId);
       });
       if (tabId === 'tab-sos' && !APP_STATE.sosData) {
-        loadSosFullStudio();
+        loadSosFullStudio(APP_STATE.activeBenchmark || 'ecoli_sos');
       } else if (tabId === 'tab-figures' && !APP_STATE.thesisFigures) {
         loadThesisFigures();
       } else if (tabId === 'tab-history') {
@@ -1869,9 +1920,13 @@
       const noise = s.noise ?? (sim && sim.noise) ?? 0.05;
       const biovar = s.bio_var ?? (sim && sim.bio_var) ?? 0.02;
       const seed = s.seed ?? (sim && sim.seed) ?? 42;
+      const kengine = s.kinetics_engine || (sim && sim.kinetics_engine) || 'hill_nonlinear';
 
       document.getElementById('sim-mode').value = mode;
       document.getElementById('sim-topology').value = topo === 'biological_sos' ? 'power_law' : topo;
+      if (document.getElementById('sim-kinetics-engine')) {
+        document.getElementById('sim-kinetics-engine').value = kengine;
+      }
       document.getElementById('sim-num-genes').value = n;
       document.getElementById('lbl-num-genes').textContent = String(n);
       document.getElementById('sim-kav').value = kav;
@@ -1931,6 +1986,7 @@
         const payload = {
           mode: document.getElementById('sim-mode').value,
           topology: document.getElementById('sim-topology').value,
+          kinetics_engine: document.getElementById('sim-kinetics-engine')?.value || 'hill_nonlinear',
           num_genes: parseInt(document.getElementById('sim-num-genes').value),
           k_av: parseFloat(document.getElementById('sim-kav').value),
           act_ratio: parseFloat(document.getElementById('sim-ratio').value),
@@ -1965,6 +2021,7 @@
       const payload = {
         mode: document.getElementById('sim-mode').value,
         topology: document.getElementById('sim-topology').value,
+        kinetics_engine: document.getElementById('sim-kinetics-engine')?.value || 'hill_nonlinear',
         num_genes: parseInt(document.getElementById('sim-num-genes').value),
         k_av: parseFloat(document.getElementById('sim-kav').value),
         act_ratio: parseFloat(document.getElementById('sim-ratio').value),
@@ -2633,21 +2690,52 @@
     }
 
     // ============================================================================
-    // TAB 2: E. COLI SOS DNA REPAIR PATHWAY STUDIO (Gardner et al. 2003)
+    // TAB 2: REAL-WORLD & IN SILICO BENCHMARK STUDIO (SOS, DREAM4, Perturb-seq)
     // ============================================================================
-    async function loadSosFullStudio() {
+    async function loadSosFullStudio(datasetId = 'ecoli_sos') {
       try {
-        const res = await fetch('/api/benchmark/sos_full');
+        APP_STATE.activeBenchmark = datasetId;
+        const res = await fetch(`/api/benchmark/dataset?id=${encodeURIComponent(datasetId)}`);
         const data = await res.json();
         if (data.status !== 'success') return;
         APP_STATE.sosData = data;
+
+        // Update active class on dataset selector pills
+        ['ecoli_sos', 'dream4_10gene', 'norman_2019_tf16', 'replogle_2022_p53'].forEach(id => {
+          const pill = document.getElementById(`pill-ds-${id}`);
+          if (pill) pill.classList.toggle('active', id === datasetId);
+        });
+
+        const numGenes = (data.gene_names || []).length;
+        const trueEdges = data.true_matrix ? data.true_matrix.reduce((acc, row) => acc + row.filter(v => v !== 0).length, 0) : 0;
+        const potInteractions = numGenes * numGenes;
+
+        const hTitle = document.getElementById('benchmark-header-title');
+        const hBadge = document.getElementById('benchmark-header-badge');
+        const hDesc = document.getElementById('benchmark-header-desc');
+        if (hTitle) hTitle.textContent = `${data.pathway || datasetId}`;
+        if (hBadge) hBadge.textContent = `${numGenes} Genes • ${trueEdges} True Edges`;
+        if (hDesc) hDesc.innerHTML = `Genes: <code>${(data.gene_names || []).join(', ')}</code> &bull; Comparing 12 causal reverse-engineering algorithms against experimentally verified interactions.`;
+
+        const tTitle = document.getElementById('sos-true-title');
+        const tBadge = document.getElementById('sos-true-badge');
+        if (tTitle) tTitle.textContent = `Known Regulatory Network (${data.pathway || datasetId})`;
+        if (tBadge) tBadge.textContent = `${trueEdges} Directed Edges`;
+
+        const bTitle = document.getElementById('sos-bench-tbl-title');
+        const bBadge = document.getElementById('sos-bench-tbl-badge');
+        if (bTitle) bTitle.textContent = `${data.pathway || datasetId} Benchmark Comparison & Confusion Matrix`;
+        if (bBadge) bBadge.textContent = `${numGenes}×${numGenes} = ${potInteractions} Potential Interactions`;
 
         document.getElementById('sos-true-stage').innerHTML = data.svg_true_dot || '';
 
         const tbody = document.querySelector('#tbl-sos-benchmark tbody');
         tbody.innerHTML = '';
-        const order = ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
-        order.forEach(alg => {
+        const order = ['vote', 'cellbox', 'genie3', 's2g', 'g2s', 'netdeconv', 'ridge_cv', 'cpa_lite', 'atlasshift', 'nir', 'fast', 'by_chance'];
+        const allKeys = Object.keys(data.table_4_1 || {});
+        const displayKeys = [...order.filter(k => allKeys.includes(k)), ...allKeys.filter(k => !order.includes(k))];
+
+        displayKeys.forEach(alg => {
           const m = data.table_4_1[alg];
           if (!m) return;
           const tr = document.createElement('tr');
@@ -2670,10 +2758,42 @@
           tbody.appendChild(tr);
         });
 
-        renderSosAlgorithm('vote');
+        renderSosAlgorithm(document.getElementById('sos-alg-select').value || 'vote');
         drawSos9PanelGrid(data.perturbation_trajectories, data.gene_names);
       } catch (e) {
-        console.error('SOS Studio error:', e);
+        console.error('Benchmark Studio error:', e);
+      }
+    }
+
+    function switchBenchmarkDataset(datasetId) {
+      loadSosFullStudio(datasetId);
+    }
+
+    async function loadBenchmarkIntoStudio() {
+      const datasetId = APP_STATE.activeBenchmark || 'ecoli_sos';
+      const btn = document.getElementById('btn-load-bench-studio');
+      if (btn) { btn.textContent = 'Loading into Studio...'; btn.disabled = true; }
+      try {
+        const res = await fetch('/api/benchmark/load_to_studio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset_id: datasetId }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          APP_STATE.sim = data;
+          APP_STATE.inferred = data.inferred || {};
+          applySettingsToForm(data.settings, data);
+          renderAllSimulationViews();
+          if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
+            renderAllInferenceViews();
+          }
+          switchMainTab('tab-wizard');
+        }
+      } catch (err) {
+        console.error('Error loading benchmark dataset to studio:', err);
+      } finally {
+        if (btn) { btn.textContent = '📥 Load Dataset into Tab 1 Studio'; btn.disabled = false; }
       }
     }
 
@@ -2695,38 +2815,42 @@
       const tc = getThemeColors();
       ctx.fillStyle = tc.stageBg;
       ctx.fillRect(0, 0, W, H);
-      const cols = 3, rows = 3;
+      const total = Math.min(16, trajs.length);
+      const cols = total <= 9 ? 3 : 4;
+      const rows = Math.ceil(total / cols);
       const cw = W / cols;
       const ch = H / rows;
-      const palette = ['#0284c7', '#10b981', '#d97706', '#9333ea', '#db2777', '#0d9488', '#4f46e5', '#ca8a04', '#ef4444'];
+      const palette = ['#0284c7', '#10b981', '#d97706', '#9333ea', '#db2777', '#0d9488', '#4f46e5', '#ca8a04', '#ef4444', '#059669', '#7c3aed', '#dc2626'];
 
-      for (let idx = 0; idx < Math.min(9, trajs.length); idx++) {
+      for (let idx = 0; idx < total; idx++) {
         const r = Math.floor(idx / cols);
         const c = idx % cols;
-        const x0 = c * cw + 8;
-        const y0 = r * ch + 6;
-        const pw = cw - 16;
-        const ph = ch - 14;
+        const x0 = c * cw + 6;
+        const y0 = r * ch + 4;
+        const pw = cw - 12;
+        const ph = ch - 8;
 
         ctx.strokeStyle = tc.grid;
         ctx.strokeRect(x0, y0, pw, ph);
 
         ctx.fillStyle = tc.textMain;
-        ctx.font = 'bold 10px Inter, sans-serif';
-        ctx.fillText(`Perturb #${idx + 1}: ${geneNames[idx]}`, x0 + 6, y0 + 13);
+        ctx.font = 'bold 9.5px Inter, sans-serif';
+        const gName = (geneNames && geneNames[idx]) ? geneNames[idx] : `G${idx + 1}`;
+        ctx.fillText(`Perturb #${idx + 1}: ${gName}`, x0 + 5, y0 + 11);
 
         const mat = trajs[idx];
+        if (!mat || !mat.length) continue;
         let minV = Infinity, maxV = -Infinity;
         mat.forEach(row => row.forEach(v => { if (v < minV) minV = v; if (v > maxV) maxV = v; }));
         const span = Math.max(0.2, maxV - minV);
 
         mat.forEach((row, g) => {
           ctx.strokeStyle = g === idx ? '#ef4444' : palette[g % palette.length];
-          ctx.lineWidth = g === idx ? 2.2 : 1.1;
+          ctx.lineWidth = g === idx ? 2.0 : 1.0;
           ctx.beginPath();
           row.forEach((v, t) => {
             const px = x0 + 4 + ((pw - 8) * t) / Math.max(1, row.length - 1);
-            const py = y0 + 18 + (ph - 22) * (1 - (v - minV) / span);
+            const py = y0 + 15 + (ph - 18) * (1 - (v - minV) / span);
             if (t === 0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
           });

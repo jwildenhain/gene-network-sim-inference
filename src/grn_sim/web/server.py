@@ -29,6 +29,16 @@ from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
 from grn_sim.inference.by_chance import ByChance
 from grn_sim.inference.atlasshift import AtlasShift
+from grn_sim.inference.cellbox import CellBoxNeuralODE
+from grn_sim.inference.genie3 import GENIE3Algorithm
+from grn_sim.inference.network_deconv import NetworkDeconvolution
+from grn_sim.inference.ridge_cv import KaggleMultiOutputRidge
+from grn_sim.inference.cpa_lite import CPALite
+from grn_sim.simulator.model_engine import run_simulation_with_engine
+from grn_sim.benchmarks.benchmark_datasets import (
+    list_benchmark_datasets,
+    load_benchmark_dataset,
+)
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark
 from grn_sim.simulator.perturb_seq import (
     simulate_perturb_seq_counts,
@@ -245,33 +255,40 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
     if seed is not None:
         seed = int(seed)
 
-    if mode == "sos":
-        # Load E. coli SOS 9-gene system into the wizard
-        X_sos, U_sos, _, _ = load_sos_dataset()
-        adj = SOS_GROUND_TRUTH.copy()
-        num_genes = 9
-        gene_names = list(SOS_GENE_NAMES)
-        topo_str = "biological_sos"
+    dataset_id = params.get("dataset_id")
+    kinetics_eng = params.get("kinetics_engine", "hill_nonlinear")
+
+    if dataset_id or mode.startswith("benchmark_") or mode == "sos":
+        target_ds = dataset_id or ("ecoli_sos" if mode == "sos" else mode.replace("benchmark_", ""))
+        ds_info = load_benchmark_dataset(target_ds)
+        adj = ds_info["true_matrix"]
+        num_genes = ds_info["num_genes"]
+        gene_names = list(ds_info["gene_names"])
+        topo_str = f"benchmark_{target_ds}"
+        X_bench = ds_info["X"]
+        U_bench = ds_info["U"]
+
         rng = np.random.default_rng(seed)
         topo = NetworkTopology(
             adjacency=adj,
             topology_type=TopologyType.HIERARCHICAL,
-            k_av=float(np.sum(adj != 0) / num_genes),
-            ratio=float(np.sum(adj > 0) / max(1, np.sum(adj != 0))),
+            k_av=float(np.sum(adj != 0) / max(1, num_genes)),
+            ratio=float(np.sum(adj > 0) / max(1, np.sum(adj != 0))) if np.sum(adj != 0) > 0 else 0.5,
         )
         network = GeneNetwork(topology=topo, rng=rng)
-        sim = PerturbationSimulator(
+        sim_exp = run_simulation_with_engine(
+            network=network,
+            engine=kinetics_eng,
             perturbation_factor=pert_factor,
             measurement_noise=noise_level,
-            biological_variability=bio_var,
+            seed=seed,
         )
-        sim_exp = sim.run(network, seed=seed)
-        # Keep the real Gardner et al. experimental X and U while retaining ODE trajectories for visualization
+        # Keep real experimental/benchmark X and U while providing simulated trajectories for visualizer
         experiment = SimulationExperiment(
             network=network,
             true_matrix=adj,
-            X=X_sos,
-            U=U_sos,
+            X=X_bench,
+            U=U_bench,
             reference_steady_state=sim_exp.reference_steady_state,
             perturbed_states=sim_exp.perturbed_states,
             error_conc=sim_exp.error_conc,
@@ -298,12 +315,13 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             subdiv=eff_subdiv,
             seed=seed,
         )
-        simulator = PerturbationSimulator(
+        experiment = run_simulation_with_engine(
+            network=network,
+            engine=kinetics_eng,
             perturbation_factor=pert_factor,
             measurement_noise=noise_level,
-            biological_variability=bio_var,
+            seed=seed,
         )
-        experiment = simulator.run(network, seed=seed)
         adj = network.topology.adjacency
         gene_names = [f"G{i+1}" for i in range(num_genes)]
 
@@ -328,6 +346,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
     input_settings = {
         "mode": mode,
         "topology": "power_law" if mode == "sos" else topo_str,
+        "kinetics_engine": kinetics_eng,
         "num_genes": num_genes,
         "k_av": round(float(k_av), 2),
         "act_ratio": round(float(act_ratio), 2),
@@ -436,6 +455,11 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "fast": FastSVD(k_interactions=k_est, add_diagonal_identity=is_sos),
         "by_chance": ByChance(k_interactions=k_est, seed=42),
         "atlasshift": AtlasShift(de_threshold=0.15),
+        "cellbox": CellBoxNeuralODE(epochs=70),
+        "genie3": GENIE3Algorithm(n_estimators=40),
+        "netdeconv": NetworkDeconvolution(),
+        "ridge_cv": KaggleMultiOutputRidge(),
+        "cpa_lite": CPALite(epochs=40),
     }
 
     metrics_dict = {}
@@ -451,7 +475,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         if alg in alg_runners:
             t0 = time.perf_counter()
             # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3 and fast_modified
-            U_input = U if (is_sos or alg in ("s2g", "g2s", "vote", "by_chance", "atlasshift")) else (-U)
+            U_input = U if (is_sos or alg not in ("nir", "fast")) else (-U)
             res = alg_runners[alg].fit(X, U_input)
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
             pred = res.adjacency_pred
@@ -626,44 +650,56 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
     return sim_payload
 
 
-def _build_sos_full_studio() -> Dict[str, Any]:
+def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     """
-    Builds the complete E. coli 9-gene SOS DNA Repair Pathway Studio
-    (Gardner et al. Science 2003; Wildenhain Thesis Chapter 4.2 & Appendix).
+    Builds a complete Real-World Benchmark Studio for any registered dataset
+    (ecoli_sos, dream4_10gene, norman_2019_tf16, replogle_2022_p53).
     """
-    if "sos_full" in BENCHMARK_CACHE:
-        return BENCHMARK_CACHE["sos_full"]
+    cache_key = f"bench_studio_{dataset_id}"
+    if cache_key in BENCHMARK_CACHE:
+        return BENCHMARK_CACHE[cache_key]
 
-    X, U, sX, sU = load_sos_dataset()
-    A_true = SOS_GROUND_TRUTH.copy()
-    gene_names = list(SOS_GENE_NAMES)
+    ds_info = load_benchmark_dataset(dataset_id)
+    X = ds_info["X"]
+    U = ds_info["U"]
+    A_true = ds_info["true_matrix"]
+    gene_names = list(ds_info["gene_names"])
+    name = ds_info["name"]
     N = len(gene_names)
 
-    # Simulate ODE steady-state recovery trajectories for the 9 SOS perturbations (Thesis Fig 4.13)
+    # Simulate ODE steady-state recovery trajectories for visualization
     rng = np.random.default_rng(2004)
     topo = NetworkTopology(
         adjacency=A_true,
         topology_type=TopologyType.HIERARCHICAL,
-        k_av=float(np.sum(A_true != 0) / N),
-        ratio=float(np.sum(A_true > 0) / np.sum(A_true != 0)),
+        k_av=float(np.sum(A_true != 0) / max(1, N)),
+        ratio=float(np.sum(A_true > 0) / max(1, np.sum(A_true != 0))) if np.sum(A_true != 0) > 0 else 0.5,
     )
-    sos_net = GeneNetwork(topology=topo, rng=rng)
+    sim_net = GeneNetwork(topology=topo, rng=rng)
     sim = PerturbationSimulator(perturbation_factor=2.0, measurement_noise=0.03)
-    sos_exp = sim.run(sos_net, seed=2004)
-    pert_trajs = [_downsample_trajectory(t, max_points=45) for t in (sos_exp.perturbation_trajectories or [])]
+    sim_exp = sim.run(sim_net, seed=2004)
+    pert_trajs = [_downsample_trajectory(t, max_points=45) for t in (sim_exp.perturbation_trajectories or [])]
 
-    dot_true_hier = export_graphviz_dot(A_true, gene_names, graph_name="SOS_True_dot", layout="dot")
-    dot_true_neato = export_graphviz_dot(A_true, gene_names, graph_name="SOS_True_neato", layout="neato")
+    dot_true_hier = export_graphviz_dot(A_true, gene_names, graph_name=f"{dataset_id}_True_dot", layout="dot")
+    dot_true_neato = export_graphviz_dot(A_true, gene_names, graph_name=f"{dataset_id}_True_neato", layout="neato")
     svg_true_hier = render_graphviz_svg(dot_true_hier, engine="dot", matrix=A_true, gene_names=gene_names)
     svg_true_neato = render_graphviz_svg(dot_true_neato, engine="neato", matrix=A_true, gene_names=gene_names)
 
-    k_conn = 5
+    is_sos = (dataset_id == "ecoli_sos")
+    k_conn = 5 if is_sos else max(1, int(np.round(np.sum(A_true != 0) / N)))
+
     algs = {
+        "vote": VotingEnsemble(),
         "s2g": SimpleToGeneral(),
         "g2s": GeneralToSpecific(),
-        "vote": VotingEnsemble(),
+        "cellbox": CellBoxNeuralODE(epochs=45),
+        "genie3": GENIE3Algorithm(n_estimators=30, seed=42),
+        "netdeconv": NetworkDeconvolution(),
+        "ridge_cv": KaggleMultiOutputRidge(),
         "nir": NIRAlgorithm(k_interactions=k_conn),
-        "fast": FastSVD(k_interactions=k_conn),
+        "fast": FastSVD(k_interactions=k_conn, add_diagonal_identity=is_sos),
+        "cpa_lite": CPALite(epochs=30),
+        "atlasshift": AtlasShift(de_threshold=0.15),
         "by_chance": ByChance(k_interactions=k_conn, seed=101),
     }
 
@@ -674,14 +710,15 @@ def _build_sos_full_studio() -> Dict[str, Any]:
     svgs_dot = {}
     svgs_neato = {}
 
-    for name, runner in algs.items():
-        res = runner.fit(X, U)
+    for alg_name, runner in algs.items():
+        U_in = U if (is_sos or alg_name not in ("nir", "fast")) else (-U)
+        res = runner.fit(X, U_in)
         pred = res.adjacency_pred
         m = evaluate_inference(A_true, pred)
         s9 = compute_new_stats_9state(A_true, pred)
         a_stats_arr = np.array(s9["a_stats"], dtype=int)
 
-        table_4_1[name] = {
+        table_4_1[alg_name] = {
             "coverage_pct": round(m.coverage_pct, 1),
             "false_positives_pct": round(m.false_positives_pct, 1),
             "inferred_connections_pct": round(m.inferred_connections_pct, 1),
@@ -693,18 +730,19 @@ def _build_sos_full_studio() -> Dict[str, Any]:
             "f1_score": round(m.f1_score, 3),
             "state_counts": s9["state_counts"],
         }
-        tmp_statmat[name] = s9["tmp_statmat"]
-        cmats[name] = compute_detailed_confusion_matrix(A_true, pred)
-        comp_graphs[name] = export_comparison_graph_json(A_true, pred, gene_names)
+        tmp_statmat[alg_name] = s9["tmp_statmat"]
+        cmats[alg_name] = compute_detailed_confusion_matrix(A_true, pred)
+        comp_graphs[alg_name] = export_comparison_graph_json(A_true, pred, gene_names)
 
-        d_dot = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"SOS_{name}_dot", layout="dot")
-        d_neato = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"SOS_{name}_neato", layout="neato")
-        svgs_dot[name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
-        svgs_neato[name] = render_graphviz_svg(d_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
+        d_dot = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_dot", layout="dot")
+        d_neato = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_neato", layout="neato")
+        svgs_dot[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
+        svgs_neato[alg_name] = render_graphviz_svg(d_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
 
     payload = {
         "status": "success",
-        "pathway": "E. coli SOS DNA Repair Network (Gardner et al., Science 2003)",
+        "dataset_id": dataset_id,
+        "pathway": name,
         "gene_names": gene_names,
         "true_matrix": A_true.tolist(),
         "X": np.round(X, 4).tolist(),
@@ -720,8 +758,14 @@ def _build_sos_full_studio() -> Dict[str, Any]:
         "svgs_dot": svgs_dot,
         "svgs_neato": svgs_neato,
     }
-    BENCHMARK_CACHE["sos_full"] = payload
+    BENCHMARK_CACHE[cache_key] = payload
+    if dataset_id == "ecoli_sos":
+        BENCHMARK_CACHE["sos_full"] = payload
     return payload
+
+
+def _build_sos_full_studio() -> Dict[str, Any]:
+    return _build_benchmark_studio("ecoli_sos")
 
 
 def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> Dict[str, Any]:
@@ -1382,7 +1426,31 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/benchmark/sos_full":
             try:
-                payload = _build_sos_full_studio()
+                req_id = query.get("id", ["ecoli_sos"])[0]
+                payload = _build_benchmark_studio(req_id)
+                self._set_headers(200)
+                self.wfile.write(json.dumps(payload).encode("utf-8"))
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/benchmark/catalog":
+            try:
+                catalog = list_benchmark_datasets()
+                self._set_headers(200)
+                self.wfile.write(json.dumps({"status": "success", "datasets": catalog}).encode("utf-8"))
+            except Exception as e:
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/benchmark/dataset":
+            try:
+                req_id = query.get("id", ["ecoli_sos"])[0]
+                payload = _build_benchmark_studio(req_id)
                 self._set_headers(200)
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
             except Exception as e:
@@ -1550,6 +1618,19 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 resp = _execute_inference(selected_algs)
                 self._set_headers(200)
                 self.wfile.write(json.dumps(resp).encode("utf-8"))
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/benchmark/load_to_studio":
+            try:
+                req_id = params.get("dataset_id", "ecoli_sos")
+                sim_payload = _execute_simulation({"dataset_id": req_id, "mode": f"benchmark_{req_id}"})
+                self._set_headers(200)
+                self.wfile.write(json.dumps(sim_payload).encode("utf-8"))
             except Exception as e:
                 import traceback
                 traceback.print_exc()

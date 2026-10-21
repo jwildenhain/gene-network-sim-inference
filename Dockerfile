@@ -18,7 +18,8 @@ COPY src/ ./src/
 COPY tests/ ./tests/
 
 # Install Python package and test suite dependencies
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -e ".[dev]"
 
 # Run unit and benchmark verification tests during build
 RUN pytest -v

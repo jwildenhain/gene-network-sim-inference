@@ -11,6 +11,10 @@ from grn_sim.simulator.perturb_seq import (
     create_perturb_seq_anndata,
     export_perturb_seq_h5ad,
 )
+from grn_sim.simulator.model_engine import (
+    SimulationModelingEngine,
+    run_simulation_with_engine,
+)
 
 __all__ = [
     "evaluate_derivatives",
@@ -23,4 +27,6 @@ __all__ = [
     "simulate_perturb_seq_counts",
     "create_perturb_seq_anndata",
     "export_perturb_seq_h5ad",
+    "SimulationModelingEngine",
+    "run_simulation_with_engine",
 ]
