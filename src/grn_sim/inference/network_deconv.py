@@ -83,6 +83,8 @@ class NetworkDeconvolution(BaseInferenceAlgorithm):
                     A_est[i, j] = weight * asym_factor
 
         np.fill_diagonal(A_est, 0.0)
+        # Orientation: use true_matrix[regulator, target] (rows = regulators)
+        A_est = A_est.T.copy()
 
         # Discretize
         adj_pred = np.zeros((N, N), dtype=int)

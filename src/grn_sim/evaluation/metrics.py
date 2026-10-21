@@ -208,3 +208,25 @@ def evaluate_inference(
         obs_pred_error_vec=error_vec,
         overall_misclassification_error=overall_err,
     )
+
+
+def compute_aupr(true_matrix: np.ndarray, score_matrix: np.ndarray, ignore_diagonal: bool = False) -> float:
+    """
+    Threshold-free area under the precision-recall curve (average precision) for edge
+    *presence*, ranking entries of ``score_matrix`` by absolute magnitude.
+    Both matrices must use the same orientation.
+    """
+    T = (np.asarray(true_matrix) != 0)
+    S = np.abs(np.real(np.asarray(score_matrix, dtype=complex))).astype(float)
+    if ignore_diagonal:
+        mask = ~np.eye(T.shape[0], dtype=bool)
+        T, S = T[mask], S[mask]
+    else:
+        T, S = T.ravel(), S.ravel()
+    n_pos = int(T.sum())
+    if n_pos == 0:
+        return 0.0
+    order = np.argsort(-S, kind="mergesort")
+    hits = T[order].astype(float)
+    prec = np.cumsum(hits) / np.arange(1, len(hits) + 1)
+    return float(np.sum(prec * hits) / n_pos)

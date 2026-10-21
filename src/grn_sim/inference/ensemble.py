@@ -24,14 +24,21 @@ class VotingEnsemble(BaseInferenceAlgorithm):
         s2g: Optional[SimpleToGeneral] = None,
         g2s: Optional[GeneralToSpecific] = None,
         require_sign_agreement: bool = True,
+        extra_members: Optional[List[BaseInferenceAlgorithm]] = None,
+        min_votes: Optional[int] = None,
     ):
         super().__init__(name="voting_ensemble")
         self.s2g = s2g or SimpleToGeneral()
         self.g2s = g2s or GeneralToSpecific()
         self.require_sign_agreement = require_sign_agreement
+        self.extra_members = list(extra_members or [])
+        self.min_votes = min_votes
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
+
+        if self.extra_members:
+            return self._fit_majority(X, U, start_time, **kwargs)
 
         res_s2g = self.s2g.fit(X, U, **kwargs)
         res_g2s = self.g2s.fit(X, U, **kwargs)
@@ -69,4 +76,28 @@ class VotingEnsemble(BaseInferenceAlgorithm):
                 "g2s_edges": res_g2s.total_predicted_edges,
                 "consensus_edges": int(np.sum(consensus_adj != 0)),
             },
+        )
+
+    def _fit_majority(self, X: np.ndarray, U: np.ndarray, start_time: float, **kwargs) -> InferenceResult:
+        """
+        Majority vote over S2G, G2S and ``extra_members`` (all in true_matrix[regulator, target] frame).
+        An edge is kept when at least ``min_votes`` members agree on its sign
+        (default: strict majority).
+        """
+        members = [self.s2g, self.g2s] + self.extra_members
+        results = [m.fit(X, U, **kwargs) for m in members]
+        need = self.min_votes if self.min_votes is not None else len(members) // 2 + 1
+        pos = sum((r.adjacency_pred > 0).astype(int) for r in results)
+        neg = sum((r.adjacency_pred < 0).astype(int) for r in results)
+        adj = np.zeros(pos.shape, dtype=int)
+        adj[pos >= need] = 1
+        adj[neg >= need] = -1
+        A = np.mean([r.A_est for r in results], axis=0) * (adj != 0)
+        return InferenceResult(
+            algorithm_name=self.name,
+            A_est=A,
+            adjacency_pred=adj,
+            time_elapsed=time.time() - start_time,
+            diagnostics={"members": [r.algorithm_name for r in results], "min_votes": need,
+                         "consensus_edges": int(np.sum(adj != 0))},
         )

@@ -49,3 +49,28 @@ class BaseInferenceAlgorithm(ABC):
             InferenceResult containing estimated continuous and signed interaction matrices.
         """
         pass
+
+
+def regulator_input_fit(algo: "BaseInferenceAlgorithm", X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
+    """
+    Fits ``algo`` under the regulator-input perturbation model used by the Hill simulator.
+
+    The simulator adds the perturbation u to the *effective regulator concentration*
+    (x + u) rather than to dx/dt, so at steady state  X_k ~ c_k * sum_j F_kj (X + U)_j
+    with c_k > 0 (degradation only rescales rows). This is the same linear problem
+    ``A Z = -V`` solved by the Gardner-style algorithms with Z = X + U and V = -X.
+    The target-row estimate F is transposed so the result uses the repository's
+    ground-truth convention ``true_matrix[regulator, target]``.
+    """
+    kw = dict(kwargs)
+    kw["perturbation_mode"] = "additive"
+    res = algo.fit(X + U, -X, **kw)
+    diag = dict(res.diagnostics)
+    diag["perturbation_mode"] = "regulator"
+    return InferenceResult(
+        algorithm_name=res.algorithm_name,
+        A_est=res.A_est.T.copy(),
+        adjacency_pred=res.adjacency_pred.T.copy(),
+        time_elapsed=res.time_elapsed,
+        diagnostics=diag,
+    )

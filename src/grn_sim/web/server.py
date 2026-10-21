@@ -39,6 +39,7 @@ from grn_sim.benchmarks.benchmark_datasets import (
     list_benchmark_datasets,
     load_benchmark_dataset,
 )
+from grn_sim.evaluation.metrics import compute_aupr
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark
 from grn_sim.simulator.perturb_seq import (
     simulate_perturb_seq_counts,
@@ -447,18 +448,27 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     is_sos = (CURRENT_STATE.get("mode") == "sos")
     k_est = 5 if is_sos else max(1, int(np.ceil(np.sum(true_matrix != 0) / N)))
 
+    # The Hill kinetics engines add the perturbation to the effective regulator concentration
+    # (x + u), so the Gardner-style additive model (A X = -U) gives sign-inverted edges.
+    # For those engines use the regulator-input formulation; keep the MATLAB-identical
+    # additive formulation for the SOS benchmark, benchmark datasets and additive engines.
+    cur_mode = str(CURRENT_STATE.get("mode") or "")
+    cur_engine = (CURRENT_STATE.get("settings") or {}).get("kinetics_engine", "hill_nonlinear")
+    use_reg = (not is_sos) and (not cur_mode.startswith("benchmark_")) and cur_engine in ("hill_nonlinear", "perturb_seq_counts")
+    pm = "regulator" if use_reg else "additive"
+
     alg_runners = {
         "s2g": SimpleToGeneral(),
-        "g2s": GeneralToSpecific(),
-        "vote": VotingEnsemble(),
-        "nir": NIRAlgorithm(k_interactions=k_est),
-        "fast": FastSVD(k_interactions=k_est, add_diagonal_identity=is_sos),
+        "g2s": GeneralToSpecific(max_interactions=2 * k_est if use_reg else None),
+        "vote": VotingEnsemble(extra_members=[NIRAlgorithm(k_interactions=k_est, perturbation_mode="regulator", adaptive_k=True)]) if use_reg else VotingEnsemble(),
+        "nir": NIRAlgorithm(k_interactions=k_est, perturbation_mode=pm, adaptive_k=use_reg),
+        "fast": FastSVD(k_interactions=k_est, add_diagonal_identity=is_sos, perturbation_mode=pm, adaptive_k=use_reg),
         "by_chance": ByChance(k_interactions=k_est, seed=42),
         "atlasshift": AtlasShift(de_threshold=0.15),
-        "cellbox": CellBoxNeuralODE(epochs=70),
+        "cellbox": CellBoxNeuralODE(epochs=70, perturbation_mode=pm),
         "genie3": GENIE3Algorithm(n_estimators=40),
         "netdeconv": NetworkDeconvolution(),
-        "ridge_cv": KaggleMultiOutputRidge(),
+        "ridge_cv": KaggleMultiOutputRidge(k_interactions=k_est if use_reg else None, perturbation_mode=pm),
         "cpa_lite": CPALite(epochs=40),
     }
 
@@ -475,7 +485,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         if alg in alg_runners:
             t0 = time.perf_counter()
             # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3, fast_modified, and ridge_cv
-            U_input = U if (is_sos or alg not in ("nir", "fast", "ridge_cv")) else (-U)
+            U_input = U if (use_reg or is_sos or alg not in ("nir", "fast", "ridge_cv")) else (-U)
             res = alg_runners[alg].fit(X, U_input)
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
             pred = res.adjacency_pred
@@ -497,6 +507,8 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
                 "f1_score": round(m.f1_score, 3),
                 "signed_ppv": round(m.signed_ppv, 3),
                 "signed_true_positives": m.signed_true_positives,
+                "aupr": round(compute_aupr(true_matrix, res.A_est), 3),
+                "perturbation_model": "regulator_input" if use_reg and alg in ("nir", "fast", "ridge_cv", "cellbox", "vote") else "additive",
                 "true_positives": m.true_positives,
                 "false_positives": m.false_positives,
                 "true_negatives": m.true_negatives,
@@ -732,6 +744,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
             "f1_score": round(m.f1_score, 3),
             "signed_ppv": round(m.signed_ppv, 3),
             "signed_true_positives": m.signed_true_positives,
+            "aupr": round(compute_aupr(A_true, res.A_est), 3),
             "state_counts": s9["state_counts"],
         }
         tmp_statmat[alg_name] = s9["tmp_statmat"]

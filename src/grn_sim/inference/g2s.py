@@ -26,7 +26,7 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         threshold: float = 0.0,
         matlab_mode: bool = True,
         fast_loo_threshold: int = 25,
-        normalized_penalty: bool = False,
+        max_interactions: Optional[int] = None,
     ):
         super().__init__(name="g2s")
         self.criterion = criterion.lower()
@@ -34,25 +34,20 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         self.threshold = threshold
         self.matlab_mode = matlab_mode
         self.fast_loo_threshold = fast_loo_threshold
-        self.normalized_penalty = normalized_penalty
+        self.max_interactions = max_interactions
 
-    def _penalty(self, E: np.ndarray, k: int, normalized: bool = False) -> float:
+    def _penalty(self, E: np.ndarray, k: int) -> float:
         """
         Computes AIC cost function matching gen2spec.m lines 73-75:
             function C = penalty(E, k)
             Caic = sum(E.^2) + k;
             C = Caic;
-        Supports optional scale-normalized AIC/MDL for variance invariance.
         """
         rss = float(np.sum(E ** 2))
         if self.criterion == "mdl":
             n_len = len(E)
             mse = max(rss / n_len, 1e-300)
             return float(n_len * np.log(mse) + k * np.log(n_len))
-        elif self.criterion == "aic_scaled" or normalized or self.normalized_penalty:
-            n_len = len(E)
-            mse = max(rss / n_len, 1e-300)
-            return float(n_len * np.log(mse) + 2.0 * k)
         return rss + float(k)
 
     def _dropanother_exact(
@@ -117,7 +112,8 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         s_old = s_k + 1.0
 
         indopt = list(ind)
-        while k > self.min_interactions and s_k < s_old:
+        cap = self.max_interactions
+        while k > self.min_interactions and (s_k < s_old or (cap is not None and k > cap)):
             indopt = list(ind)
             s_prev = s_k
             if not use_fast:
@@ -136,6 +132,8 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
             s_k = self._penalty(E, k)
             s_old = s_prev
 
+        if cap is not None and len(indopt) > cap:
+            indopt = list(ind)
         Xb = X[:, indopt]
         final_a = np.linalg.pinv(Xb) @ y
         return np.array(indopt, dtype=int), final_a

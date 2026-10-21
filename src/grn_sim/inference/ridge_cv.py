@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional
 import numpy as np
 from sklearn.linear_model import RidgeCV
 
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
 
 class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
@@ -26,6 +26,10 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         cv: int = 5,
         perturbation_mode: str = "additive",
         allow_self_regulation: bool = False,
+        adaptive_k: bool = False,
+        stability_boots: int = 0,
+        stability_freq: float = 0.5,
+        seed: int = 0,
     ):
         super().__init__(name="ridge_cv")
         self.alphas = alphas or [1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0]
@@ -34,6 +38,10 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         self.cv = cv
         self.perturbation_mode = perturbation_mode.lower().strip()
         self.allow_self_regulation = allow_self_regulation
+        self.adaptive_k = adaptive_k
+        self.stability_boots = stability_boots
+        self.stability_freq = stability_freq
+        self.seed = seed
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
@@ -42,10 +50,7 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
 
         pert_mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
         if pert_mode == "regulator":
-            U_mat = -U_mat
-        elif pert_mode == "auto":
-            if np.all(np.diag(U_mat) > 0) and np.median(np.diag(X_mat)) > 0:
-                U_mat = -U_mat
+            return regulator_input_fit(self, X_mat, U_mat, **kwargs)
 
         N, M = X_mat.shape
 
@@ -76,8 +81,36 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
             ridge.fit(features, target)
 
             best_alphas.append(float(ridge.alpha_))
+            coefs = np.array(ridge.coef_, dtype=float)
+
+            B = int(kwargs.get("stability_boots", self.stability_boots))
+            if B > 0 and K is not None:
+                # Stability selection: keep regulators in the top-K for >= stability_freq of bootstraps
+                rng = np.random.default_rng(self.seed + i)
+                freq = np.zeros(len(reg_idx))
+                for _ in range(B):
+                    samp = rng.integers(0, M, M)
+                    rb = RidgeCV(alphas=[float(ridge.alpha_)]).fit(features[samp], target[samp])
+                    freq[np.argsort(-np.abs(rb.coef_))[:K]] += 1.0
+                coefs = np.where(freq / B >= float(kwargs.get("stability_freq", self.stability_freq)), coefs, 0.0)
+
+            if bool(kwargs.get("adaptive_k", self.adaptive_k)) and K is not None and K > 1:
+                # Per-row model order: OLS refit on top-k coefficients, choose k by BIC
+                order = np.argsort(-np.abs(coefs))[:K]
+                best = None
+                for kk in range(1, K + 1):
+                    cols = order[:kk]
+                    a_try = np.linalg.pinv(features[:, cols]) @ target
+                    sse = float(np.sum((target - features[:, cols] @ a_try) ** 2))
+                    bic = M * np.log(max(sse, 1e-12) / M) + kk * np.log(M)
+                    if best is None or bic < best[0]:
+                        best = (bic, cols)
+                keep = np.zeros(len(reg_idx), dtype=bool)
+                keep[best[1]] = True
+                coefs = np.where(keep, coefs, 0.0)
+
             for idx, reg in enumerate(reg_idx):
-                A_est[i, reg] = ridge.coef_[idx]
+                A_est[i, reg] = coefs[idx]
 
         if not allow_self:
             np.fill_diagonal(A_est, 0.0)

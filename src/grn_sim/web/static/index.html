@@ -1234,6 +1234,8 @@
                 <th>FDR (FP/Inf %)</th>
                 <th>Signed PPV (%)</th>
                 <th>Total Errors</th>
+                <th>True Signed PPV (%)</th>
+                <th>AUPR</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -2754,6 +2756,8 @@
             <td>${m.fp_per_inferred_pct}%</td>
             <td>${m.inferred_sign_pct}%</td>
             <td><strong style="color:var(--accent-amber);">${m.total_errors}</strong></td>
+            <td>${m.signed_ppv != null ? (m.signed_ppv * 100).toFixed(1) + '%' : '--'}</td>
+            <td>${m.aupr != null ? m.aupr.toFixed(2) : '--'}</td>
           `;
           tbody.appendChild(tr);
         });

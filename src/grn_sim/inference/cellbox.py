@@ -8,7 +8,7 @@ import time
 from typing import Dict, Any, Optional
 import numpy as np
 
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
 try:
     import torch
@@ -38,6 +38,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         threshold: float = 0.02,
         envelope: str = "tanh",
         adaptive_fallback: bool = True,
+        perturbation_mode: str = "additive",
     ):
         super().__init__(name="cellbox")
         self.l1_reg = l1_reg
@@ -47,11 +48,14 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         self.threshold = threshold
         self.envelope = envelope
         self.adaptive_fallback = adaptive_fallback
+        self.perturbation_mode = perturbation_mode.lower().strip()
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
         X_mat = np.real(X).astype(float)
         U_mat = np.real(U).astype(float)
+        if kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip() == "regulator":
+            return regulator_input_fit(self, X_mat, U_mat, **kwargs)
         N, M = X_mat.shape
 
         l1 = float(kwargs.get("l1_reg", self.l1_reg))

@@ -8,7 +8,7 @@ import time
 from typing import Optional, List, Tuple
 import numpy as np
 
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
 
 class NIRAlgorithm(BaseInferenceAlgorithm):
@@ -160,10 +160,7 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
 
         pert_mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
         if pert_mode == "regulator":
-            U_f = -U_f
-        elif pert_mode == "auto":
-            if np.all(np.diag(U_f) > 0) and np.median(np.diag(X_f)) > 0:
-                U_f = -U_f
+            return regulator_input_fit(self, X_f, U_f, **kwargs)
 
         N, M = X_f.shape
         K = int(kwargs.get("k", self.k_interactions))

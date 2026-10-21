@@ -8,7 +8,7 @@ import time
 from typing import Optional
 import numpy as np
 
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
 
 class FastSVD(BaseInferenceAlgorithm):
@@ -29,6 +29,7 @@ class FastSVD(BaseInferenceAlgorithm):
         add_diagonal_identity: Optional[bool] = None,
         perturbation_mode: str = "additive",
         svd_reg: float = 1e-6,
+        adaptive_k: bool = False,
     ):
         super().__init__(name="fast")
         self.k_interactions = k_interactions
@@ -36,6 +37,7 @@ class FastSVD(BaseInferenceAlgorithm):
         self.add_diagonal_identity = add_diagonal_identity
         self.perturbation_mode = perturbation_mode.lower().strip()
         self.svd_reg = svd_reg
+        self.adaptive_k = adaptive_k
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
@@ -49,10 +51,7 @@ class FastSVD(BaseInferenceAlgorithm):
 
         pert_mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
         if pert_mode == "regulator":
-            u = -u
-        elif pert_mode == "auto":
-            if np.all(np.diag(u) > 0) and np.median(np.diag(x)) > 0:
-                u = -u
+            return regulator_input_fit(self, x, u, **kwargs)
 
         N, M = x.shape
         K = int(kwargs.get("k", self.k_interactions))
@@ -89,8 +88,23 @@ class FastSVD(BaseInferenceAlgorithm):
         ind_M = np.sort(ind[:, N - K:N], axis=1)
 
         A_est = np.zeros((N, N), dtype=float)
+        adaptive = bool(kwargs.get("adaptive_k", self.adaptive_k))
         for i in range(N):
             sel_cols = ind_M[i, :]
+            if adaptive and K > 1:
+                # Per-row model order: rank candidates by |A_0| and pick k minimising BIC of the refit
+                cand = np.argsort(-np.abs(A_0[i, :]), kind="mergesort")[:K]
+                best = None
+                for kk in range(1, K + 1):
+                    cols = np.sort(cand[:kk])
+                    a_try = -u[i, :] @ np.linalg.pinv(x[cols, :])
+                    sse = float(np.sum((u[i, :] + a_try @ x[cols, :]) ** 2))
+                    bic = M * np.log(max(sse, 1e-12) / M) + kk * np.log(M)
+                    if best is None or bic < best[0]:
+                        best = (bic, cols, a_try)
+                sel_cols = best[1]
+                A_est[i, sel_cols] = best[2]
+                continue
             x_row_sel = x[sel_cols, :]
             a_est_m = -u[i, :] @ np.linalg.pinv(x_row_sel)
             A_est[i, sel_cols] = a_est_m
