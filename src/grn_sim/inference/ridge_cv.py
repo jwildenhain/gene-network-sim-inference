@@ -24,31 +24,48 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         k_interactions: Optional[int] = None,
         threshold: float = 0.05,
         cv: int = 5,
+        perturbation_mode: str = "additive",
+        allow_self_regulation: bool = False,
     ):
         super().__init__(name="ridge_cv")
         self.alphas = alphas or [1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0]
         self.k_interactions = k_interactions
         self.threshold = threshold
         self.cv = cv
+        self.perturbation_mode = perturbation_mode.lower().strip()
+        self.allow_self_regulation = allow_self_regulation
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
         X_mat = np.real(X).astype(float)
         U_mat = np.real(U).astype(float)
+
+        pert_mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
+        if pert_mode == "regulator":
+            U_mat = -U_mat
+        elif pert_mode == "auto":
+            if np.all(np.diag(U_mat) > 0) and np.median(np.diag(X_mat)) > 0:
+                U_mat = -U_mat
+
         N, M = X_mat.shape
 
         K = kwargs.get("k", self.k_interactions)
         if K is not None:
             K = max(1, min(int(K), N - 1))
         thresh = float(kwargs.get("threshold", self.threshold))
+        allow_self = bool(kwargs.get("allow_self_regulation", self.allow_self_regulation))
 
         A_est = np.zeros((N, N), dtype=float)
         best_alphas = []
 
-        # Fit each target gene i from remaining genes j != i and external perturbation U
+        # Fit each target gene i from regressors
         for i in range(N):
-            reg_idx = [j for j in range(N) if j != i]
-            # Design matrix: expression of other genes, shape (M, N-1)
+            if allow_self:
+                reg_idx = list(range(N))
+            else:
+                reg_idx = [j for j in range(N) if j != i]
+
+            # Design matrix: expression of regressors, shape (M, len(reg_idx))
             features = X_mat[reg_idx, :].T
             # Target: negative perturbation plus response
             target = -U_mat[i, :]
@@ -62,7 +79,8 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
             for idx, reg in enumerate(reg_idx):
                 A_est[i, reg] = ridge.coef_[idx]
 
-        np.fill_diagonal(A_est, 0.0)
+        if not allow_self:
+            np.fill_diagonal(A_est, 0.0)
 
         # Discretization
         adj_pred = np.zeros((N, N), dtype=int)

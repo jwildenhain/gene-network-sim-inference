@@ -17,6 +17,7 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
     Finds a fixed number K of regulatory connections per gene by minimizing
     the sum of squared errors (SSE) using forward-topD greedy search and
     multiple linear regression.
+    Supports adaptive model-order selection (BIC) and robust regularized solving.
     """
 
     def __init__(
@@ -27,6 +28,8 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         cond_max: float = 1000.0,
         use_perturbation_values: bool = True,
         threshold: float = 0.0,
+        adaptive_k: bool = False,
+        perturbation_mode: str = "additive",
     ):
         super().__init__(name="nir")
         self.k_interactions = k_interactions
@@ -35,6 +38,8 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         self.cond_max = cond_max
         self.use_perturbation_values = use_perturbation_values
         self.threshold = threshold
+        self.adaptive_k = adaptive_k
+        self.perturbation_mode = perturbation_mode.lower().strip()
 
     def _fit_single_row(
         self,
@@ -43,9 +48,11 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         P: np.ndarray,
         K: int,
         D: int,
+        adaptive_k: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray, float, bool]:
         """
         Solves row i using forward top-D greedy search matching nir_v3.m lines 49-130.
+        Supports optional BIC model-order selection when adaptive_k=True.
         """
         N, M = X.shape
         u = P[i, :].copy()
@@ -73,6 +80,7 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         best_combo = np.array([], dtype=int)
         best_coeffs = np.array([], dtype=float)
         best_sse = np.inf
+        level_candidates = []
 
         while ncoeff < Ktmp:
             nnewcombo = Ntmp - ncoeff
@@ -105,6 +113,12 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
                         SSEK_tmp[j] = float(np.sum((u + aest[j, :] @ Z) ** 2))
                     except np.linalg.LinAlgError:
                         pass
+                elif self.ridge > 0 or adaptive_k:
+                    try:
+                        aest[j, :] = -u @ Z.T @ np.linalg.pinv(ZZt + reg_eye)
+                        SSEK_tmp[j] = float(np.sum((u + aest[j, :] @ Z) ** 2))
+                    except Exception:
+                        pass
 
             # Sort errors (mergesort preserves MATLAB's stable tie-breaking order)
             srtidxSSE = np.argsort(SSEK_tmp, kind="mergesort")
@@ -112,12 +126,24 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
             topDidx = srtidxSSE[:d_keep]
             topD = subN[topDidx, :]
 
+            curr_sse = float(SSEK_tmp[topDidx[0]])
+            curr_combo = topD[0, :].copy()
+            curr_coeffs = aest[topDidx[0], :].copy()
+            n_obs = max(1, len(u))
+            bic = n_obs * np.log(max(curr_sse, 1e-12) / n_obs) + (ncoeff + 1) * np.log(n_obs)
+            level_candidates.append((curr_combo, curr_coeffs, curr_sse, bic))
+
             if ncoeff == Ktmp - 1:
-                best_combo = topD[0, :].copy()
-                best_coeffs = aest[topDidx[0], :].copy()
-                best_sse = float(SSEK_tmp[topDidx[0]])
+                best_combo = curr_combo
+                best_coeffs = curr_coeffs
+                best_sse = curr_sse
 
             ncoeff += 1
+
+        if adaptive_k and level_candidates:
+            # Pick candidate minimizing BIC
+            best_by_bic = min(level_candidates, key=lambda c: c[3])
+            best_combo, best_coeffs, best_sse, _ = best_by_bic
 
         if nopert:
             best_combo = np.where(best_combo >= i, best_combo + 1, best_combo)
@@ -131,16 +157,25 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         start_time = time.time()
         X_f = np.real(X).astype(float)
         U_f = np.real(U).astype(float)
+
+        pert_mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
+        if pert_mode == "regulator":
+            U_f = -U_f
+        elif pert_mode == "auto":
+            if np.all(np.diag(U_f) > 0) and np.median(np.diag(X_f)) > 0:
+                U_f = -U_f
+
         N, M = X_f.shape
         K = int(kwargs.get("k", self.k_interactions))
         K = max(1, min(K, N))
         D = int(kwargs.get("top_d", self.top_d if self.top_d is not None else min(N, 10)))
+        adaptive = bool(kwargs.get("adaptive_k", self.adaptive_k))
 
         A_est = np.zeros((N, N), dtype=float)
         diagnostics = {"sse": [], "r2": []}
 
         for i in range(N):
-            indices, coeffs, sse, nopert = self._fit_single_row(i, X_f, U_f, K, D)
+            indices, coeffs, sse, nopert = self._fit_single_row(i, X_f, U_f, K, D, adaptive_k=adaptive)
             if nopert:
                 A_est[i, i] = -1.0
             for idx, c in zip(indices, coeffs):

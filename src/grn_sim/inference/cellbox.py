@@ -31,12 +31,13 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
 
     def __init__(
         self,
-        l1_reg: float = 0.01,
+        l1_reg: float = 0.003,
         l2_reg: float = 0.001,
         epochs: int = 150,
         lr: float = 0.05,
-        threshold: float = 0.05,
+        threshold: float = 0.02,
         envelope: str = "tanh",
+        adaptive_fallback: bool = True,
     ):
         super().__init__(name="cellbox")
         self.l1_reg = l1_reg
@@ -45,6 +46,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         self.lr = lr
         self.threshold = threshold
         self.envelope = envelope
+        self.adaptive_fallback = adaptive_fallback
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
@@ -68,6 +70,11 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         # Discretize: sign of estimated coefficients exceeding threshold
         adj_pred = np.zeros((N, N), dtype=int)
         mask = np.abs(A_est) >= thresh
+        if np.sum(mask) == 0 and self.adaptive_fallback and np.any(A_est != 0):
+            # Adaptive fallback: select top 20% non-zero weights
+            nonzero_mags = np.abs(A_est[A_est != 0])
+            cutoff = float(np.percentile(nonzero_mags, 80))
+            mask = np.abs(A_est) >= max(cutoff, 1e-4)
         adj_pred[mask] = np.sign(A_est[mask]).astype(int)
 
         elapsed = time.time() - start_time

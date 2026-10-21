@@ -26,6 +26,8 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         normalize_bases: bool = True,
         threshold: float = 0.0,
         matlab_mode: bool = True,
+        penalty_weight: float = 1.0,
+        min_r2_improvement: float = 0.0,
     ):
         super().__init__(name="s2g")
         self.criterion = criterion.lower()
@@ -33,10 +35,12 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         self.normalize_bases = normalize_bases
         self.threshold = threshold
         self.matlab_mode = matlab_mode
+        self.penalty_weight = penalty_weight
+        self.min_r2_improvement = min_r2_improvement
 
-    def _penalty(self, E: np.ndarray, k: int) -> float:
+    def _penalty(self, E: np.ndarray, k: int, penalty_weight: float = 1.0) -> float:
         """
-        Computes cost function matching getvar.m lines 93-96:
+        Computes cost function matching getvar.m lines 93-96 with optional penalty weighting:
             function C = penalty(E, k)
             N = length(E);
             S = mean(E.^2);
@@ -44,10 +48,11 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         """
         n_len = len(E)
         s_mse = float(np.mean(E ** 2))
+        eff_k = float(k * penalty_weight)
         if self.criterion == "aic":
-            return float(np.sum(E ** 2)) + float(k)
+            return float(np.sum(E ** 2)) + eff_k
         s_safe = max(s_mse, 1e-300)
-        return float(n_len * np.log(s_safe) + k * np.log(n_len))
+        return float(n_len * np.log(s_safe) + eff_k * np.log(n_len))
 
     def _getanother(
         self,
@@ -105,6 +110,8 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         self,
         y: np.ndarray,
         X: np.ndarray,
+        penalty_weight: float = 1.0,
+        min_r2_improvement: float = 0.0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Exact port of [ind, a, S] = getvar(y, X) in getvar.m lines 1-47.
@@ -128,14 +135,22 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         a = np.linalg.pinv(Vb) @ y
         yh = Vb @ a
         E = yh - y
-        s_k = self._penalty(E, 1)
+        total_var = float(np.sum(y ** 2))
+        s_k = self._penalty(E, 1, penalty_weight=penalty_weight)
         s_old = s_k + 1.0
 
         while s_k < s_old and k <= max_k:
             s_prev = s_k
-            ind, a, E = self._getanother(y, V, ind, E)
+            cand_ind, cand_a, cand_E = self._getanother(y, V, ind, E)
+            if min_r2_improvement > 0.0 and total_var > 1e-15:
+                old_sse = float(np.sum(E ** 2))
+                new_sse = float(np.sum(cand_E ** 2))
+                delta_r2 = (old_sse - new_sse) / total_var
+                if delta_r2 < min_r2_improvement:
+                    break
+            ind, a, E = cand_ind, cand_a, cand_E
             k += 1
-            s_k = self._penalty(E, k)
+            s_k = self._penalty(E, k, penalty_weight=penalty_weight)
             s_old = s_prev
 
         # ind = ind(1:end-1) (getvar.m line 44)
@@ -160,18 +175,21 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         n = X_f.shape[0]
         A_est = np.zeros((n, n), dtype=float)
 
+        penalty_w = float(kwargs.get("penalty_weight", self.penalty_weight))
+        min_r2 = float(kwargs.get("min_r2_improvement", self.min_r2_improvement))
+
         for i in range(n):
             y = U_f[i, :].copy()
             if np.all(np.abs(y) < 1e-15):
                 y = X_f[i, :].copy()
 
             if self.matlab_mode:
-                indices, coeffs = self._getvar(y, X_f)
+                indices, coeffs = self._getvar(y, X_f, penalty_weight=penalty_w, min_r2_improvement=min_r2)
                 for idx, c in zip(indices, coeffs):
                     if abs(c) > self.threshold:
                         A_est[idx, i] = c
             else:
-                indices, coeffs = self._getvar(-y, X_f.T)
+                indices, coeffs = self._getvar(-y, X_f.T, penalty_weight=penalty_w, min_r2_improvement=min_r2)
                 for idx, c in zip(indices, coeffs):
                     if abs(c) > self.threshold:
                         A_est[i, idx] = c

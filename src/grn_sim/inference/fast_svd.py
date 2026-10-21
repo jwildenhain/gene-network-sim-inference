@@ -27,20 +27,33 @@ class FastSVD(BaseInferenceAlgorithm):
         k_interactions: int = 2,
         threshold: float = 0.0,
         add_diagonal_identity: Optional[bool] = None,
+        perturbation_mode: str = "additive",
+        svd_reg: float = 1e-6,
     ):
         super().__init__(name="fast")
         self.k_interactions = k_interactions
         self.threshold = threshold
         self.add_diagonal_identity = add_diagonal_identity
+        self.perturbation_mode = perturbation_mode.lower().strip()
+        self.svd_reg = svd_reg
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
         Solves A * X = -U using truncated SVD and sparse Moore-Penrose refitting
         matching fast_modified.m lines 35-63.
+        Supports stable Tikhonov SVD filtering and perturbation convention modes.
         """
         start_time = time.time()
         x = np.real(X).astype(float)
         u = np.real(U).astype(float)
+
+        pert_mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
+        if pert_mode == "regulator":
+            u = -u
+        elif pert_mode == "auto":
+            if np.all(np.diag(u) > 0) and np.median(np.diag(x)) > 0:
+                u = -u
+
         N, M = x.shape
         K = int(kwargs.get("k", self.k_interactions))
         K = max(1, min(K, N))
@@ -53,9 +66,18 @@ class FastSVD(BaseInferenceAlgorithm):
         rank = max(1, min(N - 1, len(S_svd) - 1))
         Ur = U_svd[:, :rank]
         Vr = V_svd[:, :rank]
-        inv_Sr = np.diag(1.0 / np.maximum(S_svd[:rank], 1e-15))
 
-        do_diag = (N == 9) if self.add_diagonal_identity is None else self.add_diagonal_identity
+        # Regularized inversion to prevent near-zero singular value blowup
+        s_vals = S_svd[:rank]
+        s_max = s_vals[0] if len(s_vals) > 0 else 1.0
+        s_damp = (s_max * self.svd_reg) ** 2
+        inv_Sr = np.diag(s_vals / (s_vals ** 2 + s_damp))
+
+        is_sos_flag = kwargs.get("is_sos", False) or (kwargs.get("dataset") == "sos")
+        if self.add_diagonal_identity is not None:
+            do_diag = self.add_diagonal_identity
+        else:
+            do_diag = True if is_sos_flag else (N == 9)
 
         # Initial estimate matching fast.m lines 40-41 / fast_modified.m line 40
         A_0 = (x - u) @ Vr @ inv_Sr @ Ur.T

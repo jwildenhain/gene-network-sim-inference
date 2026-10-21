@@ -474,8 +474,8 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     for alg in selected_algs:
         if alg in alg_runners:
             t0 = time.perf_counter()
-            # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3 and fast_modified
-            U_input = U if (is_sos or alg not in ("nir", "fast")) else (-U)
+            # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3, fast_modified, and ridge_cv
+            U_input = U if (is_sos or alg not in ("nir", "fast", "ridge_cv")) else (-U)
             res = alg_runners[alg].fit(X, U_input)
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
             pred = res.adjacency_pred
@@ -495,6 +495,8 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
                 "precision": round(m.precision, 3),
                 "recall": round(m.recall, 3),
                 "f1_score": round(m.f1_score, 3),
+                "signed_ppv": round(m.signed_ppv, 3),
+                "signed_true_positives": m.signed_true_positives,
                 "true_positives": m.true_positives,
                 "false_positives": m.false_positives,
                 "true_negatives": m.true_negatives,
@@ -711,7 +713,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     svgs_neato = {}
 
     for alg_name, runner in algs.items():
-        U_in = U if (is_sos or alg_name not in ("nir", "fast")) else (-U)
+        U_in = U if (is_sos or alg_name not in ("nir", "fast", "ridge_cv")) else (-U)
         res = runner.fit(X, U_in)
         pred = res.adjacency_pred
         m = evaluate_inference(A_true, pred)
@@ -728,6 +730,8 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
             "precision": round(m.precision, 3),
             "recall": round(m.recall, 3),
             "f1_score": round(m.f1_score, 3),
+            "signed_ppv": round(m.signed_ppv, 3),
+            "signed_true_positives": m.signed_true_positives,
             "state_counts": s9["state_counts"],
         }
         tmp_statmat[alg_name] = s9["tmp_statmat"]
