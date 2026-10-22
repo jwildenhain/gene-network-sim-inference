@@ -60,6 +60,9 @@ venv.bak/
 *.sqlite
 *.sqlite3
 *.db
+data/downloads/
+*.h5ad
+*.zip
 
 # Scratch and temporary scripts
 scratch/

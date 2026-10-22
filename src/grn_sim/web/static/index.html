@@ -798,6 +798,7 @@
             <select id="sim-mode" onchange="onModeChange()">
               <option value="insilico" selected>In Silico ODE Network Generation</option>
               <option value="sos">E. coli 9-Gene SOS Experimental Data</option>
+              <option value="benchmark_norman_2019_real_16tf">Norman et al. 2019 Real CRISPRa Perturb-seq (16 TFs, K562)</option>
             </select>
           </div>
 
@@ -1184,11 +1185,14 @@
           <button class="btn btn-secondary btn-sm active" id="pill-ds-ecoli_sos" onclick="switchBenchmarkDataset('ecoli_sos')">
             🔬 E. coli SOS Pathway (9 Genes, Gardner 2003)
           </button>
-          <button class="btn btn-secondary btn-sm" id="pill-ds-dream4_10gene" onclick="switchBenchmarkDataset('dream4_10gene')">
-            🏆 DREAM4 In Silico Gold Standard (10 Genes)
+          <button class="btn btn-secondary btn-sm" id="pill-ds-norman_2019_real_16tf" onclick="switchBenchmarkDataset('norman_2019_real_16tf')" style="border-color:#10b981;font-weight:700;">
+            ⭐ Norman 2019 Real CRISPRa (16 TFs, K562 Experimental)
           </button>
           <button class="btn btn-secondary btn-sm" id="pill-ds-norman_2019_tf16" onclick="switchBenchmarkDataset('norman_2019_tf16')">
-            🧬 Norman 2019 Perturb-seq (16 TFs, K562)
+            🧬 Norman 2019 Perturb-seq (16 TFs, In Silico)
+          </button>
+          <button class="btn btn-secondary btn-sm" id="pill-ds-dream4_10gene" onclick="switchBenchmarkDataset('dream4_10gene')">
+            🏆 DREAM4 In Silico Gold Standard (10 Genes)
           </button>
           <button class="btn btn-secondary btn-sm" id="pill-ds-replogle_2022_p53" onclick="switchBenchmarkDataset('replogle_2022_p53')">
             🧪 Replogle 2022 p53 Circuit (12 Genes, K562/RPE1)
@@ -2808,7 +2812,7 @@
         APP_STATE.sosData = data;
 
         // Update active class on dataset selector pills
-        ['ecoli_sos', 'dream4_10gene', 'norman_2019_tf16', 'replogle_2022_p53'].forEach(id => {
+        ['ecoli_sos', 'norman_2019_real_16tf', 'dream4_10gene', 'norman_2019_tf16', 'replogle_2022_p53'].forEach(id => {
           const pill = document.getElementById(`pill-ds-${id}`);
           if (pill) pill.classList.toggle('active', id === datasetId);
         });

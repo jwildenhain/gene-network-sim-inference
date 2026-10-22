@@ -118,6 +118,26 @@ def list_benchmark_datasets() -> List[Dict[str, Any]]:
             "source": "DREAM4 in silico network 1 (Prill et al., Marbach et al.)",
         },
         {
+            "id": "norman_2019_real_16tf",
+            "name": "Norman et al. 2019 Real CRISPRa Perturb-seq (16 TFs, K562)",
+            "category": "Real-World Single-Cell CRISPR Screen",
+            "num_genes": 16,
+            "num_experiments": 16,
+            "has_ground_truth": True,
+            "description": "Genuine experimental proportional expression shifts from Norman et al. (Science 2019) dCas9-VPR activation across 16 core master transcription factors in K562 cells.",
+            "source": "Norman et al., Science 2019 (DOI: 10.1126/science.aax4438)",
+        },
+        {
+            "id": "norman_2019_real_105gene",
+            "name": "Norman et al. 2019 Real CRISPRa (105 Single Targets Full)",
+            "category": "Real-World Single-Cell CRISPR Screen",
+            "num_genes": 105,
+            "num_experiments": 105,
+            "has_ground_truth": False,
+            "description": "Full 105 x 105 real experimental single-perturbation response matrix across all tested single CRISPRa targets in Norman 2019.",
+            "source": "Norman et al., Science 2019 (Harvard Dataverse)",
+        },
+        {
             "id": "norman_2019_tf16",
             "name": "Norman et al. 2019 Combinatorial Perturb-seq TF Circuit",
             "category": "Single-Cell Human Perturb-seq",
@@ -187,6 +207,46 @@ def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:
             "num_genes": N,
             "num_experiments": N,
             "metadata": {"type": "dream_in_silico", "organism": "Synthetic/Yeast"},
+        }
+
+    elif did in ("norman_2019_real_16tf", "norman_real_16tf", "norman_real"):
+        json_path = BENCHMARK_DIR / "norman_2019_real_16tf.json"
+        if not json_path.exists():
+            from grn_sim.benchmarks.build_real_norman import build_real_norman_datasets
+            build_real_norman_datasets()
+        import json
+        with open(json_path, "r") as f:
+            data = json.load(f)
+        return {
+            "id": "norman_2019_real_16tf",
+            "name": data.get("name", "Norman et al. 2019 Real CRISPRa (16 TFs)"),
+            "gene_names": data["gene_names"],
+            "X": np.array(data["X"], dtype=float),
+            "U": np.array(data["U"], dtype=float),
+            "true_matrix": np.array(data["true_matrix"], dtype=int),
+            "num_genes": data["num_genes"],
+            "num_experiments": data["num_experiments"],
+            "metadata": data.get("metadata", {}),
+        }
+
+    elif did in ("norman_2019_real_105gene", "norman_real_105"):
+        json_path = BENCHMARK_DIR / "norman_2019_real_105gene.json"
+        if not json_path.exists():
+            from grn_sim.benchmarks.build_real_norman import build_real_norman_datasets
+            build_real_norman_datasets()
+        import json
+        with open(json_path, "r") as f:
+            data = json.load(f)
+        return {
+            "id": "norman_2019_real_105gene",
+            "name": data.get("name", "Norman et al. 2019 Real CRISPRa (105 Targets Full)"),
+            "gene_names": data["gene_names"],
+            "X": np.array(data["X"], dtype=float),
+            "U": np.array(data["U"], dtype=float),
+            "true_matrix": np.zeros((data["num_genes"], data["num_genes"]), dtype=int),
+            "num_genes": data["num_genes"],
+            "num_experiments": data["num_experiments"],
+            "metadata": data.get("metadata", {}),
         }
 
     elif did == "norman_2019_tf16":

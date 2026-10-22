@@ -260,6 +260,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
 
     dataset_id = params.get("dataset_id")
     kinetics_eng = params.get("kinetics_engine", "hill_nonlinear")
+    dynamics_preset = params.get("dynamics_preset", "responsive")
 
     if dataset_id or mode.startswith("benchmark_") or mode == "sos":
         target_ds = dataset_id or ("ecoli_sos" if mode == "sos" else mode.replace("benchmark_", ""))
