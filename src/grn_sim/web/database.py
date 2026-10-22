@@ -49,6 +49,8 @@ def init_db(db_path: Optional[str] = None) -> str:
                 seed INTEGER NOT NULL DEFAULT 42,
                 steady_state INTEGER NOT NULL DEFAULT 1,
                 oscillating INTEGER NOT NULL DEFAULT 0,
+                response_type TEXT NOT NULL DEFAULT 'responsive',
+                response_stats_json TEXT NOT NULL DEFAULT '{}',
                 mdot TEXT NOT NULL DEFAULT '',
                 mnet TEXT NOT NULL DEFAULT '',
                 mpet TEXT NOT NULL DEFAULT '',
@@ -77,6 +79,15 @@ def init_db(db_path: Optional[str] = None) -> str:
             )
             """
         )
+        conn.commit()
+
+        # Check and migrate columns in nw table
+        cur.execute("PRAGMA table_info(nw)")
+        cols = [c[1] for c in cur.fetchall()]
+        if "response_type" not in cols:
+            cur.execute("ALTER TABLE nw ADD COLUMN response_type TEXT NOT NULL DEFAULT 'responsive'")
+        if "response_stats_json" not in cols:
+            cur.execute("ALTER TABLE nw ADD COLUMN response_stats_json TEXT NOT NULL DEFAULT '{}'")
         conn.commit()
     finally:
         conn.close()
@@ -112,6 +123,16 @@ def save_simulation_to_db(
         steady_state = 1 if ss_diag.get("is_valid_steady_state", True) else 0
         oscillating = 1 if ss_diag.get("oscillating_detected", False) else 0
 
+        # Extract or classify perturbation response dynamics
+        resp_dyn = sim_payload.get("response_dynamics") or (history_entry or {}).get("response_dynamics")
+        if not resp_dyn:
+            from grn_sim.simulator.response_dynamics import classify_perturbation_response
+            import numpy as np
+            X_mat = np.array(sim_payload.get("X", []))
+            resp_dyn = classify_perturbation_response(X_mat, ss_diag)
+        response_type = str(resp_dyn.get("response_type", "responsive"))
+        response_stats_json = json.dumps(resp_dyn)
+
         mdot = str(sim_payload.get("svg_hierarchical", ""))
         mnet = str(sim_payload.get("svg_spring", ""))
         mpet = str(sim_payload.get("pert_text", ""))
@@ -127,13 +148,15 @@ def save_simulation_to_db(
             """
             INSERT OR REPLACE INTO nw (
                 simid, uid, created_at, nz, nt, av_k, ratio, noise, bio_var, seed,
-                steady_state, oscillating, mdot, mnet, mpet, mmsmt, mat,
+                steady_state, oscillating, response_type, response_stats_json,
+                mdot, mnet, mpet, mmsmt, mat,
                 settings_json, sim_payload_json, inferred_payload_json, history_entry_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 run_id, uid, created_at, nz, nt, av_k, ratio, noise, bio_var, seed,
-                steady_state, oscillating, mdot, mnet, mpet, mmsmt, mat,
+                steady_state, oscillating, response_type, response_stats_json,
+                mdot, mnet, mpet, mmsmt, mat,
                 settings_json, sim_json, inf_json, hist_json,
             ),
         )
@@ -174,17 +197,21 @@ def load_all_history_from_db(db_path: Optional[str] = None) -> List[Dict[str, An
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT simid, history_entry_json, created_at
+            SELECT simid, history_entry_json, created_at, response_type, response_stats_json
             FROM nw
             WHERE history_entry_json != '{}' AND history_entry_json != ''
-            ORDER BY created_at DESC, rowid DESC
+            ORDER BY rowid DESC
             """
         )
         rows = cur.fetchall()
-        for idx, (_, hist_json, _) in enumerate(rows):
+        for idx, (_, hist_json, _, r_type, r_stats_json) in enumerate(rows):
             try:
                 entry = json.loads(hist_json)
                 entry["id"] = idx + 1
+                if "response_type" not in entry or not entry["response_type"]:
+                    entry["response_type"] = r_type or "responsive"
+                if r_stats_json and r_stats_json != "{}":
+                    entry["response_dynamics"] = json.loads(r_stats_json)
                 entries.append(entry)
             except Exception:
                 continue
@@ -242,3 +269,151 @@ def get_db_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
         }
     finally:
         conn.close()
+
+
+def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Computes aggregated summary statistics across all runs in `nw` and `alg`,
+    grouped by perturbation response category:
+    1. 'responsive': Clear / several perturbations visible (steady state reached, max_amp >= 0.05).
+    2. 'flat': Flat levels for each gene with no visible perturbation (steady state, max_amp < 0.05).
+    3. 'oscillating': Limit cycle or non-convergent dynamical trajectories (steady state not reached).
+    """
+    import numpy as np
+
+    path = init_db(db_path)
+    conn = sqlite3.connect(path)
+    categories = ["responsive", "flat", "oscillating"]
+    result: Dict[str, Any] = {
+        "total_simulations": 0,
+        "categories": {
+            cat: {
+                "category": cat,
+                "label": (
+                    "Responsive (Clear Shifts)"
+                    if cat == "responsive"
+                    else ("Flat (No Visible Perturbation)" if cat == "flat" else "Oscillating (Limit Cycle)")
+                ),
+                "badge_class": "badge-emerald" if cat == "responsive" else ("badge-secondary" if cat == "flat" else "badge-amber"),
+                "badge_icon": "⚡" if cat == "responsive" else ("⚪" if cat == "flat" else "〰"),
+                "count": 0,
+                "pct_of_total": 0.0,
+                "avg_num_genes": 0.0,
+                "avg_k_av": 0.0,
+                "avg_noise": 0.0,
+                "avg_max_amplitude": 0.0,
+                "avg_mean_amplitude": 0.0,
+                "avg_variance": 0.0,
+                "avg_responsive_genes": 0.0,
+                "avg_responsive_perts": 0.0,
+                "algorithms": {},
+                "top_algorithm": "N/A",
+                "top_algorithm_errors": 0,
+            }
+            for cat in categories
+        },
+    }
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT simid, nz, nt, av_k, noise, steady_state, oscillating,
+                   response_type, response_stats_json, sim_payload_json
+            FROM nw
+            """
+        )
+        nw_rows = cur.fetchall()
+        result["total_simulations"] = len(nw_rows)
+        if not nw_rows:
+            return result
+
+        cur.execute(
+            """
+            SELECT simid, algid, spec, sens, total_errors, dmo
+            FROM alg
+            """
+        )
+        alg_rows = cur.fetchall()
+        alg_by_simid: Dict[str, List[Dict[str, Any]]] = {}
+        for s_id, a_id, spec, sens, tot_err, dmo in alg_rows:
+            dmo_dict = json.loads(dmo) if dmo else {}
+            m = dmo_dict.get("metrics", {})
+            alg_by_simid.setdefault(s_id, []).append({
+                "algid": a_id,
+                "spec": spec,
+                "sens": sens,
+                "total_errors": tot_err,
+                "precision": m.get("precision", spec),
+                "recall": m.get("recall", sens),
+                "f1_score": m.get("f1_score", 0.0),
+                "signed_ppv": m.get("signed_ppv", 0.0),
+            })
+
+        cat_runs: Dict[str, List[Dict[str, Any]]] = {c: [] for c in categories}
+        for simid, nz, nt, av_k, noise, ss, osc, r_type, r_stats_json, sim_j in nw_rows:
+            c = r_type if r_type in categories else ("oscillating" if osc or not ss else "responsive")
+            stats = json.loads(r_stats_json) if r_stats_json and r_stats_json != "{}" else {}
+            cat_runs[c].append({
+                "simid": simid,
+                "nz": nz,
+                "av_k": av_k,
+                "noise": noise,
+                "max_amp": stats.get("max_amplitude", 0.0),
+                "mean_amp": stats.get("mean_amplitude", 0.0),
+                "variance": stats.get("variance", 0.0),
+                "resp_genes": stats.get("num_responsive_genes", 0),
+                "resp_perts": stats.get("num_responsive_perts", 0),
+                "algs": alg_by_simid.get(simid, []),
+            })
+
+        total = len(nw_rows)
+        for cat, runs in cat_runs.items():
+            c_dict = result["categories"][cat]
+            n_c = len(runs)
+            c_dict["count"] = n_c
+            c_dict["pct_of_total"] = round((n_c / total) * 100.0, 1) if total > 0 else 0.0
+            if n_c > 0:
+                c_dict["avg_num_genes"] = round(float(np.mean([r["nz"] for r in runs])), 1)
+                c_dict["avg_k_av"] = round(float(np.mean([r["av_k"] for r in runs])), 2)
+                c_dict["avg_noise"] = round(float(np.mean([r["noise"] for r in runs])), 3)
+                c_dict["avg_max_amplitude"] = round(float(np.mean([r["max_amp"] for r in runs])), 4)
+                c_dict["avg_mean_amplitude"] = round(float(np.mean([r["mean_amp"] for r in runs])), 4)
+                c_dict["avg_variance"] = round(float(np.mean([r["variance"] for r in runs])), 6)
+                c_dict["avg_responsive_genes"] = round(float(np.mean([r["resp_genes"] for r in runs])), 1)
+                c_dict["avg_responsive_perts"] = round(float(np.mean([r["resp_perts"] for r in runs])), 1)
+
+                all_algs: Dict[str, List[Dict[str, Any]]] = {}
+                for r in runs:
+                    for a in r["algs"]:
+                        all_algs.setdefault(a["algid"], []).append(a)
+
+                best_alg = "N/A"
+                lowest_err = 999999
+                for a_id, a_list in all_algs.items():
+                    avg_err = round(float(np.mean([x["total_errors"] for x in a_list])), 1)
+                    avg_f1 = round(float(np.mean([x["f1_score"] for x in a_list])), 3)
+                    avg_spec = round(float(np.mean([x["spec"] for x in a_list])) * 100.0, 1)
+                    avg_sens = round(float(np.mean([x["sens"] for x in a_list])) * 100.0, 1)
+                    avg_prec = round(float(np.mean([x["precision"] for x in a_list])) * 100.0, 1)
+                    avg_sppv = round(float(np.mean([x["signed_ppv"] for x in a_list])) * 100.0, 1)
+                    c_dict["algorithms"][a_id] = {
+                        "algid": a_id,
+                        "runs_count": len(a_list),
+                        "avg_total_errors": avg_err,
+                        "avg_f1": avg_f1,
+                        "avg_spec_pct": avg_spec,
+                        "avg_sens_pct": avg_sens,
+                        "avg_precision_pct": avg_prec,
+                        "avg_signed_ppv_pct": avg_sppv,
+                    }
+                    if avg_err < lowest_err:
+                        lowest_err = avg_err
+                        best_alg = a_id
+
+                c_dict["top_algorithm"] = best_alg.upper()
+                c_dict["top_algorithm_errors"] = lowest_err if lowest_err != 999999 else 0
+    finally:
+        conn.close()
+
+    return result

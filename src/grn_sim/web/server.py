@@ -70,7 +70,9 @@ from grn_sim.web.database import (
     load_all_history_from_db,
     load_run_from_db,
     get_db_stats,
+    get_summary_statistics_by_type,
 )
+from grn_sim.simulator.response_dynamics import classify_perturbation_response
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -300,6 +302,14 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             steady_state_diagnostics=sim_exp.steady_state_diagnostics,
         )
     else:
+        dynamics_preset = params.get("dynamics_preset")
+        if dynamics_preset == "flat":
+            pert_factor = float(params.get("perturbation_factor", 0.005))
+            noise_level = float(params.get("noise", 0.001))
+        elif dynamics_preset == "oscillating":
+            act_ratio = float(params.get("act_ratio", 0.1))
+            k_av = float(params.get("k_av", max(2.5, k_av)))
+
         if topo_str == "random":
             net_type = TopologyType.RANDOM
         elif topo_str == "hierarchical":
@@ -316,6 +326,12 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             subdiv=eff_subdiv,
             seed=seed,
         )
+
+        if dynamics_preset == "oscillating":
+            # Repressilator / high-hill negative feedback mechanism ensuring limit cycle
+            network.params.n_i = np.where(network.params.n_i > 0, 6.5, 0.0)
+            network.params.B = np.maximum(network.params.B * 0.35, 0.05)
+
         experiment = run_simulation_with_engine(
             network=network,
             engine=kinetics_eng,
@@ -331,6 +347,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "is_valid_steady_state": bool(experiment.is_valid_steady_state),
         "oscillating_detected": not bool(experiment.is_valid_steady_state),
     }
+    resp_dyn = classify_perturbation_response(experiment.X, ss_diag)
 
     dot_hier = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
     dot_spring = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
@@ -348,6 +365,8 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "mode": mode,
         "topology": "power_law" if mode == "sos" else topo_str,
         "kinetics_engine": kinetics_eng,
+        "dynamics_preset": dynamics_preset,
+        "response_type": resp_dyn["response_type"],
         "num_genes": num_genes,
         "k_av": round(float(k_av), 2),
         "act_ratio": round(float(act_ratio), 2),
@@ -361,6 +380,9 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "mode": mode,
         "seed": seed if seed is not None else 42,
         "settings": input_settings,
+        "dynamics_preset": dynamics_preset,
+        "response_type": resp_dyn["response_type"],
+        "response_dynamics": resp_dyn,
         "network": network,
         "experiment": experiment,
         "true_matrix": adj,
@@ -390,6 +412,9 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "run_id": run_id,
         "mode": mode,
         "settings": input_settings,
+        "dynamics_preset": dynamics_preset,
+        "response_type": resp_dyn["response_type"],
+        "response_dynamics": resp_dyn,
         "num_genes": num_genes,
         "gene_names": gene_names,
         "topology": topo_str,
@@ -574,6 +599,8 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "seed": CURRENT_STATE.get("seed", 42),
         "steady_state": bool(ss_diag.get("is_valid_steady_state", True)),
         "oscillating": bool(ss_diag.get("oscillating_detected", False)),
+        "response_type": CURRENT_STATE.get("response_type", "responsive"),
+        "response_dynamics": CURRENT_STATE.get("response_dynamics", {}),
         "steady_state_diagnostics": ss_diag,
         "settings": settings,
         "algorithms": list(metrics_dict.keys()),
@@ -1249,29 +1276,46 @@ def _build_perturb_seq_h5ad_bytes(run_id: Optional[str] = None, cells_per_condit
 
 
 def _bootstrap_initial_simulation():
-    """Seeds an initial 12-gene Scale-Free simulation + inference + archive history on server startup."""
+    """Seeds an initial 12-gene Scale-Free simulation + inference + archive history covering all 3 dynamics categories on startup."""
     try:
         init_db()
         existing_db_history = load_all_history_from_db()
+        existing_types = set(h.get("response_type") for h in (existing_db_history or []))
+        need_seeding = (
+            not existing_db_history
+            or ("flat" not in existing_types)
+            or ("oscillating" not in existing_types)
+            or ("responsive" not in existing_types)
+        )
+
+        if need_seeding:
+            # Seed diverse runs covering all 3 dynamics categories:
+            presets = [
+                # 1. Responsive: Clear steady-state shifts
+                {"num_genes": 12, "topology": "power_law", "k_av": 1.8, "act_ratio": 0.5, "noise": 0.04, "dynamics_preset": "responsive", "seed": 42},
+                {"num_genes": 10, "topology": "hierarchical", "k_av": 1.8, "act_ratio": 0.6, "noise": 0.02, "dynamics_preset": "responsive", "seed": 24},
+                {"num_genes": 9, "topology": "power_law", "k_av": 2.0, "act_ratio": 0.5, "noise": 0.03, "mode": "sos", "seed": 2004},
+                # 2. Flat: Minimal/no visible perturbations (max shift < 5%)
+                {"num_genes": 10, "topology": "random", "k_av": 1.5, "act_ratio": 0.5, "noise": 0.001, "dynamics_preset": "flat", "perturbation_factor": 0.005, "seed": 101},
+                {"num_genes": 12, "topology": "hierarchical", "k_av": 1.4, "act_ratio": 0.6, "noise": 0.002, "dynamics_preset": "flat", "perturbation_factor": 0.004, "seed": 202},
+                # 3. Oscillating: Limit cycle / persistent non-linear oscillation
+                {"num_genes": 6, "topology": "random", "k_av": 2.5, "act_ratio": 0.1, "noise": 0.02, "dynamics_preset": "oscillating", "perturbation_factor": 2.0, "seed": 1},
+                {"num_genes": 8, "topology": "power_law", "k_av": 2.2, "act_ratio": 0.1, "noise": 0.03, "dynamics_preset": "oscillating", "perturbation_factor": 2.0, "seed": 15},
+            ]
+            for p in presets:
+                p_type = p.get("dynamics_preset", "responsive")
+                if p_type not in existing_types or not existing_db_history:
+                    _execute_simulation(p)
+                    _execute_inference(["s2g", "g2s", "vote", "nir", "fast", "by_chance"])
+
+            existing_db_history = load_all_history_from_db()
+
         if existing_db_history:
             SIMULATION_HISTORY.clear()
             SIMULATION_HISTORY.extend(existing_db_history)
             latest_run_id = existing_db_history[0].get("run_id")
             if latest_run_id:
                 _load_archived_run(latest_run_id)
-                if CURRENT_STATE["true_matrix"] is not None:
-                    return
-
-        # Seed historical runs for showpre.php
-        presets = [
-            {"num_genes": 10, "topology": "random", "k_av": 1.5, "act_ratio": 0.6, "noise": 0.02, "seed": 11},
-            {"num_genes": 12, "topology": "hierarchical", "k_av": 1.8, "act_ratio": 0.5, "noise": 0.04, "seed": 24},
-            {"num_genes": 9, "topology": "power_law", "k_av": 2.0, "act_ratio": 0.5, "noise": 0.03, "mode": "sos", "seed": 2004},
-            {"num_genes": 12, "topology": "power_law", "k_av": 1.8, "act_ratio": 0.5, "noise": 0.05, "seed": 42},
-        ]
-        for p in presets:
-            _execute_simulation(p)
-            _execute_inference(["s2g", "g2s", "vote", "nir", "fast", "by_chance"])
     except Exception as e:
         print(f"Bootstrap warning: {e}")
 
@@ -1530,6 +1574,17 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 "active_run_id": CURRENT_STATE.get("run_id"),
                 "database": get_db_stats(),
                 "history": SIMULATION_HISTORY,
+                "summary_by_type": get_summary_statistics_by_type(),
+            }).encode("utf-8"))
+            return
+
+        elif path == "/api/archive/summary_by_type":
+            self._set_headers(200)
+            self.wfile.write(json.dumps({
+                "status": "success",
+                "active_run_id": CURRENT_STATE.get("run_id"),
+                "database": get_db_stats(),
+                "summary_by_type": get_summary_statistics_by_type(),
             }).encode("utf-8"))
             return
 

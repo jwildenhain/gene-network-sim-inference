@@ -148,6 +148,35 @@ def run_playwright_e2e_new_simulation_and_db_test():
         page.screenshot(path=shot_archive, full_page=True)
         print(f"[Playwright E2E] Saved screenshot: {shot_archive}")
 
+        # 6. Verify Dynamical Categories & Filter Bar in Tab 4
+        # Check summary cards container
+        summary_cards = page.locator("#archive-summary-container .summary-type-card")
+        assert summary_cards.count() == 3, f"Expected 3 summary cards, found {summary_cards.count()}"
+        print(f"[Playwright E2E] Verified 3 summary cards for Responsive, Flat, and Oscillating categories")
+
+        # Check Algorithm Comparative Table and open it
+        page.click("#btn-toggle-alg-breakdown")
+        page.wait_for_timeout(200)
+        comp_table_rows = page.locator("#tbl-dynamics-alg-comparison tbody tr")
+        print(f"[Playwright E2E] Found {comp_table_rows.count()} rows in Algorithm Comparison table")
+        assert comp_table_rows.count() > 0
+
+        # Test filtering by category: 'flat'
+        page.select_option("#archive-filter-type", "flat")
+        page.wait_for_timeout(300)
+        filtered_count_text = page.locator("#archive-filter-count-badge").inner_text()
+        print(f"[Playwright E2E] Filtered by flat: {filtered_count_text}")
+        assert "showing" in filtered_count_text.lower() or "runs" in filtered_count_text.lower()
+
+        # Capture Screenshot 3: Tab 4 Filtered by Category with Summary Cards
+        shot_categories = os.path.join(ARTIFACT_DIR, "playwright_e2e_03_dynamics_categories_archive.png")
+        page.screenshot(path=shot_categories, full_page=True)
+        print(f"[Playwright E2E] Saved screenshot: {shot_categories}")
+
+        # Reset filter to all
+        page.select_option("#archive-filter-type", "all")
+        page.wait_for_timeout(200)
+
         browser.close()
 
     # 6. Verify directly against the on-disk SQLite database (`data/rgn_db.sqlite`)
@@ -197,6 +226,12 @@ def run_playwright_e2e_new_simulation_and_db_test():
 
 
 def test_playwright_e2e_new_simulation_and_db():
+    try:
+        with urllib.request.urlopen(f"{APP_URL}/api/status", timeout=2) as resp:
+            pass
+    except Exception:
+        import pytest
+        pytest.skip(f"GRN-Sim web server not running at {APP_URL}, skipping Playwright E2E UI test")
     run_playwright_e2e_new_simulation_and_db_test()
 
 

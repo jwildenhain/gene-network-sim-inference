@@ -785,7 +785,8 @@
         <aside class="panel">
           <div class="panel-header">
             <div class="panel-title">Wizard Configuration</div>
-            <div style="display:flex;gap:5px;align-items:center;">
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+              <span class="badge badge-emerald" id="response-type-badge" title="Perturbation Response Category (Responsive, Flat, or Oscillating)">⚡ Responsive</span>
               <span class="badge badge-emerald" id="steady-state-badge" title="ODE Steady-State & Oscillation Detection (create_network.m / do_perturbation.m)">Steady State OK</span>
               <span class="badge" id="active-run-badge">Run Ready</span>
             </div>
@@ -817,6 +818,15 @@
               <option value="cellbox_neural_ode">CellBox Continuous Neural ODE Relaxation</option>
               <option value="linear_jacobian">Linear Dynamical System (Jacobian Matrix Inverse)</option>
               <option value="perturb_seq_counts">Single-Cell Perturb-seq Counts (Gamma-Poisson)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Perturbation Dynamics Category</label>
+            <select id="sim-dynamics-preset" onchange="onDynamicsPresetChange(this.value)">
+              <option value="responsive" selected>⚡ Responsive (Clear Shifts Visible)</option>
+              <option value="flat">⚪ Flat Levels (No Visible Perturbation, Low Amplitude)</option>
+              <option value="oscillating">〰 Oscillating (Limit Cycle / Non-convergent)</option>
             </select>
           </div>
 
@@ -1422,6 +1432,68 @@
           </div>
           <button class="btn btn-secondary btn-sm" onclick="loadHistoryTable()">Refresh Archive</button>
         </div>
+
+        <!-- Perturbation Dynamics Category Filter Bar & Fast Simulation Triggers -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 16px 0;padding:10px 14px;background:var(--bg-elevated, rgba(255,255,255,0.03));border:1px solid var(--border-color);border-radius:6px;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-weight:700;font-size:12px;color:var(--text-primary);letter-spacing:0.3px;">FILTER BY DYNAMICS:</span>
+            <select id="archive-filter-type" style="padding:5px 12px;font-size:12px;font-weight:600;border-radius:5px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);" onchange="filterArchiveByType(this.value)">
+              <option value="all">All Dynamics Categories (Show All)</option>
+              <option value="responsive">⚡ Responsive (Clear Shifts Visible)</option>
+              <option value="flat">⚪ Flat Levels (No Visible Perturbation)</option>
+              <option value="oscillating">〰 Oscillating (Limit Cycle / Non-steady)</option>
+            </select>
+            <span id="archive-filter-count-badge" class="badge" style="font-size:11px;">--</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;" onclick="simulatePresetRun('responsive')" title="Simulate a standard network with clear multi-gene perturbation responses">
+              <span>⚡</span> + Simulate Responsive
+            </button>
+            <button class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;" onclick="simulatePresetRun('flat')" title="Simulate a dampened/buffered network with flat levels and no visible perturbation">
+              <span>⚪</span> + Simulate Flat
+            </button>
+            <button class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;" onclick="simulatePresetRun('oscillating')" title="Simulate a network with negative feedback limit cycle oscillations">
+              <span>〰</span> + Simulate Oscillating
+            </button>
+            <button class="btn btn-outline btn-sm" style="font-size:11px;" onclick="toggleAlgBreakdownTable()" id="btn-toggle-alg-breakdown">
+              Show Algorithmic Comparison &darr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Category Summary Statistics Cards Section -->
+        <div id="archive-summary-container" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-bottom:16px;">
+          <!-- Dynamically populated by renderSummaryByType() -->
+        </div>
+
+        <!-- Comparative Algorithm Breakdown Table across Dynamics Categories -->
+        <div id="archive-alg-breakdown-wrapper" style="margin-bottom:16px;display:none;background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:12.5px;font-weight:700;color:var(--text-primary);">
+              Comparative Algorithm Performance Across Perturbation Dynamics Categories
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="toggleAlgBreakdownTable()">Close</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="tbl-dynamics-alg-comparison" style="font-size:11px;">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Algorithm</th>
+                  <th>Runs Analyzed</th>
+                  <th>Avg Total Errors</th>
+                  <th>Avg Precision (%)</th>
+                  <th>Avg Specificity (%)</th>
+                  <th>Avg Sensitivity (%)</th>
+                  <th>Avg F1 Score</th>
+                  <th>Avg Signed PPV (%)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
         <div style="overflow-x:auto;">
           <table class="data-table" id="tbl-history">
             <thead>
@@ -1429,6 +1501,7 @@
                 <th>ID</th>
                 <th>Run ID</th>
                 <th>Timestamp</th>
+                <th>Dynamics Category</th>
                 <th>Topology</th>
                 <th>Genes (n)</th>
                 <th>k_av</th>
@@ -1455,6 +1528,7 @@
             <div class="panel-title" style="font-size:15px;">
               Archived Run Detailed Inspector: <span class="badge" id="hist-detail-runid">--</span>
               <span class="badge badge-emerald" id="hist-detail-topo">--</span>
+              <span class="badge" id="hist-detail-dynamics" style="margin-left:4px;">--</span>
             </div>
             <div style="font-size:11.5px;color:var(--text-muted);" id="hist-detail-subtitle">
               Click any row in the archive table above to inspect its full settings, networks, and 4&times;4 confusion matrix.
@@ -1477,7 +1551,8 @@
         </div>
 
         <!-- Run Settings Summary Ribbon -->
-        <div class="settings-pill-grid" id="hist-settings-pills" style="grid-template-columns:repeat(8,1fr);">
+        <div class="settings-pill-grid" id="hist-settings-pills" style="grid-template-columns:repeat(9,1fr);">
+          <div class="settings-pill"><div class="sp-lbl">Dynamics Category</div><div class="sp-val" id="hsp-dynamics">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Mode</div><div class="sp-val" id="hsp-mode">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Topology</div><div class="sp-val" id="hsp-topo">--</div></div>
           <div class="settings-pill"><div class="sp-lbl">Network Size (n)</div><div class="sp-val" id="hsp-n">--</div></div>
@@ -1761,6 +1836,9 @@
       archiveDetail: null,
       archiveActiveAlg: 'vote',
       vccData: null,
+      archiveFilterType: 'all',
+      summaryByType: null,
+      dynamicsPreset: 'responsive',
     };
 
     // Light-dismiss fallback for <dialog closedby="any">
@@ -2067,6 +2145,31 @@
       if (!sim) return;
 
       document.getElementById('active-run-badge').textContent = sim.run_id || 'Active';
+
+      const respBadge = document.getElementById('response-type-badge');
+      if (respBadge) {
+        const respDyn = sim.response_dynamics || {};
+        const rType = sim.response_type || respDyn.response_type || 'responsive';
+        if (rType === 'oscillating') {
+          respBadge.textContent = '〰 Oscillating';
+          respBadge.className = 'badge badge-amber';
+          respBadge.title = respDyn.description || 'Limit cycle / non-convergent dynamics';
+        } else if (rType === 'flat') {
+          respBadge.textContent = '⚪ Flat Levels';
+          respBadge.className = 'badge badge-secondary';
+          respBadge.title = respDyn.description || 'No visible perturbation (max Δ < 5%)';
+        } else {
+          respBadge.textContent = '⚡ Responsive';
+          respBadge.className = 'badge badge-emerald';
+          respBadge.title = respDyn.description || 'Clear, distinct steady-state perturbations';
+        }
+      }
+
+      const simDynSelect = document.getElementById('sim-dynamics-preset');
+      if (simDynSelect && sim.dynamics_preset) {
+        simDynSelect.value = sim.dynamics_preset;
+      }
+
       const ssBadge = document.getElementById('steady-state-badge');
       if (ssBadge) {
         const diag = sim.steady_state_diagnostics || {};
@@ -3235,9 +3338,22 @@
           dbBadge.textContent = `SQLite rgn_db (${data.database.nw_rows} nw / ${data.database.alg_rows} alg rows)`;
         }
 
+        if (data.summary_by_type) {
+          APP_STATE.summaryByType = data.summary_by_type;
+          renderSummaryByType(data.summary_by_type);
+        }
+
         const activeRunId = (APP_STATE.archiveDetail && APP_STATE.archiveDetail.run_id) || data.active_run_id;
+        const currentFilter = APP_STATE.archiveFilterType || 'all';
+        let visibleCount = 0;
 
         data.history.forEach(h => {
+          const rType = h.response_type || (h.oscillating ? 'oscillating' : 'responsive');
+          if (currentFilter !== 'all' && rType !== currentFilter) {
+            return;
+          }
+          visibleCount++;
+
           const tr = document.createElement('tr');
           tr.style.cursor = 'pointer';
           if (h.run_id === activeRunId) tr.className = 'selected-row';
@@ -3249,10 +3365,21 @@
           const eqHtml = osc
             ? `<span class="badge badge-amber">Oscillating</span>`
             : `<span class="badge badge-emerald">Steady State</span>`;
+
+          let catBadge = '';
+          if (rType === 'oscillating') {
+            catBadge = `<span class="badge badge-amber" title="Limit cycle / persistent oscillation">〰 Oscillating</span>`;
+          } else if (rType === 'flat') {
+            catBadge = `<span class="badge badge-secondary" title="Flat levels (max Δ < 5%)">⚪ Flat Levels</span>`;
+          } else {
+            catBadge = `<span class="badge badge-emerald" title="Responsive (clear shifts visible)">⚡ Responsive</span>`;
+          }
+
           tr.innerHTML = `
             <td>#${h.id}</td>
             <td><code style="color:var(--accent-blue);font-weight:700;">${h.run_id}</code></td>
             <td>${h.timestamp}</td>
+            <td>${catBadge}</td>
             <td><span class="badge">${h.topology}</span></td>
             <td><strong>${h.num_genes}</strong></td>
             <td>${h.k_av}</td>
@@ -3276,6 +3403,12 @@
           `;
           tbody.appendChild(tr);
         });
+
+        const filterBadge = document.getElementById('archive-filter-count-badge');
+        if (filterBadge) {
+          filterBadge.textContent = `Showing ${visibleCount} of ${data.history.length} runs`;
+          filterBadge.className = currentFilter === 'all' ? 'badge' : 'badge badge-emerald';
+        }
 
         // Automatically load the first run into the Tab 4 Detailed Run Inspector if none loaded yet
         if (!APP_STATE.archiveDetail && data.history.length > 0) {
@@ -3337,6 +3470,27 @@
       document.getElementById('hist-detail-topo').textContent = data.topology;
       document.getElementById('hist-detail-subtitle').textContent =
         `Loaded Run ${data.run_id} (${data.num_genes} genes, ${data.total_edges} true edges: +${data.activations} / -${data.inhibitions}, seed=${data.seed ?? s.seed ?? 42}) — Stored in SQLite rgn_db.`;
+
+      const respDyn = data.response_dynamics || {};
+      const rType = data.response_type || respDyn.response_type || (diag.oscillating_detected ? 'oscillating' : 'responsive');
+      const histDynamicsBadge = document.getElementById('hist-detail-dynamics');
+      if (histDynamicsBadge) {
+        if (rType === 'oscillating') {
+          histDynamicsBadge.textContent = '〰 Oscillating (Limit Cycle)';
+          histDynamicsBadge.className = 'badge badge-amber';
+        } else if (rType === 'flat') {
+          histDynamicsBadge.textContent = '⚪ Flat Levels';
+          histDynamicsBadge.className = 'badge badge-secondary';
+        } else {
+          histDynamicsBadge.textContent = '⚡ Responsive (Clear Shifts)';
+          histDynamicsBadge.className = 'badge badge-emerald';
+        }
+      }
+      const hspDynamics = document.getElementById('hsp-dynamics');
+      if (hspDynamics) {
+        const maxAmp = respDyn.max_amplitude != null ? `${(respDyn.max_amplitude * 100).toFixed(1)}%` : '--';
+        hspDynamics.textContent = `${rType.toUpperCase()} (max ${maxAmp})`;
+      }
 
       document.getElementById('hsp-mode').textContent = s.mode || data.mode || 'insilico';
       document.getElementById('hsp-topo').textContent = data.topology;
@@ -3507,6 +3661,156 @@
         { label: 'Mechanistic GRN (phpIoRN)', data: rewire.mechanistic_r, color: '#0284c7' },
       ];
       drawMultiLineChart('canvas-vcc-rewire', xLabels, series, 'Pearson r', 0.0, 1.0);
+    }
+
+    // ============================================================================
+    // PERTURBATION DYNAMICS CATEGORIZATION & SUMMARY STATISTICS (RESPONSIVE, FLAT, OSCILLATING)
+    // ============================================================================
+    function filterArchiveByType(cat) {
+      APP_STATE.archiveFilterType = cat;
+      const select = document.getElementById('archive-filter-type');
+      if (select) select.value = cat;
+      loadHistoryTable();
+    }
+
+    function toggleAlgBreakdownTable() {
+      const wrap = document.getElementById('archive-alg-breakdown-wrapper');
+      const btn = document.getElementById('btn-toggle-alg-breakdown');
+      if (!wrap) return;
+      const isHidden = (wrap.style.display === 'none' || !wrap.style.display);
+      wrap.style.display = isHidden ? 'block' : 'none';
+      if (btn) btn.textContent = isHidden ? 'Hide Algorithmic Comparison ↑' : 'Show Algorithmic Comparison ↓';
+    }
+
+    async function simulatePresetRun(presetType) {
+      try {
+        const btn = event?.currentTarget;
+        if (btn) btn.disabled = true;
+        const resp = await fetch('/api/simulate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            dynamics_preset: presetType,
+            auto_infer: true,
+            num_genes: presetType === 'oscillating' ? 6 : (presetType === 'flat' ? 10 : 12),
+            topology: presetType === 'oscillating' ? 'random' : (presetType === 'flat' ? 'hierarchical' : 'power_law'),
+            seed: Date.now() % 10000,
+          }),
+        });
+        const simData = await resp.json();
+        if (btn) btn.disabled = false;
+        if (simData.status === 'success') {
+          APP_STATE.archiveFilterType = 'all';
+          const filterSel = document.getElementById('archive-filter-type');
+          if (filterSel) filterSel.value = 'all';
+          await loadHistoryTable();
+          await selectArchiveRun(simData.run_id, false);
+        }
+      } catch (e) {
+        console.error('Failed to simulate preset run:', e);
+      }
+    }
+
+    function onDynamicsPresetChange(val) {
+      APP_STATE.dynamicsPreset = val;
+      const pertFactorInput = document.getElementById('sim-pert-factor');
+      const noiseInput = document.getElementById('sim-noise');
+      const kavInput = document.getElementById('sim-kav');
+      const ratioInput = document.getElementById('sim-ratio');
+      if (val === 'flat') {
+        if (pertFactorInput) pertFactorInput.value = '0.005';
+        if (noiseInput) noiseInput.value = '0.001';
+      } else if (val === 'oscillating') {
+        if (ratioInput) ratioInput.value = '0.1';
+        if (kavInput) kavInput.value = '2.5';
+      } else {
+        if (pertFactorInput) pertFactorInput.value = '1.0';
+        if (noiseInput) noiseInput.value = '0.03';
+        if (ratioInput) ratioInput.value = '0.5';
+        if (kavInput) kavInput.value = '1.8';
+      }
+    }
+
+    function renderSummaryByType(summaryData) {
+      const container = document.getElementById('archive-summary-container');
+      if (!container || !summaryData || !summaryData.categories) return;
+
+      const cats = summaryData.categories;
+      container.innerHTML = '';
+
+      ['responsive', 'flat', 'oscillating'].forEach(catKey => {
+        const c = cats[catKey];
+        if (!c) return;
+
+        const isFiltered = (APP_STATE.archiveFilterType === catKey);
+        const card = document.createElement('div');
+        card.className = 'panel summary-type-card';
+        card.style.cssText = `padding:14px;cursor:pointer;border:2px solid ${isFiltered ? 'var(--accent-blue, #6366f1)' : 'var(--border-color)'};background:var(--bg-card);transition:transform 0.15s, border-color 0.15s;`;
+        card.onclick = () => filterArchiveByType(catKey);
+
+        const badgeClass = c.badge_class || 'badge-secondary';
+        const icon = c.badge_icon || '•';
+
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="badge ${badgeClass}" style="font-size:12px;padding:3px 8px;">${icon} ${c.label}</span>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:var(--text-muted);">${c.count} runs (${c.pct_of_total}%)</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11.5px;margin-bottom:10px;">
+            <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
+              <div style="color:var(--text-muted);font-size:10px;">MAX AMPLITUDE (Δ)</div>
+              <div style="font-weight:700;font-size:13px;color:var(--text-primary);">${(c.avg_max_amplitude * 100).toFixed(1)}%</div>
+            </div>
+            <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
+              <div style="color:var(--text-muted);font-size:10px;">EXPR. VARIANCE</div>
+              <div style="font-weight:700;font-size:13px;color:var(--text-primary);">${c.avg_variance.toFixed(4)}</div>
+            </div>
+            <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
+              <div style="color:var(--text-muted);font-size:10px;">AVG GENES (N)</div>
+              <div style="font-weight:700;font-size:13px;color:var(--text-primary);">${c.avg_num_genes} (k=${c.avg_k_av})</div>
+            </div>
+            <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
+              <div style="color:var(--text-muted);font-size:10px;">TOP ALGORITHM</div>
+              <div style="font-weight:700;font-size:13px;color:var(--accent-blue);">${c.top_algorithm} (${c.top_algorithm_errors} err)</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted);">
+            <span>${c.count > 0 ? `Avg ${c.avg_responsive_genes} responsive genes` : 'No runs recorded'}</span>
+            <span style="color:var(--accent-blue);font-weight:600;">${isFiltered ? 'Active Filter ✓' : 'Click to Filter →'}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // Populate comparative breakdown table
+      const compTbody = document.querySelector('#tbl-dynamics-alg-comparison tbody');
+      if (compTbody) {
+        compTbody.innerHTML = '';
+        ['responsive', 'flat', 'oscillating'].forEach(catKey => {
+          const c = cats[catKey];
+          if (!c || !c.algorithms) return;
+          const algs = Object.keys(c.algorithms);
+          algs.sort((a, b) => c.algorithms[a].avg_total_errors - c.algorithms[b].avg_total_errors);
+          algs.forEach(algId => {
+            const a = c.algorithms[algId];
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><span class="badge ${c.badge_class}">${c.badge_icon} ${c.label.split(' ')[0]}</span></td>
+              <td><strong style="color:var(--accent-blue);">${algId.toUpperCase()}</strong></td>
+              <td>${a.runs_count}</td>
+              <td style="font-weight:700;color:var(--accent-amber);">${a.avg_total_errors}</td>
+              <td>${a.avg_precision_pct}%</td>
+              <td>${a.avg_spec_pct}%</td>
+              <td>${a.avg_sens_pct}%</td>
+              <td style="font-weight:600;">${a.avg_f1}</td>
+              <td>${a.avg_signed_ppv_pct}%</td>
+            `;
+            compTbody.appendChild(tr);
+          });
+        });
+      }
     }
 
     window.addEventListener('DOMContentLoaded', initApp);
