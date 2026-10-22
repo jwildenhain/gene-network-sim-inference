@@ -2067,6 +2067,7 @@
           mode: document.getElementById('sim-mode').value,
           topology: document.getElementById('sim-topology').value,
           kinetics_engine: document.getElementById('sim-kinetics-engine')?.value || 'hill_nonlinear',
+          dynamics_preset: document.getElementById('sim-dynamics-preset')?.value || APP_STATE.dynamicsPreset || 'responsive',
           num_genes: parseInt(document.getElementById('sim-num-genes').value),
           k_av: parseFloat(document.getElementById('sim-kav').value),
           act_ratio: parseFloat(document.getElementById('sim-ratio').value),
@@ -2102,6 +2103,7 @@
         mode: document.getElementById('sim-mode').value,
         topology: document.getElementById('sim-topology').value,
         kinetics_engine: document.getElementById('sim-kinetics-engine')?.value || 'hill_nonlinear',
+        dynamics_preset: document.getElementById('sim-dynamics-preset')?.value || APP_STATE.dynamicsPreset || 'responsive',
         num_genes: parseInt(document.getElementById('sim-num-genes').value),
         k_av: parseFloat(document.getElementById('sim-kav').value),
         act_ratio: parseFloat(document.getElementById('sim-ratio').value),
@@ -3717,17 +3719,30 @@
       const noiseInput = document.getElementById('sim-noise');
       const kavInput = document.getElementById('sim-kav');
       const ratioInput = document.getElementById('sim-ratio');
+      const respBadge = document.getElementById('response-type-badge');
       if (val === 'flat') {
         if (pertFactorInput) pertFactorInput.value = '0.005';
         if (noiseInput) noiseInput.value = '0.001';
+        if (respBadge) {
+          respBadge.textContent = '⚪ Flat Levels';
+          respBadge.className = 'badge badge-secondary';
+        }
       } else if (val === 'oscillating') {
         if (ratioInput) ratioInput.value = '0.1';
         if (kavInput) kavInput.value = '2.5';
+        if (respBadge) {
+          respBadge.textContent = '〰 Oscillating';
+          respBadge.className = 'badge badge-amber';
+        }
       } else {
         if (pertFactorInput) pertFactorInput.value = '1.0';
         if (noiseInput) noiseInput.value = '0.03';
         if (ratioInput) ratioInput.value = '0.5';
         if (kavInput) kavInput.value = '1.8';
+        if (respBadge) {
+          respBadge.textContent = '⚡ Responsive';
+          respBadge.className = 'badge badge-emerald';
+        }
       }
     }
 
