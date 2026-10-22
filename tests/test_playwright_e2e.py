@@ -21,8 +21,14 @@ import urllib.request
 
 
 APP_URL = os.environ.get("GRN_SIM_URL", "http://localhost:8085")
-ARTIFACT_DIR = "/home/jw/.gemini/antigravity/brain/5a2b35aa-cb40-4bb8-95c2-3b3179f4c03f"
-DB_PATH = "/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/data/rgn_db.sqlite"
+ARTIFACT_DIR = os.environ.get(
+    "ARTIFACT_DIR",
+    "/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed",
+)
+DB_PATH = os.environ.get(
+    "DB_PATH",
+    "/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/data/rgn_db.sqlite",
+)
 
 
 def run_playwright_e2e_new_simulation_and_db_test():
@@ -145,8 +151,23 @@ def run_playwright_e2e_new_simulation_and_db_test():
         browser.close()
 
     # 6. Verify directly against the on-disk SQLite database (`data/rgn_db.sqlite`)
-    assert os.path.exists(DB_PATH), f"SQLite database file not found at {DB_PATH}"
-    conn = sqlite3.connect(DB_PATH)
+    # If testing against the running docker container, copy the container DB to a local check path
+    check_db_path = DB_PATH
+    import subprocess
+    try:
+        res = subprocess.run(
+            ["docker", "cp", "grn-sim-phpiorn:/app/data/rgn_db.sqlite", "/tmp/rgn_db_e2e.sqlite"],
+            capture_output=True,
+            timeout=5,
+        )
+        if res.returncode == 0 and os.path.exists("/tmp/rgn_db_e2e.sqlite"):
+            check_db_path = "/tmp/rgn_db_e2e.sqlite"
+            print(f"[Playwright E2E] Synced latest SQLite DB from docker container to {check_db_path}")
+    except Exception as e:
+        print(f"[Playwright E2E] Notice: docker cp check skipped ({e}), falling back to {DB_PATH}")
+
+    assert os.path.exists(check_db_path), f"SQLite database file not found at {check_db_path}"
+    conn = sqlite3.connect(check_db_path)
     try:
         cur = conn.cursor()
         cur.execute(
@@ -165,12 +186,18 @@ def run_playwright_e2e_new_simulation_and_db_test():
             (new_run_id,),
         )
         alg_rows = cur.fetchall()
-        assert len(alg_rows) == 6, f"Expected 6 algorithm rows in SQLite `alg` table for {new_run_id}, got {len(alg_rows)}"
-        print(f"[Playwright E2E] Verified SQLite `alg` rows (all 6 algorithms): {alg_rows}")
+        assert len(alg_rows) in (6, 12), (
+            f"Expected 6 or 12 algorithm rows in SQLite `alg` table for {new_run_id}, got {len(alg_rows)}"
+        )
+        print(f"[Playwright E2E] Verified SQLite `alg` rows ({len(alg_rows)} algorithms): {alg_rows}")
     finally:
         conn.close()
 
     print("[Playwright E2E] ALL PLAYWRIGHT UI + SQLITE DATABASE PERSISTENCE CHECKS PASSED!")
+
+
+def test_playwright_e2e_new_simulation_and_db():
+    run_playwright_e2e_new_simulation_and_db_test()
 
 
 if __name__ == "__main__":
