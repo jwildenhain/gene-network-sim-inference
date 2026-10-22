@@ -558,6 +558,42 @@
       background: rgba(99, 102, 241, 0.16);
     }
 
+    /* Sortable Table Styles */
+    table.data-table th.sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      white-space: nowrap;
+      padding-right: 18px;
+      transition: background 0.15s, color 0.15s;
+    }
+    table.data-table th.sortable:hover {
+      background: var(--bg-hover, rgba(99, 102, 241, 0.12));
+      color: var(--accent-blue, #38bdf8);
+    }
+    table.data-table th .sort-icon {
+      display: inline-block;
+      margin-left: 5px;
+      font-size: 10px;
+      opacity: 0.4;
+      transition: opacity 0.15s, color 0.15s, transform 0.15s;
+      vertical-align: middle;
+    }
+    table.data-table th.sortable:hover .sort-icon {
+      opacity: 0.85;
+    }
+    table.data-table th.sort-asc,
+    table.data-table th.sort-desc {
+      color: var(--accent-blue, #38bdf8);
+      background: rgba(99, 102, 241, 0.08);
+    }
+    table.data-table th.sort-asc .sort-icon,
+    table.data-table th.sort-desc .sort-icon {
+      opacity: 1;
+      color: var(--accent-blue, #38bdf8);
+      font-weight: 800;
+    }
+
     /* Canvas & Graph View Containers */
     .graph-stage {
       background: var(--bg-stage);
@@ -1516,8 +1552,8 @@
                 <th>Power (%)</th>
                 <th>Specificity (%)</th>
                 <th>Total Errors</th>
-                <th>Downloads</th>
-                <th>Actions</th>
+                <th class="no-sort">Downloads</th>
+                <th class="no-sort">Actions</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -2032,6 +2068,175 @@
     }
 
     // ============================================================================
+    // UNIVERSAL TABLE SORTING UTILITIES
+    // ============================================================================
+    const TABLE_SORT_STATES = {};
+
+    function parseValueForSort(raw) {
+      if (raw == null) return { type: 'empty', val: '' };
+      let s = String(raw).trim();
+      if (!s || s === '--' || s === 'N/A' || s === 'null' || s === 'undefined') {
+        return { type: 'empty', val: '' };
+      }
+
+      // Strip leading '#' for ID e.g. #14
+      let numStr = s;
+      if (/^#\d+$/.test(numStr)) {
+        numStr = numStr.substring(1);
+      }
+
+      // Percentage: e.g. "91.2%" or "100%" or "-5.4%"
+      if (/^-?\d+(\.\d+)?%$/.test(numStr)) {
+        const n = parseFloat(numStr.replace('%', ''));
+        if (!isNaN(n)) return { type: 'number', val: n };
+      }
+
+      // Pure number or float: e.g. "12", "1.8", "-0.45", "1e-4"
+      if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(numStr)) {
+        const n = parseFloat(numStr);
+        if (!isNaN(n)) return { type: 'number', val: n };
+      }
+
+      // Date or timestamp e.g. "2026-10-22 14:30:00" or ISO format
+      if (/^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?/.test(s)) {
+        const t = Date.parse(s.replace(' ', 'T'));
+        if (!isNaN(t)) return { type: 'date', val: t };
+      }
+
+      // Text / Badges: strip leading emoji / unicode symbols
+      const cleanStr = s.replace(/^[\p{Emoji}\p{Symbol}\s]+/u, '').trim().toLowerCase();
+      return { type: 'string', val: cleanStr || s.toLowerCase() };
+    }
+
+    function compareSortValues(aParsed, bParsed, sortDir) {
+      if (aParsed.type === 'empty' && bParsed.type === 'empty') return 0;
+      if (aParsed.type === 'empty') return 1; // empty rows go to bottom
+      if (bParsed.type === 'empty') return -1;
+
+      let diff = 0;
+      if (aParsed.type === 'number' && bParsed.type === 'number') {
+        diff = aParsed.val - bParsed.val;
+      } else if (aParsed.type === 'date' && bParsed.type === 'date') {
+        diff = aParsed.val - bParsed.val;
+      } else {
+        diff = String(aParsed.val).localeCompare(String(bParsed.val));
+      }
+      return sortDir === 'asc' ? diff : -diff;
+    }
+
+    function sortTable(tableId, colIndex, forceDir = null) {
+      const table = document.getElementById(tableId);
+      if (!table) return;
+      const thead = table.querySelector('thead');
+      const tbody = table.querySelector('tbody');
+      if (!thead || !tbody) return;
+
+      const headers = thead.querySelectorAll('th');
+      if (colIndex < 0 || colIndex >= headers.length) return;
+      const targetTh = headers[colIndex];
+      if (targetTh.classList.contains('no-sort')) return;
+
+      const currentState = TABLE_SORT_STATES[tableId] || {};
+      let nextDir = 'asc';
+      if (forceDir) {
+        nextDir = forceDir;
+      } else if (currentState.colIndex === colIndex) {
+        nextDir = currentState.sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        nextDir = 'asc';
+      }
+
+      TABLE_SORT_STATES[tableId] = { colIndex, sortDir: nextDir };
+
+      // Update header visual indicators
+      headers.forEach((th, idx) => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        th.removeAttribute('aria-sort');
+        const icon = th.querySelector('.sort-icon');
+        if (icon) {
+          if (idx === colIndex) {
+            th.classList.add(nextDir === 'asc' ? 'sort-asc' : 'sort-desc');
+            th.setAttribute('aria-sort', nextDir === 'asc' ? 'ascending' : 'descending');
+            icon.textContent = nextDir === 'asc' ? '▲' : '▼';
+          } else {
+            icon.textContent = '↕';
+          }
+        }
+      });
+
+      // Sort table rows
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      if (rows.length <= 1) return;
+
+      rows.sort((rowA, rowB) => {
+        const cellA = rowA.cells[colIndex];
+        const cellB = rowB.cells[colIndex];
+        const parsedA = parseValueForSort(cellA ? cellA.textContent : '');
+        const parsedB = parseValueForSort(cellB ? cellB.textContent : '');
+        return compareSortValues(parsedA, parsedB, nextDir);
+      });
+
+      // Re-append rows in sorted order (preserves elements & event listeners)
+      rows.forEach(r => tbody.appendChild(r));
+    }
+
+    function makeTableSortable(tableId) {
+      const table = document.getElementById(tableId);
+      if (!table) return;
+      const thead = table.querySelector('thead');
+      if (!thead) return;
+
+      const headers = thead.querySelectorAll('th');
+      headers.forEach((th, idx) => {
+        if (th.classList.contains('no-sort')) return;
+        th.classList.add('sortable');
+        th.setAttribute('tabindex', '0');
+        th.setAttribute('role', 'button');
+        if (!th.title) th.title = 'Click to sort table by this column';
+
+        let icon = th.querySelector('.sort-icon');
+        if (!icon) {
+          icon = document.createElement('span');
+          icon.className = 'sort-icon';
+          icon.textContent = '↕';
+          th.appendChild(icon);
+        }
+
+        if (!th._sortBound) {
+          th._sortBound = true;
+          th.addEventListener('click', () => {
+            sortTable(tableId, idx);
+          });
+          th.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              sortTable(tableId, idx);
+            }
+          });
+        }
+      });
+
+      // If this table has a recorded sort state, re-apply it to the currently present rows
+      const state = TABLE_SORT_STATES[tableId];
+      if (state && typeof state.colIndex === 'number') {
+        sortTable(tableId, state.colIndex, state.sortDir);
+      }
+    }
+
+    function initAllSortableTables() {
+      const sortableIds = [
+        'tbl-history',
+        'tbl-dynamics-alg-comparison',
+        'tbl-alg-comparison',
+        'tbl-sos-benchmark',
+        'tbl-hist-alg-comparison',
+        'tbl-vcc-summary',
+        'tbl-fig2-4gene'
+      ];
+      sortableIds.forEach(id => makeTableSortable(id));
+    }
+
+    // ============================================================================
     // API CALLS: INITIAL HYDRATION, SIMULATE, INFER
     // ============================================================================
     async function initApp() {
@@ -2051,6 +2256,7 @@
         loadSosFullStudio();
         loadThesisFigures();
         loadHistoryTable();
+        initAllSortableTables();
       } catch (err) {
         console.error('Initialization error:', err);
       }
@@ -2670,6 +2876,7 @@
 
       onSelectInferAlg(APP_STATE.activeAlg);
       drawAicProfile(inf.aic_profile);
+      makeTableSortable('tbl-alg-comparison');
     }
 
     function onSelectInferAlg(alg) {
@@ -2873,6 +3080,7 @@
 
         renderSosAlgorithm(document.getElementById('sos-alg-select').value || 'vote');
         drawSos9PanelGrid(data.perturbation_trajectories, data.gene_names);
+        makeTableSortable('tbl-sos-benchmark');
       } catch (e) {
         console.error('Benchmark Studio error:', e);
       }
@@ -3325,6 +3533,7 @@
             </tr>
           `;
         });
+        makeTableSortable('tbl-fig2-4gene');
       }
     }
 
@@ -3409,6 +3618,7 @@
           `;
           tbody.appendChild(tr);
         });
+        makeTableSortable('tbl-history');
 
         const filterBadge = document.getElementById('archive-filter-count-badge');
         if (filterBadge) {
@@ -3547,6 +3757,7 @@
       });
 
       renderArchiveDetailAlg(bestAlg);
+      makeTableSortable('tbl-hist-alg-comparison');
     }
 
     function renderArchiveDetailAlg(alg) {
@@ -3626,6 +3837,7 @@
           `;
           tbody.appendChild(tr);
         });
+        makeTableSortable('tbl-vcc-summary');
       }
 
       // 2. Seen & OOD metrics
@@ -3829,6 +4041,7 @@
             compTbody.appendChild(tr);
           });
         });
+        makeTableSortable('tbl-dynamics-alg-comparison');
       }
     }
 
