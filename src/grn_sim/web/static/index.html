@@ -291,13 +291,28 @@
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+
+    .wizard-step:hover {
+      border-color: var(--accent-blue);
+      color: var(--text-main);
+      transform: translateY(-1px);
     }
 
     .wizard-step.active {
       border-color: var(--accent-blue);
       color: var(--text-main);
-      background: rgba(56, 189, 248, 0.14);
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    .wizard-step.current {
+      border-color: var(--accent-blue) !important;
+      color: var(--text-main) !important;
+      background: rgba(56, 189, 248, 0.22) !important;
+      box-shadow: 0 0 0 2px var(--accent-blue), 0 2px 10px rgba(56, 189, 248, 0.35);
+      font-weight: 700;
     }
 
     .wizard-step .step-num {
@@ -311,11 +326,88 @@
       justify-content: center;
       font-size: 11px;
       font-weight: 700;
+      transition: all 0.18s ease;
     }
 
     .wizard-step.active .step-num {
       background: var(--accent-blue);
       color: #ffffff;
+    }
+
+    .wizard-step.current .step-num {
+      background: var(--accent-blue);
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+    }
+
+    /* Dedicated Step Guidance & Focus Banner */
+    .wizard-step-banner {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      transition: all 0.25s ease;
+    }
+
+    .wizard-banner-left {
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .wizard-banner-right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Step Section & Highlighting */
+    .step-section {
+      transition: outline 0.2s ease, box-shadow 0.25s ease, opacity 0.3s ease, filter 0.3s ease;
+      position: relative;
+    }
+
+    .step-highlight-active {
+      outline: 2px solid var(--accent-blue) !important;
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.35), 0 8px 24px rgba(0, 0, 0, 0.14) !important;
+      animation: pulseStepHighlight 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulseStepHighlight {
+      0% {
+        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25), 0 4px 14px rgba(56, 189, 248, 0.12);
+      }
+      100% {
+        box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.5), 0 8px 30px rgba(56, 189, 248, 0.3);
+      }
+    }
+
+    /* Step Focus Mode (Dimmable workspace) */
+    .step-focus-active .step-section:not(.step-highlight-active) {
+      opacity: 0.35 !important;
+      filter: grayscale(25%) !important;
+    }
+    .step-focus-active .step-section.step-highlight-active {
+      opacity: 1 !important;
+      filter: none !important;
+    }
+
+    /* Mode Info Card */
+    .sim-mode-info-card {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--text-muted);
     }
 
     /* Grid Layouts */
@@ -814,22 +906,22 @@
       <!-- 6-Step phpIoRN Workflow Bar -->
       <div class="wizard-bar">
         <div class="wizard-steps">
-          <div class="wizard-step active" id="wstep-1" onclick="highlightWizardStep(1)">
+          <div class="wizard-step current active" id="wstep-1" onclick="selectWizardStep(1)" title="Step 1: Select Analysis Mode &amp; Biological Data Source">
             <span class="step-num">1</span> Mode &amp; Source
           </div>
-          <div class="wizard-step active" id="wstep-2" onclick="highlightWizardStep(2)">
+          <div class="wizard-step active" id="wstep-2" onclick="selectWizardStep(2)" title="Step 2: Configure Graph Topology, Dynamics &amp; Kinetic Noise">
             <span class="step-num">2</span> Topology &amp; Noise
           </div>
-          <div class="wizard-step active" id="wstep-3" onclick="highlightWizardStep(3)">
+          <div class="wizard-step active" id="wstep-3" onclick="selectWizardStep(3)" title="Step 3: Ground-Truth Network Architecture &amp; Non-linear Hill Kinetics">
             <span class="step-num">3</span> Network &amp; ODE Kinetics
           </div>
-          <div class="wizard-step active" id="wstep-4" onclick="highlightWizardStep(4)">
+          <div class="wizard-step active" id="wstep-4" onclick="selectWizardStep(4)" title="Step 4: Systematic Perturbation Dynamic Trajectories &amp; Matrix X">
             <span class="step-num">4</span> Perturbation Time-Courses
           </div>
-          <div class="wizard-step active" id="wstep-5" onclick="highlightWizardStep(5)">
+          <div class="wizard-step active" id="wstep-5" onclick="selectWizardStep(5)" title="Step 5: Reverse-Engineering Algorithms (S2G/G2S) &amp; AIC Cost Profile">
             <span class="step-num">5</span> Reverse-Engineering
           </div>
-          <div class="wizard-step active" id="wstep-6" onclick="highlightWizardStep(6)">
+          <div class="wizard-step active" id="wstep-6" onclick="selectWizardStep(6)" title="Step 6: 9-State Differential Graph &amp; Misclassification Metrics">
             <span class="step-num">6</span> 9-State Graph &amp; Confusion Matrix
           </div>
         </div>
@@ -839,6 +931,30 @@
           <a class="btn btn-secondary btn-sm" href="/api/download?format=dot" download>Download .dot</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=svg" download>Download .svg</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=h5ad" download title="Single-cell Perturb-seq AnnData .h5ad (400 cells/cond)">Download .h5ad</a>
+        </div>
+      </div>
+
+      <!-- Step Guidance & Action Banner -->
+      <div class="wizard-step-banner" id="wizard-step-banner">
+        <div class="wizard-banner-left">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="badge badge-accent" id="step-banner-badge" style="font-size:11px;font-weight:700;">Step 1 of 6</span>
+            <strong id="step-banner-title" style="font-size:14px;color:var(--text-main);">Mode &amp; Data Source Configuration</strong>
+            <span class="badge badge-emerald" id="step-banner-status">Interactive</span>
+          </div>
+          <p id="step-banner-desc" style="margin:5px 0 0 0;font-size:12px;color:var(--text-muted);line-height:1.45;">
+            Select analysis mode: synthetic Hill ODE generation, E. coli 9-gene SOS microarray benchmark, or Norman et al. 2019 real CRISPRa Perturb-seq (16 TFs).
+          </p>
+        </div>
+        <div class="wizard-banner-right">
+          <button class="btn btn-secondary btn-sm" id="btn-wizard-prev" onclick="navigateWizardStep(-1)" title="Previous Step">◀ Prev</button>
+          <button class="btn btn-secondary btn-sm" id="btn-wizard-next" onclick="navigateWizardStep(1)" title="Next Step">Next ▶</button>
+          <button class="btn btn-secondary btn-sm" id="btn-toggle-focus-mode" onclick="toggleStepFocusMode()" title="Spotlight active step and dim other panels">
+            <span id="focus-mode-icon">🎯</span> <span id="focus-mode-label">Step Focus: OFF</span>
+          </button>
+          <button class="btn btn-primary btn-sm" id="step-banner-action-btn" onclick="executeCurrentStepAction()">
+            🎯 Focus Mode Selector
+          </button>
         </div>
       </div>
 
@@ -855,101 +971,117 @@
           </div>
 
           <!-- Step 1: Data Source Mode -->
-          <div class="form-group">
-            <label class="form-label">Step 1: Analysis Mode (Page_CMS_Layout)</label>
+          <div class="form-group step-section" id="step-section-1" style="border-radius:8px;padding:10px 12px;margin-bottom:12px;background:var(--bg-card);border:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <label class="form-label" style="margin:0;font-weight:700;">Step 1: Analysis Mode (Page_CMS_Layout)</label>
+              <span class="badge badge-sm" style="font-size:10px;">Step 1</span>
+            </div>
             <select id="sim-mode" onchange="onModeChange()">
               <option value="insilico" selected>In Silico ODE Network Generation</option>
               <option value="sos">E. coli 9-Gene SOS Experimental Data</option>
               <option value="benchmark_norman_2019_real_16tf">Norman et al. 2019 Real CRISPRa Perturb-seq (16 TFs, K562)</option>
             </select>
+            <div id="sim-mode-info" class="sim-mode-info-card">
+              🔬 <b>In Silico ODE Generation</b>: Synthetic non-linear Hill enzyme kinetics with user-configured network topology and measurement noise.
+            </div>
           </div>
 
           <!-- Step 2: Network Topology & Kinetic Noise -->
-          <div class="form-group">
-            <label class="form-label">Step 2: Network Topology (netsim.m)</label>
-            <select id="sim-topology">
-              <option value="power_law" selected>Scale-Free Network (Power-Law)</option>
-              <option value="random">Random Network (Erdős–Rényi)</option>
-              <option value="hierarchical">Hierarchical Modular Network</option>
-            </select>
-          </div>
+          <div class="step-section" id="step-section-2" style="border-radius:8px;padding:10px 12px;margin-bottom:12px;background:var(--bg-card);border:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:700;color:var(--text-main);">Step 2: Topology &amp; Kinetic Noise</span>
+              <span class="badge badge-sm" style="font-size:10px;">Step 2</span>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">Simulation Dynamics Engine</label>
-            <select id="sim-kinetics-engine">
-              <option value="hill_nonlinear" selected>Non-linear Hill ODE (Thesis Kinetics)</option>
-              <option value="cellbox_neural_ode">CellBox Continuous Neural ODE Relaxation</option>
-              <option value="linear_jacobian">Linear Dynamical System (Jacobian Matrix Inverse)</option>
-              <option value="perturb_seq_counts">Single-Cell Perturb-seq Counts (Gamma-Poisson)</option>
-            </select>
-          </div>
+            <div class="form-group">
+              <label class="form-label">Network Topology (netsim.m)</label>
+              <select id="sim-topology">
+                <option value="power_law" selected>Scale-Free Network (Power-Law)</option>
+                <option value="random">Random Network (Erdős–Rényi)</option>
+                <option value="hierarchical">Hierarchical Modular Network</option>
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">Perturbation Dynamics Category</label>
-            <select id="sim-dynamics-preset" onchange="onDynamicsPresetChange(this.value)">
-              <option value="responsive" selected>⚡ Responsive (Clear Shifts Visible)</option>
-              <option value="flat">⚪ Flat Levels (No Visible Perturbation, Low Amplitude)</option>
-              <option value="oscillating">〰 Oscillating (Limit Cycle / Non-convergent)</option>
-            </select>
-          </div>
+            <div class="form-group">
+              <label class="form-label">Simulation Dynamics Engine</label>
+              <select id="sim-kinetics-engine">
+                <option value="hill_nonlinear" selected>Non-linear Hill ODE (Thesis Kinetics)</option>
+                <option value="cellbox_neural_ode">CellBox Continuous Neural ODE Relaxation</option>
+                <option value="linear_jacobian">Linear Dynamical System (Jacobian Matrix Inverse)</option>
+                <option value="perturb_seq_counts">Single-Cell Perturb-seq Counts (Gamma-Poisson)</option>
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              <span>Network Size (n genes)</span>
-              <span class="val" id="lbl-num-genes">12</span>
-            </label>
-            <input type="range" id="sim-num-genes" min="6" max="30" step="1" value="12"
-              oninput="document.getElementById('lbl-num-genes').textContent=this.value" />
-          </div>
+            <div class="form-group">
+              <label class="form-label">Perturbation Dynamics Category</label>
+              <select id="sim-dynamics-preset" onchange="onDynamicsPresetChange(this.value)">
+                <option value="responsive" selected>⚡ Responsive (Clear Shifts Visible)</option>
+                <option value="flat">⚪ Flat Levels (No Visible Perturbation, Low Amplitude)</option>
+                <option value="oscillating">〰 Oscillating (Limit Cycle / Non-convergent)</option>
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              <span>Avg Connectivity (k_av)</span>
-              <span class="val" id="lbl-kav">1.8</span>
-            </label>
-            <input type="range" id="sim-kav" min="1.0" max="4.0" step="0.1" value="1.8"
-              oninput="document.getElementById('lbl-kav').textContent=this.value" />
-          </div>
+            <div class="form-group">
+              <label class="form-label">
+                <span>Network Size (n genes)</span>
+                <span class="val" id="lbl-num-genes">12</span>
+              </label>
+              <input type="range" id="sim-num-genes" min="6" max="30" step="1" value="12"
+                oninput="document.getElementById('lbl-num-genes').textContent=this.value" />
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              <span>Activator / Inhibitor Ratio</span>
-              <span class="val" id="lbl-ratio">0.50</span>
-            </label>
-            <input type="range" id="sim-ratio" min="0.1" max="0.9" step="0.05" value="0.50"
-              oninput="document.getElementById('lbl-ratio').textContent=parseFloat(this.value).toFixed(2)" />
-          </div>
+            <div class="form-group">
+              <label class="form-label">
+                <span>Avg Connectivity (k_av)</span>
+                <span class="val" id="lbl-kav">1.8</span>
+              </label>
+              <input type="range" id="sim-kav" min="1.0" max="4.0" step="0.1" value="1.8"
+                oninput="document.getElementById('lbl-kav').textContent=this.value" />
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              <span>Measurement Noise (&sigma;_m)</span>
-              <span class="val" id="lbl-noise">0.05</span>
-            </label>
-            <input type="range" id="sim-noise" min="0.00" max="0.25" step="0.01" value="0.05"
-              oninput="document.getElementById('lbl-noise').textContent=parseFloat(this.value).toFixed(2)" />
-          </div>
+            <div class="form-group">
+              <label class="form-label">
+                <span>Activator / Inhibitor Ratio</span>
+                <span class="val" id="lbl-ratio">0.50</span>
+              </label>
+              <input type="range" id="sim-ratio" min="0.1" max="0.9" step="0.05" value="0.50"
+                oninput="document.getElementById('lbl-ratio').textContent=parseFloat(this.value).toFixed(2)" />
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              <span>Biological Variability (&sigma;_b)</span>
-              <span class="val" id="lbl-biovar">0.02</span>
-            </label>
-            <input type="range" id="sim-biovar" min="0.00" max="0.20" step="0.01" value="0.02"
-              oninput="document.getElementById('lbl-biovar').textContent=parseFloat(this.value).toFixed(2)" />
-          </div>
+            <div class="form-group">
+              <label class="form-label">
+                <span>Measurement Noise (&sigma;_m)</span>
+                <span class="val" id="lbl-noise">0.05</span>
+              </label>
+              <input type="range" id="sim-noise" min="0.00" max="0.25" step="0.01" value="0.05"
+                oninput="document.getElementById('lbl-noise').textContent=parseFloat(this.value).toFixed(2)" />
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              <span>Random Seed</span>
-              <span class="val" id="lbl-seed">42</span>
-            </label>
-            <input type="number" id="sim-seed" value="42" min="1" max="99999"
-              oninput="document.getElementById('lbl-seed').textContent=this.value" />
+            <div class="form-group">
+              <label class="form-label">
+                <span>Biological Variability (&sigma;_b)</span>
+                <span class="val" id="lbl-biovar">0.02</span>
+              </label>
+              <input type="range" id="sim-biovar" min="0.00" max="0.20" step="0.01" value="0.02"
+                oninput="document.getElementById('lbl-biovar').textContent=parseFloat(this.value).toFixed(2)" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Random Seed</span>
+                <span class="val" id="lbl-seed">42</span>
+              </label>
+              <input type="number" id="sim-seed" value="42" min="1" max="99999"
+                oninput="document.getElementById('lbl-seed').textContent=this.value" />
+            </div>
           </div>
 
           <!-- Step 5: Inference Algorithms -->
-          <div class="form-group" style="margin-top:14px;">
-            <label class="form-label">Step 5: Reverse-Engineering Algorithms</label>
+          <div class="form-group step-section" id="step-section-5" style="border-radius:8px;padding:10px 12px;margin-top:14px;background:var(--bg-card);border:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <label class="form-label" style="margin:0;font-weight:700;">Step 5: Reverse-Engineering (S2G / G2S)</label>
+              <span class="badge badge-sm" style="font-size:10px;">Step 5</span>
+            </div>
             <div class="alg-checkboxes">
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="s2g" checked /> S2G (Forward AIC)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="g2s" checked /> G2S (Backward AIC)</label>
@@ -996,7 +1128,7 @@
           <div class="two-col-grid">
 
             <!-- STEP 3: Generated Ground-Truth Network (draw_dot.m / web_netsimsim.m) -->
-            <div class="panel">
+            <div class="panel step-section" id="panel-step3-gt">
               <div class="panel-header">
                 <div>
                   <div class="panel-title">
@@ -1035,7 +1167,7 @@
             </div>
 
             <!-- STEP 6: 9-State Reconstructed Differential Graph (get_results.php + statsgraph_to_dot.m) -->
-            <div class="panel">
+            <div class="panel step-section" id="panel-step6-inf">
               <div class="panel-header">
                 <div>
                   <div class="panel-title">
@@ -1087,7 +1219,7 @@
           </div>
 
           <!-- ROW 2: Step 6 $TMP_STATMAT 8-Metric Ribbon -->
-          <div class="panel" style="padding:12px 16px;">
+          <div class="panel step-section" id="panel-step6-statmat" style="padding:12px 16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <div class="panel-title" style="font-size:13px;">
                 Step 6 Statistical Summary ($TMP_STATMAT — get_results.php &amp; php_and_stats.m)
@@ -1107,7 +1239,7 @@
           </div>
 
           <!-- ROW 3: Step 4 Perturbation Time-Course Dynamics, Expression Heatmap X, and AIC Curve -->
-          <div class="three-col-grid">
+          <div class="three-col-grid step-section" id="panel-step4-pert">
 
             <!-- Step 4A: Perturbation Time-Course Plot (web_run_p_model.m) -->
             <div class="panel">
@@ -1134,7 +1266,7 @@
             </div>
 
             <!-- Step 5/6C: S2G & G2S AIC Cost Minimization Curve (Thesis Fig 3.1) -->
-            <div class="panel">
+            <div class="panel step-section" id="panel-step5-aic">
               <div class="panel-header">
                 <div>
                   <div class="panel-title">S2G / G2S AIC Cost Profile (Fig 3.1)</div>
@@ -1148,7 +1280,7 @@
           </div>
 
           <!-- ROW 4: Multi-Algorithm Comparison Table & $TMP_CMAT 4x4 Misclassification Matrix -->
-          <div class="two-col-grid">
+          <div class="two-col-grid step-section" id="panel-step6-cmat">
 
             <!-- All Algorithms Benchmark Table (Page_CMS_RGN_Result) -->
             <div class="panel">
@@ -1969,6 +2101,9 @@
       archiveFilterType: 'all',
       summaryByType: null,
       dynamicsPreset: 'responsive',
+      activeStep: 1,
+      stepFocusMode: false,
+      _highlightTimeout: null,
     };
 
     // Light-dismiss fallback for <dialog closedby="any">
@@ -2109,19 +2244,239 @@
       }
     }
 
-    function highlightWizardStep(stepNum) {
+    // ============================================================================
+    // 6-STEP REVERSE-ENGINEERING PIPELINE WIZARD ENGINE
+    // ============================================================================
+    const STEP_DEFINITIONS = {
+      1: {
+        num: 1,
+        title: 'Mode & Data Source Configuration',
+        badge: 'Step 1 of 6',
+        desc: 'Select analysis mode: synthetic Hill ODE generation, E. coli 9-gene SOS microarray benchmark, or Norman et al. 2019 real CRISPRa Perturb-seq (16 TFs).',
+        actionText: '🎯 Focus Mode Selector',
+        targetIds: ['step-section-1'],
+        action: () => {
+          document.getElementById('sim-mode')?.focus();
+          document.getElementById('step-section-1')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      },
+      2: {
+        num: 2,
+        title: 'Network Topology, Kinetics & Noise',
+        badge: 'Step 2 of 6',
+        desc: 'Configure graph topology (Scale-free power-law, Erdős-Rényi random, Hierarchical), gene count N, degree k_av, activator ratio, noise (σ_m, σ_b), and dynamics behavior.',
+        actionText: '🎯 Focus Topology Sliders',
+        targetIds: ['step-section-2'],
+        action: () => {
+          document.getElementById('step-section-2')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      },
+      3: {
+        num: 3,
+        title: 'Ground-Truth Network & ODE Kinetics',
+        badge: 'Step 3 of 6',
+        desc: 'Evaluates non-linear Hill enzyme kinetics to unperturbed steady state x^ss. Inspect interactive Force Canvas, Graphviz Dot/Neato layouts, and kinetic parameters (v_i, B_i, n, K).',
+        actionText: '⚡ Simulate Network (Steps 1–3)',
+        targetIds: ['panel-step3-gt'],
+        action: () => {
+          runSimulateOnly();
+        }
+      },
+      4: {
+        num: 4,
+        title: 'Perturbation ODE Time-Courses & Matrix X',
+        badge: 'Step 4 of 6',
+        desc: 'Numerically integrates single-gene perturbations over time to perturbed equilibria. Generates proportional relative expression ratio matrix X and dynamic relaxation curves.',
+        actionText: '📈 View Perturbation Dynamics',
+        targetIds: ['panel-step4-pert'],
+        action: () => {
+          document.getElementById('panel-step4-pert')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      },
+      5: {
+        num: 5,
+        title: 'Reverse-Engineering Algorithms & AIC Profile',
+        badge: 'Step 5 of 6',
+        desc: 'Run S2G (Forward stepwise regression), G2S (Backward elimination), Voting consensus, CellBox Neural ODE, NIR, or GENIE3. Evaluates normalized AIC cost profile curve.',
+        actionText: '🚀 Run Re-Engineering (Step 5–6)',
+        targetIds: ['step-section-5', 'panel-step5-aic'],
+        action: () => {
+          runInferOnly();
+        }
+      },
+      6: {
+        num: 6,
+        title: '9-State Differential Graph & Metrics Ribbon',
+        badge: 'Step 6 of 6',
+        desc: 'Classifies inferred edges against ground truth using the 9-state scheme (+1, -1, +2, -2, +3, -3, +4, -4). Evaluates $TMP_STATMAT ribbon and 4x4 misclassification matrix ($TMP_CMAT).',
+        actionText: '📊 Full Pipeline (1–6)',
+        targetIds: ['panel-step6-inf', 'panel-step6-statmat'],
+        action: () => {
+          runFullPipeline();
+        }
+      }
+    };
+
+    function selectWizardStep(stepNum, shouldScroll = true) {
+      const step = Math.max(1, Math.min(6, parseInt(stepNum) || 1));
+      APP_STATE.activeStep = step;
+
+      // 1. Update wizard bar pills
       for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`wstep-${i}`);
-        if (el) el.classList.toggle('active', i <= stepNum);
+        if (el) {
+          el.classList.toggle('active', i <= step);
+          el.classList.toggle('current', i === step);
+        }
+      }
+
+      // 2. Update context banner
+      const stepDef = STEP_DEFINITIONS[step];
+      if (stepDef) {
+        const badgeEl = document.getElementById('step-banner-badge');
+        const titleEl = document.getElementById('step-banner-title');
+        const descEl = document.getElementById('step-banner-desc');
+        const actBtn = document.getElementById('step-banner-action-btn');
+        if (badgeEl) badgeEl.textContent = stepDef.badge;
+        if (titleEl) titleEl.textContent = stepDef.title;
+        if (descEl) descEl.textContent = stepDef.desc;
+        if (actBtn) actBtn.textContent = stepDef.actionText;
+      }
+
+      // 3. Clear existing active highlights
+      document.querySelectorAll('.step-section').forEach(el => {
+        el.classList.remove('step-highlight-active');
+      });
+
+      // 4. Highlight target element(s)
+      const targets = [];
+      if (stepDef && Array.isArray(stepDef.targetIds)) {
+        stepDef.targetIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.classList.add('step-highlight-active');
+            targets.push(el);
+          }
+        });
+      }
+
+      // 5. Scroll smoothly to primary target if requested
+      if (shouldScroll && targets[0]) {
+        targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      // 6. If not in persistent focus mode, fade highlight after 3.5s
+      clearTimeout(APP_STATE._highlightTimeout);
+      if (!APP_STATE.stepFocusMode) {
+        APP_STATE._highlightTimeout = setTimeout(() => {
+          if (!APP_STATE.stepFocusMode) {
+            targets.forEach(t => {
+              t.classList.remove('step-highlight-active');
+            });
+          }
+        }, 3500);
+      }
+    }
+
+    function navigateWizardStep(delta) {
+      const current = APP_STATE.activeStep || 1;
+      const next = Math.max(1, Math.min(6, current + delta));
+      selectWizardStep(next, true);
+    }
+
+    function toggleStepFocusMode() {
+      APP_STATE.stepFocusMode = !APP_STATE.stepFocusMode;
+      const container = document.getElementById('tab-wizard');
+      const label = document.getElementById('focus-mode-label');
+      const icon = document.getElementById('focus-mode-icon');
+      const btn = document.getElementById('btn-toggle-focus-mode');
+
+      if (container) {
+        container.classList.toggle('step-focus-active', APP_STATE.stepFocusMode);
+      }
+      if (label) {
+        label.textContent = APP_STATE.stepFocusMode ? 'Step Focus: ON' : 'Step Focus: OFF';
+      }
+      if (icon) {
+        icon.textContent = APP_STATE.stepFocusMode ? '🌟' : '🎯';
+      }
+      if (btn) {
+        btn.classList.toggle('btn-primary', APP_STATE.stepFocusMode);
+        btn.classList.toggle('btn-secondary', !APP_STATE.stepFocusMode);
+      }
+
+      // Refresh active step highlighting
+      selectWizardStep(APP_STATE.activeStep || 1, true);
+    }
+
+    function executeCurrentStepAction() {
+      const step = APP_STATE.activeStep || 1;
+      const stepDef = STEP_DEFINITIONS[step];
+      if (stepDef && typeof stepDef.action === 'function') {
+        stepDef.action();
+      }
+    }
+
+    function highlightWizardStep(stepNum) {
+      // Synchronize wizard steps and banner without jarring forced scroll
+      selectWizardStep(stepNum, false);
+    }
+
+    function updateModeUI(mode, autoRun = false) {
+      const numGenesInput = document.getElementById('sim-num-genes');
+      const lblNumGenes = document.getElementById('lbl-num-genes');
+      const topoSelect = document.getElementById('sim-topology');
+      const kavInput = document.getElementById('sim-kav');
+      const ratioInput = document.getElementById('sim-ratio');
+      const modeInfo = document.getElementById('sim-mode-info');
+      const respPresetSelect = document.getElementById('sim-dynamics-preset');
+      const kineticsEngineSelect = document.getElementById('sim-kinetics-engine');
+
+      if (mode === 'sos') {
+        if (numGenesInput) {
+          numGenesInput.value = 9;
+          numGenesInput.disabled = true;
+        }
+        if (lblNumGenes) lblNumGenes.textContent = '9 (Fixed)';
+        if (topoSelect) topoSelect.disabled = true;
+        if (kavInput) kavInput.disabled = true;
+        if (ratioInput) ratioInput.disabled = true;
+        if (modeInfo) {
+          modeInfo.innerHTML = '🧫 <b>E. coli SOS DNA Repair Network</b>: 9 genes (<code>recA</code>, <code>lexA</code>, <code>ssb</code>, <code>recF</code>, <code>dinI</code>, <code>umuDC</code>, <code>rpoD</code>, <code>rpoH</code>, <code>rpoS</code>) with 9 real microarray perturbation experiments (Gardner et al., <i>Science</i> 2003; Thesis Table 4.1).';
+        }
+        if (autoRun) runFullPipeline();
+      } else if (mode === 'benchmark_norman_2019_real_16tf') {
+        if (numGenesInput) {
+          numGenesInput.value = 16;
+          numGenesInput.disabled = true;
+        }
+        if (lblNumGenes) lblNumGenes.textContent = '16 (Fixed)';
+        if (topoSelect) topoSelect.disabled = true;
+        if (kavInput) kavInput.disabled = true;
+        if (ratioInput) ratioInput.disabled = true;
+        if (respPresetSelect) respPresetSelect.value = 'responsive';
+        if (kineticsEngineSelect) kineticsEngineSelect.value = 'perturb_seq_counts';
+        if (modeInfo) {
+          modeInfo.innerHTML = '🧬 <b>Norman et al. 2019 Real CRISPRa Perturb-seq</b>: 16 transcription factors in human K562 erythroid cells (~400 single cells/cond). Fractional proportional fold changes relative to non-targeting guides.';
+        }
+        if (autoRun) runFullPipeline();
+      } else {
+        // insilico
+        if (numGenesInput) numGenesInput.disabled = false;
+        if (lblNumGenes && numGenesInput) lblNumGenes.textContent = numGenesInput.value;
+        if (topoSelect) topoSelect.disabled = false;
+        if (kavInput) kavInput.disabled = false;
+        if (ratioInput) ratioInput.disabled = false;
+        if (modeInfo) {
+          modeInfo.innerHTML = '🔬 <b>In Silico ODE Generation</b>: Synthetic non-linear Hill enzyme kinetics with user-configured network topology and measurement noise.';
+        }
+        if (autoRun) runFullPipeline();
       }
     }
 
     function onModeChange() {
       const mode = document.getElementById('sim-mode').value;
-      if (mode === 'sos') {
-        document.getElementById('sim-num-genes').value = 9;
-        document.getElementById('lbl-num-genes').textContent = '9';
-      }
+      updateModeUI(mode, true);
     }
 
     function applySettingsToForm(settings, sim) {
@@ -2137,6 +2492,7 @@
       const kengine = s.kinetics_engine || (sim && sim.kinetics_engine) || 'hill_nonlinear';
 
       document.getElementById('sim-mode').value = mode;
+      updateModeUI(mode, false);
       document.getElementById('sim-topology').value = topo === 'biological_sos' ? 'power_law' : topo;
       if (document.getElementById('sim-kinetics-engine')) {
         document.getElementById('sim-kinetics-engine').value = kengine;
@@ -2345,6 +2701,9 @@
           renderAllSimulationViews();
           if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
             renderAllInferenceViews();
+            selectWizardStep(6, false);
+          } else {
+            selectWizardStep(1, false);
           }
         }
         loadSosFullStudio();
@@ -3224,6 +3583,9 @@
           renderAllSimulationViews();
           if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
             renderAllInferenceViews();
+            selectWizardStep(6, false);
+          } else {
+            selectWizardStep(1, false);
           }
           switchMainTab('tab-wizard');
         }

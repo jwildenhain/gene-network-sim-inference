@@ -79,6 +79,32 @@ Complete integration of 4 simulation dynamics engines (`hill_nonlinear`, `cellbo
 
 ---
 
+## 🔄 6-Step Reverse-Engineering Workflow Pipeline & Data Modes
+
+The Simulation & Inference Studio (Tab 1) organizes the complete reverse-engineering investigation into a structured 6-step sequential pipeline based on the `phpIoRN` architecture (*Wildenhain 2004*; *Wildenhain & Crampin 2006*).
+
+> 📄 **Full Technical & Mathematical Specification**: See [`docs/WORKFLOW_STEPS_PIPELINE.md`](docs/WORKFLOW_STEPS_PIPELINE.md) for detailed equation derivations, algorithms, and 9-state classification matrix formulas.
+
+```mermaid
+flowchart LR
+    S1["Step 1: Mode &amp; Source"] --> S2["Step 2: Topology &amp; Noise"]
+    S2 --> S3["Step 3: Network &amp; ODE Kinetics"]
+    S3 --> S4["Step 4: Perturbation Time-Courses"]
+    S4 --> S5["Step 5: Reverse-Engineering"]
+    S5 --> S6["Step 6: 9-State Graph &amp; Metrics"]
+```
+
+| Step | Phase Name | Primary Functionality | Corresponding Code / Algorithm |
+| :---: | :--- | :--- | :--- |
+| **1** | **Mode & Source** | Selects between synthetic ODE generation or real biological benchmark datasets (*E. coli* SOS, Norman 2019 CRISPRa). | [`sim-mode`](src/grn_sim/web/static/index.html) / [`_execute_simulation`](src/grn_sim/web/server.py) |
+| **2** | **Topology & Noise** | Configures network graph architecture (Scale-Free, Random, Hierarchical), noise levels ($\sigma_m, \sigma_b$), and dynamics presets. | [`NetworkTopology`](src/grn_sim/simulation/topology.py) (`netsim.m`) |
+| **3** | **Network & ODE Kinetics** | Solves non-linear Hill ODEs to equilibrium and displays ground-truth network structure. | [`GeneNetwork`](src/grn_sim/simulation/network.py) (`create_network.m` / `draw_dot.m`) |
+| **4** | **Perturbation Time-Courses** | Numerically integrates single-gene perturbations over time and computes expression ratio matrix $X$. | [`PerturbationSimulator`](src/grn_sim/simulation/simulator.py) (`do_perturbation.m`) |
+| **5** | **Reverse-Engineering** | Runs 12 causal reconstruction algorithms (S2G, G2S, Voting, CellBox, NIR, etc.) and computes AIC profiles. | [`grn_sim.inference`](src/grn_sim/inference/) (`getvar.m` / `gen2spec.m`) |
+| **6** | **9-State Graph & Metrics** | Compares inferred edges against ground truth using the 9-state classification matrix and $TMP\_STATMAT$ ribbon. | [`new_stats_9state`](src/grn_sim/metrics/stats.py) (`statsgraph_to_dot.m`) |
+
+---
+
 ## 🔬 Core Capabilities
 
 ### 1. In Silico Non-Linear GRN Perturbation Simulator
