@@ -651,6 +651,32 @@
       border-radius: 8px;
     }
 
+    /* Clickable Graphviz SVG Nodes */
+    .graph-stage svg g.node {
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .graph-stage svg g.node:hover ellipse,
+    .graph-stage svg g.node:hover polygon,
+    .graph-stage svg g.node:hover circle {
+      stroke: #38bdf8 !important;
+      stroke-width: 3px !important;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.65));
+    }
+    .graph-stage svg g.node.active-node ellipse,
+    .graph-stage svg g.node.active-node polygon,
+    .graph-stage svg g.node.active-node circle {
+      stroke: #38bdf8 !important;
+      stroke-width: 3.5px !important;
+      fill: rgba(56, 189, 248, 0.25) !important;
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.85));
+    }
+    .graph-stage svg g.node:hover text,
+    .graph-stage svg g.node.active-node text {
+      font-weight: 800 !important;
+      fill: #38bdf8 !important;
+    }
+
     /* 9-State Edge Legend (statsgraph_to_dot.m) */
     .legend-9state {
       display: grid;
@@ -1257,15 +1283,79 @@
       </div>
 
       <div class="two-col-grid" style="margin-bottom:16px;">
-        <!-- Perturbation Steady-State Trajectories Grid -->
-        <div class="panel">
-          <div class="panel-header">
+        <!-- Perturbation Trajectories & Gene Dynamics Inspector -->
+        <div class="panel" id="sos-gene-dynamics-panel">
+          <div class="panel-header" style="flex-wrap:wrap;gap:8px;">
             <div>
-              <div class="panel-title" id="sos-traj-title">Perturbation Trajectories &amp; Expression Profiles</div>
-              <div style="font-size:11px;color:var(--text-muted);" id="sos-traj-subtitle">Steady-state concentration recovery across single-gene perturbation conditions</div>
+              <div class="panel-title" id="sos-traj-title" style="display:flex;align-items:center;gap:8px;">
+                <span>Gene Dynamics &amp; Value Changes Over Time</span>
+                <span class="badge badge-emerald" id="sos-active-gene-badge">Click Any Node Above</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);" id="sos-traj-subtitle">
+                Click any gene node in the network graph above to inspect dynamic trajectories &amp; value states over time
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <select id="sos-gene-select" style="width:auto;padding:3px 8px;font-size:11.5px;font-weight:700;" onchange="selectSosGene(this.value, false)" title="Select active gene to inspect">
+              </select>
+              <div class="btn-group" role="group">
+                <button class="btn btn-primary btn-sm" id="btn-traj-mode-focus" onclick="setSosTrajectoryMode('focus')" title="Show dynamic trajectories & value states for selected gene">
+                  📈 Gene Focus
+                </button>
+                <button class="btn btn-outline btn-sm" id="btn-traj-mode-grid" onclick="setSosTrajectoryMode('grid')" title="Show all perturbation conditions in a multi-panel grid">
+                  ▦ All Grid
+                </button>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="openSosGeneModal()" title="Open enlarged inspector dialog">
+                🔍 Enlarge
+              </button>
             </div>
           </div>
-          <canvas id="canvas-sos-9grid" class="chart-canvas" width="720" height="310" style="width:100%;height:310px;"></canvas>
+
+          <!-- Mode A: Selected Gene Dynamics Focus -->
+          <div id="sos-traj-focus-view">
+            <!-- Trajectory Canvas over Time -->
+            <div style="margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px;color:var(--text-muted);">
+                <span id="sos-traj-chart-legend">
+                  <strong style="color:var(--accent-blue);">— Unperturbed Basal</strong> &nbsp;
+                  <strong style="color:#ef4444;">— Self-Perturbation</strong> &nbsp;
+                  <span id="sos-traj-reg-legend" style="color:var(--accent-amber);">-- Regulators</span>
+                </span>
+                <span style="font-size:10.5px;">Time $t \in [0, 10]$ • Concentration $x_i(t)$</span>
+              </div>
+              <canvas id="canvas-sos-gene-traj" class="chart-canvas" width="720" height="200" style="width:100%;height:200px;background:var(--stage-bg);border-radius:6px;"></canvas>
+            </div>
+
+            <!-- Value States Bar Chart across All Conditions -->
+            <div style="margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px;color:var(--text-muted);">
+                <span>
+                  <strong>Steady-State Expression Across All Perturbation Conditions</strong>
+                  (<span style="color:#10b981;">▲ Upregulated</span>, <span style="color:#ef4444;">▼ Downregulated</span>, <span style="color:var(--accent-blue);">■ Self</span>)
+                </span>
+                <span id="sos-states-delta-range" style="font-size:10.5px;color:var(--accent-blue);font-weight:700;"></span>
+              </div>
+              <canvas id="canvas-sos-gene-states" class="chart-canvas" width="720" height="150" style="width:100%;height:150px;background:var(--stage-bg);border-radius:6px;"></canvas>
+            </div>
+
+            <!-- Connectivity & Kinetic Summary Bar -->
+            <div id="sos-gene-connectivity-bar" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11.5px;padding-top:6px;border-top:1px solid var(--border);">
+              <div>
+                <span style="color:var(--text-muted);font-weight:600;">Upstream Regulators: </span>
+                <span id="sos-in-regs-pills">None</span>
+              </div>
+              <div>
+                <span style="color:var(--text-muted);font-weight:600;">Downstream Targets: </span>
+                <span id="sos-out-targets-pills">None</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mode B: Multi-Panel Grid View of All Perturbations -->
+          <div id="sos-traj-grid-view" style="display:none;">
+            <canvas id="canvas-sos-9grid" class="chart-canvas" width="720" height="310" style="width:100%;height:310px;"></canvas>
+          </div>
         </div>
 
         <!-- Benchmark Method Comparison & 4x4 Confusion Matrix -->
@@ -1978,6 +2068,10 @@
         drawAicProfile(APP_STATE.inferred.aic_profile);
       }
       if (APP_STATE.sosData) {
+        if (APP_STATE.activeSosGene && APP_STATE.sosData.gene_profiles) {
+          const prof = APP_STATE.sosData.gene_profiles[APP_STATE.activeSosGene];
+          if (prof) renderSosGeneDynamicsInspector(prof);
+        }
         drawSos9PanelGrid(APP_STATE.sosData.perturbation_trajectories, APP_STATE.sosData.gene_names);
       }
       if (APP_STATE.thesisFigures) {
@@ -2401,6 +2495,8 @@
 
       document.getElementById('gt-svg-dot').innerHTML = sim.svg_hierarchical || '';
       document.getElementById('gt-svg-neato').innerHTML = sim.svg_spring || '';
+      attachSvgNodeInteractivity('gt-svg-dot', (geneName, idx) => inspectNode(idx, true));
+      attachSvgNodeInteractivity('gt-svg-neato', (geneName, idx) => inspectNode(idx, true));
       document.getElementById('gt-dot-source').textContent = sim.dot_hierarchical || '';
 
       const nodeSel = document.getElementById('quick-node-select');
@@ -2647,7 +2743,11 @@
         document.getElementById('modal-subtitle').textContent =
           `Activators: ${np.activators_in.join(', ') || 'None'} • Inhibitors: ${np.inhibitors_in.join(', ') || 'None'}`;
         document.getElementById('modal-body-stats').innerHTML = html;
-        drawSeriesCanvas('canvas-modal-traj', series, `Unperturbed Basal ODE Trajectory: ${np.name} reaching Steady State`);
+        if (sim.gene_profiles && sim.gene_profiles[np.name]) {
+          drawGeneTrajectoryCanvas('canvas-modal-traj', sim.gene_profiles[np.name]);
+        } else {
+          drawSeriesCanvas('canvas-modal-traj', series, `Unperturbed Basal ODE Trajectory: ${np.name} reaching Steady State`);
+        }
         inspectorDialog.showModal();
       }
     };
@@ -2908,6 +3008,8 @@
 
       document.getElementById('inf-svg-dot').innerHTML = (inf.svgs_dot && inf.svgs_dot[alg]) || '';
       document.getElementById('inf-svg-neato').innerHTML = (inf.svgs_neato && inf.svgs_neato[alg]) || '';
+      attachSvgNodeInteractivity('inf-svg-dot', (geneName, idx) => inspectNode(idx, true));
+      attachSvgNodeInteractivity('inf-svg-neato', (geneName, idx) => inspectNode(idx, true));
       draw9StateComparisonCanvas(inf.comparison_graphs ? inf.comparison_graphs[alg] : null);
     }
 
@@ -3045,7 +3147,14 @@
         if (bTitle) bTitle.textContent = `${data.pathway || datasetId} Benchmark Comparison & Confusion Matrix`;
         if (bBadge) bBadge.textContent = `${numGenes}×${numGenes} = ${potInteractions} Potential Interactions`;
 
+        // Populate Gene Selector Dropdown for Interactive Node Inspector
+        const geneSelect = document.getElementById('sos-gene-select');
+        if (geneSelect && data.gene_names) {
+          geneSelect.innerHTML = data.gene_names.map((g, idx) => `<option value="${g}">Gene #${idx + 1}: ${g}</option>`).join('');
+        }
+
         document.getElementById('sos-true-stage').innerHTML = data.svg_true_dot || '';
+        attachSvgNodeInteractivity('sos-true-stage', (geneName) => selectSosGene(geneName, true));
 
         const tbody = document.querySelector('#tbl-sos-benchmark tbody');
         tbody.innerHTML = '';
@@ -3081,6 +3190,13 @@
         renderSosAlgorithm(document.getElementById('sos-alg-select').value || 'vote');
         drawSos9PanelGrid(data.perturbation_trajectories, data.gene_names);
         makeTableSortable('tbl-sos-benchmark');
+
+        const initialGene = (data.gene_names && data.gene_names.includes(APP_STATE.activeSosGene))
+          ? APP_STATE.activeSosGene
+          : (data.gene_names ? data.gene_names[0] : null);
+        if (initialGene) {
+          selectSosGene(initialGene, false);
+        }
       } catch (e) {
         console.error('Benchmark Studio error:', e);
       }
@@ -3124,6 +3240,10 @@
       document.getElementById('sos-diff-title').textContent = alg.toUpperCase();
       document.getElementById('sos-cmat-name').textContent = alg.toUpperCase();
       document.getElementById('sos-diff-stage').innerHTML = (data.svgs_dot && data.svgs_dot[alg]) || '';
+      attachSvgNodeInteractivity('sos-diff-stage', (geneName) => selectSosGene(geneName, true));
+      if (APP_STATE.activeSosGene) {
+        highlightSvgActiveNode('sos-diff-stage', APP_STATE.activeSosGene);
+      }
       renderConfusionMatrixTable('#tbl-sos-cmat tbody', data.confusion_matrices ? data.confusion_matrices[alg] : null);
     }
 
@@ -3178,6 +3298,542 @@
           ctx.stroke();
         });
       }
+    }
+
+    // ============================================================================
+    // REAL-WORLD BENCHMARK INTERACTIVE NODE DYNAMICS & TRAJECTORY INSPECTOR
+    // ============================================================================
+    function attachSvgNodeInteractivity(containerId, onNodeClick) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const nodes = container.querySelectorAll('g.node');
+      if (!nodes || !nodes.length) return;
+
+      nodes.forEach((nodeG, idx) => {
+        const titleEl = nodeG.querySelector('title');
+        const textEl = nodeG.querySelector('text');
+        let rawName = (titleEl ? titleEl.textContent : textEl?.textContent)?.trim() || `G${idx + 1}`;
+        let geneName = rawName.replace(/^node_\d+/, '').trim();
+        if (geneName.includes('\n')) geneName = geneName.split('\n')[0].trim();
+        if (geneName.includes(' ')) geneName = geneName.split(' ')[0].trim();
+        if (!geneName && textEl) geneName = textEl.textContent.trim();
+
+        nodeG.style.cursor = 'pointer';
+        nodeG.setAttribute('role', 'button');
+        nodeG.setAttribute('tabindex', '0');
+        nodeG.setAttribute('data-gene-name', geneName);
+        nodeG.setAttribute('title', `Click to inspect ${geneName} dynamic trajectories & value changes over time`);
+
+        if (!nodeG._boundClick) {
+          nodeG._boundClick = true;
+          nodeG.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (typeof onNodeClick === 'function') {
+              onNodeClick(geneName, idx);
+            }
+          });
+          nodeG.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              if (typeof onNodeClick === 'function') {
+                onNodeClick(geneName, idx);
+              }
+            }
+          });
+        }
+      });
+    }
+
+    function highlightSvgActiveNode(containerId, activeGeneName) {
+      const container = document.getElementById(containerId);
+      if (!container || !activeGeneName) return;
+      container.querySelectorAll('g.node').forEach(nodeG => {
+        const titleEl = nodeG.querySelector('title');
+        const textEl = nodeG.querySelector('text');
+        let name = (titleEl ? titleEl.textContent : textEl?.textContent)?.trim() || '';
+        name = name.replace(/^node_\d+/, '').trim();
+        if (name.includes('\n')) name = name.split('\n')[0].trim();
+        if (name.includes(' ')) name = name.split(' ')[0].trim();
+        if (!name && textEl) name = textEl.textContent.trim();
+
+        const isMatch = (name === activeGeneName || name.toLowerCase() === activeGeneName.toLowerCase());
+        nodeG.classList.toggle('active-node', isMatch);
+        const shape = nodeG.querySelector('ellipse, polygon, path, circle');
+        if (shape) {
+          if (isMatch) {
+            shape.setAttribute('stroke', '#38bdf8');
+            shape.setAttribute('stroke-width', '3.5');
+            shape.setAttribute('fill', 'rgba(56, 189, 248, 0.25)');
+          } else {
+            shape.removeAttribute('stroke-width');
+          }
+        }
+      });
+    }
+
+    function buildClientGeneProfile(data, idx) {
+      if (!data || !data.gene_names || idx < 0 || idx >= data.gene_names.length) return null;
+      const gname = data.gene_names[idx];
+      const N = data.gene_names.length;
+      const A = data.true_matrix || [];
+      const X = data.X || [];
+      const trajs = data.perturbation_trajectories || [];
+
+      const inRegs = [];
+      const outTargets = [];
+      for (let j = 0; j < N; j++) {
+        if (A[idx] && A[idx][j] !== 0) {
+          inRegs.push({
+            index: j,
+            name: data.gene_names[j],
+            sign: Math.sign(A[idx][j]),
+            type: A[idx][j] > 0 ? 'activation' : 'inhibition'
+          });
+        }
+        if (A[j] && A[j][idx] !== 0) {
+          outTargets.push({
+            index: j,
+            name: data.gene_names[j],
+            sign: Math.sign(A[j][idx]),
+            type: A[j][idx] > 0 ? 'activation' : 'inhibition'
+          });
+        }
+      }
+
+      const basalCurve = (data.basal_trajectory && data.basal_trajectory[idx]) || [];
+      const selfCurve = (trajs[idx] && trajs[idx][idx]) || [];
+      const regCurves = {};
+      inRegs.forEach(r => {
+        if (trajs[r.index] && trajs[r.index][idx]) {
+          regCurves[r.name] = trajs[r.index][idx];
+        }
+      });
+
+      const exprAcross = [];
+      let minE = Infinity, maxE = -Infinity;
+      for (let p = 0; p < N; p++) {
+        const val = (X[idx] && typeof X[idx][p] === 'number') ? X[idx][p] : 1.0;
+        if (val < minE) minE = val;
+        if (val > maxE) maxE = val;
+        exprAcross.push({
+          condition_idx: p,
+          perturbed_gene: data.gene_names[p],
+          expression: Number(val.toFixed(4)),
+          delta: 0,
+          pct_change: 0,
+          is_self_perturbation: (p === idx),
+          is_regulator_perturbation: inRegs.some(r => r.name === data.gene_names[p]),
+        });
+      }
+      const baseVal = exprAcross.length ? exprAcross[0].expression : 1.0;
+      exprAcross.forEach(item => {
+        item.delta = Number((item.expression - baseVal).toFixed(4));
+        item.pct_change = Number(((item.delta / Math.max(0.001, Math.abs(baseVal))) * 100).toFixed(1));
+      });
+
+      const nPts = basalCurve.length || selfCurve.length || 40;
+      const timePoints = Array.from({ length: nPts }, (_, i) => Number(((10 * i) / Math.max(1, nPts - 1)).toFixed(2)));
+
+      return {
+        index: idx,
+        name: gname,
+        in_regulators: inRegs,
+        out_targets: outTargets,
+        time_points: timePoints,
+        basal_trajectory: basalCurve,
+        self_perturbation_trajectory: selfCurve,
+        regulator_trajectories: regCurves,
+        expression_across_conditions: exprAcross,
+        baseline_expression: baseVal,
+        min_expression: minE === Infinity ? 0 : minE,
+        max_expression: maxE === -Infinity ? 1 : maxE,
+        max_abs_delta: Math.max(...exprAcross.map(e => Math.abs(e.delta))),
+      };
+    }
+
+    function selectSosGene(geneNameOrIdx, scrollIntoView = false) {
+      const data = APP_STATE.sosData;
+      if (!data) return;
+
+      let gProfile = null;
+      let geneName = '';
+      if (typeof geneNameOrIdx === 'string') {
+        geneName = geneNameOrIdx;
+        gProfile = (data.gene_profiles && data.gene_profiles[geneName]) || null;
+        if (!gProfile && data.gene_names) {
+          const idx = data.gene_names.indexOf(geneName);
+          if (idx >= 0) gProfile = buildClientGeneProfile(data, idx);
+        }
+      } else if (typeof geneNameOrIdx === 'number' && data.gene_names) {
+        geneName = data.gene_names[geneNameOrIdx];
+        gProfile = (data.gene_profiles && data.gene_profiles[geneName]) || buildClientGeneProfile(data, geneNameOrIdx);
+      }
+
+      if (!gProfile || !geneName) return;
+      APP_STATE.activeSosGene = geneName;
+
+      // Update dropdown selection
+      const select = document.getElementById('sos-gene-select');
+      if (select && select.value !== geneName) select.value = geneName;
+
+      // Ensure focus view is visible
+      setSosTrajectoryMode('focus');
+
+      // Highlight active node in both SVGs
+      highlightSvgActiveNode('sos-true-stage', geneName);
+      highlightSvgActiveNode('sos-diff-stage', geneName);
+
+      // Render Trajectory and Expression State Charts
+      renderSosGeneDynamicsInspector(gProfile);
+
+      if (scrollIntoView) {
+        const panel = document.getElementById('sos-gene-dynamics-panel');
+        if (panel) {
+          panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }
+
+    function renderSosGeneDynamicsInspector(profile) {
+      if (!profile) return;
+
+      // 1. Update Header & Badges
+      const bTitle = document.getElementById('sos-active-gene-badge');
+      if (bTitle) {
+        const selfDelta = (profile.expression_across_conditions || []).find(c => c.is_self_perturbation);
+        const deltaStr = selfDelta ? `${selfDelta.pct_change > 0 ? '+' : ''}${selfDelta.pct_change}% (${selfDelta.delta > 0 ? '+' : ''}${selfDelta.delta})` : 'Active';
+        bTitle.textContent = `${profile.name} • Base: ${profile.baseline_expression} • Perturb: ${deltaStr}`;
+      }
+
+      const deltaRange = document.getElementById('sos-states-delta-range');
+      if (deltaRange) {
+        deltaRange.textContent = `Range: [${profile.min_expression}, ${profile.max_expression}] • Max |Δ|: ${profile.max_abs_delta}`;
+      }
+
+      // 2. Draw Trajectory Curve over Time
+      drawGeneTrajectoryCanvas('canvas-sos-gene-traj', profile);
+
+      // 3. Draw Steady-State Expression Across All Conditions
+      drawGeneStatesBarCanvas('canvas-sos-gene-states', profile);
+
+      // 4. Update Upstream Regulators & Downstream Targets Pills
+      const inEl = document.getElementById('sos-in-regs-pills');
+      if (inEl) {
+        if (profile.in_regulators && profile.in_regulators.length) {
+          inEl.innerHTML = profile.in_regulators.map(r => {
+            const color = r.sign > 0 ? '#10b981' : '#ef4444';
+            const signSymbol = r.sign > 0 ? '+' : '-';
+            return `<button class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 7px;margin:2px;" onclick="selectSosGene('${r.name}', true)" title="Inspect regulator ${r.name}">
+              <span style="color:${color};font-weight:700;">${signSymbol}</span> ${r.name}
+            </button>`;
+          }).join(' ');
+        } else {
+          inEl.innerHTML = '<span style="color:var(--text-muted);font-style:italic;">No known upstream regulators</span>';
+        }
+      }
+
+      const outEl = document.getElementById('sos-out-targets-pills');
+      if (outEl) {
+        if (profile.out_targets && profile.out_targets.length) {
+          outEl.innerHTML = profile.out_targets.map(t => {
+            const color = t.sign > 0 ? '#10b981' : '#ef4444';
+            const signSymbol = t.sign > 0 ? '+' : '-';
+            return `<button class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 7px;margin:2px;" onclick="selectSosGene('${t.name}', true)" title="Inspect target ${t.name}">
+              <span style="color:${color};font-weight:700;">${signSymbol}</span> ${t.name}
+            </button>`;
+          }).join(' ');
+        } else {
+          outEl.innerHTML = '<span style="color:var(--text-muted);font-style:italic;">No known downstream targets</span>';
+        }
+      }
+    }
+
+    function drawGeneTrajectoryCanvas(canvasId, profile) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas || !profile) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const tc = getThemeColors();
+
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
+      const pad = { t: 24, r: 20, b: 30, l: 48 };
+      const pw = W - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+
+      // Collect all series to plot
+      const series = [];
+      if (profile.basal_trajectory && profile.basal_trajectory.length) {
+        series.push({
+          label: `${profile.name} Unperturbed Basal Relaxation x(t)`,
+          data: profile.basal_trajectory,
+          color: '#0284c7',
+          width: 2.5,
+          dash: [],
+        });
+      }
+      if (profile.self_perturbation_trajectory && profile.self_perturbation_trajectory.length) {
+        series.push({
+          label: `${profile.name} Direct Perturbation Response x(t)`,
+          data: profile.self_perturbation_trajectory,
+          color: '#ef4444',
+          width: 2.5,
+          dash: [],
+        });
+      }
+      const regColors = ['#f59e0b', '#8b5cf6', '#10b981', '#ec4899', '#06b6d4', '#84cc16'];
+      if (profile.regulator_trajectories) {
+        let cIdx = 0;
+        for (const [regName, regCurve] of Object.entries(profile.regulator_trajectories)) {
+          if (regCurve && regCurve.length) {
+            series.push({
+              label: `Under Δ${regName} Perturbation`,
+              data: regCurve,
+              color: regColors[cIdx % regColors.length],
+              width: 1.8,
+              dash: [5, 3],
+            });
+            cIdx++;
+          }
+        }
+      }
+
+      if (!series.length) {
+        ctx.fillStyle = tc.textMuted;
+        ctx.font = '12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No trajectory data available for this gene', W / 2, H / 2);
+        return;
+      }
+
+      // Compute min and max across all series
+      let minVal = Infinity, maxVal = -Infinity;
+      series.forEach(s => {
+        s.data.forEach(v => {
+          if (v < minVal) minVal = v;
+          if (v > maxVal) maxVal = v;
+        });
+      });
+      if (minVal === Infinity) { minVal = 0; maxVal = 1; }
+      const span = Math.max(0.05, maxVal - minVal);
+      const yMin = minVal - span * 0.08;
+      const yMax = maxVal + span * 0.08;
+      const ySpan = yMax - yMin;
+
+      // Draw Gridlines & Y Ticks
+      ctx.strokeStyle = tc.grid;
+      ctx.lineWidth = 1;
+      const yTicks = 4;
+      for (let i = 0; i <= yTicks; i++) {
+        const y = pad.t + (ph * i) / yTicks;
+        const val = yMax - (ySpan * i) / yTicks;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(pad.l + pw, y);
+        ctx.stroke();
+
+        ctx.fillStyle = tc.textMuted;
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(val.toFixed(2), pad.l - 6, y + 3.5);
+      }
+
+      // X Ticks & Labels
+      const xTicks = 5;
+      for (let i = 0; i <= xTicks; i++) {
+        const x = pad.l + (pw * i) / xTicks;
+        const tVal = ((10 * i) / xTicks).toFixed(1);
+        ctx.beginPath();
+        ctx.moveTo(x, pad.t);
+        ctx.lineTo(x, pad.t + ph);
+        ctx.stroke();
+
+        ctx.fillStyle = tc.textMuted;
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`t=${tVal}`, x, pad.t + ph + 16);
+      }
+
+      // Plot Series Curves
+      series.forEach(s => {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.width;
+        ctx.setLineDash(s.dash || []);
+        ctx.beginPath();
+        s.data.forEach((v, idx) => {
+          const px = pad.l + (pw * idx) / Math.max(1, s.data.length - 1);
+          const py = pad.t + ph * (1 - (v - yMin) / ySpan);
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // Title & axis labels
+      ctx.fillStyle = tc.textMain;
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Dynamic Trajectory: ${profile.name} Concentration over Time`, pad.l, 15);
+    }
+
+    function drawGeneStatesBarCanvas(canvasId, profile) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas || !profile || !profile.expression_across_conditions) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const tc = getThemeColors();
+
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
+      const conds = profile.expression_across_conditions;
+      if (!conds.length) return;
+
+      const pad = { t: 20, r: 16, b: 38, l: 48 };
+      const pw = W - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+
+      let minE = Infinity, maxE = -Infinity;
+      conds.forEach(c => {
+        if (c.expression < minE) minE = c.expression;
+        if (c.expression > maxE) maxE = c.expression;
+      });
+      const base = profile.baseline_expression;
+      if (base < minE) minE = base;
+      if (base > maxE) maxE = base;
+
+      const span = Math.max(0.1, maxE - minE);
+      const yMin = Math.min(0, minE - span * 0.1);
+      const yMax = maxE + span * 0.15;
+      const ySpan = yMax - yMin;
+
+      // Horizontal baseline line
+      const basePy = pad.t + ph * (1 - (base - yMin) / ySpan);
+      ctx.strokeStyle = tc.grid;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, basePy);
+      ctx.lineTo(pad.l + pw, basePy);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, basePy);
+      ctx.lineTo(pad.l + pw, basePy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '9px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Baseline: ${base.toFixed(2)}`, pad.l - 4, basePy + 3);
+
+      const nConds = conds.length;
+      const barW = Math.max(6, Math.min(36, (pw / nConds) - 4));
+      const colStep = pw / nConds;
+
+      conds.forEach((c, idx) => {
+        const cx = pad.l + idx * colStep + colStep / 2;
+        const py = pad.t + ph * (1 - (c.expression - yMin) / ySpan);
+        const barH = Math.max(2, Math.abs(basePy - py));
+        const barY = Math.min(basePy, py);
+
+        let fillCol = '#64748b';
+        if (c.is_self_perturbation) fillCol = '#0284c7';
+        else if (c.delta > 0.005) fillCol = '#10b981';
+        else if (c.delta < -0.005) fillCol = '#ef4444';
+
+        ctx.fillStyle = fillCol;
+        ctx.fillRect(cx - barW / 2, barY, barW, barH);
+
+        // Percentage label on top of bar
+        ctx.fillStyle = fillCol;
+        ctx.font = 'bold 8.5px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        const pctText = `${c.pct_change > 0 ? '+' : ''}${Math.round(c.pct_change)}%`;
+        const textY = c.delta >= 0 ? barY - 3 : barY + barH + 9;
+        ctx.fillText(pctText, cx, textY);
+
+        // Condition label on X axis
+        ctx.fillStyle = c.is_self_perturbation ? 'var(--accent-blue)' : tc.textMuted;
+        ctx.font = c.is_self_perturbation ? 'bold 9.5px Inter, sans-serif' : '9px Inter, sans-serif';
+        ctx.save();
+        ctx.translate(cx, pad.t + ph + 12);
+        ctx.rotate(nConds > 8 ? -Math.PI / 4 : 0);
+        ctx.textAlign = nConds > 8 ? 'right' : 'center';
+        ctx.fillText(c.perturbed_gene, 0, 0);
+        ctx.restore();
+      });
+    }
+
+    function setSosTrajectoryMode(mode) {
+      const focusView = document.getElementById('sos-traj-focus-view');
+      const gridView = document.getElementById('sos-traj-grid-view');
+      const btnFocus = document.getElementById('btn-traj-mode-focus');
+      const btnGrid = document.getElementById('btn-traj-mode-grid');
+
+      if (mode === 'grid') {
+        if (focusView) focusView.style.display = 'none';
+        if (gridView) gridView.style.display = 'block';
+        if (btnFocus) { btnFocus.className = 'btn btn-outline btn-sm'; }
+        if (btnGrid) { btnGrid.className = 'btn btn-primary btn-sm'; }
+        if (APP_STATE.sosData) {
+          drawSos9PanelGrid(APP_STATE.sosData.perturbation_trajectories, APP_STATE.sosData.gene_names);
+        }
+      } else {
+        if (focusView) focusView.style.display = 'block';
+        if (gridView) gridView.style.display = 'none';
+        if (btnFocus) { btnFocus.className = 'btn btn-primary btn-sm'; }
+        if (btnGrid) { btnGrid.className = 'btn btn-outline btn-sm'; }
+        if (APP_STATE.activeSosGene && APP_STATE.sosData) {
+          const profile = (APP_STATE.sosData.gene_profiles) ? APP_STATE.sosData.gene_profiles[APP_STATE.activeSosGene] : null;
+          if (profile) renderSosGeneDynamicsInspector(profile);
+        }
+      }
+    }
+
+    function openSosGeneModal() {
+      const data = APP_STATE.sosData;
+      const gname = APP_STATE.activeSosGene;
+      if (!data || !gname) return;
+      const profile = (data.gene_profiles && data.gene_profiles[gname]) || null;
+      if (!profile) return;
+
+      const titleEl = document.getElementById('modal-title');
+      const subEl = document.getElementById('modal-subtitle');
+      const bodyEl = document.getElementById('modal-body-stats');
+      if (titleEl) titleEl.textContent = `Gene Dynamics Inspector: ${profile.name} (${data.pathway || data.dataset_id})`;
+      if (subEl) subEl.textContent = `Regulators: ${(profile.in_regulators || []).map(r => r.name).join(', ') || 'None'} • Targets: ${(profile.out_targets || []).map(t => t.name).join(', ') || 'None'}`;
+      if (bodyEl) {
+        bodyEl.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+            <div style="background:var(--bg-stage);border:1px solid var(--border);padding:6px 8px;border-radius:6px;">
+              <div style="font-size:10px;color:var(--text-muted);">Baseline Expression</div>
+              <div style="font-family:monospace;font-weight:700;color:var(--accent-blue);">${profile.baseline_expression}</div>
+            </div>
+            <div style="background:var(--bg-stage);border:1px solid var(--border);padding:6px 8px;border-radius:6px;">
+              <div style="font-size:10px;color:var(--text-muted);">Min Expression</div>
+              <div style="font-family:monospace;font-weight:700;color:#ef4444;">${profile.min_expression}</div>
+            </div>
+            <div style="background:var(--bg-stage);border:1px solid var(--border);padding:6px 8px;border-radius:6px;">
+              <div style="font-size:10px;color:var(--text-muted);">Max Expression</div>
+              <div style="font-family:monospace;font-weight:700;color:#10b981;">${profile.max_expression}</div>
+            </div>
+            <div style="background:var(--bg-stage);border:1px solid var(--border);padding:6px 8px;border-radius:6px;">
+              <div style="font-size:10px;color:var(--text-muted);">Max Shift |Δ|</div>
+              <div style="font-family:monospace;font-weight:700;color:var(--accent-amber);">${profile.max_abs_delta}</div>
+            </div>
+          </div>
+        `;
+      }
+      drawGeneTrajectoryCanvas('canvas-modal-traj', profile);
+      inspectorDialog.showModal();
     }
 
     // ============================================================================

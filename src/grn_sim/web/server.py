@@ -181,12 +181,69 @@ def _extract_kinetics_and_trajectories(
         for j in range(N):
             pert_trajs.append(_downsample_trajectory(experiment.perturbation_trajectories[j], max_points=50))
 
+    # Generate individual gene dynamics profiles
+    gene_profiles = {}
+    time_pts = [round(float(t), 2) for t in np.linspace(0.0, 10.0, len(basal_traj[0]))] if len(basal_traj) > 0 else []
+    X_mat = experiment.X if experiment.X is not None else np.zeros((N, N))
+
+    for i in range(N):
+        gname = gene_names[i]
+        in_regs = [
+            {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[i, j])), "type": "activation" if adj[i, j] > 0 else "inhibition"}
+            for j in range(N) if adj[i, j] != 0
+        ]
+        out_targets = [
+            {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[j, i])), "type": "activation" if adj[j, i] > 0 else "inhibition"}
+            for j in range(N) if adj[j, i] != 0
+        ]
+        b_curve = basal_traj[i] if i < len(basal_traj) else []
+        s_curve = pert_trajs[i][i] if (i < len(pert_trajs) and i < len(pert_trajs[i])) else []
+        r_curves = {
+            r["name"]: pert_trajs[r["index"]][i]
+            for r in in_regs if r["index"] < len(pert_trajs) and i < len(pert_trajs[r["index"]])
+        }
+        b_val = float(x_ss[i]) if (x_ss is not None and i < len(x_ss)) else 1.0
+
+        expr_conds = []
+        n_c = min(N, X_mat.shape[1])
+        for p in range(n_c):
+            val = float(X_mat[i, p])
+            delta = val - b_val
+            pct = (delta / max(0.001, abs(b_val))) * 100.0
+            expr_conds.append({
+                "condition_idx": p,
+                "perturbed_gene": gene_names[p],
+                "expression": round(val, 4),
+                "delta": round(delta, 4),
+                "pct_change": round(pct, 1),
+                "is_self_perturbation": (p == i),
+                "is_regulator_perturbation": any(r["name"] == gene_names[p] for r in in_regs),
+            })
+
+        gene_profiles[gname] = {
+            "index": i,
+            "name": gname,
+            "in_regulators": in_regs,
+            "out_targets": out_targets,
+            "time_points": time_pts,
+            "basal_trajectory": b_curve,
+            "self_perturbation_trajectory": s_curve,
+            "regulator_trajectories": r_curves,
+            "expression_across_conditions": expr_conds,
+            "baseline_expression": round(b_val, 4),
+            "min_expression": round(float(np.min([e["expression"] for e in expr_conds])) if expr_conds else 0.0, 4),
+            "max_expression": round(float(np.max([e["expression"] for e in expr_conds])) if expr_conds else 1.0, 4),
+            "max_abs_delta": round(float(np.max(np.abs([e["delta"] for e in expr_conds]))) if expr_conds else 0.0, 4),
+        }
+
     return {
         "node_params": node_params,
         "edge_params": edge_params,
         "edge_list": edge_list,
         "basal_trajectory": basal_traj,
         "perturbation_trajectories": pert_trajs,
+        "gene_profiles": gene_profiles,
+        "time_points": time_pts,
     }
 
 
@@ -398,6 +455,8 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "edge_list": kin["edge_list"],
         "basal_trajectory": kin["basal_trajectory"],
         "perturbation_trajectories": kin["perturbation_trajectories"],
+        "gene_profiles": kin.get("gene_profiles", {}),
+        "time_points": kin.get("time_points", []),
         "steady_state_diagnostics": ss_diag,
         "dot_hierarchical": dot_hier,
         "dot_spring": dot_spring,
@@ -437,6 +496,8 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "edge_list": kin["edge_list"],
         "basal_trajectory": kin["basal_trajectory"],
         "perturbation_trajectories": kin["perturbation_trajectories"],
+        "gene_profiles": kin.get("gene_profiles", {}),
+        "time_points": kin.get("time_points", []),
         "steady_state_diagnostics": ss_diag,
         "graph": graph_json,
         "dot": dot_spring,
@@ -784,6 +845,114 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         svgs_dot[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
         svgs_neato[alg_name] = render_graphviz_svg(d_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
 
+    # Compute gene dynamics profiles and node parameters for interactive inspection
+    basal_traj_down = _downsample_trajectory(sim_exp.basal_trajectory, max_points=45) if sim_exp.basal_trajectory is not None else []
+    n_pts = len(basal_traj_down[0]) if len(basal_traj_down) > 0 else (len(pert_trajs[0][0]) if (pert_trajs and pert_trajs[0]) else 40)
+    time_points = [round(float(t), 2) for t in np.linspace(0.0, 10.0, n_pts)]
+
+    mean_ctrl = ds_info.get("mean_ctrl")
+    X_logfc = ds_info.get("X_logfc")
+
+    gene_profiles = {}
+    node_params = []
+    for i in range(N):
+        gname = gene_names[i]
+        in_regs = [
+            {
+                "index": j,
+                "name": gene_names[j],
+                "sign": int(np.sign(A_true[i, j])),
+                "type": "activation" if A_true[i, j] > 0 else "inhibition",
+            }
+            for j in range(N) if A_true[i, j] != 0
+        ]
+        out_targets = [
+            {
+                "index": j,
+                "name": gene_names[j],
+                "sign": int(np.sign(A_true[j, i])),
+                "type": "activation" if A_true[j, i] > 0 else "inhibition",
+            }
+            for j in range(N) if A_true[j, i] != 0
+        ]
+
+        basal_curve = [round(float(v), 4) for v in basal_traj_down[i]] if i < len(basal_traj_down) else []
+        self_pert_curve = (
+            [round(float(v), 4) for v in pert_trajs[i][i]]
+            if (i < len(pert_trajs) and i < len(pert_trajs[i]))
+            else []
+        )
+
+        reg_pert_curves = {}
+        for reg in in_regs:
+            r_idx = reg["index"]
+            if r_idx < len(pert_trajs) and i < len(pert_trajs[r_idx]):
+                reg_pert_curves[reg["name"]] = [round(float(v), 4) for v in pert_trajs[r_idx][i]]
+
+        # Baseline control value
+        if mean_ctrl is not None and i < len(mean_ctrl):
+            base_val = float(mean_ctrl[i])
+        elif sim_exp.reference_steady_state is not None and i < len(sim_exp.reference_steady_state):
+            base_val = float(sim_exp.reference_steady_state[i])
+        else:
+            base_val = float(np.median(X[i, :])) if X.shape[1] > 0 else 1.0
+
+        expr_across_conditions = []
+        n_conds = min(N, X.shape[1])
+        for p in range(n_conds):
+            cond_pert_name = gene_names[p]
+            expr_val = float(X[i, p])
+            delta = expr_val - base_val
+            pct = (delta / max(0.001, abs(base_val))) * 100.0
+            logfc_val = (
+                float(X_logfc[i][p])
+                if (X_logfc is not None and i < len(X_logfc) and p < len(X_logfc[i]))
+                else (np.log2(max(1e-4, expr_val) / max(1e-4, base_val)))
+            )
+            expr_across_conditions.append({
+                "condition_idx": p,
+                "perturbed_gene": cond_pert_name,
+                "expression": round(expr_val, 4),
+                "delta": round(delta, 4),
+                "pct_change": round(pct, 1),
+                "log2fc": round(float(logfc_val), 3),
+                "is_self_perturbation": (p == i),
+                "is_regulator_perturbation": any(r["name"] == cond_pert_name for r in in_regs),
+            })
+
+        all_exprs = [e["expression"] for e in expr_across_conditions]
+        min_val = float(np.min(all_exprs)) if all_exprs else 0.0
+        max_val = float(np.max(all_exprs)) if all_exprs else 1.0
+        max_abs_delta = float(np.max(np.abs([e["delta"] for e in expr_across_conditions]))) if expr_across_conditions else 0.0
+
+        gene_profiles[gname] = {
+            "index": i,
+            "name": gname,
+            "in_regulators": in_regs,
+            "out_targets": out_targets,
+            "time_points": time_points,
+            "basal_trajectory": basal_curve,
+            "self_perturbation_trajectory": self_pert_curve,
+            "regulator_trajectories": reg_pert_curves,
+            "expression_across_conditions": expr_across_conditions,
+            "baseline_expression": round(base_val, 4),
+            "min_expression": round(min_val, 4),
+            "max_expression": round(max_val, 4),
+            "max_abs_delta": round(max_abs_delta, 4),
+        }
+
+        node_params.append({
+            "index": i,
+            "name": gname,
+            "background_ss": round(base_val, 4),
+            "basal_rate_v": round(float(sim_net.params.v[i]), 4),
+            "degradation_B": round(float(sim_net.params.B[i]), 4),
+            "in_degree": len(in_regs),
+            "out_degree": len(out_targets),
+            "activators_in": [r["name"] for r in in_regs if r["sign"] > 0],
+            "inhibitors_in": [r["name"] for r in in_regs if r["sign"] < 0],
+        })
+
     payload = {
         "status": "success",
         "dataset_id": dataset_id,
@@ -796,6 +965,10 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         "svg_true_dot": svg_true_hier,
         "svg_true_neato": svg_true_neato,
         "perturbation_trajectories": pert_trajs,
+        "basal_trajectory": basal_traj_down,
+        "time_points": time_points,
+        "gene_profiles": gene_profiles,
+        "node_params": node_params,
         "table_4_1": table_4_1,
         "tmp_statmat": tmp_statmat,
         "confusion_matrices": cmats,

@@ -215,7 +215,7 @@ def export_graphviz_dot(
 
     for idx, name in enumerate(gene_names):
         lines.append(
-            f'  "{name}" [id="node_{idx}", URL="javascript:window.inspectNode({idx})", tooltip="Click to inspect {name} ODE kinetics & basal steady state"];'
+            f'  "{name}" [id="node_{idx}", class="node clickable-node", URL="javascript:void(0)", tooltip="Click to inspect {name} dynamic trajectories & value changes over time"];'
         )
 
     for i in range(N):
@@ -269,7 +269,7 @@ def export_9state_graphviz_dot(
 
     for idx, name in enumerate(gene_names):
         lines.append(
-            f'  "{name}" [id="node_{idx}", URL="javascript:window.inspectNode({idx})", tooltip="Gene {name}"];'
+            f'  "{name}" [id="node_{idx}", class="node clickable-node", URL="javascript:void(0)", tooltip="Click to inspect {name} dynamic trajectories & value changes over time"];'
         )
 
     for i in range(N):
