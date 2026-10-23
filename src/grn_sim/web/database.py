@@ -228,7 +228,7 @@ def load_run_from_db(run_id: str, db_path: Optional[str] = None) -> Optional[Dic
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT settings_json, sim_payload_json, inferred_payload_json, history_entry_json
+            SELECT settings_json, sim_payload_json, inferred_payload_json, history_entry_json, response_type, response_stats_json
             FROM nw
             WHERE simid = ?
             LIMIT 1
@@ -242,11 +242,15 @@ def load_run_from_db(run_id: str, db_path: Optional[str] = None) -> Optional[Dic
         sim_payload = json.loads(row[1]) if row[1] else {}
         inferred_payload = json.loads(row[2]) if row[2] else {}
         history_entry = json.loads(row[3]) if row[3] else {}
+        response_type = row[4]
+        response_dynamics = json.loads(row[5]) if row[5] else None
         return {
             "settings": settings,
             "sim_payload": sim_payload,
             "inferred_payload": inferred_payload,
             "history_entry": history_entry,
+            "response_type": response_type,
+            "response_dynamics": response_dynamics,
         }
     finally:
         conn.close()

@@ -193,6 +193,23 @@ $$X_{ij} = \frac{x_i^{\text{pert}_j} - x_i^{\text{ss}}}{x_i^{\text{ss}}}$$
   - **Universal Reversibility**: Users can freely toggle between line dynamics and bar profiles at any time across both synthetic simulations and real-world benchmark datasets.
 - **Matrix Heatmap ($X$)**: $N \times N$ proportional expression ratio matrix showing comprehensive pairwise responses across all perturbation conditions.
 
+#### Tab 4 Previous Simulations Archive: Step 4 Inspection & Trajectory Dynamics Review:
+In the Historical Archive (Tab 4, `#tab-history`, `#history-detail-panel`), users can inspect the complete perturbation dynamics of any past run via the dedicated **Step 4: Perturbation ODE Time-Course & Expression Matrix** panel:
+- **3-Way View Toggle**:
+  - `[ 📈 Perturbation Time-Course ]` (`#btn-hist-pert-mode-timecourse`): Renders continuous time-course trajectories $x_i(t)$ under target perturbation.
+  - `[ ▦ Expression Matrix (X) ]` (`#btn-hist-pert-mode-matrix`): Renders the full $N \times N$ proportional expression ratio heatmap.
+  - `[ 📊 Shift Bar Profile (ΔX) ]` (`#btn-hist-pert-mode-bar`): Renders discrete relative expression shift bars for the active condition.
+- **Condition Dropdown (`#select-hist-pert-gene`)**: Switches the perturbation target gene (e.g. Condition #1 (G1), Condition #2 (G2)) to immediately update trajectories, bar shifts, and dynamical metrics.
+- **Automated Dynamical Trajectory Diagnosis (`#hist-trajectory-diagnosis-banner`)**:
+  Every archived simulation is evaluated dynamically and categorized:
+  1. **⚡ Clear Level Changes (`responsive`)**: Perturbation induces noticeable multi-gene departures from baseline ($\max |\Delta X| \ge 5.0\%$, observed up to $117.8\%$) and converges cleanly to a new stable equilibrium.
+  2. **⚪ Flat Levels (`flat`)**: Insensitive or heavily damped networks where perturbations produce negligible shift ($\max |\Delta X| < 5.0\%$, observed $0.5\%\text{--}3.6\%$), remaining flat across time.
+  3. **〰 Persistent Oscillations (`oscillating`)**: Networks with high-density negative feedback loops where trajectories do not settle to steady state ($\max |\Delta X| > 25.0\%$, amplitude ranges up to $2763.3\%$).
+- **Archived Database Breakdown (`rgn_db.sqlite`, 127 total runs)**:
+  - Responsive: **104 runs** (81.9%)
+  - Oscillating: **17 runs** (13.4%)
+  - Flat / Damped: **6 runs** (4.7%)
+
 ---
 
 ### Step 5: Reverse-Engineering Algorithms & Model Selection

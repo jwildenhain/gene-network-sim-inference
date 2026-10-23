@@ -751,6 +751,10 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         sim_payload = dict(stored["sim_payload"])
         sim_payload["settings"] = dict(stored.get("settings", sim_payload.get("settings", {})))
         sim_payload["inferred"] = stored["inferred_payload"]
+        if "response_type" not in sim_payload:
+            sim_payload["response_type"] = stored["state"].get("response_type", "responsive")
+        if "response_dynamics" not in sim_payload:
+            sim_payload["response_dynamics"] = stored["state"].get("response_dynamics", {})
         return sim_payload
 
     db_record = load_run_from_db(run_id)
@@ -761,6 +765,20 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
     settings = dict(db_record.get("settings") or sim_payload.get("settings") or {})
     sim_payload["settings"] = settings
     sim_payload["inferred"] = inferred_payload
+
+    resp_type = db_record.get("response_type") or sim_payload.get("response_type")
+    resp_dyn = db_record.get("response_dynamics") or sim_payload.get("response_dynamics")
+    if not resp_dyn and sim_payload.get("X"):
+        try:
+            X_arr = np.array(sim_payload["X"], dtype=float)
+            diag = sim_payload.get("steady_state_diagnostics", {})
+            resp_dyn = classify_perturbation_response(X_arr, diag)
+            resp_type = resp_dyn.get("response_type")
+        except Exception:
+            pass
+
+    sim_payload["response_type"] = resp_type or "responsive"
+    sim_payload["response_dynamics"] = resp_dyn or {}
 
     adj_arr = np.array(sim_payload.get("true_matrix", []), dtype=int)
     CURRENT_STATE.update({
