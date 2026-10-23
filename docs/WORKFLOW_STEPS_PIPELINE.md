@@ -202,13 +202,19 @@ In the Historical Archive (Tab 4, `#tab-history`, `#history-detail-panel`), user
 - **Condition Dropdown (`#select-hist-pert-gene`)**: Switches the perturbation target gene (e.g. Condition #1 (G1), Condition #2 (G2)) to immediately update trajectories, bar shifts, and dynamical metrics.
 - **Automated Dynamical Trajectory Diagnosis (`#hist-trajectory-diagnosis-banner`)**:
   Every archived simulation is evaluated dynamically and categorized:
-  1. **⚡ Clear Level Changes (`responsive`)**: Perturbation induces noticeable multi-gene departures from baseline ($\max |\Delta X| \ge 5.0\%$, observed up to $117.8\%$) and converges cleanly to a new stable equilibrium.
-  2. **⚪ Flat Levels (`flat`)**: Insensitive or heavily damped networks where perturbations produce negligible shift ($\max |\Delta X| < 5.0\%$, observed $0.5\%\text{--}3.6\%$), remaining flat across time.
-  3. **〰 Persistent Oscillations (`oscillating`)**: Networks with high-density negative feedback loops where trajectories do not settle to steady state ($\max |\Delta X| > 25.0\%$, amplitude ranges up to $2763.3\%$).
-- **Archived Database Breakdown (`rgn_db.sqlite`, 127 total runs)**:
-  - Responsive: **104 runs** (81.9%)
-  - Oscillating: **17 runs** (13.4%)
-  - Flat / Damped: **6 runs** (4.7%)
+  1. **⚡ Clear Level Changes (`responsive`)**: Perturbation induces noticeable multi-gene departures from baseline ($\max |\Delta X| \ge 5.0\%$, observed up to $107.7\%$) and converges cleanly to a new stable equilibrium (tail fluctuation $< 0.001$).
+  2. **⚪ Flat Levels (`flat`)**: Insensitive or heavily damped networks where perturbations produce negligible shift ($\max |\Delta X| < 5.0\%$, observed $0.2\%\text{--}3.5\%$), remaining flat across time.
+  3. **〰 Persistent Oscillations (`oscillating`)**: Limit cycles or non-steady dynamics where the simulation **does NOT reach a steady state after perturbation** ($\max |\Delta X| > 25.0\%$, sustained cyclic amplitudes up to $335.8\%$).
+- **Simulation Engine Audit & 100 Parameter Settings Sweep**:
+  A rigorous sweep of 100 parameter settings across $N \in [5..16]$, Random/Power-Law/Hierarchical topologies, Hill coefficients $n \in [1.5..6.0]$, decay constants $B \in [0.3..2.5]$, and perturbation factors $u \in [0.005..3.5]$ demonstrated:
+  - **Responsive (Clear Level Changes)**: **54%**
+  - **Flat (Damped / Insensitive)**: **33%**
+  - **Persistent Oscillations (Limit Cycles)**: **13%**
+- **Reclassified Database Breakdown (`rgn_db.sqlite`, 130 total runs)**:
+  Following correction of the steady-state convergence criteria (distinguishing true limit cycles from asymptotic plateauing and transient zero-concentration dips):
+  - Responsive: **120 runs** (92.3%)
+  - Flat / Damped: **7 runs** (5.4%)
+  - Persistent Oscillations: **3 runs** (2.3%)
 
 ---
 

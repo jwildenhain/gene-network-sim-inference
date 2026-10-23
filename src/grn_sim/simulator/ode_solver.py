@@ -97,8 +97,6 @@ class ODESolver:
             dxdt = evaluate_derivatives(x_curr, network, perturbation)
             x_next = x_curr + self.dt * dxdt
 
-            if np.any(x_next <= self.min_concentration):
-                zero_conc = True
             x_next = np.maximum(x_next, self.min_concentration)
 
             # Basal norm (`create_network.m` line 75): norm(series(:,i+1).^2 - series(:,i).^2)
@@ -112,7 +110,7 @@ class ODESolver:
                 efnorm_curr = diff_sq_norm
                 # Converged when both step-norm change and squared norm are below threshold
                 if step > 2 and efnorm_delta <= efnorm_thrs and diff_sq_norm <= efnorm_thrs:
-                    is_steady = not zero_conc
+                    is_steady = True
                     trajectory.append(x_next.copy())
                     x_curr = x_next
                     break
@@ -120,7 +118,7 @@ class ODESolver:
                 efnorm_delta = abs(efnorm_curr - diff_sq_norm)
                 efnorm_curr = diff_sq_norm
                 if diff_sq_norm <= efnorm_thrs:
-                    is_steady = not zero_conc
+                    is_steady = True
                     trajectory.append(x_next.copy())
                     x_curr = x_next
                     break
@@ -128,7 +126,33 @@ class ODESolver:
             trajectory.append(x_next.copy())
             x_curr = x_next
 
-        oscillating = (not is_steady) and (not zero_conc)
+        # Check final concentration and trajectory tail dynamics
+        final_zero_conc = bool(np.any(x_curr <= self.min_concentration * 10.0))
+        traj_arr = np.array(trajectory).T  # (n, steps)
+        tail_len = max(4, int(steps_taken * 0.25))
+        tail = traj_arr[:, -tail_len:]
+        tail_ptp = float(np.max(np.ptp(tail, axis=1))) if tail.size > 0 else 0.0
+
+        dxdt_end = evaluate_derivatives(x_curr, network, perturbation)
+        max_dxdt = float(np.max(np.abs(dxdt_end)))
+
+        # A simulation is oscillating if and only if it does NOT reach steady state,
+        # with persistent cyclic or limit-cycle fluctuations in the tail.
+        if is_steady:
+            oscillating = False
+        else:
+            # If tail has flattened out asymptotically, it did reach steady state
+            if tail_ptp <= 0.005 and max_dxdt <= 0.005:
+                is_steady = True
+                oscillating = False
+            else:
+                # Persistent oscillation: non-zero rate and tail swing
+                oscillating = bool(tail_ptp > 0.02 or max_dxdt > 0.02)
+                is_steady = not oscillating
+
+        if final_zero_conc:
+            zero_conc = True
+
         diag = SteadyStateDiagnostics(
             is_steady=is_steady,
             oscillating=oscillating,

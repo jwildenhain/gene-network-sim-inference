@@ -419,9 +419,16 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         )
 
         if dynamics_preset == "oscillating":
-            # Repressilator / high-hill negative feedback mechanism ensuring limit cycle
-            network.params.n_i = np.where(network.params.n_i > 0, 6.5, 0.0)
-            network.params.B = np.maximum(network.params.B * 0.35, 0.05)
+            # Genuine odd-cycle negative feedback repressilator core ensuring sustained limit cycles
+            ring_len = 5 if num_genes >= 5 else 3
+            for r in range(ring_len):
+                network.topology.adjacency[r, (r + 1) % ring_len] = -1.0
+            # Set high Hill cooperativity and parameters for sustained limit cycles
+            network.params.n_i = np.where(network.topology.adjacency < 0, 4.5, network.params.n_i)
+            network.params.Ki = np.where(network.topology.adjacency < 0, 1.2, network.params.Ki)
+            network.params.v = np.full(num_genes, 8.0)
+            network.params.B = np.full(num_genes, 1.0)
+            pert_factor = 0.5  # Modest perturbation that maintains the sustained limit cycle
 
         experiment = run_simulation_with_engine(
             network=network,
@@ -438,7 +445,11 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "is_valid_steady_state": bool(experiment.is_valid_steady_state),
         "oscillating_detected": not bool(experiment.is_valid_steady_state),
     }
-    resp_dyn = classify_perturbation_response(experiment.X, ss_diag)
+    resp_dyn = classify_perturbation_response(
+        experiment.X,
+        ss_diag,
+        perturbation_trajectories=experiment.perturbation_trajectories,
+    )
 
     dot_hier = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
     dot_spring = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
@@ -766,13 +777,16 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
     sim_payload["settings"] = settings
     sim_payload["inferred"] = inferred_payload
 
-    resp_type = db_record.get("response_type") or sim_payload.get("response_type")
-    resp_dyn = db_record.get("response_dynamics") or sim_payload.get("response_dynamics")
-    if not resp_dyn and sim_payload.get("X"):
+    # Ensure response_dynamics reflects true trajectory convergence
+    if sim_payload.get("X"):
         try:
             X_arr = np.array(sim_payload["X"], dtype=float)
             diag = sim_payload.get("steady_state_diagnostics", {})
-            resp_dyn = classify_perturbation_response(X_arr, diag)
+            resp_dyn = classify_perturbation_response(
+                X_arr,
+                diag,
+                perturbation_trajectories=sim_payload.get("perturbation_trajectories"),
+            )
             resp_type = resp_dyn.get("response_type")
         except Exception:
             pass

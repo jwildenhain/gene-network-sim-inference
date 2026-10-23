@@ -122,6 +122,14 @@ The Historical Archive (Tab 4) incorporates a full **Step 4: Perturbation ODE Ti
 | :---: | :---: |
 | ![Archive Flat Trajectory](docs/screenshots/32_tab4_step4_timecourse_flat.png) | ![Archive Oscillating Trajectory](docs/screenshots/33_tab4_step4_timecourse_oscillating.png) |
 
+### 9. Representative Dynamical Regimes: Responsive vs Flat vs Oscillating
+Following a rigorous audit of the ODE simulation engine and a 100-parameter dynamical sweep, three distinct representative regimes were generated, verified, and catalogued:
+
+| Representative 1: Responsive (`iorn-rep-responsive`) | Representative 2: Flat (`iorn-rep-flat`) | Representative 3: Oscillating (`iorn-rep-oscillating`) |
+| :---: | :---: | :---: |
+| ![Representative Responsive](docs/screenshots/34_representative_responsive_timecourse.png) | ![Representative Flat](docs/screenshots/35_representative_flat_timecourse.png) | ![Representative Oscillating](docs/screenshots/36_representative_oscillating_timecourse.png) |
+| **⚡ Clear Level Changes**: Target gene transitions smoothly to new stable steady state ($\max \|\Delta X\| = 107.7\% \ge 5\%$). Tail fluctuation $< 0.0001$. | **⚪ Flat / Insensitive**: Perturbations produce negligible response ($\max \|\Delta X\| = 0.2\% < 5\%$). Trajectory settles horizontally. | **〰 Persistent Oscillations**: Limit cycle dynamics where the simulation **does NOT reach steady state** after perturbation (amplitude $= 335.8\%$). |
+
 ---
 
 ## 🔄 6-Step Reverse-Engineering Workflow Pipeline & Data Modes
@@ -264,13 +272,19 @@ When loading a real-world benchmark into Tab 1, users can choose between two dis
   - **3-Way View Toggle**: Switch seamlessly between **`[ 📈 Perturbation Time-Course ]`**, **`[ ▦ Expression Matrix (X) ]`**, and **`[ 📊 Shift Bar Profile (ΔX) ]`**.
   - **Condition Selector**: Inspect continuous relaxation trajectories $x_i(t)$ and relative expression shift profiles ($\Delta X$) for any individual perturbed target gene condition.
   - **Dynamical Trajectory Diagnosis Banner**: Analyzes whether the archived perturbation trajectory exhibits **Clear Level Changes**, is **Flat (Damped/Insensitive)**, or displays **Persistent Oscillations**:
-    - **⚡ Clear Level Changes (`responsive`)**: Perturbation causes significant multi-gene shifts ($\max |\Delta X| \ge 5.0\%$, observed up to $117.8\%$) and settles cleanly to a new stable perturbed steady state.
-    - **⚪ Flat Levels (`flat`)**: Insensitive/buffered networks with negligible response ($\max |\Delta X| < 5.0\%$, e.g., $0.5\%\text{--}3.6\%$), remaining virtually flat across time.
-    - **〰 Persistent Oscillations (`oscillating`)**: Limit cycles or non-steady dynamics driven by dense negative feedback loops where trajectories do not settle to steady state ($\max |\Delta X| > 25.0\%$, with cyclic amplitude ranges up to $2763.3\%$).
-  - **Empirical Database Review Breakdown (127 runs in `rgn_db.sqlite`)**:
-    - **Responsive / Clear Level Changes**: **104 runs** (81.9%)
-    - **Persistent Oscillations / Limit Cycles**: **17 runs** (13.4%)
-    - **Flat / Insensitive**: **6 runs** (4.7%)
+    - **⚡ Clear Level Changes (`responsive`)**: Perturbation causes significant multi-gene shifts ($\max |\Delta X| \ge 5.0\%$, observed up to $107.7\%$) and settles cleanly to a new stable perturbed steady state.
+    - **⚪ Flat Levels (`flat`)**: Insensitive/buffered networks with negligible response ($\max |\Delta X| < 5.0\%$, e.g., $0.2\%\text{--}3.5\%$), remaining virtually flat across time.
+    - **〰 Persistent Oscillations (`oscillating`)**: Limit cycles or non-steady dynamics where the simulation **does NOT reach steady state after perturbation** ($\max |\Delta X| > 25.0\%$, with cyclic amplitude ranges up to $335.8\%$).
+  - **Simulation Engine Audit & 100-Parameter Settings Sweep**:
+    A systematic sweep across 100 parameter settings ($N \in [5..16]$, Random/Power-Law/Hierarchical topologies, Hill $n \in [1.5..6.0]$, $B \in [0.3..2.5]$, $u \in [0.005..3.5]$) revealed:
+    - **Responsive (Clear Level Changes)**: **54%** of tested configurations.
+    - **Flat (Damped / Insensitive)**: **33%** of tested configurations.
+    - **Persistent Oscillations (Limit Cycles)**: **13%** of tested configurations.
+  - **Reclassified Database Breakdown (130 runs in `rgn_db.sqlite`)**:
+    Following correction of the steady-state detection logic (eliminating false-positive oscillation flags caused by transient zero-concentration dips or monotonic slow tails), all runs were reclassified according to genuine dynamical convergence:
+    - **Responsive / Clear Level Changes**: **120 runs** (92.3%)
+    - **Flat / Insensitive**: **7 runs** (5.4%)
+    - **Persistent Oscillations / Limit Cycles**: **3 runs** (2.3%)
 * **Thesis & Paper Figures Gallery (Dual Engine)**:
   Tab 3 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
 

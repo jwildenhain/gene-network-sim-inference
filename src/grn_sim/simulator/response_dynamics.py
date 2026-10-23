@@ -18,21 +18,65 @@ def classify_perturbation_response(
     X: np.ndarray,
     steady_state_diagnostics: Optional[Dict[str, Any]] = None,
     flat_threshold: float = FLAT_THRESHOLD,
+    perturbation_trajectories: Optional[List[Any]] = None,
 ) -> Dict[str, Any]:
     """
     Classifies a perturbation experiment into 'responsive', 'flat', or 'oscillating'.
+
+    Rules:
+    - Oscillation strictly means that the simulation does NOT reach a steady state
+      after perturbation (persistent cyclic fluctuations or non-steady limit cycles).
+    - If a simulation reaches a steady state (derivatives vanish / tail is flat):
+        * If max relative change >= flat_threshold (5%): 'responsive' (clear level change).
+        * If max relative change < flat_threshold (5%): 'flat' (negligible or no change).
+    - Simulations reaching steady state are NEVER classified as oscillating.
 
     Args:
         X: (n, m) expression change matrix (relative fold change or ratio - 1).
         steady_state_diagnostics: Diagnostics dict from ODESolver or simulation engine.
         flat_threshold: Maximum relative expression change below which an experiment is flat.
+        perturbation_trajectories: Optional list of trajectory arrays to verify tail dynamics.
 
     Returns:
         Structured dictionary containing category key, labels, amplitudes, and per-gene/pert statistics.
     """
     diag = steady_state_diagnostics or {}
-    is_steady = bool(diag.get("is_valid_steady_state", True))
-    is_oscillating = bool(diag.get("oscillating_detected", False) or not is_steady)
+    
+    # Check trajectory tail dynamics if trajectories are supplied
+    traj_converged = None
+    max_tail_fluct = 0.0
+    if perturbation_trajectories:
+        traj_converged = True
+        for t in perturbation_trajectories:
+            arr = np.asarray(t, dtype=float)
+            if arr.ndim == 2 and arr.shape[1] >= 4:
+                tail_len = max(3, int(arr.shape[1] * 0.25))
+                tail = arr[:, -tail_len:]
+                ptp = float(np.max(np.ptp(tail, axis=1)))
+                if ptp > max_tail_fluct:
+                    max_tail_fluct = ptp
+                if ptp > 0.02:
+                    traj_converged = False
+
+    raw_is_steady = bool(diag.get("is_valid_steady_state", True))
+    raw_is_osc = bool(diag.get("oscillating_detected", False))
+
+    if traj_converged is not None:
+        if traj_converged:
+            is_steady = True
+            is_oscillating = False
+        else:
+            is_steady = False
+            is_oscillating = True
+    else:
+        # Fallback to diagnostics, ensuring that an oscillation requires not reaching steady state
+        if raw_is_steady:
+            is_steady = True
+            is_oscillating = False
+        else:
+            is_steady = False
+            is_oscillating = bool(raw_is_osc or diag.get("oscillating_perturbations_count", 0) > 0)
+
     osc_count = int(diag.get("oscillating_perturbations_count", 1 if is_oscillating else 0))
 
     X_mat = np.asarray(X, dtype=float)
@@ -61,9 +105,9 @@ def classify_perturbation_response(
         p_max = float(np.max(np.abs(col))) if col.size > 0 else 0.0
         p_mean = float(np.mean(np.abs(col))) if col.size > 0 else 0.0
         p_diag = pert_diags[j] if j < len(pert_diags) else {}
-        p_osc = bool(p_diag.get("oscillating", False))
+        p_osc = bool(p_diag.get("oscillating", False)) if not is_steady else False
 
-        if p_osc or (is_oscillating and p_max > 50.0):
+        if not is_steady and (p_osc or is_oscillating):
             p_status = "oscillating"
         elif p_max < flat_threshold:
             p_status = "flat"
@@ -96,33 +140,37 @@ def classify_perturbation_response(
             "is_responsive": is_resp,
         })
 
-    # Overall Classification
-    if is_oscillating or osc_count > 0:
+    # Overall Classification:
+    # 1. Oscillating: Simulation does NOT reach a steady state after perturbation
+    if (not is_steady) and (is_oscillating or osc_count > 0 or (traj_converged is False)):
         response_type = "oscillating"
         label = "Oscillating (Limit Cycle / Non-steady)"
         badge_class = "badge-amber"
         badge_icon = "〰"
         description = (
-            f"Non-linear limit cycle or oscillation detected ({osc_count} non-steady conditions, "
-            f"efnorm > {diag.get('efnorm_threshold', 1e-4)})."
+            f"Persistent oscillation / limit cycle: Simulation does NOT reach steady state after perturbation "
+            f"(tail fluctuation = {max_tail_fluct:.4f}, max shift = {max_amp * 100:.1f}%)."
         )
+    # 2. Flat: Steady state reached, but negligible response (< flat_threshold)
     elif max_amp < flat_threshold or rms_amp < RMS_FLAT_THRESHOLD:
         response_type = "flat"
-        label = "Flat Levels (No Visible Perturbation)"
+        label = "Flat Levels (Damped / Insensitive)"
         badge_class = "badge-secondary"
         badge_icon = "⚪"
         description = (
             f"Flat expression levels across all genes (max relative shift {max_amp * 100:.2f}% < {flat_threshold * 100:.1f}%). "
-            f"Perturbations produce negligible deviations from baseline."
+            f"Perturbations produce negligible deviations from baseline; trajectory settles horizontally."
         )
+    # 3. Responsive: Steady state reached with clear level changes (>= flat_threshold)
     else:
         response_type = "responsive"
-        label = "Responsive (Clear Perturbations Visible)"
+        label = "Responsive (Clear Level Changes)"
         badge_class = "badge-emerald"
         badge_icon = "⚡"
         description = (
             f"Clear, distinct steady-state perturbations visible across {resp_genes}/{n_genes} genes "
-            f"(max relative shift {max_amp * 100:.1f}%, mean {mean_amp * 100:.1f}%)."
+            f"(max relative shift {max_amp * 100:.1f}%, mean {mean_amp * 100:.1f}%). "
+            f"Trajectory smoothly transitions to a new stable perturbed steady state."
         )
 
     return {
