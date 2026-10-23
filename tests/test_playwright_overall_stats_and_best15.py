@@ -68,7 +68,7 @@ def test_overall_stats_and_best15_restricted_archive():
         kpi_single = page.locator("#kpi-overall-best-single").inner_text().strip()
         print(f"KPIs: Total={kpi_total}, AlgEvals={kpi_alg}, Top={kpi_top}, BestSingle={kpi_single}")
         assert int(kpi_total) >= 40, f"Expected >= 40 runs, found {kpi_total}"
-        assert "1,080" in kpi_alg or "1080" in kpi_alg or "720" in kpi_alg, f"Expected alg evals, got '{kpi_alg}'"
+        assert "1,242" in kpi_alg or "1242" in kpi_alg or "1,080" in kpi_alg or "1080" in kpi_alg or "720" in kpi_alg, f"Expected alg evals, got '{kpi_alg}'"
         assert "AtlasShift" in kpi_top, f"Expected 'AtlasShift' in top, got '{kpi_top}'"
         assert "Simple-to-General" in kpi_single or "S2G" in kpi_single, f"Expected S2G in best single, got '{kpi_single}'"
 
@@ -97,6 +97,7 @@ def test_overall_stats_and_best15_restricted_archive():
             "canvas-overall-topology",
             "canvas-overall-connectivity",
             "canvas-overall-noise",
+            "canvas-overall-runtime",
         ]:
             canvas = page.locator(f"#{cid}")
             assert canvas.is_visible(), f"Canvas #{cid} must be visible"

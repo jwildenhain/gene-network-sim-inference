@@ -10,14 +10,16 @@ The GRN-Sim systematic benchmark framework evaluates reverse-engineering inferen
 
 $$\frac{d x_i}{dt} = \frac{v_i \left(1 + \sum_{j \in \text{Act}(i)} \left(\frac{x_j}{K_{ij}}\right)^{n_{ij}}\right)}{1 + \sum_{j \in \text{Act}(i)} \left(\frac{x_j}{K_{ij}}\right)^{n_{ij}} + \sum_{k \in \text{Inh}(i)} \left(\frac{x_k}{K_{ik}}\right)^{n_{ik}}} - \gamma_i x_i$$
 
-### Parameter Sweep Dimensionality:
+### Parameter Sweep Dimensionality (Extended to Wildenhain 2004 Thesis Ranges):
 - **Graph Topologies (3)**:
   1. **Random Erdős-Rényi ($G(N, p)$)**: Homogeneous Poisson degree distribution, uncorrelated edge wiring.
   2. **Scale-Free / Power-Law (Barabási-Albert)**: Preferential attachment degree distribution $P(k) \sim k^{-3}$, master regulator hubs.
   3. **Hierarchical Modular (Ravasz-Barabási)**: Iterative nested module replication, high clustering coefficient $C(k) \sim 1/k$.
-- **Network Dimensions ($N$)**: $N \in [6, 8, 10, 12, 16]$ genes.
-- **Average Connectivity ($k_{\text{av}}$)**: $k_{\text{av}} \in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]$ edges/gene.
-- **Experimental Measurement Noise ($\sigma_m$)**: Gaussian noise $\sigma_m \in [0.00, 0.02, 0.05, 0.10, 0.15, 0.20]$ added to steady-state expression ratios.
+- **Network Dimensions ($N$)**: $N \in [12, 20, 30, 40, 50, 60]$ genes (strictly enforcing minimum network size $N \ge 12$).
+- **Average Connectivity ($k_{\text{av}}$)**: $k_{\text{av}} \in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]$ edges/gene (matching thesis $k \in \{1, 1.5, 2, 3, 5\}$).
+- **Experimental Measurement Noise ($\sigma_m$)**: Gaussian noise $\sigma_m \in [0.00, 0.02, 0.05, 0.10, 0.15, 0.20, 0.25]$ added to steady-state expression ratios.
+- **Computational Runtime Scaling**: Empirically measured execution time (seconds) per algorithm scaling across $N \in [12, 60]$ genes (Wildenhain 2004 Thesis Figure 4.10).
+- **Total Systematic Runs & Evaluations**: 69 systematic network runs $\times 18$ algorithms = **1,242 algorithmic evaluations**.
 
 ### Evaluation Metrics:
 Across every run and algorithm, inferred directed signed networks are compared against the ground-truth adjacency matrix $A^* \in \{-1, 0, +1\}^{N \times N}$ using the 9-state misclassification matrix:
@@ -136,30 +138,30 @@ To address the fundamental domain mismatches between what published algorithms e
 
 ---
 
-## 4. Comprehensive Leaderboard (1,080 Evaluations across 60 Networks)
+## 4. Comprehensive Leaderboard (1,242 Evaluations across 69 Networks)
 
-Results aggregated across all 60 synthetic sweep networks in SQLite database `rgn_db.sqlite`:
+Results aggregated across all 69 systematic parameter sweep networks (matching Wildenhain 2004 thesis ranges up to $N=60$, $k_{\text{av}}=5.0$, $\sigma_m=0.25$, and runtime profiling) in `data/overall_statistics_sweep.json`:
 
-| Rank | Algorithm | Runs | Mean $F_1$ | Power (%) | Specificity (%) | PPV (%) | Signed PPV (%) | FDR (%) | Total Errors | Standing Badge |
-|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|
-| **#1** | **AtlasShift (Empirical)** | 60 | **0.594** | **67.1%** | 85.7% | **58.6%** | **57.5%** | **41.4%** | 19.1 | `Empirical Transfer` |
-| **#2** | **Simple-to-General (S2G)** | 60 | **0.446** | 58.6% | 76.9% | 38.5% | 34.7% | 61.5% | 29.8 | `Top Single Stepwise` |
-| **#3** | **Voting Ensemble** | 60 | **0.441** | 37.0% | **94.1%** | 58.5% | 57.3% | 41.5% | **16.9** | `Consensus Winner` |
-| **#4** | **General-to-Specific (G2S)** | 60 | 0.418 | 46.1% | 85.4% | 39.0% | 36.9% | 61.0% | 23.4 | `Stepwise Backward` |
-| **#5** | **NIR (Multiple Regression)** | 60 | 0.394 | 43.2% | 84.0% | 36.4% | 33.8% | 63.6% | 25.0 | `Matrix Inverse Baseline` |
-| **#6** | **NOTEARS (Data-Prepped DAG)** | 60 | **0.393** | 36.0% | 90.9% | 36.0% | 31.9% | 49.1% | 20.4 | `Continuous DAG Optimization` |
-| **#7** | **DMD-GRN (Controlled DMDc)** | 60 | **0.338** | 36.6% | 83.2% | 26.2% | 15.1% | 68.4% | 33.0 | `Koopman Dynamics` |
-| **#8** | **Multi-Output RidgeCV** | 60 | 0.315 | 64.4% | 48.6% | 21.9% | 18.3% | 78.1% | 57.1 | `L2 Ridge Baseline` |
-| **#9** | **CellBox Neural ODE** | 60 | 0.304 | 47.2% | 66.4% | 23.2% | 8.8% | 76.8% | 45.1 | `Deep Neural ODE` |
-| **#10** | **Network Deconvolution** | 60 | 0.297 | 73.5% | 35.3% | 18.9% | 13.1% | 81.1% | 70.9 | `Spectral Deconvolution` |
-| **#11** | **FAST (SVD Inversion)** | 60 | 0.294 | 32.4% | 82.1% | 27.1% | 24.1% | 72.9% | 29.1 | `SVD Regularized` |
-| **#12** | **GENIE3 (Tree Forest)** | 60 | 0.294 | 81.2% | 25.3% | 18.2% | 12.3% | 81.8% | 78.8 | `ML Tree Ensemble` |
-| **#13** | **CPA-Lite Autoencoder** | 60 | 0.282 | 80.5% | 21.1% | 17.4% | 9.1% | 82.6% | 88.4 | `Latent Autoencoder` |
-| **#14** | **CausalGRN (Do-Calculus)** | 60 | 0.235 | 26.1% | 80.7% | 21.6% | 11.2% | 78.4% | 33.2 | `Causal Do-Calculus` |
-| **#15** | **By-Chance (Null Model)** | 60 | 0.205 | 22.7% | 80.0% | 18.8% | 9.2% | 81.2% | 34.4 | `Null Random Baseline` |
-| **#16** | **DeepRIG (Graph AE)** | 60 | 0.204 | 22.7% | 80.0% | 18.7% | 12.3% | 81.3% | 34.2 | `Deep Graph AE` |
-| **#17** | **ARACNE (Mutual Info + DPI)** | 60 | 0.179 | 15.6% | 89.2% | 22.2% | 15.4% | 77.8% | 26.5 | `Mutual Info & DPI` |
-| **#18** | **SFINN (Shared Factor GCN)** | 60 | 0.146 | 15.1% | 85.1% | 15.3% | 9.8% | 71.7% | 29.7 | `Neighborhood GCN+FNN` |
+| Rank | Algorithm | Runs | Mean $F_1$ | Power (%) | Specificity (%) | PPV (%) | Signed PPV (%) | FDR (%) | Total Errors | Mean Runtime (s) | Standing Badge |
+|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|
+| **#1** | **AtlasShift (Empirical)** | 69 | **0.547** | 72.7% | 86.1% | 47.8% | 45.5% | 52.2% | 48.9 | 0.0001s | `Empirical Transfer` |
+| **#2** | **Voting Ensemble** | 69 | **0.420** | 35.3% | **96.7%** | **55.5%** | **53.9%** | **44.5%** | **32.6** | 0.6845s | `Consensus Winner` |
+| **#3** | **Simple-to-General (S2G)** | 69 | **0.403** | 53.9% | 86.0% | 34.0% | 31.5% | 66.0% | 62.8 | 0.0155s | `Top Single Stepwise` |
+| **#4** | **General-to-Specific (G2S)** | 69 | **0.393** | 42.9% | 91.5% | 37.5% | 35.9% | 62.5% | 45.5 | 0.6135s | `Stepwise Backward` |
+| **#5** | **NIR (Multiple Regression)** | 69 | **0.348** | 38.1% | 89.8% | 32.1% | 30.2% | 67.9% | 53.1 | 0.2092s | `Matrix Inverse Baseline` |
+| **#6** | **DMD-GRN** | 69 | **0.325** | 35.2% | 89.6% | 30.4% | 1.3% | 69.6% | 66.1 | 0.0047s | `Koopman Dynamics` |
+| **#7** | **NOTEARS** | 69 | **0.301** | 27.3% | 93.6% | 37.8% | 36.1% | 57.8% | 45.0 | 0.0946s | `Continuous DAG Optimization` |
+| **#8** | **Multi-Output RidgeCV** | 69 | **0.271** | 62.6% | 56.9% | 18.3% | 16.0% | 81.7% | 130.2 | 1.0126s | `L2 Ridge Baseline` |
+| **#9** | **FAST (SVD Inversion)** | 69 | **0.249** | 27.4% | 88.4% | 22.9% | 20.3% | 77.1% | 60.8 | 0.0033s | `SVD Regularized` |
+| **#10** | **GENIE3** | 69 | **0.225** | 76.8% | 38.1% | 13.4% | 10.0% | 86.6% | 206.7 | 0.2829s | `ML Tree Ensemble` |
+| **#11** | **Network Deconvolution** | 69 | **0.225** | 73.6% | 42.5% | 13.6% | 10.5% | 86.4% | 242.5 | 0.0037s | `Spectral Deconvolution` |
+| **#12** | **CellBox Neural ODE** | 69 | **0.203** | 41.4% | 67.9% | 15.0% | 7.6% | 85.0% | 145.3 | 0.0462s | `Deep Neural ODE` |
+| **#13** | **CPA-Lite Autoencoder** | 69 | **0.192** | **82.2%** | 19.3% | 11.1% | 5.6% | 88.9% | 453.5 | 0.0260s | `Latent Autoencoder` |
+| **#14** | **CausalGRN** | 69 | **0.170** | 18.8% | 87.6% | 15.6% | 8.8% | 84.4% | 70.2 | 0.0363s | `Causal Do-Calculus` |
+| **#15** | **ARACNE** | 69 | **0.147** | 12.5% | 93.6% | 19.6% | 12.2% | 80.4% | 54.8 | 0.0046s | `Mutual Info & DPI` |
+| **#16** | **DeepRIG** | 69 | **0.147** | 16.2% | 87.4% | 13.5% | 6.1% | 86.5% | 72.8 | 0.0055s | `Deep Graph AE` |
+| **#17** | **By-Chance (Random)** | 69 | **0.136** | 15.0% | 87.2% | 12.6% | 6.6% | 87.4% | 73.4 | 0.0004s | `Null Random Baseline` |
+| **#18** | **SFINN** | 69 | **0.089** | 9.1% | 90.1% | 9.3% | 4.8% | 86.4% | 67.2 | 0.0265s | `Neighborhood GCN+FNN` |
 
 ---
 
@@ -168,33 +170,24 @@ Results aggregated across all 60 synthetic sweep networks in SQLite database `rg
 ```
                     ┌────────────────────────────────────────────────────────┐
                     │               Graph Architecture Sweeps                │
-                    │                   (1,080 Evaluations)                  │
+                    │                   (1,242 Evaluations)                  │
                     └────────────────────────────────────────────────────────┘
                                /                 |                 \
                               /                  |                  \
                              v                   v                   v
             ┌───────────────────┐ ┌────────────────────┐ ┌──────────────────────┐
             │   Random (ER)     │ │  Scale-Free (BA)   │ │ Hierarchical Modular │
-            │   Mean F1: 0.335  │ │  Mean F1: 0.312    │ │    Mean F1: 0.316    │
-            │   Power: 45.9%    │ │  Power: 43.4%      │ │    Power: 44.5%      │
-            │   Spec:  70.9%    │ │  Spec:  72.7%      │ │    Spec:  72.1%      │
-            │   FDR:   65.8%    │ │  FDR:   67.7%      │ │    FDR:   67.8%      │
+            │   Mean F1: 0.278  │ │  Mean F1: 0.268    │ │    Mean F1: 0.253    │
+            │   Power: 42.1%    │ │  Power: 40.7%      │ │    Power: 40.6%      │
+            │   Spec:  77.0%    │ │  Spec:  77.6%      │ │    Spec:  77.4%      │
+            │   FDR:   74.3%    │ │  FDR:   74.4%      │ │    FDR:   76.6%      │
             └───────────────────┘ └────────────────────┘ └──────────────────────┘
                      |                     |                        |
-            Top: AtlasShift (0.563) Top: AtlasShift (0.621)  Top: AtlasShift (0.599)
-            #2: NIR (0.457)         #2: S2G (0.496)          #2: S2G (0.446)
-            #3: Voting (0.445)      #3: Voting (0.483)       #3: Voting (0.397)
-            #4: G2S (0.438)         #4: G2S (0.425)          #4: G2S (0.391)
-            #5: NOTEARS (0.422)     #5: NIR (0.381)          #5: NOTEARS (0.390)
-            #6: DMD-GRN (0.398)     #6: NOTEARS (0.366)      #6: NIR (0.344)
-            #7: S2G (0.395)         #7: DMD-GRN (0.314)      #7: RidgeCV (0.319)
-```
-            #2: NIR (0.457)         #2: S2G (0.496)          #2: S2G (0.446)
-            #3: Voting (0.445)      #3: Voting (0.483)       #3: Voting (0.397)
-            #4: G2S (0.438)         #4: G2S (0.425)          #4: G2S (0.391)
-            #5: S2G (0.395)         #5: NIR (0.381)          #5: NIR (0.344)
-            #6: FAST (0.342)        #6: RidgeCV (0.303)      #6: RidgeCV (0.319)
-            #7: RidgeCV (0.324)     #7: FAST (0.290)         #7: CellBox (0.316)
+            Top: AtlasShift (0.538) Top: AtlasShift (0.559)  Top: AtlasShift (0.544)
+            #2: NIR (0.411)         #2: Voting (0.426)       #2: S2G (0.436)
+            #3: Voting (0.410)      #3: S2G (0.406)          #3: Voting (0.425)
+            #4: G2S (0.399)         #4: G2S (0.399)          #4: G2S (0.381)
+            #5: S2G (0.368)         #5: NIR (0.358)          #5: DMD-GRN (0.288)
 ```
 
 ### 5.1 Topology-Specific Observations
@@ -220,20 +213,21 @@ Results aggregated across all 60 synthetic sweep networks in SQLite database `rg
 ## 6. Web Interface & Interactive Integration
 
 ### 6.1 Tab 5 ("5. Overall Statistics")
-- **KPI Summary Ribbon**: Displays Total Evaluated Networks ($60$), Total Algorithmic Evaluations ($1,080$), Top Overall Performer (`AtlasShift`), Top Mechanistic Method (`S2G`), and Consensus Ensemble (`Voting Ensemble`).
-- **Complete 18-Algorithm Leaderboard (`#tbl-overall-leaderboard`)**: Sortable columns, dynamic $F_1$ color highlighting, and distinct standing badges for all 18 methods.
-- **Architecture Cross-Comparison Cards (`#overall-arch-cards-grid`)**: 3 cards displaying topology properties, aggregate metrics, top performer highlight, and top-7 ranked mini-tables.
+- **KPI Summary Ribbon**: Displays Total Evaluated Networks ($69$), Total Algorithmic Evaluations ($1,242$), Top Overall Performer (`AtlasShift`), Top Mechanistic Method (`S2G`), and Consensus Ensemble (`Voting Ensemble`).
+- **Complete 18-Algorithm Leaderboard (`#tbl-overall-leaderboard`)**: Sortable columns, dynamic $F_1$ color highlighting, Mean Runtime (s) column, and distinct standing badges for all 18 methods.
+- **Architecture Cross-Comparison Cards (`#overall-arch-cards-grid`)**: 3 cards displaying topology properties, aggregate metrics, top performer highlight, and top-ranked mini-tables.
 - **Canvases**:
-  - Figure 1A: Network Size vs Power (%)
-  - Figure 1B: Network Size vs False Discovery Rate (%)
+  - Figure 1A: Network Size vs Power (%) ($N \in [12, 60]$)
+  - Figure 1B: Network Size vs False Discovery Rate (%) ($N \in [12, 60]$)
   - Figure 2: Grouped bar chart comparing Random, Scale-Free, and Hierarchical Modular across Power, Specificity, $F_1 \times 100$, and FDR.
-  - Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 3.5]$)
-  - Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.20]$)
+  - Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 5.0]$)
+  - Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.25]$)
+  - Figure 5: Computational Runtime Scaling vs Network Size ($N \in [12, 60]$) (Wildenhain 2004 Thesis Figure 4.10)
 - **Historical Gallery Switcher**: One-click toggle preserving authentic 2004 MATLAB `.mat` figures gallery.
 
 ### 6.2 Tab 3 ("3. Previous Simulations Archive")
 - **Restricted View (Best 15 with $N \ge 12$)**: Restricts display strictly to the best 15 simulations per set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, Overall Best). Strictly enforces **minimum network size $N \ge 12$** across all curated sets, filtering out sub-critical toy networks ($N < 12$).
-- **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 232 persisted runs in SQLite `rgn_db`.
+- **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 308 persisted runs in SQLite `rgn_db`.
 - **18-Algorithm Selector (`#hist-detail-alg`)**: Allows inspecting any of the 18 algorithms for any archived run, dynamically updating the 9-state Graphviz reconstruction and misclassification matrix.
 
 ---
@@ -242,17 +236,15 @@ Results aggregated across all 60 synthetic sweep networks in SQLite database `rg
 
 The Playwright end-to-end verification suite in `tests/test_playwright_overall_stats_and_best15.py` and the unit test suite in `tests/test_6_new_algorithms.py` validate:
 - [x] Top navigation tab title: `"5. Overall Statistics"`
-- [x] KPI metrics: Total Runs $= 60$, Algorithmic Evaluations $= 1,080$
+- [x] KPI metrics: Total Runs $= 69$, Algorithmic Evaluations $= 1,242$
 - [x] Architecture cards: Exactly 3 cards (Random, Scale-Free, Hierarchical Modular)
-- [x] Leaderboard rows: Exactly 18 rows, Rank #1 is AtlasShift, Rank #2 is S2G
+- [x] Leaderboard rows: Exactly 18 rows, Rank #1 is AtlasShift, Rank #2 is Voting Ensemble, Rank #3 is S2G
+- [x] Tab 5 Canvases: All 6 figures render cleanly (including Figure 5 Computational Runtime Scaling)
 - [x] Tab 3 Curated Sets: Strictly 15 runs per category, all with $N \ge 12$
 - [x] Tab 3 Inspector dropdown: Exactly 18 algorithm options
-- [x] All 6 new algorithm units tested and passing in `tests/test_6_new_algorithms.py`
+- [x] All 18 algorithms and data preprocessor verified with 39 passing unit tests
 - [x] Full visual screenshots captured:
   - `docs/screenshots/47_tab5_overall_statistics_sweep.png`
   - `docs/screenshots/48_tab5_historical_gallery_toggle.png`
   - `docs/screenshots/49_tab3_best15_restricted_view.png`
   - `docs/screenshots/50_tab3_step4_dual_and_inspector.png`
-  - `docs/screenshots/51_tab5_architecture_cards_and_figures.png`
-  - `docs/screenshots/52_tab5_figures_2_3_4.png`
-  - `docs/screenshots/53_tab3_detail_inspector_algorithm_view.png`

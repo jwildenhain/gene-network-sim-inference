@@ -153,46 +153,53 @@ In Tab 3 (Previous Simulations Archive), Step 4 is split into **two side-by-side
 
 > 📊 **Full Technical & Benchmark Specification**: See [`docs/BENCHMARK_18_ALGORITHMS_AND_ARCHITECTURES.md`](docs/BENCHMARK_18_ALGORITHMS_AND_ARCHITECTURES.md) for complete mathematical formulations, per-architecture leaderboards, and parameter sweeps across Random, Scale-Free, and Hierarchical Modular topologies.
 
-A comprehensive systematic parameter sweep benchmark across 4 continuous and structural axes (**Network Size $N \in [6..16]$**, **Topologies**, **Measurement Noise $\sigma_m \in [0.0..0.20]$**, and **Connectivity $k_{\text{av}} \in [1.0..3.5]$**) evaluates **all 18 comparative reverse-engineering algorithms** across 1,080 evaluated algorithmic runs (60 networks):
+A comprehensive systematic parameter sweep benchmark extended to match **Jan Wildenhain's 2004 BHons Thesis & 2006 IEE Systems Biology paper** experimental ranges across 4 continuous and structural axes:
+- **Network Size**: $N \in [12, 20, 30, 40, 50, 60]$ genes (preserving $N \ge 12$).
+- **Topologies (3)**: Random Erdős-Rényi, Scale-Free / Power-Law (Barabási-Albert), and Hierarchical Modular (Ravasz-Barabási).
+- **Average Connectivity**: $k_{\text{av}} \in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]$ edges/gene (matching thesis $k \in \{1, 1.5, 2, 3, 5\}$).
+- **Measurement Noise Sensitivity**: $\sigma_m \in [0.00, 0.02, 0.05, 0.10, 0.15, 0.20, 0.25]$ Gaussian noise on steady-state ratios.
+- **Computational Runtime Scaling**: Empirically measured algorithm execution time (seconds) scaling across network dimensions ($N \in [12, 60]$), matching Thesis Figure 4.10.
+- **Total Systematic Evaluated Runs**: 69 systematic network runs $\times 18$ algorithms = **1,242 algorithmic evaluations**.
 
 1. **Tab 5 Renamed to "5. Overall Statistics"**:
    - **Complete 18-Algorithm Leaderboard**: Real-time multi-metric cross-evaluation of all 18 inference methods in the repository (`AtlasShift`, `Simple-to-General (S2G)`, `Voting Ensemble`, `General-to-Specific (G2S)`, `NIR`, `Multi-Output RidgeCV`, `CellBox Neural ODE`, `Network Deconvolution`, `FAST SVD Inversion`, `GENIE3`, `CPA-Lite Autoencoder`, `DeepRIG`, `CausalGRN`, `By-Chance Null Model`, `DMD-GRN`, `ARACNE`, `SFINN`, `NOTEARS`).
    - **Leaderboard Performance Summary**:
-     - **#1 AtlasShift (Empirical Latent Transfer)**: Top overall re-engineering accuracy with Mean $F_1 = 0.594$, Power / Recall $= 67.1\%$, Specificity $= 85.7\%$, and FDR $= 41.4\%$.
-     - **#2 Simple-to-General (S2G Forward AIC)**: Top mechanistic single method with Mean $F_1 = 0.446$, Power $= 58.6\%$, and Specificity $= 76.9\%$.
-     - **#3 Voting Ensemble**: Consensus ($S2G \cap G2S$) achieving top specificity ($94.1\%$), low FDR ($41.5\%$), and lowest total errors ($16.9$).
-     - **#4 General-to-Specific (G2S Backward AIC)**: Mean $F_1 = 0.418$, Power $= 46.1\%$, Specificity $= 85.4\%$.
-     - **#5 NIR (Multiple Regression)**: Mean $F_1 = 0.394$, Power $= 43.2\%$, Specificity $= 84.0\%$.
-     - **#6 NOTEARS (Data-Prepped DAG)**: Mean $F_1 = 0.393$, Power $= 36.0\%$, Specificity $= 90.9\%$, FDR $= 49.1\%$, Total Errors $= 20.4$. (Major jump from $0.097$ via interventional equilibrium loss $\nabla_W F = W C - B$).
-     - **#7 DMD-GRN (Controlled DMDc)**: Mean $F_1 = 0.338$, Power $= 36.6\%$, Specificity $= 83.2\%$, FDR $= 68.4\%$, Total Errors $= 33.0$. (Jump from $0.192$ via Controlled DMD input-output inversion).
-     - **#8 Multi-Output RidgeCV**: Mean $F_1 = 0.315$, Power $= 64.4\%$, Specificity $= 48.6\%$.
-     - **#9 CellBox Neural ODE**: Mean $F_1 = 0.304$, Power $= 47.2\%$, Specificity $= 66.4\%$.
-     - **#10 Network Deconvolution**: Mean $F_1 = 0.297$, Power $= 73.5\%$, Specificity $= 35.3\%$.
-     - **#11 FAST (SVD Inversion)**: Mean $F_1 = 0.294$, Power $= 32.4\%$, Specificity $= 82.1\%$.
-     - **#12 GENIE3 (Tree Forest)**: Mean $F_1 = 0.294$, Power $= 81.2\%$, Specificity $= 25.3\%$.
-     - **#13 CPA-Lite Autoencoder**: Mean $F_1 = 0.282$, Power $= 80.5\%$, Specificity $= 21.1\%$.
-     - **#14 CausalGRN (Do-Calculus)**: Mean $F_1 = 0.235$, Power $= 26.1\%$, Specificity $= 80.7\%$.
-     - **#15 By-Chance (Null Model)**: Mean $F_1 = 0.205$, Power $= 22.7\%$, Specificity $= 80.0\%$.
-     - **#16 DeepRIG (Graph AE)**: Mean $F_1 = 0.204$, Power $= 22.7Line%$, Specificity $= 80.0\%$.
-     - **#17 ARACNE (Mutual Info + DPI)**: Mean $F_1 = 0.179$, Power $= 15.6\%$, Specificity $= 89.2\%$.
-     - **#18 SFINN (Shared Factor GCN)**: Mean $F_1 = 0.146$, Power $= 15.1\%$, Specificity $= 85.1\%$.
+     - **#1 AtlasShift (Empirical Latent Transfer)**: Top overall re-engineering accuracy with Mean $F_1 = 0.547$, Power / Recall $= 72.7\%$, Specificity $= 86.1\%$, FDR $= 52.2\%$, Mean Runtime $= 0.0001\text{s}$.
+     - **#2 Voting Ensemble**: Strict consensus ($S2G \cap G2S$) achieving top specificity ($96.7\%$), low FDR ($44.5\%$), lowest total errors ($32.6$), and Mean $F_1 = 0.420$.
+     - **#3 Simple-to-General (S2G Forward AIC)**: Top single mechanistic method with Mean $F_1 = 0.403$, Power $= 53.9\%$, Specificity $= 86.0\%$, FDR $= 66.0\%$, Mean Runtime $= 0.0155\text{s}$.
+     - **#4 General-to-Specific (G2S Backward AIC)**: Mean $F_1 = 0.393$, Power $= 42.9\%$, Specificity $= 91.5\%$, Mean Runtime $= 0.6135\text{s}$ (scaling up to $6.04\text{s}$ at $N=60$).
+     - **#5 NIR (Multiple Regression)**: Mean $F_1 = 0.348$, Power $= 38.1\%$, Specificity $= 89.8\%$, Mean Runtime $= 0.2092\text{s}$.
+     - **#6 DMD-GRN (Controlled DMDc)**: Mean $F_1 = 0.325$, Power $= 35.2\%$, Specificity $= 89.6\%$, Mean Runtime $= 0.0047\text{s}$.
+     - **#7 NOTEARS (Interventional DAG)**: Mean $F_1 = 0.301$, Power $= 27.3\%$, Specificity $= 93.6\%$, FDR $= 57.8\%$, Mean Runtime $= 0.0946\text{s}$.
+     - **#8 Multi-Output RidgeCV**: Mean $F_1 = 0.271$, Power $= 62.6\%$, Specificity $= 56.9\%$, Mean Runtime $= 1.0126\text{s}$.
+     - **#9 FAST (SVD Inversion)**: Mean $F_1 = 0.249$, Power $= 27.4\%$, Specificity $= 88.4\%$, Mean Runtime $= 0.0033\text{s}$.
+     - **#10 GENIE3 (Random Forest)**: Mean $F_1 = 0.225$, Power $= 76.8\%$, Specificity $= 38.1\%$, Mean Runtime $= 0.2829\text{s}$.
+     - **#11 Network Deconvolution**: Mean $F_1 = 0.225$, Power $= 73.6\%$, Specificity $= 42.5\%$, Mean Runtime $= 0.0037\text{s}$.
+     - **#12 CellBox Neural ODE**: Mean $F_1 = 0.203$, Power $= 41.4\%$, Specificity $= 67.9\%$, Mean Runtime $= 0.0462\text{s}$.
+     - **#13 CPA-Lite Autoencoder**: Mean $F_1 = 0.192$, Power $= 82.2\%$, Specificity $= 19.3\%$, Mean Runtime $= 0.0260\text{s}$.
+     - **#14 CausalGRN (Do-Calculus)**: Mean $F_1 = 0.170$, Power $= 18.8\%$, Specificity $= 87.6\%$, Mean Runtime $= 0.0363\text{s}$.
+     - **#15 ARACNE (Mutual Info + DPI)**: Mean $F_1 = 0.147$, Power $= 12.5\%$, Specificity $= 93.6\%$, Mean Runtime $= 0.0046\text{s}$.
+     - **#16 DeepRIG (Graph AE)**: Mean $F_1 = 0.147$, Power $= 16.2\%$, Specificity $= 87.4\%$, Mean Runtime $= 0.0055\text{s}$.
+     - **#17 By-Chance (Random Baseline)**: Mean $F_1 = 0.136$, Power $= 15.0\%$, Specificity $= 87.2\%$, Mean Runtime $= 0.0004\text{s}$.
+     - **#18 SFINN (Neighborhood GCN)**: Mean $F_1 = 0.089$, Power $= 9.1\%$, Specificity $= 90.1\%$, Mean Runtime $= 0.0265\text{s}$.
    - **Graph Architecture Cross-Comparison Cards (`#overall-arch-cards-grid`)**:
-     - **🎲 Random Graph (Erdős-Rényi)** (20 runs): Poisson degree distribution. Mean $F_1 = 0.335$, Power $= 45.9\%$, Specificity $= 70.9\%$. Top performers: AtlasShift ($F_1 = 0.563$), NIR ($F_1 = 0.457$), Voting ($F_1 = 0.445$), G2S ($0.438$), NOTEARS ($0.422$), DMD-GRN ($0.398$).
-     - **⭐ Scale-Free (Barabási-Albert)** (20 runs): Heavy-tailed hubs. Mean $F_1 = 0.312$, Power $= 43.4\%$, Specificity $= 72.7\%$. Top performers: AtlasShift ($F_1 = 0.621$), S2G ($F_1 = 0.496$), Voting ($F_1 = 0.483$), G2S ($0.425$), NIR ($0.381$), NOTEARS ($0.366$).
-     - **🏛️ Hierarchical Modular (Ravasz-Barabási)** (20 runs): Dense clusters with sparse inter-module links. Mean $F_1 = 0.316$, Power $= 44.5\%$, Specificity $= 72.1\%$. Top performers: AtlasShift ($F_1 = 0.599$), S2G ($F_1 = 0.446$), Voting ($F_1 = 0.397$), G2S ($0.391$), NOTEARS ($0.390$), NIR ($0.344$).
-   - **Figures 1A & 1B: Network Size Scaling ($N \in [6, 16]$)**: Power recovery and FDR suppression curves across algorithms.
+     - **🎲 Random Graph (Erdős-Rényi)** (23 runs): Poisson degree distribution. Mean $F_1 = 0.278$, Power $= 42.1\%$, Specificity $= 77.0\%$. Top performers: AtlasShift ($F_1 = 0.538$), NIR ($F_1 = 0.411$), Voting ($F_1 = 0.410$), G2S ($0.399$), S2G ($0.368$).
+     - **⭐ Scale-Free (Barabási-Albert)** (23 runs): Heavy-tailed hubs. Mean $F_1 = 0.268$, Power $= 40.7\%$, Specificity $= 77.6\%$. Top performers: AtlasShift ($F_1 = 0.559$), Voting ($F_1 = 0.426$), S2G ($F_1 = 0.406$), G2S ($0.399$), NIR ($0.358$).
+     - **🏛️ Hierarchical Modular (Ravasz-Barabási)** (23 runs): Dense clusters with sparse inter-module links. Mean $F_1 = 0.253$, Power $= 40.6\%$, Specificity $= 77.4\%$. Top performers: AtlasShift ($F_1 = 0.544$), S2G ($F_1 = 0.436$), Voting ($F_1 = 0.425$), G2S ($0.381$), DMD-GRN ($0.288$).
+   - **Figures 1A & 1B: Network Size Scaling ($N \in [12, 60]$)**: Power recovery and FDR suppression curves across algorithms.
    - **Figure 2: Topology Impact**: Grouped 4-metric comparison (Power, Specificity, $F_1 \times 100$, FDR) across Random, Scale-Free, and Hierarchical Modular architectures.
-   - **Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 3.5]$)**: Performance degradation as regulator density escalates.
-   - **Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.20]$)**: Robustness evaluation across increasing experimental noise.
+   - **Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 5.0]$)**: Performance degradation as regulator density escalates up to $k_{\text{av}} = 5.0$.
+   - **Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.25]$)**: Robustness evaluation across increasing experimental noise up to $\sigma_m = 0.25$.
+   - **Figure 5: Computational Runtime Scaling vs Network Size ($N \in [12, 60]$)**: Live interactive profiling of CPU execution seconds vs network dimension, matching Thesis Figure 4.10.
    - **Dual Mode View Toggle**: One-click switcher between **"📊 Overall Statistics (New Parameter Sweep)"** and **"📜 Historical Figures Gallery (Thesis & 2006 Paper)"** (preserved from 2004 MATLAB `.mat` archives).
 
 2. **Tab 3 Previous Simulations Archive: Restricted View to Best 15 for Each Set ($N \ge 12$)**:
    - **Minimum Network Size Rule ($N \ge 12$)**: In accordance with benchmark rigor, all curated sets in the Top 15 archive view strictly enforce a minimum network size of $N \ge 12$ genes, filtering out smaller sub-critical toy models ($N < 12$).
    - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs ($N \ge 12$) within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), ranked by $F_1$ score and minimal total errors.
-   - **Balanced Database Benchmark Corpus**: The SQLite `rgn_db.sqlite` archive was augmented with $N \ge 12$ oscillating and flat simulations, ensuring that all 7 sets have at least 15 qualifying runs ($N \in [12, 18]$) for complete, robust representation.
+   - **Balanced Database Benchmark Corpus**: The SQLite `rgn_db.sqlite` archive was augmented with $N \ge 12$ oscillating and flat simulations, ensuring that all 7 sets have at least 15 qualifying runs ($N \in [12, 60]$) for complete, robust representation.
    - **Dynamic Rank Badges & F1 Column**: Each row is badged with its exact ranking within its set (`#1 in Responsive` .. `#15 in Responsive`), its calculated $F_1$ score, Power %, Specificity %, and Total Errors.
    - **18-Algorithm Detailed Inspector**: Supports inspecting re-engineering performance across **all 18 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
-   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 232 persisted runs in SQLite `rgn_db`.
+   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 308 persisted runs in SQLite `rgn_db`.
 
 | Tab 5: Complete 18-Algorithm Leaderboard | Tab 5: Architecture Cross-Comparison (Random, Scale-Free, Hierarchical) |
 | :---: | :---: |

@@ -1852,6 +1852,7 @@
                   <th>Signed PPV (%)</th>
                   <th>FDR (%)</th>
                   <th>Mean Total Errors</th>
+                  <th>Mean Runtime (s)</th>
                   <th>Benchmark Standing</th>
                 </tr>
               </thead>
@@ -1884,8 +1885,8 @@
           <div class="panel">
             <div class="panel-header">
               <div>
-                <div class="panel-title">Figure 1A: Network Size vs Re-Engineering Power (%) (N ∈ [5, 30])</div>
-                <div style="font-size:11px;color:var(--text-muted);">True interaction recovery rate across scaling network dimension (Thesis Chapter 4.1.1)</div>
+                <div class="panel-title">Figure 1A: Network Size vs Re-Engineering Power (%) (N ∈ [12, 60])</div>
+                <div style="font-size:11px;color:var(--text-muted);">True interaction recovery rate across scaling network dimension (Wildenhain 2004 Thesis Chapter 4.1.1)</div>
               </div>
               <span class="badge">Size Sweep (N)</span>
             </div>
@@ -1895,8 +1896,8 @@
           <div class="panel">
             <div class="panel-header">
               <div>
-                <div class="panel-title">Figure 1B: Network Size vs False Discovery Rate (FDR %) (N ∈ [5, 30])</div>
-                <div style="font-size:11px;color:var(--text-muted);">Voting consensus dramatically suppresses false-positive edge rate across all network sizes</div>
+                <div class="panel-title">Figure 1B: Network Size vs False Discovery Rate (FDR %) (N ∈ [12, 60])</div>
+                <div style="font-size:11px;color:var(--text-muted);">Voting consensus dramatically suppresses false-positive edge rate across all network sizes up to 60 genes</div>
               </div>
               <span class="badge badge-emerald">FDR Suppression</span>
             </div>
@@ -1920,8 +1921,8 @@
           <div class="panel">
             <div class="panel-header">
               <div>
-                <div class="panel-title">Figure 3: Average Connectivity Sweep (k_av ∈ [1.0, 4.0])</div>
-                <div style="font-size:11px;color:var(--text-muted);">Re-engineering sensitivity and total errors as regulator density increases (Thesis Chapter 4.1.2)</div>
+                <div class="panel-title">Figure 3: Average Connectivity Sweep (k_av ∈ [1.0, 5.0])</div>
+                <div style="font-size:11px;color:var(--text-muted);">Re-engineering sensitivity and total errors as regulator density increases up to k_av=5.0 (Thesis Chapter 4.1.2)</div>
               </div>
               <span class="badge">Connectivity (k_av)</span>
             </div>
@@ -1941,6 +1942,20 @@
             <span class="badge">Noise Sweep (σ_m)</span>
           </div>
           <canvas id="canvas-overall-noise" class="chart-canvas" width="1380" height="260" style="width:100%;height:260px;"></canvas>
+        </div>
+
+        <!-- Figure 5: Computational Runtime Scaling vs Network Size (Thesis Figure 4.10) -->
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 5: Computational Runtime Scaling vs Network Size (N ∈ [12, 60])</div>
+              <div style="font-size:11px;color:var(--text-muted);">
+                Empirical algorithm execution time (seconds) scaling as network size scales from 12 to 60 genes (Wildenhain 2004 Thesis Figure 4.10)
+              </div>
+            </div>
+            <span class="badge badge-blue">Runtime (CPU Seconds)</span>
+          </div>
+          <canvas id="canvas-overall-runtime" class="chart-canvas" width="1380" height="260" style="width:100%;height:260px;"></canvas>
         </div>
       </div>
 
@@ -2105,7 +2120,7 @@
             </div>
             <div style="font-size:11.5px;color:var(--text-muted);">Click any simulation row below to load its exact settings and inspect its full network &amp; statistical results in detail</div>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="loadHistoryTable()">Refresh Archive</button>
+          <button class="btn btn-secondary btn-sm" onclick="loadHistoryTable(true)">Refresh Archive</button>
         </div>
 
         <!-- Perturbation Dynamics Category Filter Bar & Fast Simulation Triggers -->
@@ -5531,7 +5546,8 @@
         const elTopAlg = document.getElementById('kpi-overall-top-alg');
         if (elTopAlg) elTopAlg.textContent = lb[0].algorithm_name;
         const elBestSingle = document.getElementById('kpi-overall-best-single');
-        if (elBestSingle && lb.length > 1) elBestSingle.textContent = lb[1].algorithm_name;
+        const bestMech = lb.find(x => x.algorithm_key !== 'atlasshift' && x.algorithm_key !== 'vote') || lb[1] || lb[0];
+        if (elBestSingle && bestMech) elBestSingle.textContent = bestMech.algorithm_name;
       }
 
       // 2. Populate Architecture Cross-Comparison Cards (Random, Scale-Free, Hierarchical Modular)
@@ -5709,6 +5725,7 @@
             <td>${Number(r.mean_signed_ppv_pct).toFixed(1)}%</td>
             <td style="color:${r.mean_fdr_pct < 50 ? '#10b981' : 'var(--accent-amber)'};font-weight:600;">${Number(r.mean_fdr_pct).toFixed(1)}%</td>
             <td style="color:var(--accent-amber);font-weight:700;">${Number(r.mean_total_errors).toFixed(1)}</td>
+            <td style="font-family:monospace;font-size:11.5px;color:var(--accent-blue);">${Number(r.mean_runtime_seconds || 0.001).toFixed(3)}s</td>
             <td>${badgeHtml}</td>
           `;
           tbody.appendChild(tr);
@@ -5716,7 +5733,7 @@
         makeTableSortable('tbl-overall-leaderboard');
       }
 
-      // 4. Render Canvas Charts (Figures 1A, 1B, 2, 3, 4)
+      // 4. Render Canvas Charts (Figures 1A, 1B, 2, 3, 4, 5)
       if (data.size_sweep) {
         const sw = data.size_sweep;
         const xLabels = (sw.sizes || []).map(n => `N=${n}`);
@@ -5779,6 +5796,25 @@
           { label: 'FAST FDR (%)', data: ns.algorithms?.fast?.fdr || [], color: '#ef4444', dash: [3, 2] },
         ];
         drawMultiLineChart('canvas-overall-noise', xLabels, noiseSeries, 'Metric', 0, 100);
+      }
+
+      if (data.runtime_sweep) {
+        const rs = data.runtime_sweep;
+        const xLabels = (rs.sizes || []).map(n => `N=${n}`);
+        const runtimeSeries = [
+          { label: 'S2G (Forward AIC)', data: rs.algorithms?.s2g || [], color: '#0284c7' },
+          { label: 'G2S (Backward AIC)', data: rs.algorithms?.g2s || [], color: '#d97706' },
+          { label: 'NIR (Multiple Reg)', data: rs.algorithms?.nir || [], color: '#8b5cf6' },
+          { label: 'Multi-Output Ridge', data: rs.algorithms?.ridge || [], color: '#06b6d4' },
+          { label: 'NOTEARS (DAG)', data: rs.algorithms?.notears || [], color: '#f59e0b', dash: [3, 2] },
+          { label: 'CellBox Neural ODE', data: rs.algorithms?.cellbox || [], color: '#ec4899' },
+          { label: 'GENIE3 (Tree Forest)', data: rs.algorithms?.genie3 || [], color: '#10b981' },
+          { label: 'FAST (SVD Inversion)', data: rs.algorithms?.fast || [], color: '#ef4444', dash: [4, 3] },
+          { label: 'DMD-GRN (Koopman)', data: rs.algorithms?.dmdgrn || [], color: '#a855f7', dash: [2, 2] },
+        ];
+        const allVals = runtimeSeries.flatMap(s => s.data || []);
+        const maxTime = Math.max(0.5, ...allVals);
+        drawMultiLineChart('canvas-overall-runtime', xLabels, runtimeSeries, 'Seconds', 0, Math.ceil(maxTime * 1.25));
       }
     }
 
@@ -6168,10 +6204,14 @@
       return 1 / (1 + totErr);
     }
 
-    async function loadHistoryTable() {
+    async function loadHistoryTable(forceRefresh = false) {
       try {
-        const res = await fetch('/api/history');
-        const data = await res.json();
+        let data = APP_STATE.cachedHistoryPayload;
+        if (!data || forceRefresh) {
+          const res = await fetch('/api/history');
+          data = await res.json();
+          APP_STATE.cachedHistoryPayload = data;
+        }
         const tbody = document.querySelector('#tbl-history tbody');
         if (!tbody || !data.history) return;
         tbody.innerHTML = '';
@@ -6187,7 +6227,9 @@
         }
 
         const activeRunId = (APP_STATE.archiveDetail && APP_STATE.archiveDetail.run_id) || data.active_run_id;
-        const currentFilter = APP_STATE.archiveFilterType || 'all';
+        const filterEl = document.getElementById('archive-filter-type');
+        const currentFilter = (filterEl ? filterEl.value : APP_STATE.archiveFilterType) || 'all';
+        APP_STATE.archiveFilterType = currentFilter;
 
         // 1. Annotate each run with its calculated F1 score and normalized category
         data.history.forEach(h => {
@@ -7175,7 +7217,7 @@
           APP_STATE.archiveFilterType = 'all';
           const filterSel = document.getElementById('archive-filter-type');
           if (filterSel) filterSel.value = 'all';
-          await loadHistoryTable();
+          await loadHistoryTable(true);
           await selectArchiveRun(simData.run_id, false);
         }
       } catch (e) {

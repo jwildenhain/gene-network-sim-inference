@@ -104,10 +104,10 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
 
     sweep_runs: List[Dict[str, Any]] = []
 
-    # 1. Parameter Axes Definitions
-    size_values = [6, 8, 10, 12, 16]
-    k_values = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
-    noise_values = [0.0, 0.02, 0.05, 0.10, 0.15, 0.20]
+    # 1. Parameter Axes Definitions (Extended to Match Wildenhain 2004 Thesis & Crampin 2006 Ranges)
+    size_values = [12, 20, 30, 40, 50, 60]
+    k_values = [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]
+    noise_values = [0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.25]
 
     topology_defs = [
         ("random", TopologyType.RANDOM, "Random (Erdős-Rényi)"),
@@ -118,9 +118,9 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
     all_algorithms = list(ALGO_METADATA.keys())
 
     # Containers for aggregated curves across algorithms
-    size_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": []} for alg in all_algorithms}
-    conn_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": []} for alg in all_algorithms}
-    noise_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": []} for alg in all_algorithms}
+    size_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
+    conn_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
+    noise_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
 
     # Per-architecture breakdown containers
     arch_metrics: Dict[str, Dict[str, List[Dict[str, float]]]] = {
@@ -172,13 +172,13 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             "s2g": SimpleToGeneral(),
             "g2s": GeneralToSpecific(),
             "atlasshift": AtlasShift(de_threshold=0.15),
-            "genie3": GENIE3Algorithm(n_estimators=18, seed=seed),
+            "genie3": GENIE3Algorithm(n_estimators=15, seed=seed),
             "nir": NIRAlgorithm(k_interactions=k_est, top_d=min(4, n - 1)),
             "netdeconv": NetworkDeconvolution(),
             "fast": FastSVD(k_interactions=k_est, add_diagonal_identity=False),
-            "cellbox": CellBoxNeuralODE(epochs=12),
+            "cellbox": CellBoxNeuralODE(epochs=8),
             "ridge": KaggleMultiOutputRidge(),
-            "cpa_lite": CPALite(epochs=10),
+            "cpa_lite": CPALite(epochs=6),
             "by_chance": ByChance(k_interactions=k_est, seed=seed),
             "arachne": AracneAlgorithm(k_interactions=k_est),
             "causalgrn": CausalGRNAlgorithm(k_interactions=k_est),
@@ -189,13 +189,16 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
         }
 
         preds = {}
+        fit_times = {}
         for alg_name, runner in runners.items():
+            t_fit_start = time.perf_counter()
             try:
                 U_in = -exp.U if alg_name in ("nir", "fast", "ridge") else exp.U
                 res = runner.fit(exp.X, U_in)
                 preds[alg_name] = res.adjacency_pred
             except Exception:
                 preds[alg_name] = np.zeros((n, n), dtype=int)
+            fit_times[alg_name] = round(time.perf_counter() - t_fit_start, 4)
 
         # 3. Evaluate metrics for every algorithm
         eval_metrics = {}
@@ -209,6 +212,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             ppv = float(round(bm.precision * 100.0, 2))
             signed_ppv = float(round(bm.signed_ppv * 100.0, 2))
             fdr = float(round(bm.fp_per_inferred_pct, 2))
+            t_elapsed = fit_times[alg_name]
 
             eval_metrics[alg_name] = {
                 "total_errors": tot_err,
@@ -217,6 +221,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
                 "true_negatives": int(bm.true_negatives),
                 "false_negatives": int(bm.false_negatives),
                 "f1": f1_val,
+                "runtime_seconds": t_elapsed,
             }
             tmp_statmat[alg_name] = {
                 "power": pwr,
@@ -228,6 +233,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
                 "fnr": float(round(bm.fnr * 100.0, 2)),
                 "total_errors": tot_err,
                 "f1": f1_val,
+                "runtime_seconds": t_elapsed,
             }
 
             metric_entry = {
@@ -238,6 +244,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
                 "fdr": fdr,
                 "f1": f1_val,
                 "total_errors": tot_err,
+                "runtime": t_elapsed,
             }
             all_evaluated_metrics[alg_name].append(metric_entry)
             arch_metrics[topo_key][alg_name].append(metric_entry)
@@ -350,15 +357,16 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             "noise": noise,
             "eval_metrics": eval_metrics,
             "tmp_statmat": tmp_statmat,
+            "fit_times": fit_times,
             "history_entry": history_entry,
         }
 
-    print("Executing Complete Benchmark Sweep Across 12 Algorithms and 3 Graph Architectures...")
+    print("Executing Complete Benchmark Sweep Across 18 Algorithms and 3 Graph Architectures...")
 
     # -------------------------------------------------------------------------
-    # AXIS 1: NETWORK SIZE SWEEP ACROSS RANDOM, SCALE-FREE & HIERARCHICAL
+    # AXIS 1: NETWORK SIZE SWEEP ACROSS RANDOM, SCALE-FREE & HIERARCHICAL (N in [12..60])
     # -------------------------------------------------------------------------
-    print("  -> Sweeping Network Sizes (N in [6, 8, 10, 12, 16]) across 3 architectures...")
+    print(f"  -> Sweeping Network Sizes (N in {size_values}) across 3 architectures...")
     for n in size_values:
         # Evaluate each size on Random, Scale-Free, and Hierarchical
         size_run_results = []
@@ -389,16 +397,19 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             size_sweep_data[alg]["total_errors"].append(
                 round(float(np.mean([r["eval_metrics"][alg]["total_errors"] for r in size_run_results])), 1)
             )
+            size_sweep_data[alg]["runtime"].append(
+                round(float(np.mean([r["fit_times"][alg] for r in size_run_results])), 4)
+            )
 
     # -------------------------------------------------------------------------
-    # AXIS 2: CONNECTIVITY SWEEP ACROSS RANDOM, SCALE-FREE & HIERARCHICAL
+    # AXIS 2: CONNECTIVITY SWEEP ACROSS RANDOM, SCALE-FREE & HIERARCHICAL (k_av in [1.0..5.0])
     # -------------------------------------------------------------------------
-    print("  -> Sweeping Connectivity (k_av in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]) across 3 architectures...")
+    print(f"  -> Sweeping Connectivity (k_av in {k_values}) across 3 architectures...")
     for kav in k_values:
         conn_run_results = []
         for t_idx, (t_name, t_enum, _) in enumerate(topology_defs):
             res = _execute_run(
-                n=12,
+                n=16,
                 k_av=kav,
                 topo_key=t_name,
                 topo_enum=t_enum,
@@ -422,16 +433,19 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             conn_sweep_data[alg]["total_errors"].append(
                 round(float(np.mean([r["eval_metrics"][alg]["total_errors"] for r in conn_run_results])), 1)
             )
+            conn_sweep_data[alg]["runtime"].append(
+                round(float(np.mean([r["fit_times"][alg] for r in conn_run_results])), 4)
+            )
 
     # -------------------------------------------------------------------------
-    # AXIS 3: MEASUREMENT NOISE SWEEP ACROSS RANDOM, SCALE-FREE & HIERARCHICAL
+    # AXIS 3: MEASUREMENT NOISE SWEEP ACROSS RANDOM, SCALE-FREE & HIERARCHICAL (sigma_m in [0.0..0.25])
     # -------------------------------------------------------------------------
-    print("  -> Sweeping Measurement Noise (sigma_m in [0.0..0.20]) across 3 architectures...")
+    print(f"  -> Sweeping Measurement Noise (sigma_m in {noise_values}) across 3 architectures...")
     for noise in noise_values:
         noise_run_results = []
         for t_idx, (t_name, t_enum, _) in enumerate(topology_defs):
             res = _execute_run(
-                n=10,
+                n=16,
                 k_av=1.8,
                 topo_key=t_name,
                 topo_enum=t_enum,
@@ -455,15 +469,18 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             noise_sweep_data[alg]["total_errors"].append(
                 round(float(np.mean([r["eval_metrics"][alg]["total_errors"] for r in noise_run_results])), 1)
             )
+            noise_sweep_data[alg]["runtime"].append(
+                round(float(np.mean([r["fit_times"][alg] for r in noise_run_results])), 4)
+            )
 
     # -------------------------------------------------------------------------
-    # AXIS 4: DYNAMICAL REGIMES ACROSS RANDOM, SCALE-FREE & HIERARCHICAL
+    # AXIS 4: DYNAMICAL REGIMES ACROSS RANDOM, SCALE-FREE & HIERARCHICAL (N=12)
     # -------------------------------------------------------------------------
-    print("  -> Generating Dynamic Regimes (Responsive, Flat, Oscillating) across architectures...")
+    print("  -> Generating Dynamic Regimes (Responsive, Flat, Oscillating) across architectures (N=12)...")
     for t_idx, (t_name, t_enum, _) in enumerate(topology_defs):
         # 1. Responsive
         res_resp = _execute_run(
-            n=10,
+            n=12,
             k_av=1.8,
             topo_key=t_name,
             topo_enum=t_enum,
@@ -475,7 +492,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
 
         # 2. Flat / Insensitive
         res_flat = _execute_run(
-            n=10,
+            n=12,
             k_av=1.4,
             topo_key=t_name,
             topo_enum=t_enum,
@@ -488,7 +505,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
 
         # 3. Oscillating / Non-steady
         res_osc = _execute_run(
-            n=8,
+            n=12,
             k_av=2.4,
             topo_key=t_name,
             topo_enum=t_enum,
@@ -514,6 +531,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
         signed_ppv_mean = round(float(np.mean([x["signed_ppv"] for x in m_list])), 1)
         fdr_mean = round(float(np.mean([x["fdr"] for x in m_list])), 1)
         err_mean = round(float(np.mean([x["total_errors"] for x in m_list])), 1)
+        time_mean = round(float(np.mean([x.get("runtime", 0.001) for x in m_list])), 4)
 
         leaderboard.append({
             "algorithm_key": alg,
@@ -528,6 +546,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             "mean_signed_ppv_pct": signed_ppv_mean,
             "mean_fdr_pct": fdr_mean,
             "mean_total_errors": err_mean,
+            "mean_runtime_seconds": time_mean,
         })
 
     # Sort leaderboard by F1 score descending (with lowest total errors as tie-breaker)
@@ -615,6 +634,13 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
         "size_sweep": {
             "sizes": size_values,
             "algorithms": size_sweep_data,
+        },
+        "runtime_sweep": {
+            "sizes": size_values,
+            "algorithms": {
+                alg: size_sweep_data[alg]["runtime"]
+                for alg in all_algorithms
+            },
         },
         "connectivity_sweep": {
             "k_values": k_values,
