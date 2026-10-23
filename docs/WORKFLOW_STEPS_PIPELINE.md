@@ -326,25 +326,36 @@ UI Mapping:
 
 ### 5.1 Systematic Parameter Sweep Multi-Axis Benchmark (Tab 5: Overall Statistics)
 Systematic parameter sweeps across 4 continuous and structural axes evaluate algorithm scalability and limits:
-1. **Network Size Axis ($N \in [5, 30]$)**: Power (Recall) and False Discovery Rate (FDR) scaling under identical edge density $k_{\text{av}} = 2.0$.
-2. **Network Topology Axis**: Random Erdős-Rényi, Scale-Free / Power-Law (Barabási-Albert), and Hierarchical Modular (Ravasz-Barabási) comparison.
-3. **Connectivity Axis ($k_{\text{av}} \in [1.0, 4.0]$)**: Evaluates high regulator density and combinatorial regression challenges.
-4. **Measurement Noise Axis ($\sigma_m \in [0.0, 0.25]$)**: Assesses noise degradation from pristine in silico conditions to noisy microarray/scRNA-seq.
+1. **Network Size Axis ($N \in [6, 16]$)**: Power (Recall) and False Discovery Rate (FDR) scaling under identical edge density $k_{\text{av}} = 2.0$.
+2. **Network Topology Axis**: Random Erdős-Rényi, Scale-Free / Power-Law (Barabási-Albert), and Hierarchical Modular (Ravasz-Barabási) comparison across all 12 algorithms.
+3. **Connectivity Axis ($k_{\text{av}} \in [1.0, 3.5]$)**: Evaluates high regulator density and combinatorial regression challenges.
+4. **Measurement Noise Axis ($\sigma_m \in [0.0, 0.20]$)**: Assesses noise degradation from pristine in silico conditions to noisy microarray/scRNA-seq.
 
-#### Leaderboard Results Across 1,237 Algorithmic Evaluations:
-| Rank | Algorithm | Method Type | Mean $F_1$ | Power (%) | Specificity (%) | FDR (%) | Total Errors |
-|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|
-| **#1** | **Voting Ensemble** | Consensus ($S2G \cap G2S$) | **0.438** | 36.5% | **95.3%** | **41.0%** | **20.8** |
-| **#2** | **Simple-to-General (S2G)** | Forward Stepwise AIC | 0.427 | **56.8%** | 81.1% | 64.1% | 36.9 |
-| **#3** | **General-to-Specific (G2S)** | Backward Stepwise AIC | 0.421 | 46.3% | 87.9% | 60.8% | 29.3 |
-| **#4** | **NIR** | Multiple Linear Regression | 0.367 | 40.0% | 86.6% | 66.0% | 33.2 |
-| **#5** | **FAST** | SVD Truncation Inversion | 0.295 | 32.4% | 85.0% | 72.8% | 37.0 |
-| **#6** | **RidgeCV** | Multi-Output L2 Regularized | 0.290 | 64.2% | 52.8% | 80.6% | 82.2 |
-| **#7** | **By-Chance** | Null Bernoulli Random Model | 0.155 | 17.0% | 83.3% | 85.5% | 44.9 |
+#### Leaderboard Results Across All 12 Algorithms (720 Algorithmic Evaluations across 60 Networks):
+| Rank | Algorithm | Method Type | Mean $F_1$ | Power (%) | Specificity (%) | FDR (%) | Total Errors | Benchmark Standing |
+|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---|
+| **#1** | **AtlasShift (Empirical)** | Cross-Atlas Latent Transfer | **0.594** | **67.1%** | 85.7% | **41.4%** | 19.1 | `#1 Overall Winner` |
+| **#2** | **Simple-to-General (S2G)** | Forward Stepwise AIC | **0.446** | 58.6% | 76.9% | 61.5% | 29.8 | `#2 Top Mechanistic` |
+| **#3** | **Voting Ensemble** | Consensus ($S2G \cap G2S$) | **0.441** | 37.0% | **94.1%** | 41.5% | **16.9** | `#3 Consensus Ensemble` |
+| **#4** | **General-to-Specific (G2S)** | Backward Stepwise AIC | 0.418 | 46.1% | 85.4% | 61.0% | 23.4 | `#4 Top Tier` |
+| **#5** | **NIR (Multiple Regression)** | Linear Matrix Inversion | 0.394 | 43.2% | 84.0% | 63.6% | 25.0 | `#5 Top Tier` |
+| **#6** | **Multi-Output RidgeCV** | L2 Regularized Inverse | 0.315 | 64.4% | 48.6% | 78.1% | 57.1 | `#6 Contender` |
+| **#7** | **CellBox Neural ODE** | Adjoint Gradient Optimizer | 0.301 | 47.2% | 65.9% | 77.1% | 45.7 | `#7 Contender` |
+| **#8** | **Network Deconvolution** | Direct-Indirect Eigen Filtering | 0.297 | 73.5% | 35.3% | 81.1% | 70.9 | `#8 Contender` |
+| **#9** | **FAST (SVD Inversion)** | SVD Truncation | 0.294 | 32.4% | 82.1% | 72.9% | 29.1 | `#9 Contender` |
+| **#10** | **GENIE3** | Random Forest Tree Importance | 0.294 | 81.2% | 25.3% | 81.8% | 78.8 | `#10 Contender` |
+| **#11** | **CPA-Lite Autoencoder** | Latent Perturbation AE | 0.278 | 78.8% | 21.5% | 82.9% | 88.2 | `#11 Contender` |
+| **#12** | **By-Chance (Random)** | Null Bernoulli Model | 0.205 | 22.7% | 80.0% | 81.2% | 34.4 | `#12 Null Baseline` |
+
+#### Graph Architecture Cross-Comparison:
+- **🎲 Random Graph (Erdős-Rényi)** (20 runs): Mean $F_1 = 0.363$, Power $= 55.2\%$, Specificity $= 64.2\%$, FDR $= 68.4\%$. Top performer: **AtlasShift (Empirical)** ($F_1 = 0.563$), followed by **NIR** ($F_1 = 0.457$) and **Voting** ($F_1 = 0.445$).
+- **⭐ Scale-Free (Barabási-Albert)** (20 runs): Mean $F_1 = 0.360$, Power $= 54.3\%$, Specificity $= 66.1\%$, FDR $= 68.2\%$. Top performer: **AtlasShift (Empirical)** ($F_1 = 0.621$), followed by **S2G** ($F_1 = 0.496$) and **Voting** ($F_1 = 0.483$).
+- **🏛️ Hierarchical Modular (Ravasz-Barabási)** (20 runs): Mean $F_1 = 0.346$, Power $= 53.7\%$, Specificity $= 65.8\%$, FDR $= 69.4\%$. Top performer: **AtlasShift (Empirical)** ($F_1 = 0.599$), followed by **S2G** ($F_1 = 0.446$) and **Voting** ($F_1 = 0.397$).
 
 - **Historical Reference Switcher**: Instant toggle displays the authentic 2004 MATLAB `.mat` figures gallery (Figures 4.1–4.12, 4-gene kinetic parameters, and $N \in [10..70]$ inspect bar) as is for historical comparison.
 
 ### 5.2 Curated Best-15 Archive View (Tab 3: Previous Simulations)
 - **Top 15 Restriction**: Restricts archive views strictly to the top 15 highest-performing runs within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), sorted by $F_1$ re-engineering accuracy and lowest total errors.
 - **Dynamic Rank Indicators**: Shows `#1 in Set` through `#15 in Set` with dedicated rank badges and explicit $F_1$ score column.
-- **Curated Corpus**: Default "All" view displays 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) out of 131 persisted runs in SQLite `rgn_db`.
+- **Detailed Inspector Algorithm View**: Supports inspecting re-engineering performance across **all 12 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
+- **Curated Benchmark Corpus**: Default "All" view displays 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) out of 196 persisted runs in SQLite `rgn_db`.

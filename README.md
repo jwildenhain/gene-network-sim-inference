@@ -149,34 +149,45 @@ In Tab 3 (Previous Simulations Archive), Step 4 is split into **two side-by-side
 | :---: | :---: |
 | ![Side by Side Dual Graph](docs/screenshots/37_tab4_step4_dual_side_by_side_responsive.png) | ![Dual Oscillating](docs/screenshots/40_tab4_step4_dual_side_by_side_oscillating.png) |
 
-### 11. Systematic Parameter Sweep Benchmark, Overall Statistics & Restricted Archive View (Tabs 3 & 5)
+### 11. Complete 12-Algorithm Benchmark, Overall Statistics & Cross-Architecture Evaluation (Tabs 3 & 5)
 
-A multi-parameter sweep benchmark across 4 key axes (**Network Size $N \in [5..30]$**, **Topologies**, **Measurement Noise $\sigma_m \in [0.0..0.25]$**, and **Connectivity $k_{\text{av}} \in [1.0..4.0]$**) evaluates 7 comparative reverse-engineering algorithms across 1,237 evaluated algorithmic runs:
+A comprehensive systematic parameter sweep benchmark across 4 continuous and structural axes (**Network Size $N \in [6..16]$**, **Topologies**, **Measurement Noise $\sigma_m \in [0.0..0.20]$**, and **Connectivity $k_{\text{av}} \in [1.0..3.5]$**) evaluates **all 12 comparative reverse-engineering algorithms** across 720 evaluated algorithmic runs (60 networks):
 
 1. **Tab 5 Renamed to "5. Overall Statistics"**:
-   - **Interactive Algorithm Leaderboard**: Real-time cross-parameter evaluation of 7 inference methods (Voting Ensemble, S2G Forward AIC, G2S Backward AIC, NIR Multiple Regression, FAST SVD Inversion, RidgeCV L2 Inverse, and By-Chance Null Model).
+   - **Complete 12-Algorithm Leaderboard**: Real-time multi-metric cross-evaluation of all 12 inference methods in the repository (`AtlasShift`, `Simple-to-General (S2G)`, `Voting Ensemble`, `General-to-Specific (G2S)`, `NIR`, `Multi-Output RidgeCV`, `CellBox Neural ODE`, `Network Deconvolution`, `FAST SVD Inversion`, `GENIE3`, `CPA-Lite Autoencoder`, and `By-Chance Null Model`).
    - **Leaderboard Performance Summary**:
-     - **#1 Voting Ensemble**: Consensus ($S2G \cap G2S$) achieves top standing with Mean $F_1 = 0.438$, Specificity $= 95.3\%$, False Discovery Rate $= 41.0\%$, and lowest Mean Total Errors $= 20.8$.
-     - **#2 Simple-to-General (S2G)**: Highest single-method Power / Recall $= 56.8\%$ with Mean $F_1 = 0.427$.
-     - **#3 General-to-Specific (G2S)**: Backward elimination achieving Power $= 46.3\%$ and Specificity $= 87.9\%$.
-   - **Figure 1A & 1B: Network Size Scaling ($N \in [5, 30]$)**: True interaction recovery rate (Power %) and FDR suppression as network dimensionality scales.
-   - **Figure 2: Topology Impact (Random vs Scale-Free vs Hierarchical)**: Grouped comparison of Mean $F_1$, Power, and FDR across graph architectures.
-   - **Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 4.0]$)**: Performance degradation and error rates as regulator density escalates.
-   - **Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.25]$)**: Robustness evaluation across increasing experimental noise.
-   - **Dual Mode View Toggle**: One-click instant switcher between **"📊 Overall Statistics (New Parameter Sweep)"** (default) and **"📜 Historical Figures Gallery (Thesis & 2006 Paper)"** (preserved as is for historical reference from 2004 MATLAB `.mat` archives).
+     - **#1 AtlasShift (Empirical Latent Transfer)**: Top overall re-engineering accuracy with Mean $F_1 = 0.594$, Power / Recall $= 67.1\%$, Specificity $= 85.7\%$, and FDR $= 41.4\%$.
+     - **#2 Simple-to-General (S2G Forward AIC)**: Top mechanistic single method with Mean $F_1 = 0.446$, Power $= 58.6\%$, and Specificity $= 76.9\%$.
+     - **#3 Voting Ensemble**: Consensus ($S2G \cap G2S$) achieving top specificity ($94.1\%$), low FDR ($41.5\%$), and lowest total errors ($16.9$).
+     - **#4 General-to-Specific (G2S Backward AIC)**: Mean $F_1 = 0.418$, Power $= 46.1\%$, Specificity $= 85.4\%$.
+     - **#5 NIR (Multiple Regression)**: Mean $F_1 = 0.394$, Power $= 43.2\%$, Specificity $= 84.0\%$.
+   - **Graph Architecture Cross-Comparison Cards (`#overall-arch-cards-grid`)**:
+     - **🎲 Random Graph (Erdős-Rényi)** (20 runs): Poisson degree distribution. Mean $F_1 = 0.363$, Power $= 55.2\%$, Specificity $= 64.2\%$. Top performers: AtlasShift ($F_1 = 0.563$), NIR ($F_1 = 0.457$), Voting ($F_1 = 0.445$).
+     - **⭐ Scale-Free (Barabási-Albert)** (20 runs): Heavy-tailed hubs. Mean $F_1 = 0.360$, Power $= 54.3\%$, Specificity $= 66.1\%$. Top performers: AtlasShift ($F_1 = 0.621$), S2G ($F_1 = 0.496$), Voting ($F_1 = 0.483$).
+     - **🏛️ Hierarchical Modular (Ravasz-Barabási)** (20 runs): Dense clusters with sparse inter-module links. Mean $F_1 = 0.346$, Power $= 53.7\%$, Specificity $= 65.8\%$. Top performers: AtlasShift ($F_1 = 0.599$), S2G ($F_1 = 0.446$), Voting ($F_1 = 0.397$).
+   - **Figures 1A & 1B: Network Size Scaling ($N \in [6, 16]$)**: Power recovery and FDR suppression curves across 9 algorithms.
+   - **Figure 2: Topology Impact**: Grouped 4-metric comparison (Power, Specificity, $F_1 \times 100$, FDR) across Random, Scale-Free, and Hierarchical Modular architectures.
+   - **Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 3.5]$)**: Performance degradation as regulator density escalates.
+   - **Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.20]$)**: Robustness evaluation across increasing experimental noise.
+   - **Dual Mode View Toggle**: One-click switcher between **"📊 Overall Statistics (New Parameter Sweep)"** and **"📜 Historical Figures Gallery (Thesis & 2006 Paper)"** (preserved from 2004 MATLAB `.mat` archives).
 
 2. **Tab 3 Previous Simulations Archive: Restricted View to Best 15 for Each Set**:
-   - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs for each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best).
+   - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best).
    - **Dynamic Rank Badges & F1 Column**: Each row is badged with its exact ranking within its set (`#1 in Responsive` .. `#15 in Responsive`), its calculated $F_1$ score, Power %, Specificity %, and Total Errors.
-   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) are displayed out of the 131 persisted runs in SQLite `rgn_db`.
+   - **12-Algorithm Detailed Inspector**: Supports inspecting re-engineering performance across **all 12 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
+   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) are displayed out of the 196 persisted runs in SQLite `rgn_db`.
 
-| Tab 5: Overall Statistics (Leaderboard & Figures 1–4) | Tab 5: Historical 2004 Figures Gallery Toggle |
+| Tab 5: Complete 12-Algorithm Leaderboard | Tab 5: Architecture Cross-Comparison (Random, Scale-Free, Hierarchical) |
 | :---: | :---: |
-| ![Tab 5 Overall Statistics](docs/screenshots/47_tab5_overall_statistics_sweep.png) | ![Tab 5 Historical Gallery](docs/screenshots/48_tab5_historical_gallery_toggle.png) |
+| ![Tab 5 Overall Statistics](docs/screenshots/47_tab5_overall_statistics_sweep.png) | ![Tab 5 Architecture Cards & Figures](docs/screenshots/51_tab5_architecture_cards_and_figures.png) |
 
-| Tab 3: Restricted View (Best 15 in Set & F1 Badges) | Tab 3: Step 4 Dual Side-by-Side & 3×3 Grid Inspector |
+| Tab 5: Figures 2, 3 & 4 (Topology, Connectivity, Noise) | Tab 5: Historical 2004 Figures Gallery Toggle |
 | :---: | :---: |
-| ![Tab 3 Best 15 Restricted View](docs/screenshots/49_tab3_best15_restricted_view.png) | ![Tab 3 Detailed Inspector](docs/screenshots/50_tab3_step4_dual_and_inspector.png) |
+| ![Tab 5 Figures 2, 3, 4](docs/screenshots/52_tab5_figures_2_3_4.png) | ![Tab 5 Historical Gallery](docs/screenshots/48_tab5_historical_gallery_toggle.png) |
+
+| Tab 3: Restricted View (Best 15 in Set & F1 Badges) | Tab 3: Detailed Inspector with 12-Algorithm Selector |
+| :---: | :---: |
+| ![Tab 3 Best 15 Restricted View](docs/screenshots/49_tab3_best15_restricted_view.png) | ![Tab 3 Detailed Inspector](docs/screenshots/53_tab3_detail_inspector_algorithm_view.png) |
 
 ---
 

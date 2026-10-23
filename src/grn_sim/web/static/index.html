@@ -1780,28 +1780,28 @@
         <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:12px;margin-bottom:16px;">
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Total Evaluated Networks</div>
-            <div style="font-size:24px;font-weight:700;color:var(--accent-blue);margin-top:4px;" id="kpi-overall-total-runs">131</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Across 4 parameter axes in SQLite</div>
+            <div style="font-size:24px;font-weight:700;color:var(--accent-blue);margin-top:4px;" id="kpi-overall-total-runs">60</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Across 3 architectures &amp; 4 parameter axes</div>
           </div>
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Algorithmic Evaluations</div>
-            <div style="font-size:24px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-alg-evals">1,237</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">7 comparative re-engineering methods</div>
+            <div style="font-size:24px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-alg-evals">720</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">12 comparative re-engineering methods</div>
           </div>
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Top Overall Performer</div>
-            <div style="font-size:20px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-top-alg">Voting Ensemble</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Rank #1: F1=0.438 &bull; Spec=95.3% &bull; FDR=41.0%</div>
+            <div style="font-size:20px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-top-alg">AtlasShift (Empirical)</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Rank #1: F1=0.594 &bull; Power=67.1% &bull; FDR=41.4%</div>
           </div>
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
-            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Best Single Method</div>
-            <div style="font-size:20px;font-weight:700;color:var(--accent-cyan, #06b6d4);margin-top:4px;" id="kpi-overall-best-single">S2G (Forward AIC)</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Rank #2: Power=56.8% &bull; F1=0.427</div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Top Mechanistic Method</div>
+            <div style="font-size:20px;font-weight:700;color:var(--accent-cyan, #06b6d4);margin-top:4px;" id="kpi-overall-best-single">Simple-to-General (S2G)</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Rank #2: F1=0.446 &bull; Power=58.6% &bull; Spec=76.9%</div>
           </div>
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
-            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Systematic Axes Swept</div>
-            <div style="font-size:20px;font-weight:700;color:var(--accent-purple, #8b5cf6);margin-top:4px;">4 Major Axes</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Size (5..30), Topo (3), k_av (1..4), Noise (0..0.25)</div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Consensus Ensemble</div>
+            <div style="font-size:20px;font-weight:700;color:var(--accent-purple, #8b5cf6);margin-top:4px;" id="kpi-overall-ensemble-kpi">Voting Ensemble</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Rank #3: Spec=94.1% &bull; FDR=41.5% &bull; Min Errors=16.9</div>
           </div>
         </div>
 
@@ -1810,11 +1810,11 @@
           <div class="panel-header">
             <div>
               <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:8px;">
-                🏆 Systematic Benchmark Algorithm Leaderboard
-                <span class="badge badge-emerald">Multi-Parameter Cross-Evaluation</span>
+                🏆 Systematic Benchmark Algorithm Leaderboard (12 Algorithms Evaluated)
+                <span class="badge badge-emerald">Complete Cross-Architecture Evaluation</span>
               </div>
               <div style="font-size:11.5px;color:var(--text-muted);">
-                Averaged across all systematic parameter sweep configurations (Network sizes N ∈ [5..30], Topologies, Connectivity, Noise levels).
+                Averaged across all systematic parameter configurations (Random, Scale-Free, Hierarchical Modular topologies &bull; Size N ∈ [6..16] &bull; Connectivity &bull; Noise).
               </div>
             </div>
             <button class="btn btn-secondary btn-sm" onclick="loadOverallStats(true)">↻ Re-Fetch Stats</button>
@@ -1839,6 +1839,25 @@
               </thead>
               <tbody></tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Graph Architecture Cross-Comparison Section (Random vs Scale-Free vs Hierarchical) -->
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:8px;">
+                🌐 Graph Architecture Cross-Comparison (Random &bull; Scale-Free &bull; Hierarchical Modular)
+                <span class="badge badge-emerald">Complete Cross-Topology Sweep</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-muted);">
+                Systematic benchmark evaluated across Random Erdős-Rényi, Scale-Free Barabási-Albert, and Hierarchical Modular Ravasz-Barabási topologies across all 12 algorithms.
+              </div>
+            </div>
+            <span class="badge" id="badge-overall-arch-count">3 Architectures &bull; 12 Algorithms</span>
+          </div>
+          <div id="overall-arch-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));gap:12px;padding:4px 0;">
+            <!-- Populated dynamically by renderOverallStats() -->
           </div>
         </div>
 
@@ -2192,12 +2211,18 @@
           <div style="display:flex;gap:8px;align-items:center;">
             <span style="font-size:11.5px;color:var(--text-muted);">Algorithm View:</span>
             <select id="hist-detail-alg" style="width:auto;font-weight:700;padding:4px 8px;font-size:12px;" onchange="renderArchiveDetailAlg(this.value)">
-              <option value="s2g">S2G (Forward)</option>
-              <option value="g2s">G2S (Backward)</option>
               <option value="vote">Voting Ensemble</option>
-              <option value="nir">NIR</option>
-              <option value="fast">FAST (SVD)</option>
-              <option value="by_chance">By-Chance</option>
+              <option value="s2g">S2G (Forward AIC)</option>
+              <option value="g2s">G2S (Backward AIC)</option>
+              <option value="atlasshift">AtlasShift (Empirical)</option>
+              <option value="genie3">GENIE3 (Tree Forest)</option>
+              <option value="nir">NIR (Multiple Regression)</option>
+              <option value="netdeconv">Network Deconvolution</option>
+              <option value="fast">FAST (SVD Truncation)</option>
+              <option value="cellbox">CellBox (Neural ODE)</option>
+              <option value="ridge">RidgeCV (L2 Inverse)</option>
+              <option value="cpa_lite">CPA-Lite Autoencoder</option>
+              <option value="by_chance">By-Chance (Null Model)</option>
             </select>
             <button class="btn btn-primary btn-sm" style="width:auto;padding:6px 14px;" onclick="openArchiveRunInStudio()">
               Open Settings &amp; Edit in Studio (Tab 1) &rarr;
@@ -5410,34 +5435,37 @@
       }
 
       const topos = [
-        { key: 'random', label: 'Random Graph' },
-        { key: 'power_law', label: 'Scale-Free (Power-Law)' },
+        { key: 'random', label: 'Random Graph (ER)' },
+        { key: 'power_law', label: 'Scale-Free (BA)' },
         { key: 'hierarchical', label: 'Hierarchical Modular' }
       ];
 
-      const groupWidth = pw / topos.length;
-      const barWidth = groupWidth * 0.22;
       const metrics = [
-        { key: 'mean_power', label: 'Mean Power (Recall %)', color: '#10b981' },
-        { key: 'mean_f1', label: 'Mean F1 Score (×100)', color: '#0284c7', mult: 100 },
-        { key: 'mean_fdr', label: 'Mean FDR (%)', color: '#f59e0b' }
+        { key: 'mean_power', label: 'Power (Recall %)', color: '#10b981' },
+        { key: 'mean_specificity', label: 'Specificity (%)', color: '#8b5cf6' },
+        { key: 'mean_f1', label: 'F1 Score (×100)', color: '#0284c7', mult: 100 },
+        { key: 'mean_fdr', label: 'FDR (%)', color: '#f59e0b' }
       ];
+
+      const groupWidth = pw / topos.length;
+      const barWidth = groupWidth * 0.18;
 
       // Draw legend
       let legX = pad.l;
       metrics.forEach(m => {
         ctx.fillStyle = m.color;
-        ctx.fillRect(legX, 10, 12, 10);
+        ctx.fillRect(legX, 10, 10, 10);
         ctx.fillStyle = tc.textMain;
         ctx.font = '10.5px Inter, sans-serif';
-        ctx.fillText(m.label, legX + 16, 19);
-        legX += ctx.measureText(m.label).width + 28;
+        ctx.fillText(m.label, legX + 14, 19);
+        legX += ctx.measureText(m.label).width + 20;
       });
 
       // Draw bars
       topos.forEach((t, tIdx) => {
         const sum = topoData.summary_by_topology[t.key] || {};
-        const gx = pad.l + tIdx * groupWidth + (groupWidth - barWidth * 3) / 2;
+        const totalBarsWidth = barWidth * metrics.length;
+        const gx = pad.l + tIdx * groupWidth + (groupWidth - totalBarsWidth) / 2;
 
         metrics.forEach((m, mIdx) => {
           let raw = sum[m.key] || 0;
@@ -5452,7 +5480,7 @@
 
           // Value label on bar
           ctx.fillStyle = tc.textMain;
-          ctx.font = 'bold 9.5px monospace';
+          ctx.font = 'bold 9px monospace';
           ctx.fillText(val.toFixed(1) + (m.mult ? '' : '%'), bx - 2, Math.max(pad.t + 10, by - 4));
         });
 
@@ -5470,9 +5498,9 @@
 
       // 1. Populate KPI elements
       const elTotalRuns = document.getElementById('kpi-overall-total-runs');
-      if (elTotalRuns) elTotalRuns.textContent = data.total_sweep_runs || 131;
+      if (elTotalRuns) elTotalRuns.textContent = data.total_sweep_runs || 60;
       const elAlgRuns = document.getElementById('kpi-overall-alg-evals');
-      if (elAlgRuns) elAlgRuns.textContent = '1,237';
+      if (elAlgRuns) elAlgRuns.textContent = (data.total_algorithmic_evaluations || 720).toLocaleString();
 
       const lb = data.algorithm_leaderboard || [];
       if (lb.length > 0) {
@@ -5482,7 +5510,142 @@
         if (elBestSingle && lb.length > 1) elBestSingle.textContent = lb[1].algorithm_name;
       }
 
-      // 2. Populate Leaderboard Table
+      // 2. Populate Architecture Cross-Comparison Cards (Random, Scale-Free, Hierarchical Modular)
+      const archGrid = document.getElementById('overall-arch-cards-grid');
+      if (archGrid && data.architecture_summary) {
+        archGrid.innerHTML = '';
+        const archMeta = {
+          random: {
+            title: 'Random Graph (Erdős-Rényi)',
+            icon: '🎲',
+            sub: 'Homogeneous Poisson degree distribution • Uncorrelated edge connections',
+            badgeClass: 'badge-blue'
+          },
+          power_law: {
+            title: 'Scale-Free (Barabási-Albert)',
+            icon: '⭐',
+            sub: 'Power-law degree P(k) ~ k⁻³ • Heavy-tailed master regulator hubs',
+            badgeClass: 'badge-emerald'
+          },
+          hierarchical: {
+            title: 'Hierarchical Modular (Ravasz-Barabási)',
+            icon: '🏛️',
+            sub: 'Nested modules • Dense sub-clustering with sparse inter-module bridges',
+            badgeClass: 'badge-purple'
+          }
+        };
+
+        const algDisplayNameMap = {
+          'atlasshift': 'AtlasShift',
+          's2g': 'S2G (Forward AIC)',
+          'vote': 'Voting Ensemble',
+          'g2s': 'G2S (Backward AIC)',
+          'nir': 'NIR (Multi-Reg)',
+          'ridge': 'RidgeCV (L2)',
+          'cellbox': 'CellBox Neural ODE',
+          'netdeconv': 'Net Deconvolution',
+          'fast': 'FAST (SVD)',
+          'genie3': 'GENIE3 (Forest)',
+          'cpa_lite': 'CPA-Lite Autoenc',
+          'by_chance': 'By-Chance'
+        };
+
+        const archKeys = ['random', 'power_law', 'hierarchical'];
+        archKeys.forEach(k => {
+          const arch = data.architecture_summary[k];
+          if (!arch) return;
+          const meta = archMeta[k] || { title: arch.label, icon: '🌐', sub: '', badgeClass: 'badge' };
+
+          // Rank algorithms in this architecture by F1 descending
+          const algEntries = Object.entries(arch.algorithms || {}).map(([algKey, m]) => ({
+            key: algKey,
+            name: algDisplayNameMap[algKey] || (algKey.toUpperCase()),
+            f1: m.mean_f1 || 0,
+            power: m.mean_power || 0,
+            spec: m.mean_specificity || 0,
+            fdr: m.mean_fdr || 0,
+            errors: m.mean_errors || 0
+          })).sort((a, b) => b.f1 - a.f1);
+
+          // Top 5 rows
+          const topRowsHtml = algEntries.slice(0, 5).map((a, idx) => `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:3px 4px;font-weight:700;color:${idx === 0 ? '#10b981' : (idx < 3 ? 'var(--accent-blue)' : 'var(--text-muted)')};">#${idx+1}</td>
+              <td style="padding:3px 4px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;" title="${a.name}">${a.name}</td>
+              <td style="padding:3px 4px;text-align:right;color:#10b981;font-weight:700;">${a.f1.toFixed(3)}</td>
+              <td style="padding:3px 4px;text-align:right;color:var(--text-primary);">${a.power.toFixed(1)}%</td>
+              <td style="padding:3px 4px;text-align:right;color:var(--text-muted);">${a.spec.toFixed(1)}%</td>
+              <td style="padding:3px 4px;text-align:right;color:${a.fdr < 50 ? '#10b981' : 'var(--accent-amber)'};">${a.fdr.toFixed(1)}%</td>
+            </tr>
+          `).join('');
+
+          const card = document.createElement('div');
+          card.className = 'kpi-card';
+          card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;';
+          card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+              <div>
+                <div style="font-size:13.5px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+                  ${meta.icon} ${meta.title}
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${meta.sub}</div>
+              </div>
+              <span class="badge ${meta.badgeClass}" style="white-space:nowrap;">${arch.runs_evaluated} Runs</span>
+            </div>
+
+            <!-- Aggregate Stats Grid -->
+            <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;background:var(--bg-panel);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;">
+              <div>
+                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:600;">Mean F1</div>
+                <div style="font-size:14px;font-weight:700;color:#10b981;">${arch.mean_f1.toFixed(3)}</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:600;">Power</div>
+                <div style="font-size:14px;font-weight:700;color:var(--accent-blue);">${arch.mean_power_pct.toFixed(1)}%</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:600;">Specificity</div>
+                <div style="font-size:14px;font-weight:700;color:var(--accent-purple);">${arch.mean_specificity_pct.toFixed(1)}%</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:600;">FDR</div>
+                <div style="font-size:14px;font-weight:700;color:${arch.mean_fdr_pct < 50 ? '#10b981' : 'var(--accent-amber)'};">${arch.mean_fdr_pct.toFixed(1)}%</div>
+              </div>
+            </div>
+
+            <!-- Best Performer Highlight -->
+            <div style="background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.25);border-radius:6px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:11.5px;color:var(--text-primary);">
+                🏆 <strong>Top:</strong> <span style="color:#10b981;font-weight:700;">${arch.best_algorithm_name}</span>
+              </div>
+              <span class="badge badge-emerald" style="font-weight:700;">F1=${arch.best_algorithm_f1.toFixed(3)}</span>
+            </div>
+
+            <!-- Mini Ranking Table -->
+            <div style="margin-top:2px;">
+              <div style="font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Top Performing Algorithms in Topology:</div>
+              <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);text-align:left;font-size:10px;">
+                    <th style="padding:2px 4px;">#</th>
+                    <th style="padding:2px 4px;">Algorithm</th>
+                    <th style="padding:2px 4px;text-align:right;">F1</th>
+                    <th style="padding:2px 4px;text-align:right;">Power</th>
+                    <th style="padding:2px 4px;text-align:right;">Spec</th>
+                    <th style="padding:2px 4px;text-align:right;">FDR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${topRowsHtml}
+                </tbody>
+              </table>
+            </div>
+          `;
+          archGrid.appendChild(card);
+        });
+      }
+
+      // 3. Populate Leaderboard Table
       const tbody = document.querySelector('#tbl-overall-leaderboard tbody');
       if (tbody) {
         tbody.innerHTML = '';
@@ -5490,13 +5653,15 @@
           const rank = idx + 1;
           let badgeHtml = '';
           if (rank === 1) {
-            badgeHtml = `<span class="badge badge-emerald" style="font-weight:700;">#1 Consensus Winner</span>`;
+            badgeHtml = `<span class="badge badge-emerald" style="font-weight:700;">#1 Overall Winner</span>`;
           } else if (rank === 2) {
-            badgeHtml = `<span class="badge badge-cyan" style="font-weight:600;">#2 Best Single Stepwise</span>`;
+            badgeHtml = `<span class="badge badge-cyan" style="font-weight:600;">#2 Top Mechanistic</span>`;
           } else if (rank === 3) {
-            badgeHtml = `<span class="badge" style="font-weight:600;">#3 Stepwise Backward</span>`;
-          } else if (rank === 7) {
-            badgeHtml = `<span class="badge badge-secondary">#7 Null Baseline</span>`;
+            badgeHtml = `<span class="badge badge-purple" style="font-weight:600;">#3 Consensus Ensemble</span>`;
+          } else if (rank <= 5) {
+            badgeHtml = `<span class="badge badge-blue">#${rank} Top Tier</span>`;
+          } else if (rank === 12) {
+            badgeHtml = `<span class="badge badge-secondary">#12 Null Baseline</span>`;
           } else {
             badgeHtml = `<span class="badge">#${rank} Contender</span>`;
           }
@@ -5521,26 +5686,30 @@
         makeTableSortable('tbl-overall-leaderboard');
       }
 
-      // 3. Render Canvas Charts
+      // 4. Render Canvas Charts (Figures 1A, 1B, 2, 3, 4)
       if (data.size_sweep) {
         const sw = data.size_sweep;
         const xLabels = (sw.sizes || []).map(n => `N=${n}`);
         const powerSeries = [
-          { label: 'Voting Ensemble', data: sw.algorithms?.vote?.power || [], color: '#10b981' },
+          { label: 'AtlasShift', data: sw.algorithms?.atlasshift?.power || [], color: '#10b981' },
           { label: 'S2G (Forward)', data: sw.algorithms?.s2g?.power || [], color: '#0284c7' },
+          { label: 'Voting', data: sw.algorithms?.vote?.power || [], color: '#16a34a', dash: [4, 2] },
           { label: 'G2S (Backward)', data: sw.algorithms?.g2s?.power || [], color: '#d97706' },
-          { label: 'NIR (Multi-Reg)', data: sw.algorithms?.nir?.power || [], color: '#8b5cf6' },
-          { label: 'FAST (SVD)', data: sw.algorithms?.fast?.power || [], color: '#ef4444', dash: [4, 3] },
+          { label: 'NIR', data: sw.algorithms?.nir?.power || [], color: '#8b5cf6' },
+          { label: 'CellBox ODE', data: sw.algorithms?.cellbox?.power || [], color: '#ec4899' },
           { label: 'RidgeCV', data: sw.algorithms?.ridge?.power || [], color: '#06b6d4' },
+          { label: 'FAST (SVD)', data: sw.algorithms?.fast?.power || [], color: '#ef4444', dash: [4, 3] },
           { label: 'By-Chance', data: sw.algorithms?.by_chance?.power || [], color: '#64748b', dash: [3, 3] },
         ];
         drawMultiLineChart('canvas-overall-size-power', xLabels, powerSeries, 'Power (%)', 0, 100);
 
         const fdrSeries = [
-          { label: 'Voting Consensus FDR', data: sw.algorithms?.vote?.fdr || [], color: '#10b981' },
+          { label: 'Voting FDR', data: sw.algorithms?.vote?.fdr || [], color: '#16a34a' },
+          { label: 'AtlasShift FDR', data: sw.algorithms?.atlasshift?.fdr || [], color: '#10b981' },
           { label: 'S2G FDR', data: sw.algorithms?.s2g?.fdr || [], color: '#0284c7' },
           { label: 'G2S FDR', data: sw.algorithms?.g2s?.fdr || [], color: '#d97706' },
           { label: 'NIR FDR', data: sw.algorithms?.nir?.fdr || [], color: '#8b5cf6' },
+          { label: 'CellBox FDR', data: sw.algorithms?.cellbox?.fdr || [], color: '#ec4899' },
           { label: 'FAST FDR', data: sw.algorithms?.fast?.fdr || [], color: '#ef4444', dash: [4, 3] },
           { label: 'By-Chance FDR', data: sw.algorithms?.by_chance?.fdr || [], color: '#64748b', dash: [3, 3] },
         ];
@@ -5555,11 +5724,13 @@
         const conn = data.connectivity_sweep;
         const xLabels = (conn.k_values || []).map(k => `k=${k}`);
         const connSeries = [
-          { label: 'Voting Power (%)', data: conn.algorithms?.vote?.power || [], color: '#10b981' },
-          { label: 'S2G Power (%)', data: conn.algorithms?.s2g?.power || [], color: '#0284c7' },
-          { label: 'G2S Power (%)', data: conn.algorithms?.g2s?.power || [], color: '#d97706' },
-          { label: 'NIR Power (%)', data: conn.algorithms?.nir?.power || [], color: '#8b5cf6' },
-          { label: 'Voting FDR (%)', data: conn.algorithms?.vote?.fdr || [], color: '#ec4899', dash: [4, 3] },
+          { label: 'AtlasShift Power', data: conn.algorithms?.atlasshift?.power || [], color: '#10b981' },
+          { label: 'S2G Power', data: conn.algorithms?.s2g?.power || [], color: '#0284c7' },
+          { label: 'Voting Power', data: conn.algorithms?.vote?.power || [], color: '#16a34a' },
+          { label: 'G2S Power', data: conn.algorithms?.g2s?.power || [], color: '#d97706' },
+          { label: 'NIR Power', data: conn.algorithms?.nir?.power || [], color: '#8b5cf6' },
+          { label: 'Voting FDR', data: conn.algorithms?.vote?.fdr || [], color: '#16a34a', dash: [4, 3] },
+          { label: 'S2G FDR', data: conn.algorithms?.s2g?.fdr || [], color: '#0284c7', dash: [4, 3] },
         ];
         drawMultiLineChart('canvas-overall-connectivity', xLabels, connSeries, 'Rate (%)', 0, 100);
       }
@@ -5568,10 +5739,12 @@
         const ns = data.noise_sweep;
         const xLabels = (ns.noise_levels || []).map(s => `σ=${s}`);
         const noiseSeries = [
-          { label: 'Voting F1 (×100)', data: (ns.algorithms?.vote?.f1 || []).map(v => v * 100), color: '#10b981' },
+          { label: 'AtlasShift F1 (×100)', data: (ns.algorithms?.atlasshift?.f1 || []).map(v => v * 100), color: '#10b981' },
+          { label: 'Voting F1 (×100)', data: (ns.algorithms?.vote?.f1 || []).map(v => v * 100), color: '#16a34a' },
           { label: 'S2G F1 (×100)', data: (ns.algorithms?.s2g?.f1 || []).map(v => v * 100), color: '#0284c7' },
           { label: 'G2S F1 (×100)', data: (ns.algorithms?.g2s?.f1 || []).map(v => v * 100), color: '#d97706' },
-          { label: 'Voting FDR (%)', data: ns.algorithms?.vote?.fdr || [], color: '#10b981', dash: [4, 3] },
+          { label: 'NIR F1 (×100)', data: (ns.algorithms?.nir?.f1 || []).map(v => v * 100), color: '#8b5cf6' },
+          { label: 'Voting FDR (%)', data: ns.algorithms?.vote?.fdr || [], color: '#16a34a', dash: [4, 3] },
           { label: 'S2G FDR (%)', data: ns.algorithms?.s2g?.fdr || [], color: '#0284c7', dash: [4, 3] },
           { label: 'FAST FDR (%)', data: ns.algorithms?.fast?.fdr || [], color: '#ef4444', dash: [3, 2] },
         ];
@@ -5672,7 +5845,8 @@
       const tc = getThemeColors();
       ctx.fillStyle = tc.stageBg;
       ctx.fillRect(0, 0, W, H);
-      const pad = { l: 46, r: 20, t: 30, b: 32 };
+      const padTop = seriesList.length > 5 ? 42 : 28;
+      const pad = { l: 46, r: 20, t: padTop, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
 
@@ -5697,10 +5871,11 @@
         ctx.fillText(String(xl), x - 10, H - 10);
       });
 
-      seriesList.forEach((s, sIdx) => {
+      seriesList.forEach((s) => {
+        if (!s.data || !s.data.length) return;
         ctx.strokeStyle = s.color;
         ctx.fillStyle = s.color;
-        ctx.lineWidth = 2.3;
+        ctx.lineWidth = 2.2;
         if (s.dash) ctx.setLineDash(s.dash);
         else ctx.setLineDash([]);
 
@@ -5721,18 +5896,29 @@
           ctx.arc(x, y, 3.2, 0, Math.PI * 2);
           ctx.fill();
         });
-
       });
 
       let legendX = pad.l;
+      let legendY = 11;
+      ctx.font = '10px Inter, sans-serif';
       seriesList.forEach((s) => {
+        const labelText = s.label;
+        const textWidth = ctx.measureText(labelText).width;
+        const itemWidth = textWidth + 22;
+        if (legendX + itemWidth > W - pad.r && legendX > pad.l) {
+          legendX = pad.l;
+          legendY += 13;
+        }
         ctx.fillStyle = s.color;
-        ctx.fillRect(legendX, 8, 12, 4);
+        ctx.fillRect(legendX, legendY - 5, 10, 4);
+        if (s.dash) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(legendX, legendY - 5, 10, 4);
+        }
         ctx.fillStyle = tc.textMain;
-        ctx.font = '10.5px Inter, sans-serif';
-        ctx.fillText(s.label, legendX + 16, 13);
-        const textWidth = ctx.measureText(s.label).width;
-        legendX += textWidth + 24;
+        ctx.fillText(labelText, legendX + 14, legendY);
+        legendX += itemWidth;
       });
     }
 
