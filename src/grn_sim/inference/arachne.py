@@ -3,9 +3,7 @@ ARACNE: Algorithm for the Reconstruction of Accurate Cellular Networks.
 Based on Margolin et al. (Nature Protocols 2006, "ARACNE: An Algorithm for the
 Reconstruction of Gene Regulatory Networks in a Mammalian Cellular Context") and
 Basso et al. (Nature Genetics 2005).
-
-Uses information-theoretic Mutual Information (MI) with the Data Processing Inequality (DPI)
-to eliminate indirect transitive correlations from regulatory networks.
+Enhanced with Ledoit-Wolf covariance shrinkage and interventional asymmetry compensation.
 """
 
 import time
@@ -13,13 +11,14 @@ from typing import Dict, Any, Optional
 import numpy as np
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.preprocessor import default_preprocessor
 
 
 class AracneAlgorithm(BaseInferenceAlgorithm):
     """
     ARACNE: Mutual Information with Data Processing Inequality (DPI) pruning.
     
-    1. Computes pairwise Mutual Information matrix I(X_i, X_j) using Gaussian copula estimator.
+    1. Computes pairwise Mutual Information matrix I(X_i, X_j) using regularized Gaussian copula.
     2. Filters insignificant edges below an adaptive or specified MI threshold.
     3. Applies Data Processing Inequality (DPI) on every triplet (i, j, k):
        If I(i, j) < (1 - eps) * min(I(i, k), I(j, k)), edge (i, j) is removed as an indirect cascade.
@@ -29,16 +28,18 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
 
     def __init__(
         self,
-        eps: float = 0.15,
+        eps: float = 0.10,
         mi_threshold: Optional[float] = None,
         k_interactions: Optional[int] = None,
         perturbation_mode: str = "additive",
+        use_data_prep: bool = True,
     ):
         super().__init__(name="arachne")
         self.eps = eps
         self.mi_threshold = mi_threshold
         self.k_interactions = k_interactions
         self.perturbation_mode = perturbation_mode
+        self.use_data_prep = use_data_prep
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
@@ -46,19 +47,31 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
         U_mat = np.real(U).astype(float)
         N, M = X_mat.shape
 
+        use_prep = kwargs.get("use_data_prep", self.use_data_prep)
         eps = float(kwargs.get("eps", self.eps))
         K = kwargs.get("k", self.k_interactions)
         if K is not None:
             K = max(1, min(int(K), N - 1))
 
-        # 1. Compute pairwise Pearson correlation matrix
-        corr = np.corrcoef(X_mat)
-        np.nan_to_num(corr, copy=False, nan=0.0)
-        np.fill_diagonal(corr, 1.0)
+        if use_prep:
+            # 1. Data Preparation: Baseline shift Delta X & shrunk covariance
+            prep = default_preprocessor.prepare(X_mat, U_mat, **kwargs)
+            corr = prep.corr_shrunk
+            S_dir = prep.sensitivity_mat
+        else:
+            # Raw sample correlation
+            corr = np.corrcoef(X_mat)
+            np.nan_to_num(corr, copy=False, nan=0.0)
+            np.fill_diagonal(corr, 1.0)
+            try:
+                pinv_U = np.linalg.pinv(U_mat) if np.any(U_mat) else np.eye(M)
+                S_dir = -X_mat @ pinv_U.T[:N, :N] if pinv_U.shape[0] >= N else -X_mat @ np.eye(N)
+            except Exception:
+                S_dir = -X_mat[:, :N] if M >= N else np.zeros((N, N))
 
         # 2. Estimate Mutual Information matrix using Gaussian copula estimator:
         # I(X_i; X_j) = -0.5 * ln(1 - r_ij^2)
-        r_sq = np.clip(corr ** 2, 0.0, 0.999999)
+        r_sq = np.clip(corr ** 2, 0.0, 0.999)
         MI = -0.5 * np.log(1.0 - r_sq)
         np.fill_diagonal(MI, 0.0)
 
@@ -66,10 +79,9 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
         if self.mi_threshold is not None:
             thresh = float(self.mi_threshold)
         else:
-            # Adaptive threshold: mean MI + 0.35 * std MI
             upper_vals = MI[np.triu_indices(N, k=1)]
             if len(upper_vals) > 0 and np.std(upper_vals) > 1e-6:
-                thresh = float(np.mean(upper_vals) + 0.25 * np.std(upper_vals))
+                thresh = float(np.mean(upper_vals) + 0.15 * np.std(upper_vals))
             else:
                 thresh = 0.05
 
@@ -96,13 +108,6 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
                             break
 
         # 5. Direct Causal Orientation using Perturbation Response Asymmetry
-        # S = -X @ pinv(U) captures directed perturbation sensitivity
-        try:
-            pinv_U = np.linalg.pinv(U_mat) if np.any(U_mat) else np.eye(M)
-            S_dir = -X_mat @ pinv_U.T[:N, :N] if pinv_U.shape[0] >= N else -X_mat @ np.eye(N)
-        except Exception:
-            S_dir = -X_mat[:, :N] if M >= N else np.zeros((N, N))
-
         A_est = np.zeros((N, N), dtype=float)
         adj_pred = np.zeros((N, N), dtype=int)
 
@@ -111,9 +116,10 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
                 if i == j:
                     continue
                 if DPI_pruned[i, j] > 0:
-                    # Directional weight: if perturbation in j affects i
                     asym = abs(S_dir[i, j])
-                    sign_val = np.sign(corr[i, j]) if abs(corr[i, j]) > 1e-4 else 1.0
+                    sign_val = np.sign(S_dir[i, j]) if abs(S_dir[i, j]) > 1e-4 else np.sign(corr[i, j])
+                    if sign_val == 0:
+                        sign_val = 1.0
                     weight = DPI_pruned[i, j] * (1.0 + asym)
                     A_est[i, j] = sign_val * weight
 
@@ -123,12 +129,12 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
             if K is not None:
                 top_indices = np.argsort(scores)[::-1][:K]
                 for j in top_indices:
-                    if scores[j] > 1e-5:
+                    if scores[j] > 1e-4:
                         adj_pred[i, j] = int(np.sign(A_est[i, j]))
             else:
                 row_thresh = np.mean(scores[scores > 0]) * 0.7 if np.any(scores > 0) else 0.0
                 for j in range(N):
-                    if scores[j] > row_thresh and scores[j] > 1e-5:
+                    if scores[j] > row_thresh and scores[j] > 1e-4:
                         adj_pred[i, j] = int(np.sign(A_est[i, j]))
 
         time_elapsed = time.time() - start_time
@@ -141,5 +147,6 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
                 "eps": eps,
                 "mi_threshold": thresh,
                 "total_reconstructed_edges": int(np.sum(adj_pred != 0)),
+                "use_data_prep": use_prep,
             },
         )

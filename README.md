@@ -163,23 +163,23 @@ A comprehensive systematic parameter sweep benchmark across 4 continuous and str
      - **#3 Voting Ensemble**: Consensus ($S2G \cap G2S$) achieving top specificity ($94.1\%$), low FDR ($41.5\%$), and lowest total errors ($16.9$).
      - **#4 General-to-Specific (G2S Backward AIC)**: Mean $F_1 = 0.418$, Power $= 46.1\%$, Specificity $= 85.4\%$.
      - **#5 NIR (Multiple Regression)**: Mean $F_1 = 0.394$, Power $= 43.2\%$, Specificity $= 84.0\%$.
-     - **#6 Multi-Output RidgeCV**: Mean $F_1 = 0.315$, Power $= 64.4\%$, Specificity $= 48.6\%$.
-     - **#7 CellBox Neural ODE**: Mean $F_1 = 0.297$, Power $= 46.2\%$, Specificity $= 66.6\%$.
-     - **#8 Network Deconvolution**: Mean $F_1 = 0.297$, Power $= 73.5\%$, Specificity $= 35.3\%$.
-     - **#9 FAST (SVD Inversion)**: Mean $F_1 = 0.294$, Power $= 32.4\%$, Specificity $= 82.1\%$.
-     - **#10 GENIE3 (Tree Forest)**: Mean $F_1 = 0.294$, Power $= 81.2\%$, Specificity $= 25.3\%$.
-     - **#11 CPA-Lite Autoencoder**: Mean $F_1 = 0.275$, Power $= 78.9\%$, Specificity $= 21.4\%$.
-     - **#12 DeepRIG (Graph AE)**: Mean $F_1 = 0.227$, Power $= 25.0\%$, Specificity $= 80.6\%$.
-     - **#13 CausalGRN (Do-Calculus)**: Mean $F_1 = 0.217$, Power $= 23.8\%$, Specificity $= 80.3\%$.
-     - **#14 By-Chance (Null Model)**: Mean $F_1 = 0.205$, Power $= 22.7\%$, Specificity $= 80.0\%$.
-     - **#15 DMD-GRN (Koopman SVD)**: Mean $F_1 = 0.192$, Power $= 21.2\%$, Specificity $= 79.8\%$.
-     - **#16 ARACNE (Mutual Info + DPI)**: Mean $F_1 = 0.170$, Power $= 15.3\%$, Specificity $= 87.7\%$.
-     - **#17 SFINN (Shared Factor GCN)**: Mean $F_1 = 0.154$, Power $= 15.8\%$, Specificity $= 85.9\%$.
-     - **#18 NOTEARS (Continuous DAG)**: Mean $F_1 = 0.097$, Power $= 7.8\%$, **Highest Specificity** $= 95.4\%$, FDR $= 41.1\%$, Total Errors $= 21.1$.
+     - **#6 NOTEARS (Data-Prepped DAG)**: Mean $F_1 = 0.393$, Power $= 36.0\%$, Specificity $= 90.9\%$, FDR $= 49.1\%$, Total Errors $= 20.4$. (Major jump from $0.097$ via interventional equilibrium loss $\nabla_W F = W C - B$).
+     - **#7 DMD-GRN (Controlled DMDc)**: Mean $F_1 = 0.338$, Power $= 36.6\%$, Specificity $= 83.2\%$, FDR $= 68.4\%$, Total Errors $= 33.0$. (Jump from $0.192$ via Controlled DMD input-output inversion).
+     - **#8 Multi-Output RidgeCV**: Mean $F_1 = 0.315$, Power $= 64.4\%$, Specificity $= 48.6\%$.
+     - **#9 CellBox Neural ODE**: Mean $F_1 = 0.304$, Power $= 47.2\%$, Specificity $= 66.4\%$.
+     - **#10 Network Deconvolution**: Mean $F_1 = 0.297$, Power $= 73.5\%$, Specificity $= 35.3\%$.
+     - **#11 FAST (SVD Inversion)**: Mean $F_1 = 0.294$, Power $= 32.4\%$, Specificity $= 82.1\%$.
+     - **#12 GENIE3 (Tree Forest)**: Mean $F_1 = 0.294$, Power $= 81.2\%$, Specificity $= 25.3\%$.
+     - **#13 CPA-Lite Autoencoder**: Mean $F_1 = 0.282$, Power $= 80.5\%$, Specificity $= 21.1\%$.
+     - **#14 CausalGRN (Do-Calculus)**: Mean $F_1 = 0.235$, Power $= 26.1\%$, Specificity $= 80.7\%$.
+     - **#15 By-Chance (Null Model)**: Mean $F_1 = 0.205$, Power $= 22.7\%$, Specificity $= 80.0\%$.
+     - **#16 DeepRIG (Graph AE)**: Mean $F_1 = 0.204$, Power $= 22.7Line%$, Specificity $= 80.0\%$.
+     - **#17 ARACNE (Mutual Info + DPI)**: Mean $F_1 = 0.179$, Power $= 15.6\%$, Specificity $= 89.2\%$.
+     - **#18 SFINN (Shared Factor GCN)**: Mean $F_1 = 0.146$, Power $= 15.1\%$, Specificity $= 85.1\%$.
    - **Graph Architecture Cross-Comparison Cards (`#overall-arch-cards-grid`)**:
-     - **🎲 Random Graph (Erdős-Rényi)** (20 runs): Poisson degree distribution. Mean $F_1 = 0.308$, Power $= 43.4\%$, Specificity $= 71.2\%$. Top performers: AtlasShift ($F_1 = 0.563$), NIR ($F_1 = 0.457$), Voting ($F_1 = 0.445$).
-     - **⭐ Scale-Free (Barabási-Albert)** (20 runs): Heavy-tailed hubs. Mean $F_1 = 0.287$, Power $= 41.0\%$, Specificity $= 72.4\%$. Top performers: AtlasShift ($F_1 = 0.621$), S2G ($F_1 = 0.496$), Voting ($F_1 = 0.483$).
-     - **🏛️ Hierarchical Modular (Ravasz-Barabási)** (20 runs): Dense clusters with sparse inter-module links. Mean $F_1 = 0.293$, Power $= 42.4\%$, Specificity $= 72.2\%$. Top performers: AtlasShift ($F_1 = 0.599$), S2G ($F_1 = 0.446$), Voting ($F_1 = 0.397$).
+     - **🎲 Random Graph (Erdős-Rényi)** (20 runs): Poisson degree distribution. Mean $F_1 = 0.335$, Power $= 45.9\%$, Specificity $= 70.9\%$. Top performers: AtlasShift ($F_1 = 0.563$), NIR ($F_1 = 0.457$), Voting ($F_1 = 0.445$), G2S ($0.438$), NOTEARS ($0.422$), DMD-GRN ($0.398$).
+     - **⭐ Scale-Free (Barabási-Albert)** (20 runs): Heavy-tailed hubs. Mean $F_1 = 0.312$, Power $= 43.4\%$, Specificity $= 72.7\%$. Top performers: AtlasShift ($F_1 = 0.621$), S2G ($F_1 = 0.496$), Voting ($F_1 = 0.483$), G2S ($0.425$), NIR ($0.381$), NOTEARS ($0.366$).
+     - **🏛️ Hierarchical Modular (Ravasz-Barabási)** (20 runs): Dense clusters with sparse inter-module links. Mean $F_1 = 0.316$, Power $= 44.5\%$, Specificity $= 72.1\%$. Top performers: AtlasShift ($F_1 = 0.599$), S2G ($F_1 = 0.446$), Voting ($F_1 = 0.397$), G2S ($0.391$), NOTEARS ($0.390$), NIR ($0.344$).
    - **Figures 1A & 1B: Network Size Scaling ($N \in [6, 16]$)**: Power recovery and FDR suppression curves across algorithms.
    - **Figure 2: Topology Impact**: Grouped 4-metric comparison (Power, Specificity, $F_1 \times 100$, FDR) across Random, Scale-Free, and Hierarchical Modular architectures.
    - **Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 3.5]$)**: Performance degradation as regulator density escalates.

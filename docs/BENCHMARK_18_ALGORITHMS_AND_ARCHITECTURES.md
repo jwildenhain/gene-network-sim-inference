@@ -115,6 +115,25 @@ NOTEARS (*Zheng et al., NeurIPS 2018*) formulates the combinatorial acyclic grap
    $$\min_{\mathbf{W}} F(\mathbf{W}) = \frac{1}{2n} \|\mathbf{X} - \mathbf{X}\mathbf{W}\|_F^2 + \lambda_1 \|\mathbf{W}\|_1 + \frac{\rho}{2} |h(\mathbf{W})|^2 + \alpha h(\mathbf{W})$$
 3. **Iterative Outer Loop**: Dual ascent on multiplier $\alpha \leftarrow \alpha + \rho h(\mathbf{W})$ and penalty scaling $\rho \leftarrow \min(\rho \cdot \eta, \rho_{\max})$ while gradient norm clipping bounds the matrix exponential.
 
+### 3.7 Data Preparation & Domain Adaptation Layer (`GRNDataPreprocessor`)
+
+To address the fundamental domain mismatches between what published algorithms expect (e.g. thousands of observational single cells or continuous temporal time-series) and what perturbation screens provide ($N \times M$ steady-state perturbation matrices), `phpIoRN 2.0` introduces a dedicated **`GRNDataPreprocessor`** pipeline (`src/grn_sim/inference/preprocessor.py`):
+
+1. **Baseline Reference Shift Extraction ($\Delta X = X - x_0$)**:
+   Extracts pure perturbation response shifts by subtracting unperturbed steady-state baselines $x_0$ (or row medians), eliminating basal expression offsets that distort linear SEMs.
+2. **Interventional Equilibrium Gradient for NOTEARS**:
+   Transforms the passive auto-regressive loss into the exact interventional equilibrium objective:
+   $$\min_W \frac{1}{2M} \|(I - W) \Delta X + U\|_F^2 + \lambda_1 \|W\|_1 \implies \nabla_W F(W) = W C - B$$
+   where $C = \frac{1}{M}\Delta X \Delta X^T$ and $B = \frac{1}{M}(\Delta X + U)\Delta X^T$.
+3. **Controlled DMD (DMDc) for DMD-GRN**:
+   Replaces naive consecutive column slicing with the exact Controlled DMD pseudo-inverse operator:
+   $$A_{\text{dmd}} = - U W_r \Sigma_r^{-1} V_r^T$$
+   over truncated SVD modes of the perturbation response matrix $\Delta X$.
+4. **Covariance Shrinkage for ARACNE & CausalGRN**:
+   Applies Ledoit-Wolf spherical shrinkage $\hat{\Sigma}_{\text{shrunk}} = (1 - \lambda)\hat{\Sigma} + \lambda \frac{\text{Tr}(\hat{\Sigma})}{N} I$, stabilizing Gaussian copula Mutual Information and Precision Matrix inversion on small sample sizes ($M \le 16$).
+5. **Adaptive Dimension Bottlenecks for DeepRIG & SFINN**:
+   Dynamically compresses latent and hidden dimensions for small circuits ($N \le 16$) to prevent overparameterization and latent collapse.
+
 ---
 
 ## 4. Comprehensive Leaderboard (1,080 Evaluations across 60 Networks)
@@ -128,19 +147,19 @@ Results aggregated across all 60 synthetic sweep networks in SQLite database `rg
 | **#3** | **Voting Ensemble** | 60 | **0.441** | 37.0% | **94.1%** | 58.5% | 57.3% | 41.5% | **16.9** | `Consensus Winner` |
 | **#4** | **General-to-Specific (G2S)** | 60 | 0.418 | 46.1% | 85.4% | 39.0% | 36.9% | 61.0% | 23.4 | `Stepwise Backward` |
 | **#5** | **NIR (Multiple Regression)** | 60 | 0.394 | 43.2% | 84.0% | 36.4% | 33.8% | 63.6% | 25.0 | `Matrix Inverse Baseline` |
-| **#6** | **Multi-Output RidgeCV** | 60 | 0.315 | 64.4% | 48.6% | 21.9% | 18.3% | 78.1% | 57.1 | `L2 Ridge Baseline` |
-| **#7** | **CellBox Neural ODE** | 60 | 0.297 | 46.2% | 66.6% | 22.8% | 8.7% | 77.2% | 45.3 | `Deep Neural ODE` |
-| **#8** | **Network Deconvolution** | 60 | 0.297 | 73.5% | 35.3% | 18.9% | 13.1% | 81.1% | 70.9 | `Spectral Deconvolution` |
-| **#9** | **FAST (SVD Inversion)** | 60 | 0.294 | 32.4% | 82.1% | 27.1% | 24.1% | 72.9% | 29.1 | `SVD Regularized` |
-| **#10** | **GENIE3 (Tree Forest)** | 60 | 0.294 | 81.2% | 25.3% | 18.2% | 12.3% | 81.8% | 78.8 | `ML Tree Ensemble` |
-| **#11** | **CPA-Lite Autoencoder** | 60 | 0.275 | 78.9% | 21.4% | 17.0% | 9.0% | 83.0% | 88.5 | `Latent Autoencoder` |
-| **#12** | **DeepRIG (Graph AE)** | 60 | 0.227 | 25.0% | 80.6% | 20.9% | 12.7% | 79.1% | 33.0 | `Deep Graph AE` |
-| **#13** | **CausalGRN (Do-Calculus)** | 60 | 0.217 | 23.8% | 80.3% | 20.0% | 10.8% | 80.0% | 33.6 | `Causal Do-Calculus` |
-| **#14** | **By-Chance (Null Model)** | 60 | 0.205 | 22.7% | 80.0% | 18.8% | 9.2% | 81.2% | 34.4 | `Null Random Baseline` |
-| **#15** | **DMD-GRN (Koopman SVD)** | 60 | 0.192 | 21.2% | 79.8% | 17.6% | 5.4% | 82.4% | 35.3 | `Koopman Dynamics` |
-| **#16** | **ARACNE (Mutual Info)** | 60 | 0.170 | 15.3% | 87.7% | 20.6% | 14.3% | 79.4% | 27.4 | `Mutual Info & DPI` |
-| **#17** | **SFINN (Shared Factor)** | 60 | 0.154 | 15.8% | 85.9% | 16.0% | 10.1% | 77.4% | 29.9 | `Neighborhood GCN+FNN` |
-| **#18** | **NOTEARS (DAG Learning)** | 60 | 0.097 | 7.8% | **95.4%** | 15.6% | 12.3% | **41.1%** | 21.1 | `Continuous DAG Optimization` |
+| **#6** | **NOTEARS (Data-Prepped DAG)** | 60 | **0.393** | 36.0% | 90.9% | 36.0% | 31.9% | 49.1% | 20.4 | `Continuous DAG Optimization` |
+| **#7** | **DMD-GRN (Controlled DMDc)** | 60 | **0.338** | 36.6% | 83.2% | 26.2% | 15.1% | 68.4% | 33.0 | `Koopman Dynamics` |
+| **#8** | **Multi-Output RidgeCV** | 60 | 0.315 | 64.4% | 48.6% | 21.9% | 18.3% | 78.1% | 57.1 | `L2 Ridge Baseline` |
+| **#9** | **CellBox Neural ODE** | 60 | 0.304 | 47.2% | 66.4% | 23.2% | 8.8% | 76.8% | 45.1 | `Deep Neural ODE` |
+| **#10** | **Network Deconvolution** | 60 | 0.297 | 73.5% | 35.3% | 18.9% | 13.1% | 81.1% | 70.9 | `Spectral Deconvolution` |
+| **#11** | **FAST (SVD Inversion)** | 60 | 0.294 | 32.4% | 82.1% | 27.1% | 24.1% | 72.9% | 29.1 | `SVD Regularized` |
+| **#12** | **GENIE3 (Tree Forest)** | 60 | 0.294 | 81.2% | 25.3% | 18.2% | 12.3% | 81.8% | 78.8 | `ML Tree Ensemble` |
+| **#13** | **CPA-Lite Autoencoder** | 60 | 0.282 | 80.5% | 21.1% | 17.4% | 9.1% | 82.6% | 88.4 | `Latent Autoencoder` |
+| **#14** | **CausalGRN (Do-Calculus)** | 60 | 0.235 | 26.1% | 80.7% | 21.6% | 11.2% | 78.4% | 33.2 | `Causal Do-Calculus` |
+| **#15** | **By-Chance (Null Model)** | 60 | 0.205 | 22.7% | 80.0% | 18.8% | 9.2% | 81.2% | 34.4 | `Null Random Baseline` |
+| **#16** | **DeepRIG (Graph AE)** | 60 | 0.204 | 22.7% | 80.0% | 18.7% | 12.3% | 81.3% | 34.2 | `Deep Graph AE` |
+| **#17** | **ARACNE (Mutual Info + DPI)** | 60 | 0.179 | 15.6% | 89.2% | 22.2% | 15.4% | 77.8% | 26.5 | `Mutual Info & DPI` |
+| **#18** | **SFINN (Shared Factor GCN)** | 60 | 0.146 | 15.1% | 85.1% | 15.3% | 9.8% | 71.7% | 29.7 | `Neighborhood GCN+FNN` |
 
 ---
 
@@ -156,13 +175,20 @@ Results aggregated across all 60 synthetic sweep networks in SQLite database `rg
                              v                   v                   v
             ┌───────────────────┐ ┌────────────────────┐ ┌──────────────────────┐
             │   Random (ER)     │ │  Scale-Free (BA)   │ │ Hierarchical Modular │
-            │   Mean F1: 0.308  │ │  Mean F1: 0.287    │ │    Mean F1: 0.293    │
-            │   Power: 43.4%    │ │  Power: 41.0%      │ │    Power: 42.4%      │
-            │   Spec:  71.2%    │ │  Spec:  72.4%      │ │    Spec:  72.2%      │
-            │   FDR:   69.0%    │ │  FDR:   70.9%      │ │    FDR:   70.7%      │
+            │   Mean F1: 0.335  │ │  Mean F1: 0.312    │ │    Mean F1: 0.316    │
+            │   Power: 45.9%    │ │  Power: 43.4%      │ │    Power: 44.5%      │
+            │   Spec:  70.9%    │ │  Spec:  72.7%      │ │    Spec:  72.1%      │
+            │   FDR:   65.8%    │ │  FDR:   67.7%      │ │    FDR:   67.8%      │
             └───────────────────┘ └────────────────────┘ └──────────────────────┘
                      |                     |                        |
             Top: AtlasShift (0.563) Top: AtlasShift (0.621)  Top: AtlasShift (0.599)
+            #2: NIR (0.457)         #2: S2G (0.496)          #2: S2G (0.446)
+            #3: Voting (0.445)      #3: Voting (0.483)       #3: Voting (0.397)
+            #4: G2S (0.438)         #4: G2S (0.425)          #4: G2S (0.391)
+            #5: NOTEARS (0.422)     #5: NIR (0.381)          #5: NOTEARS (0.390)
+            #6: DMD-GRN (0.398)     #6: NOTEARS (0.366)      #6: NIR (0.344)
+            #7: S2G (0.395)         #7: DMD-GRN (0.314)      #7: RidgeCV (0.319)
+```
             #2: NIR (0.457)         #2: S2G (0.496)          #2: S2G (0.446)
             #3: Voting (0.445)      #3: Voting (0.483)       #3: Voting (0.397)
             #4: G2S (0.438)         #4: G2S (0.425)          #4: G2S (0.391)

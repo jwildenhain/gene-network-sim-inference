@@ -21,10 +21,14 @@ from grn_sim.inference.dmdgrn import DMDGRNAlgorithm
 from grn_sim.inference.deeprig import DeepRIGAlgorithm
 from grn_sim.inference.sfinn import SFINNAlgorithm
 from grn_sim.inference.notears import NOTEARSAlgorithm
+from grn_sim.inference.preprocessor import GRNDataPreprocessor, PreparedGRNData, default_preprocessor
 
 __all__ = [
     "BaseInferenceAlgorithm",
     "InferenceResult",
+    "GRNDataPreprocessor",
+    "PreparedGRNData",
+    "default_preprocessor",
     "SimpleToGeneral",
     "GeneralToSpecific",
     "NIRAlgorithm",
