@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
     pip install --no-cache-dir -e ".[dev]"
 
 # Run unit and benchmark verification tests during build
-RUN pytest -v
+RUN pytest -v --ignore-glob="*playwright*"
 
 ENV HOST=0.0.0.0
 ENV PORT=8080

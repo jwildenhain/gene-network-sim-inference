@@ -92,6 +92,17 @@ Rigorous end-to-end verification across real biological datasets (*E. coli* SOS,
 | :---: | :---: |
 | ![E. coli SOS Node Click Trajectory](docs/screenshots/playwright_real_dataset_node_click_trajectory.png) | ![Norman 2019 Real Node Trajectory](docs/screenshots/playwright_norman_real_node_trajectory.png) |
 
+### 7. Real-World Benchmarks Studio: Provenance Cards, Raw Downloads & Dual Loading Modes (Tab 2)
+Tab 2 integrates comprehensive real-world experimental benchmarks (*E. coli* SOS, Norman et al. 2019 CRISPRa 16-TF, DREAM4, Replogle et al. 2022 p53), multi-format raw dataset downloads, detailed experimental provenance cards, and dual-mode transfer into Tab 1:
+
+| Tab 2: Raw Data Download Menu | Tab 2: Norman 2019 Provenance Card | Tab 2: Replogle p53 Provenance Card |
+| :---: | :---: | :---: |
+| ![Raw Download Menu](docs/screenshots/17_tab2_raw_download_menu_open.png) | ![Norman 2019 Provenance Card](docs/screenshots/18_tab2_norman_real_provenance_card.png) | ![Replogle p53 Provenance Card](docs/screenshots/19_tab2_replogle_p53_provenance_card.png) |
+
+| Tab 1: Direct Empirical Wrangled Mode | Tab 1: Biophysical Parameter Estimation Mode |
+| :---: | :---: |
+| ![Tab 1 Loaded Wrangled Direct](docs/screenshots/20_tab1_loaded_wrangled_direct.png) | ![Tab 1 Loaded Biophysical Fit](docs/screenshots/21_tab1_loaded_biophysical_fit.png) |
+
 ---
 
 ## 🔄 6-Step Reverse-Engineering Workflow Pipeline & Data Modes
@@ -198,15 +209,33 @@ Tested in [`tests/test_inference.py::test_matlab_equivalence_60_gene_archive`](t
 - **NIR**: Inferred $3 \times 3$ confusion vector matches stored MATLAB vector `pred_matrix_gardener[:, -1]` bit-for-bit: `[15, 2, 99, 2, 22, 40, 10, 9, 3401]`.
 
 ### 3. Real-World & In Silico Benchmark Datasets Registry (`src/grn_sim/benchmarks/benchmark_datasets.py`)
-`phpIoRN 2.0` integrates a comprehensive suite of experimentally validated and in silico gold standard GRN benchmark datasets accessible in Tab 2 and via the REST API:
+`phpIoRN 2.0` integrates a comprehensive suite of experimentally validated and in silico gold standard GRN benchmark datasets accessible in Tab 2 and via the REST API.
+
+> 📄 **Complete Provenance & Modeling Documentation**: See [`docs/REAL_WORLD_BENCHMARK_PROVENANCE_AND_USAGE.md`](docs/REAL_WORLD_BENCHMARK_PROVENANCE_AND_USAGE.md) for full biological mechanisms, wrangling procedures, mathematical formulas, and REST API examples.
+
 * **E. coli SOS DNA Repair (`ecoli_sos`)**:
-  * 9 genes (`recA, lexA, ssb, recF, dinI, umuDC, rpoD, rpoH, rpoS`), 43 experimentally validated directed interactions (Gardner et al., *Science* 2003; Thesis Table 4.1).
+  * 9 genes (`recA, lexA, ssb, recF, dinI, umuDC, rpoD, rpoH, rpoS`), 43 experimentally validated directed interactions (Gardner et al., *Science* 2003; Thesis Table 4.1). Dual-dye cDNA microarray expression under low-copy plasmid induction.
+* **Norman et al. 2019 Real CRISPRa Perturb-seq (`norman_2019_real_16tf`)**:
+  * 16 master human hematopoietic regulators (`KLF1, SPI1, CEBPA, CEBPE, ETS2, DUSP9, EGR1, FOSB, JUN, RUNX1T1, TBX2, TBX3, CDKN1A, CNN1, FEV, MAPK1`) with 33 verified causal edges. Profiles 7,353 unperturbed control cells + 5,680 single-target CRISPRa cells (mean 355 cells/perturbation) via 10x Chromium scRNA-seq.
 * **DREAM4 In Silico Gold Standard (`dream4_10gene`)**:
-  * 10 genes canonical gold standard regulatory network with signed causal feedback loops from the DREAM4 In Silico Network Challenge.
-* **Norman et al. 2019 Combinatorial Perturb-seq (`norman_2019_tf16`)**:
-  * 16 master transcriptional regulators (`GATA1, SPI1, CEBPA, KLF1, RUNX1, etc.`) in K562 erythroid-myeloid lineage commitment with mutual antagonism circuits.
+  * 10 genes canonical gold standard regulatory network with 15 signed causal feedback loops from the DREAM4 In Silico Network Challenge (Marbach et al. 2009/2010), generated with stochastic differential equations and thermodynamic kinetics.
 * **Replogle et al. 2022 Core p53 Circuit (`replogle_2022_p53`)**:
-  * 12 core p53 / DNA damage / cell cycle checkpoint regulators (`TP53, MDM2, CDKN1A, ATM, CHEK2, etc.`) profiled across K562 and RPE1 cell lines.
+  * 12 core p53 / DNA damage / cell cycle checkpoint regulators (`TP53, CDKN1A, MDM2, ATM, CHEK1, CHEK2, BAX, BBC3, GADD45A, E2F1, RB1, CCNE1`) with 20 true edges, profiled across K562 and RPE1 cells using genome-scale CRISPRi.
+
+#### Raw Dataset Downloads (`/api/benchmark/download_raw`)
+Tab 2 features an interactive **"📥 Download Raw Data ▾"** dropdown supporting:
+- **Expression Matrix $X$** (`.tsv`): Tab-delimited expression matrix ($N \times M$).
+- **Perturbation Matrix $U$** (`.tsv`): Tab-delimited perturbation targets ($N \times M$).
+- **Ground Truth Adjacency $A_{\text{true}}$** (`.tsv`): Signed directed adjacency matrix (+1 activation, -1 repression, 0 null).
+- **Full JSON Bundle** (`.json`): Complete JSON document with matrices, gene annotations, and scientific citations.
+- **Complete ZIP Package** (`.zip`): In-memory archive containing all 3 TSVs, JSON bundle, and `README_METADATA.txt`.
+
+#### Dual Loading Modes into Simulation Studio (Tab 1)
+When loading a real-world benchmark into Tab 1, users can choose between two distinct computational workflows:
+1. **⚡ Direct Empirical Wrangled Mode (`btn-load-wrangled`)**:
+   Consumes the empirical $(X, U)$ matrices directly to evaluate all 12 reverse-engineering algorithms (**S2G**, **G2S**, **Voting Ensemble**, **CellBox Neural ODE**, **GENIE3**, **Network Deconvolution**, **RidgeCV**, **CPA-Lite**, **AtlasShift**, **NIR**, **FAST**, **By-Chance**) without running numerical ODE integration ($\hat{\mathbf{A}} \mathbf{X} \approx -\mathbf{U}$).
+2. **🔬 Biophysical Parameter Estimation Mode (`btn-load-biophysical`)**:
+   Uses the real steady-state observations to estimate mechanistic parameters: basal production $v_i = B_i \cdot x_i^{\text{ctrl}}$, degradation $B_i = 1.0$, Hill affinities $K_{ij} = \text{median}(|X_j|) + 0.1$, and cooperativity $n=2.0$. The non-linear Hill ODE solver then integrates continuous relaxation trajectories $x_i(t)$ towards equilibrium ($\text{efnorm} \le 10^{-4}$).
 
 ### 4. Persistent SQLite Archive & Thesis Figures Gallery
 * **Persistent SQLite Archive (`dumpdb.sql` / `database.py`)**:
@@ -402,12 +431,14 @@ gene-network-sim-inference/
 ├── demo.py                   # Interactive CLI demo script
 ├── docs/
 │   ├── COMPREHENSIVE_AUDIT_REPORT.md # Full audit analysis, test results & benchmark tables
+│   ├── REAL_WORLD_BENCHMARK_PROVENANCE_AND_USAGE.md # Benchmark provenance, raw downloads & dual modes
 │   ├── WORKFLOW_STEPS_PIPELINE.md    # 6-step wizard specification & math derivations
-│   └── screenshots/          # Verified Docker & Playwright UI screenshots (20+ views)
+│   └── screenshots/          # Verified Docker & Playwright UI screenshots (25+ views)
 ├── data/
 │   ├── results_gapa_20021209_and_mmc_dbl.mat  # Gardner 2003 E. coli SOS dataset
 │   ├── SOSdata.txt           # Tabular SOS expression & perturbation data
 │   ├── rgn_db.sqlite         # Persistent SQLite simulation archive (nw & alg tables)
+│   ├── benchmarks/raw/       # Standalone TSV & JSON bundles for SOS, DREAM4, Norman, Replogle
 │   └── matlab_benchmarks/    # 31 Authentic 2004 MATLAB benchmark .mat archives:
 │       ├── DIAG_random_nz60_iot2_std0_mean.mat
 │       ├── DIAG_sf_nz60_iot2_std0_mean.mat
@@ -421,7 +452,10 @@ gene-network-sim-inference/
 │       ├── simulator/        # Hill kinetics, ODE solver, Perturb-seq single-cell .h5ad simulator
 │       ├── inference/        # S2G, G2S, NIR, FAST, ByChance, Voting Ensemble, AtlasShift
 │       ├── evaluation/       # Confusion matrix, ROC, Signed PPV, Coverage (Table 4.1)
-│       ├── benchmarks/       # SOS pathway replication, sweeps & VCC 2026 benchmark suite
+│       ├── benchmarks/       # SOS pathway replication, provenance catalog & sweeps
+│       │   ├── benchmark_datasets.py # Registry for SOS, DREAM4, Norman, Replogle
+│       │   ├── provenance.py # Detailed biological provenance, parameter estimation & TSV export
+│       │   └── ...
 │       ├── agents/           # Multi-agent autonomous SDLC orchestration
 │       ├── web/              # phpIoRN 2.0 HTTP server, SQLite DB, Graphviz SVG & Tab 1-5 UI
 │       └── cli.py            # CLI entry point
@@ -430,6 +464,7 @@ gene-network-sim-inference/
     ├── test_metrics.py       # Table 4.1 & stats_obs_pred.m evaluation metrics tests
     ├── test_simulator.py     # ODE solver, Hill kinetics, oscillation & noise tests
     ├── test_sos_benchmark.py # E. coli SOS pathway benchmark replication tests
+    ├── test_benchmark_provenance_and_downloads.py # Provenance catalog, TSV/ZIP raw downloads & dual modes
     ├── test_topology.py      # Random, Scale-Free, and Hierarchical graph tests
     ├── test_web_and_visualization.py # Web server, Graphviz DOT & API tests
     ├── test_atlasshift_and_perturbseq.py # AtlasShift & AnnData .h5ad generator tests
@@ -437,7 +472,8 @@ gene-network-sim-inference/
     ├── test_playwright_full_audit.py # Comprehensive 5-tab audit & export stream test
     ├── test_playwright_wizard_steps.py # 6-step interactive spotlight & focus mode test
     ├── test_playwright_node_click_trajectories.py # Real dataset node click dynamics test
-    └── test_playwright_table_sorting.py # Multi-table column sorting verification test
+    ├── test_playwright_table_sorting.py # Multi-table column sorting verification test
+    └── test_playwright_tab2_benchmarks.py # Tab 2 provenance cards, downloads & dual load test
 ```
 
 

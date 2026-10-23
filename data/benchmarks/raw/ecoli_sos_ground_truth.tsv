@@ -1,0 +1,10 @@
+Regulator_Target	recA	lexA	ssb	recF	dinI	umuDC	rpoD	rpoH	rpoS
+recA	0	-1	-1	1	1	-1	1	0	0
+lexA	1	0	-1	1	1	-1	1	0	0
+ssb	1	-1	0	1	1	-1	1	0	0
+recF	0	0	0	0	0	0	1	0	1
+dinI	1	-1	-1	1	0	-1	1	0	0
+umuDC	1	-1	-1	1	1	0	1	0	0
+rpoD	1	-1	-1	1	1	-1	0	1	0
+rpoH	0	0	0	0	0	0	1	0	0
+rpoS	0	0	0	0	0	0	1	0	0

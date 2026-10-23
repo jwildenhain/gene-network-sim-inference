@@ -11,11 +11,13 @@ Replaces the legacy PHP + MATLAB + Graphviz + Perl web stack:
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 import datetime
+import io
 import json
 import os
 import sys
 import time
 import urllib.parse
+import zipfile
 from typing import Dict, Any, List, Optional, Tuple
 import numpy as np
 
@@ -38,6 +40,11 @@ from grn_sim.simulator.model_engine import run_simulation_with_engine
 from grn_sim.benchmarks.benchmark_datasets import (
     list_benchmark_datasets,
     load_benchmark_dataset,
+)
+from grn_sim.benchmarks.provenance import (
+    get_benchmark_provenance,
+    export_benchmark_raw_files,
+    estimate_biophysical_parameters,
 )
 from grn_sim.evaluation.metrics import compute_aupr
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark
@@ -316,11 +323,16 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         seed = int(seed)
 
     dataset_id = params.get("dataset_id")
+    loading_mode = params.get("loading_mode", "wrangled_direct")
     kinetics_eng = params.get("kinetics_engine", "hill_nonlinear")
     dynamics_preset = params.get("dynamics_preset", "responsive")
 
-    if dataset_id or mode.startswith("benchmark_") or mode == "sos":
-        target_ds = dataset_id or ("ecoli_sos" if mode == "sos" else mode.replace("benchmark_", ""))
+    is_bench = bool(dataset_id or mode.startswith("benchmark_") or mode == "sos")
+    target_ds = dataset_id or ("ecoli_sos" if mode == "sos" else mode.replace("benchmark_", "")) if is_bench else None
+    prov_data = get_benchmark_provenance(target_ds) if is_bench else None
+    fitted_params_info = None
+
+    if is_bench:
         ds_info = load_benchmark_dataset(target_ds)
         adj = ds_info["true_matrix"]
         num_genes = ds_info["num_genes"]
@@ -336,29 +348,50 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             k_av=float(np.sum(adj != 0) / max(1, num_genes)),
             ratio=float(np.sum(adj > 0) / max(1, np.sum(adj != 0))) if np.sum(adj != 0) > 0 else 0.5,
         )
-        network = GeneNetwork(topology=topo, rng=rng)
-        sim_exp = run_simulation_with_engine(
-            network=network,
-            engine=kinetics_eng,
-            perturbation_factor=pert_factor,
-            measurement_noise=noise_level,
-            seed=seed,
-        )
-        # Keep real experimental/benchmark X and U while providing simulated trajectories for visualizer
-        experiment = SimulationExperiment(
-            network=network,
-            true_matrix=adj,
-            X=X_bench,
-            U=U_bench,
-            reference_steady_state=sim_exp.reference_steady_state,
-            perturbed_states=sim_exp.perturbed_states,
-            error_conc=sim_exp.error_conc,
-            error_pert=sim_exp.error_pert,
-            is_valid_steady_state=True,
-            basal_trajectory=sim_exp.basal_trajectory,
-            perturbation_trajectories=sim_exp.perturbation_trajectories,
-            steady_state_diagnostics=sim_exp.steady_state_diagnostics,
-        )
+
+        if loading_mode == "biophysical_fit":
+            # Mode B: Fit ODE biophysical parameters (v, B, Ka, Ki, n=2) from real measurements
+            fit_res = estimate_biophysical_parameters(target_ds)
+            network = GeneNetwork(topology=topo, params=fit_res["params"], rng=rng)
+            sim_exp = run_simulation_with_engine(
+                network=network,
+                engine="hill_nonlinear",
+                perturbation_factor=pert_factor,
+                measurement_noise=noise_level,
+                seed=seed,
+            )
+            experiment = sim_exp
+            fitted_params_info = {
+                "basal_v": fit_res["basal_v"],
+                "degradation_B": fit_res["degradation_B"],
+                "baseline_ss": fit_res["baseline_ss"],
+            }
+        else:
+            # Mode A: Direct empirical wrangled inference on authentic measurements
+            loading_mode = "wrangled_direct"
+            network = GeneNetwork(topology=topo, rng=rng)
+            sim_exp = run_simulation_with_engine(
+                network=network,
+                engine=kinetics_eng,
+                perturbation_factor=pert_factor,
+                measurement_noise=noise_level,
+                seed=seed,
+            )
+            # Pass real experimental/benchmark X and U so algorithms run directly on measurements
+            experiment = SimulationExperiment(
+                network=network,
+                true_matrix=adj,
+                X=X_bench,
+                U=U_bench,
+                reference_steady_state=sim_exp.reference_steady_state,
+                perturbed_states=sim_exp.perturbed_states,
+                error_conc=sim_exp.error_conc,
+                error_pert=sim_exp.error_pert,
+                is_valid_steady_state=True,
+                basal_trajectory=sim_exp.basal_trajectory,
+                perturbation_trajectories=sim_exp.perturbation_trajectories,
+                steady_state_diagnostics=sim_exp.steady_state_diagnostics,
+            )
     else:
         dynamics_preset = params.get("dynamics_preset")
         if dynamics_preset == "flat":
@@ -424,6 +457,10 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "topology": "power_law" if mode == "sos" else topo_str,
         "kinetics_engine": kinetics_eng,
         "dynamics_preset": dynamics_preset,
+        "loading_mode": loading_mode if is_bench else "insilico",
+        "is_empirical_direct": (loading_mode == "wrangled_direct") if is_bench else False,
+        "is_biophysical_fit": (loading_mode == "biophysical_fit") if is_bench else False,
+        "dataset_source": target_ds if is_bench else None,
         "response_type": resp_dyn["response_type"],
         "num_genes": num_genes,
         "k_av": round(float(k_av), 2),
@@ -439,6 +476,12 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "seed": seed if seed is not None else 42,
         "settings": input_settings,
         "dynamics_preset": dynamics_preset,
+        "loading_mode": input_settings["loading_mode"],
+        "is_empirical_direct": input_settings["is_empirical_direct"],
+        "is_biophysical_fit": input_settings["is_biophysical_fit"],
+        "dataset_source": input_settings["dataset_source"],
+        "provenance": prov_data,
+        "fitted_parameters": fitted_params_info,
         "response_type": resp_dyn["response_type"],
         "response_dynamics": resp_dyn,
         "network": network,
@@ -473,6 +516,12 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "mode": mode,
         "settings": input_settings,
         "dynamics_preset": dynamics_preset,
+        "loading_mode": input_settings["loading_mode"],
+        "is_empirical_direct": input_settings["is_empirical_direct"],
+        "is_biophysical_fit": input_settings["is_biophysical_fit"],
+        "dataset_source": input_settings["dataset_source"],
+        "provenance": prov_data,
+        "fitted_parameters": fitted_params_info,
         "response_type": resp_dyn["response_type"],
         "response_dynamics": resp_dyn,
         "num_genes": num_genes,
@@ -953,10 +1002,21 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
             "inhibitors_in": [r["name"] for r in in_regs if r["sign"] < 0],
         })
 
+    prov_meta = get_benchmark_provenance(dataset_id)
+    raw_files_dict = export_benchmark_raw_files(dataset_id)
+    bio_fit = estimate_biophysical_parameters(dataset_id)
+
     payload = {
         "status": "success",
         "dataset_id": dataset_id,
         "pathway": name,
+        "provenance": prov_meta,
+        "raw_files": {k: v.name for k, v in raw_files_dict.items()},
+        "biophysical_estimation": {
+            "basal_v": bio_fit["basal_v"],
+            "degradation_B": bio_fit["degradation_B"],
+            "baseline_ss": bio_fit["baseline_ss"],
+        },
         "gene_names": gene_names,
         "true_matrix": A_true.tolist(),
         "X": np.round(X, 4).tolist(),
@@ -984,6 +1044,75 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
 
 def _build_sos_full_studio() -> Dict[str, Any]:
     return _build_benchmark_studio("ecoli_sos")
+
+
+def _build_raw_benchmark_download(dataset_id: str, file_type: str = "json_bundle") -> Tuple[bytes, str, str]:
+    """
+    Constructs raw benchmark dataset downloads in TSV, JSON, or ZIP format.
+    Returns:
+        (data_bytes, filename, mime_type)
+    """
+    raw_files = export_benchmark_raw_files(dataset_id)
+    prov = get_benchmark_provenance(dataset_id)
+    safe_name = dataset_id.replace(" ", "_")
+
+    if file_type == "expression_tsv":
+        p = raw_files["expression_tsv"]
+        with open(p, "rb") as f:
+            content = f.read()
+        return content, f"{safe_name}_expression_matrix.tsv", "text/tab-separated-values"
+
+    elif file_type == "perturbation_tsv":
+        p = raw_files["perturbation_tsv"]
+        with open(p, "rb") as f:
+            content = f.read()
+        return content, f"{safe_name}_perturbation_matrix.tsv", "text/tab-separated-values"
+
+    elif file_type == "ground_truth_tsv":
+        p = raw_files["ground_truth_tsv"]
+        with open(p, "rb") as f:
+            content = f.read()
+        return content, f"{safe_name}_ground_truth_adjacency.tsv", "text/tab-separated-values"
+
+    elif file_type == "json_bundle":
+        p = raw_files["json_bundle"]
+        with open(p, "rb") as f:
+            content = f.read()
+        return content, f"{safe_name}_bundle.json", "application/json"
+
+    elif file_type == "zip_bundle":
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for k, p in raw_files.items():
+                zf.write(p, arcname=p.name)
+            readme_text = (
+                f"GRN-Sim & phpIoRN 2.0 - Raw Benchmark Dataset Package\n"
+                f"====================================================\n\n"
+                f"Dataset: {prov['name']}\n"
+                f"Short Name: {prov['short_name']}\n"
+                f"Organism: {prov['organism']}\n"
+                f"Category: {prov['category']}\n"
+                f"Technology: {prov['technology']}\n"
+                f"Perturbation Type: {prov['perturbation_type']}\n"
+                f"Number of Genes: {prov['num_genes']}\n"
+                f"Number of Experiments: {prov['num_experiments']}\n"
+                f"Known True Edges: {prov['true_edges']}\n\n"
+                f"Overview:\n{prov['overview']}\n\n"
+                f"Data Wrangling & Normalization:\n{prov['wrangling_procedure']}\n\n"
+                f"Citations:\n" + "\n".join(f"- {c}" for c in prov['citations']) + "\n\n"
+                f"How Raw Data is Used in phpIoRN:\n"
+                f"1. Direct Empirical Mode (wrangled_direct):\n   {prov['how_raw_data_is_used']['wrangled_direct']}\n\n"
+                f"2. Biophysical Parameter Estimation Mode (biophysical_fit):\n   {prov['how_raw_data_is_used']['biophysical_fit']}\n"
+            )
+            zf.writestr("README_METADATA.txt", readme_text)
+        data = buf.getvalue()
+        return data, f"{safe_name}_raw_dataset_bundle.zip", "application/zip"
+
+    else:
+        p = raw_files["json_bundle"]
+        with open(p, "rb") as f:
+            content = f.read()
+        return content, f"{safe_name}_bundle.json", "application/json"
 
 
 def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> Dict[str, Any]:
@@ -1695,6 +1824,31 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             return
 
+        elif path == "/api/benchmark/download_raw":
+            try:
+                req_id = query.get("id", ["ecoli_sos"])[0]
+                file_type = query.get("file_type", ["json_bundle"])[0]
+                data_bytes, filename, mime_type = _build_raw_benchmark_download(req_id, file_type)
+                self._set_headers(200, mime_type, {"Content-Disposition": f'attachment; filename="{filename}"'})
+                self.wfile.write(data_bytes)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/benchmark/provenance":
+            try:
+                req_id = query.get("id", ["ecoli_sos"])[0]
+                prov = get_benchmark_provenance(req_id)
+                self._set_headers(200)
+                self.wfile.write(json.dumps({"status": "success", "provenance": prov}).encode("utf-8"))
+            except Exception as e:
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
         elif path == "/api/benchmark/thesis_figures":
             try:
                 source = query.get("source", ["matlab_mat"])[0]
@@ -1874,7 +2028,12 @@ class GRNWebHandler(BaseHTTPRequestHandler):
         elif path == "/api/benchmark/load_to_studio":
             try:
                 req_id = params.get("dataset_id", "ecoli_sos")
-                sim_payload = _execute_simulation({"dataset_id": req_id, "mode": f"benchmark_{req_id}"})
+                loading_mode = params.get("loading_mode", "wrangled_direct")
+                sim_payload = _execute_simulation({
+                    "dataset_id": req_id,
+                    "loading_mode": loading_mode,
+                    "mode": f"benchmark_{req_id}",
+                })
                 self._set_headers(200)
                 self.wfile.write(json.dumps(sim_payload).encode("utf-8"))
             except Exception as e:

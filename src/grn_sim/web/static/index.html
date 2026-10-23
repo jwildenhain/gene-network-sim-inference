@@ -578,6 +578,15 @@
       border-color: var(--accent-blue);
     }
 
+    .dropdown-link {
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .dropdown-link:hover {
+      background: var(--bg-card);
+      color: var(--accent-blue) !important;
+    }
+
     .btn-sm {
       padding: 5px 10px;
       font-size: 11.5px;
@@ -1350,9 +1359,41 @@
             </p>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" id="btn-load-bench-studio" onclick="loadBenchmarkIntoStudio()" title="Load this benchmark dataset into Tab 1 for continuous simulation &amp; parameter inspection">
-              📥 Load Dataset into Tab 1 Studio
-            </button>
+            <!-- Dual Loading Action: Wrangled Direct vs. Biophysical Parameter Estimation -->
+            <div class="btn-group" role="group" style="display:inline-flex;">
+              <button class="btn btn-primary btn-sm" id="btn-load-wrangled" onclick="loadBenchmarkIntoStudio('wrangled_direct')" title="Run 12 algorithms directly on authentic wrangled experimental measurements without ODE simulation">
+                ⚡ Load Wrangled (Direct Inference)
+              </button>
+              <button class="btn btn-outline btn-sm" id="btn-load-biophysical" onclick="loadBenchmarkIntoStudio('biophysical_fit')" title="Estimate ODE biophysical parameters (v, B, Ka, n) from real data and simulate dynamic relaxation trajectories">
+                🔬 Fit ODE Parameters &amp; Simulate
+              </button>
+            </div>
+
+            <!-- Raw Data Download Dropdown Menu -->
+            <div style="position:relative;display:inline-block;">
+              <button class="btn btn-secondary btn-sm" id="btn-download-raw-menu" onclick="toggleRawDownloadMenu(event)" title="Download raw experimental matrices and provenance bundle">
+                📥 Download Raw Data ▾
+              </button>
+              <div id="raw-download-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;z-index:1050;background:var(--bg-panel);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.3);min-width:260px;padding:6px 0;">
+                <a href="#" onclick="downloadRawBenchmark('expression_tsv'); return false;" class="dropdown-link" style="display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--text-main);font-size:12px;text-decoration:none;">
+                  <span>📄</span> <div><strong>Expression Matrix X</strong><div style="font-size:10.5px;color:var(--text-muted);">Tab-separated values (.tsv)</div></div>
+                </a>
+                <a href="#" onclick="downloadRawBenchmark('perturbation_tsv'); return false;" class="dropdown-link" style="display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--text-main);font-size:12px;text-decoration:none;">
+                  <span>🎯</span> <div><strong>Perturbation Matrix U</strong><div style="font-size:10.5px;color:var(--text-muted);">Tab-separated values (.tsv)</div></div>
+                </a>
+                <a href="#" onclick="downloadRawBenchmark('ground_truth_tsv'); return false;" class="dropdown-link" style="display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--text-main);font-size:12px;text-decoration:none;">
+                  <span>🕸️</span> <div><strong>Ground Truth Adjacency A</strong><div style="font-size:10.5px;color:var(--text-muted);">Signed directed edges (.tsv)</div></div>
+                </a>
+                <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+                <a href="#" onclick="downloadRawBenchmark('zip_bundle'); return false;" class="dropdown-link" style="display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--accent-blue);font-size:12px;text-decoration:none;">
+                  <span>📦</span> <div><strong>Complete Dataset Package (.zip)</strong><div style="font-size:10.5px;color:var(--text-muted);">All 3 TSVs + JSON bundle + README</div></div>
+                </a>
+                <a href="#" onclick="downloadRawBenchmark('json_bundle'); return false;" class="dropdown-link" style="display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--text-main);font-size:12px;text-decoration:none;">
+                  <span>📋</span> <div><strong>Full JSON Bundle</strong><div style="font-size:10.5px;color:var(--text-muted);">Matrices + Provenance metadata</div></div>
+                </a>
+              </div>
+            </div>
+
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-size:12px;color:var(--text-muted);">Inspect Algorithm:</span>
               <select id="sos-alg-select" style="width:auto;font-weight:700;" onchange="renderSosAlgorithm(this.value)">
@@ -1382,15 +1423,91 @@
           <button class="btn btn-secondary btn-sm" id="pill-ds-norman_2019_real_16tf" onclick="switchBenchmarkDataset('norman_2019_real_16tf')" style="border-color:#10b981;font-weight:700;">
             ⭐ Norman 2019 Real CRISPRa (16 TFs, K562 Experimental)
           </button>
-          <button class="btn btn-secondary btn-sm" id="pill-ds-norman_2019_tf16" onclick="switchBenchmarkDataset('norman_2019_tf16')">
-            🧬 Norman 2019 Perturb-seq (16 TFs, In Silico)
-          </button>
           <button class="btn btn-secondary btn-sm" id="pill-ds-dream4_10gene" onclick="switchBenchmarkDataset('dream4_10gene')">
             🏆 DREAM4 In Silico Gold Standard (10 Genes)
           </button>
           <button class="btn btn-secondary btn-sm" id="pill-ds-replogle_2022_p53" onclick="switchBenchmarkDataset('replogle_2022_p53')">
             🧪 Replogle 2022 p53 Circuit (12 Genes, K562/RPE1)
           </button>
+          <button class="btn btn-secondary btn-sm" id="pill-ds-norman_2019_tf16" onclick="switchBenchmarkDataset('norman_2019_tf16')">
+            🧬 Norman 2019 Perturb-seq (16 TFs, In Silico)
+          </button>
+        </div>
+
+        <!-- Rich Dataset Overview, Experimental Details & Method Provenance Card -->
+        <div id="bench-dataset-provenance-card" style="margin-top:14px;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:10px;">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:8px;">
+                <span id="prov-card-title">Dataset Overview &amp; Experimental Provenance</span>
+                <span class="badge badge-emerald" id="prov-card-badge">Real Biological Data</span>
+              </div>
+              <div id="prov-card-summary" style="font-size:12px;color:var(--text-muted);margin-top:3px;max-width:850px;line-height:1.5;">
+                Loading provenance description...
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <span style="font-size:11px;font-weight:600;color:var(--text-muted);">Quick Downloads:</span>
+              <button class="btn btn-secondary btn-sm" onclick="downloadRawBenchmark('expression_tsv')" title="Download Expression Matrix TSV" style="font-size:11px;padding:3px 8px;">
+                📄 Expression X
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="downloadRawBenchmark('perturbation_tsv')" title="Download Perturbation Matrix TSV" style="font-size:11px;padding:3px 8px;">
+                🎯 Perturbation U
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="downloadRawBenchmark('ground_truth_tsv')" title="Download Ground Truth TSV" style="font-size:11px;padding:3px 8px;">
+                🕸️ Adjacency A
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="downloadRawBenchmark('zip_bundle')" title="Download All Files in a ZIP Bundle" style="font-size:11px;padding:3px 10px;">
+                📦 Full ZIP Package
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;font-size:11.5px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="background:var(--stage-bg);padding:10px 12px;border-radius:6px;border:1px solid var(--border);">
+              <div style="font-weight:700;color:var(--accent-blue);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                <span>🧬</span> Experimental Context &amp; Technology
+              </div>
+              <div style="display:grid;grid-template-columns:110px 1fr;gap:4px;color:var(--text-main);">
+                <span style="color:var(--text-muted);">Organism:</span> <strong id="prov-organism">--</strong>
+                <span style="color:var(--text-muted);">Technology:</span> <span id="prov-technology">--</span>
+                <span style="color:var(--text-muted);">Intervention:</span> <span id="prov-perturbation">--</span>
+                <span style="color:var(--text-muted);">Scale:</span> <span id="prov-scale">--</span>
+                <span style="color:var(--text-muted);">Citations:</span> <span id="prov-citations" style="color:var(--accent-cyan);word-break:break-word;">--</span>
+              </div>
+            </div>
+
+            <div style="background:var(--stage-bg);padding:10px 12px;border-radius:6px;border:1px solid var(--border);">
+              <div style="font-weight:700;color:var(--accent-emerald);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                <span>⚙️</span> Usage Modes in phpIoRN &amp; Parameter Estimation
+              </div>
+              <div style="color:var(--text-main);line-height:1.45;">
+                <div style="margin-bottom:6px;">
+                  <strong style="color:var(--accent-blue);">⚡ Direct Empirical Mode (Wrangled Real Data):</strong>
+                  <div id="prov-usage-wrangled" style="color:var(--text-muted);font-size:11px;margin-top:2px;">
+                    Algorithms consume the raw expression matrix X and perturbation matrix U directly to solve A*X = -U or regressions without numerical ODE simulation.
+                  </div>
+                </div>
+                <div>
+                  <strong style="color:var(--accent-emerald);">🔬 Biophysical Parameter Estimation Mode:</strong>
+                  <div id="prov-usage-biophysical" style="color:var(--text-muted);font-size:11px;margin-top:2px;">
+                    Real steady states estimate basal synthesis v_i = b_i*x_ctrl, degradation b_i=1.0, and Hill threshold affinities K_ij = median(|X_j|)+0.1. The non-linear Hill ODE solver then integrates dynamic trajectories x(t).
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gene List & Functional Annotations -->
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11.5px;font-weight:700;color:var(--text-main);">
+                Genes in Circuit &amp; Biological Roles:
+              </span>
+              <span style="font-size:10.5px;color:var(--text-muted);">Click any gene pill to view function &amp; dynamic trajectories</span>
+            </div>
+            <div id="prov-genes-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
         </div>
       </div>
 
@@ -2515,6 +2632,10 @@
           cb.checked = s.algorithms.includes(cb.value);
         });
       }
+
+      if (sim && (sim.loading_mode || sim.is_empirical_direct || sim.is_biophysical_fit)) {
+        updateStudioBenchmarkModeBanner(sim, sim.loading_mode || (sim.is_biophysical_fit ? 'biophysical_fit' : 'wrangled_direct'));
+      }
     }
 
     // ============================================================================
@@ -3512,6 +3633,47 @@
           geneSelect.innerHTML = data.gene_names.map((g, idx) => `<option value="${g}">Gene #${idx + 1}: ${g}</option>`).join('');
         }
 
+        // Populate Provenance Card
+        const prov = data.provenance || {};
+        const pTitle = document.getElementById('prov-card-title');
+        const pBadge = document.getElementById('prov-card-badge');
+        const pSummary = document.getElementById('prov-card-summary');
+        const pOrg = document.getElementById('prov-organism');
+        const pTech = document.getElementById('prov-technology');
+        const pPert = document.getElementById('prov-perturbation');
+        const pScale = document.getElementById('prov-scale');
+        const pCitations = document.getElementById('prov-citations');
+        const pUsageWrangled = document.getElementById('prov-usage-wrangled');
+        const pUsageBio = document.getElementById('prov-usage-biophysical');
+        const pGenesList = document.getElementById('prov-genes-list');
+
+        if (pTitle) pTitle.textContent = prov.name || `${data.pathway || datasetId}`;
+        if (pBadge) pBadge.textContent = prov.category || 'Real Biological Benchmark';
+        if (pSummary) pSummary.textContent = prov.overview || 'Experimental perturbation benchmark dataset with validated causal interactions.';
+        if (pOrg) pOrg.textContent = prov.organism || '--';
+        if (pTech) pTech.textContent = prov.technology || '--';
+        if (pPert) pPert.textContent = prov.perturbation_type || '--';
+        if (pScale) pScale.textContent = `${numGenes} Genes • ${trueEdges} True Edges • ${data.X ? data.X[0].length : numGenes} Conditions${prov.cells_analyzed ? ` • ${prov.cells_analyzed.toLocaleString()} cells` : ''}`;
+        if (pCitations) {
+          const cites = prov.citations || [];
+          pCitations.innerHTML = cites.map(c => `<div>&bull; ${c}</div>`).join('') || '--';
+        }
+        if (pUsageWrangled && prov.how_raw_data_is_used) {
+          pUsageWrangled.textContent = prov.how_raw_data_is_used.wrangled_direct || '';
+        }
+        if (pUsageBio && prov.how_raw_data_is_used) {
+          pUsageBio.textContent = prov.how_raw_data_is_used.biophysical_fit || '';
+        }
+        if (pGenesList && data.gene_names) {
+          const ann = prov.genes_annotated || {};
+          pGenesList.innerHTML = data.gene_names.map(g => {
+            const desc = ann[g] || `Gene in ${data.pathway || datasetId} circuit.`;
+            return `<span class="badge" style="cursor:pointer;background:var(--stage-bg);border:1px solid var(--border);color:var(--text-main);padding:4px 8px;font-size:11px;" onclick="selectSosGene('${g}', true)" title="${desc}">
+              <strong style="color:var(--accent-blue);">${g}</strong>: <span style="color:var(--text-muted);font-weight:normal;">${desc.split(';')[0]}</span>
+            </span>`;
+          }).join('');
+        }
+
         document.getElementById('sos-true-stage').innerHTML = data.svg_true_dot || '';
         attachSvgNodeInteractivity('sos-true-stage', (geneName) => selectSosGene(geneName, true));
 
@@ -3565,15 +3727,21 @@
       loadSosFullStudio(datasetId);
     }
 
-    async function loadBenchmarkIntoStudio() {
+    async function loadBenchmarkIntoStudio(loadingMode = 'wrangled_direct') {
       const datasetId = APP_STATE.activeBenchmark || 'ecoli_sos';
-      const btn = document.getElementById('btn-load-bench-studio');
-      if (btn) { btn.textContent = 'Loading into Studio...'; btn.disabled = true; }
+      const btnWrangled = document.getElementById('btn-load-wrangled');
+      const btnBiophysical = document.getElementById('btn-load-biophysical');
+      const activeBtn = loadingMode === 'biophysical_fit' ? btnBiophysical : btnWrangled;
+      const origText = activeBtn ? activeBtn.innerHTML : '';
+      if (activeBtn) {
+        activeBtn.innerHTML = 'Loading...';
+        activeBtn.disabled = true;
+      }
       try {
         const res = await fetch('/api/benchmark/load_to_studio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataset_id: datasetId }),
+          body: JSON.stringify({ dataset_id: datasetId, loading_mode: loadingMode }),
         });
         const data = await res.json();
         if (data.status === 'success') {
@@ -3585,16 +3753,64 @@
             renderAllInferenceViews();
             selectWizardStep(6, false);
           } else {
-            selectWizardStep(1, false);
+            selectWizardStep(loadingMode === 'biophysical_fit' ? 3 : 4, false);
           }
           switchMainTab('tab-wizard');
+          updateStudioBenchmarkModeBanner(data, loadingMode);
         }
       } catch (err) {
         console.error('Error loading benchmark dataset to studio:', err);
       } finally {
-        if (btn) { btn.textContent = '📥 Load Dataset into Tab 1 Studio'; btn.disabled = false; }
+        if (activeBtn) {
+          activeBtn.innerHTML = origText;
+          activeBtn.disabled = false;
+        }
       }
     }
+
+    function toggleRawDownloadMenu(ev) {
+      if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      const dropdown = document.getElementById('raw-download-dropdown');
+      if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+
+    function downloadRawBenchmark(fileType = 'zip_bundle') {
+      const datasetId = APP_STATE.activeBenchmark || 'ecoli_sos';
+      const url = `/api/benchmark/download_raw?id=${encodeURIComponent(datasetId)}&file_type=${encodeURIComponent(fileType)}`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', '');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      const dropdown = document.getElementById('raw-download-dropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    }
+
+    function updateStudioBenchmarkModeBanner(simData, loadingMode) {
+      const infoBox = document.getElementById('sim-mode-info');
+      const dsId = simData.dataset_source || simData.dataset_id || 'benchmark';
+      const prov = simData.provenance || {};
+      const name = prov.short_name || prov.name || dsId;
+
+      if (infoBox) {
+        if (loadingMode === 'biophysical_fit') {
+          infoBox.innerHTML = `🔬 <b>Biophysical Parameter Estimation Mode (${name})</b>: Non-linear Hill ODE parameters (basal rates $v_i$, degradation $B_i$, Hill affinities $K_A, K_I$, cooperativity $n=2$) were estimated directly from experimental steady-state ratios and integrated numerically with Runge-Kutta.`;
+        } else {
+          infoBox.innerHTML = `⚡ <b>Real-World Wrangled Data (${name})</b>: 12 reverse-engineering algorithms consume the raw wrangled expression matrix directly. Numerical ODE simulation is bypassed; algorithms reconstruct causal Jacobians $\\hat{A}$ directly from experimental observations.`;
+        }
+      }
+    }
+
+    document.addEventListener('click', () => {
+      const dd = document.getElementById('raw-download-dropdown');
+      if (dd) dd.style.display = 'none';
+    });
 
     function renderSosAlgorithm(alg) {
       const data = APP_STATE.sosData;

@@ -96,7 +96,8 @@ REPLOGLE_12_GROUND_TRUTH = np.array([
 
 def list_benchmark_datasets() -> List[Dict[str, Any]]:
     """Returns metadata catalog for all available benchmark datasets in phpIoRN."""
-    return [
+    from grn_sim.benchmarks.provenance import BENCHMARK_PROVENANCE
+    base_catalog = [
         {
             "id": "ecoli_sos",
             "name": "E. coli SOS DNA Repair (Gardner et al., Science 2003)",
@@ -128,14 +129,14 @@ def list_benchmark_datasets() -> List[Dict[str, Any]]:
             "source": "Norman et al., Science 2019 (DOI: 10.1126/science.aax4438)",
         },
         {
-            "id": "norman_2019_real_105gene",
-            "name": "Norman et al. 2019 Real CRISPRa (105 Single Targets Full)",
-            "category": "Real-World Single-Cell CRISPR Screen",
-            "num_genes": 105,
-            "num_experiments": 105,
-            "has_ground_truth": False,
-            "description": "Full 105 x 105 real experimental single-perturbation response matrix across all tested single CRISPRa targets in Norman 2019.",
-            "source": "Norman et al., Science 2019 (Harvard Dataverse)",
+            "id": "replogle_2022_p53",
+            "name": "Replogle et al. 2022 Core p53 DNA Damage (K562 vs. RPE1)",
+            "category": "Multi-Cell Line CRISPRi Perturb-seq",
+            "num_genes": 12,
+            "num_experiments": 12,
+            "has_ground_truth": True,
+            "description": "Essential p53 and cell cycle checkpoint circuit across K562 (myeloid) and RPE1 (epithelial) cell lines matching VCC 2026 multi-context tasks.",
+            "source": "Replogle, Weissman et al., Cell 2022",
         },
         {
             "id": "norman_2019_tf16",
@@ -148,16 +149,23 @@ def list_benchmark_datasets() -> List[Dict[str, Any]]:
             "source": "Norman et al., Science 2019 (K562 leukemia cell line)",
         },
         {
-            "id": "replogle_2022_p53",
-            "name": "Replogle et al. 2022 Core p53 DNA Damage (K562 vs. RPE1)",
-            "category": "Multi-Cell Line CRISPRi Perturb-seq",
-            "num_genes": 12,
-            "num_experiments": 12,
-            "has_ground_truth": True,
-            "description": "Essential p53 and cell cycle checkpoint circuit across K562 (myeloid) and RPE1 (epithelial) cell lines matching VCC 2026 multi-context tasks.",
-            "source": "Replogle, Weissman et al., Cell 2022",
+            "id": "norman_2019_real_105gene",
+            "name": "Norman et al. 2019 Real CRISPRa (105 Single Targets Full)",
+            "category": "Real-World Single-Cell CRISPR Screen",
+            "num_genes": 105,
+            "num_experiments": 105,
+            "has_ground_truth": False,
+            "description": "Full 105 x 105 real experimental single-perturbation response matrix across all tested single CRISPRa targets in Norman 2019.",
+            "source": "Norman et al., Science 2019 (Harvard Dataverse)",
         },
     ]
+    for item in base_catalog:
+        did = item["id"]
+        if did in BENCHMARK_PROVENANCE:
+            item["provenance"] = BENCHMARK_PROVENANCE[did]
+            item["has_raw_download"] = True
+            item["loading_modes"] = ["wrangled_direct", "biophysical_fit"]
+    return base_catalog
 
 
 def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:

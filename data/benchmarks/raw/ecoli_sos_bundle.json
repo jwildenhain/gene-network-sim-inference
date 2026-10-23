@@ -1,0 +1,360 @@
+{
+  "dataset_id": "ecoli_sos",
+  "name": "E. coli SOS DNA Repair (Table 4.1)",
+  "provenance": {
+    "id": "ecoli_sos",
+    "name": "E. coli SOS DNA Repair Network (Gardner et al., Science 2003)",
+    "short_name": "E. coli SOS (9 Genes)",
+    "organism": "Escherichia coli (strain K-12 MG1655)",
+    "category": "Microbial Experimental Benchmark",
+    "technology": "Custom dual-dye cDNA glass slide microarrays with steady-state plasmid overexpression",
+    "data_type": "Normalized steady-state log expression ratios relative to unperturbed wild-type control",
+    "perturbation_type": "Transcriptional plasmid overexpression of individual genes (9 single-gene perturbations)",
+    "num_genes": 9,
+    "num_experiments": 9,
+    "true_edges": 43,
+    "matrix_shape": [
+      9,
+      9
+    ],
+    "citations": [
+      "Gardner, T. S., di Bernardo, D., Lorenz, D., & Collins, J. J. (2003). Inferring genetic networks and identifying compound mode of action via expression profiling. Science, 301(5629), 102-105. DOI: 10.1126/science.1081900",
+      "Wildenhain, J. (2004). In Silico Modelling of Gene Networks and Reverse Engineering of Transcriptional Networks. Bachelor of Honours Thesis, University of Edinburgh.",
+      "Wildenhain, J., & Crampin, E. J. (2006). Reconstructing gene regulatory networks: from random to scale-free connectivity. IEE Proceedings - Systems Biology, 153(4), 247-256. DOI: 10.1049/ip-syb:20050073"
+    ],
+    "overview": "The SOS response is the canonical bacterial DNA repair network in E. coli. When DNA suffers damage (UV irradiation, chemical cross-linking, mitomycin C), single-stranded DNA activates RecA to stimulate the autocatalytic cleavage of the master repressor LexA, derepressing over 40 SOS genes.",
+    "genes_annotated": {
+      "recA": "Recombinase A; forms nucleoprotein filament on ssDNA; coprotease stimulating LexA and UmuD cleavage.",
+      "lexA": "Master transcriptional repressor of the SOS regulon; binds palindromic SOS boxes to repress repair genes.",
+      "ssb": "Single-stranded DNA-binding protein; binds and protects single-stranded DNA replication intermediates.",
+      "recF": "Recombination factor F; loads RecA protein onto single-stranded DNA gaps alongside RecO and RecR.",
+      "dinI": "DNA damage-inducible protein I; binds RecA nucleoprotein filaments to modulate coprotease activity.",
+      "umuDC": "DNA polymerase V complex subunits (UmuD'2C); error-prone translesion DNA synthesis past bulky adducts.",
+      "rpoD": "RNA polymerase sigma 70 factor; master housekeeping transcription initiation factor.",
+      "rpoH": "RNA polymerase sigma 32 factor; directs transcription of cytoplasmic heat-shock chaperones and proteases.",
+      "rpoS": "RNA polymerase sigma 38 factor; master regulator of stationary-phase and general environmental stress response."
+    },
+    "wrangling_procedure": "1. Raw Cy3/Cy5 fluorescence intensities measured across 4 technical replicates per experiment.\n2. Background correction and LOWESS intensity-dependent normalization applied.\n3. Steady-state expression ratios X_ij = r_ij computed as log2(perturbed / control).\n4. Perturbation matrix U defined with known plasmid induction levels on the diagonal.",
+    "how_raw_data_is_used": {
+      "wrangled_direct": "Algorithms consume the 9x9 expression ratio matrix X and perturbation matrix U directly. Stepwise AIC regression (S2G/G2S), NIR multiple regression, FAST SVD pseudo-inversion, and Neural ODEs solve A * X = -U to derive the continuous Jacobian without running an ODE simulation.",
+      "biophysical_fit": "The real steady states are used to estimate biophysical parameters: basal production rates v_i = b_i * x_i^ctrl, degradation constants b_i = 1.0, and Hill threshold affinities K_ij = median(|X_j|) + 0.1. These parameters are passed to the non-linear Hill ODE solver (dx_i/dt = v_i * Prod(Hill) - b_i * x_i + u_i) to simulate continuous transient relaxation trajectories x_i(t) and limit-cycle stability."
+    }
+  },
+  "gene_names": [
+    "recA",
+    "lexA",
+    "ssb",
+    "recF",
+    "dinI",
+    "umuDC",
+    "rpoD",
+    "rpoH",
+    "rpoS"
+  ],
+  "num_genes": 9,
+  "num_experiments": 9,
+  "true_edges_count": 41,
+  "X_expression_matrix": [
+    [
+      1.9055550017680583,
+      0.8683449883444243,
+      0.8610540063538034,
+      1.1869245907773793,
+      1.291092868297224,
+      0.9393704714573343,
+      0.9233142823175924,
+      0.9832926283633472,
+      0.9750676231202372
+    ],
+    [
+      1.2122869632208182,
+      1.3831551581017185,
+      0.8831346015301795,
+      1.0635669987996332,
+      1.1687915736929804,
+      0.9133417275078183,
+      1.0385314441375721,
+      1.1247021383284765,
+      1.0835747527918795
+    ],
+    [
+      1.0177140880075417,
+      0.8932869394308798,
+      11.5235,
+      1.0604670899451123,
+      1.0798401155120199,
+      1.012476214406496,
+      1.0638614098096644,
+      1.0888249733036106,
+      0.929869647359229
+    ],
+    [
+      1.1038231191333991,
+      0.9500447830761689,
+      0.7275202355925375,
+      1.1394191095676316,
+      1.1796827434593151,
+      1.1456947509152589,
+      1.0688989145360666,
+      0.995758499646765,
+      1.2746117680565823
+    ],
+    [
+      1.11873180565457,
+      0.9028615015206563,
+      1.0556643227529026,
+      1.3146046609259405,
+      3.1471002475784524,
+      1.1416265699304022,
+      0.9315608829670826,
+      1.1348363593926747,
+      1.1130597079781828
+    ],
+    [
+      1.0764169257833507,
+      0.8106067299319328,
+      0.8756853316303533,
+      1.2495946250042596,
+      1.3472256420717224,
+      3.0174405505643223,
+      0.9327688058944391,
+      0.827959652191901,
+      0.9776449827352642
+    ],
+    [
+      0.8781460038776355,
+      0.9528696843608934,
+      0.8982864039490712,
+      0.8929199758750396,
+      0.9893810230758469,
+      1.1039949203930843,
+      4.067557872874504,
+      1.365329999950451,
+      1.2168450706572662
+    ],
+    [
+      1.1777581781149924,
+      0.8175173352833364,
+      1.0354720774241681,
+      0.9304564806275584,
+      0.9660339310523207,
+      0.8452800926475519,
+      1.0078765538670404,
+      27.633285245986364,
+      1.086939862514654
+    ],
+    [
+      1.071938912829044,
+      0.8721167181756793,
+      1.073433895888044,
+      1.0806164528483853,
+      1.3046739967192773,
+      1.0514325290897886,
+      0.938817830410059,
+      1.2738158959053931,
+      1.6724216003199992
+    ]
+  ],
+  "U_perturbation_matrix": [
+    [
+      0.6528844623611847,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.171144383820188,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      13.412,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.6705,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      4.54149671295091,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      2.3554750532138065,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      4.708278586234995,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      12.865759222230484,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      4.108893064299605
+    ]
+  ],
+  "true_adjacency_matrix": [
+    [
+      0,
+      -1,
+      -1,
+      1,
+      1,
+      -1,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      -1,
+      1,
+      1,
+      -1,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      -1,
+      0,
+      1,
+      1,
+      -1,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+    ],
+    [
+      1,
+      -1,
+      -1,
+      1,
+      0,
+      -1,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      -1,
+      -1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      -1,
+      -1,
+      1,
+      1,
+      -1,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+    ]
+  ]
+}
