@@ -1332,7 +1332,13 @@
                   <div class="panel-title" id="pert-panel-title-text">Step 4: Perturbation ODE Time-Course</div>
                   <div id="pert-panel-subtitle-text" style="font-size:11px;color:var(--text-muted);">Relaxation to perturbed steady state (web_run_p_model.m)</div>
                 </div>
-                <select id="select-pert-gene" style="width:auto;padding:4px 8px;font-size:11.5px;" onchange="drawPerturbationTimeCourse(parseInt(this.value))"></select>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <div class="btn-group" role="group" style="display:inline-flex;" aria-label="Step 4 plot mode toggle">
+                    <button class="btn btn-secondary btn-sm active" id="btn-pert-plot-line" onclick="setPerturbationPlotMode('line')" title="Display continuous ODE relaxation trajectories over time">📈 Line Plot</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-pert-plot-bar" onclick="setPerturbationPlotMode('bar')" title="Display discrete steady-state expression shifts (ΔX) across genes">📊 Bar Plot</button>
+                  </div>
+                  <select id="select-pert-gene" style="width:auto;padding:4px 8px;font-size:11.5px;" onchange="drawPerturbationTimeCourse(parseInt(this.value))"></select>
+                </div>
               </div>
               <canvas id="canvas-pert-traj" class="chart-canvas" width="420" height="230" style="width:100%;height:230px;"></canvas>
             </div>
@@ -2295,6 +2301,7 @@
       activeAlg: 's2g',
       gtView: 'canvas',
       infView: 'canvas',
+      pertPlotMode: 'line',
       selectedNodeIdx: 0,
       selectedEdgeKey: null,
       nodePositions: [],
@@ -2705,6 +2712,12 @@
         }
 
         // 4. Adjust Step 4 Labels: Measured Data, not ODE Time Course
+        APP_STATE.pertPlotMode = 'bar';
+        const btnLineEmp = document.getElementById('btn-pert-plot-line');
+        const btnBarEmp = document.getElementById('btn-pert-plot-bar');
+        if (btnLineEmp) btnLineEmp.classList.remove('active');
+        if (btnBarEmp) btnBarEmp.classList.add('active');
+
         if (pertTitle) pertTitle.textContent = 'Step 4: Measured Experimental Perturbation Profile';
         if (pertSub) pertSub.textContent = 'Direct empirical relative expression shifts across genes for selected target (No ODE integration performed)';
         if (heatTitle) heatTitle.textContent = 'Step 4: Measured Experimental Expression Matrix (X)';
@@ -2759,6 +2772,12 @@
           STEP_DEFINITIONS[3].actionText = '⚡ Simulate Calibrated Network';
         }
 
+        APP_STATE.pertPlotMode = 'line';
+        const btnLineBio = document.getElementById('btn-pert-plot-line');
+        const btnBarBio = document.getElementById('btn-pert-plot-bar');
+        if (btnLineBio) btnLineBio.classList.add('active');
+        if (btnBarBio) btnBarBio.classList.remove('active');
+
         if (pertTitle) pertTitle.textContent = 'Step 4: Simulated Relaxation Dynamics (Calibrated ODEs)';
         if (pertSub) pertSub.textContent = 'Non-linear Runge-Kutta 4/5 integration to perturbed steady states';
         if (heatTitle) heatTitle.textContent = 'Step 4: Simulated Steady-State Expression Matrix (X)';
@@ -2803,6 +2822,12 @@
           STEP_DEFINITIONS[3].desc = 'Evaluates non-linear Hill enzyme kinetics to unperturbed steady state x^ss. Inspect interactive Force Canvas, Graphviz Dot/Neato layouts, and kinetic parameters (v_i, B_i, n, K).';
           STEP_DEFINITIONS[3].actionText = '⚡ Simulate Network (Steps 1–3)';
         }
+
+        APP_STATE.pertPlotMode = 'line';
+        const btnLineSyn = document.getElementById('btn-pert-plot-line');
+        const btnBarSyn = document.getElementById('btn-pert-plot-bar');
+        if (btnLineSyn) btnLineSyn.classList.add('active');
+        if (btnBarSyn) btnBarSyn.classList.remove('active');
 
         if (pertTitle) pertTitle.textContent = 'Step 4: Perturbation ODE Time-Course';
         if (pertSub) pertSub.textContent = 'Relaxation to perturbed steady state (web_run_p_model.m)';
@@ -3342,6 +3367,11 @@
       computeNodePositions(sim.num_genes);
       drawGroundTruthCanvas();
       inspectNode(0, false);
+      const btnLine = document.getElementById('btn-pert-plot-line');
+      const btnBar = document.getElementById('btn-pert-plot-bar');
+      if (btnLine) btnLine.classList.toggle('active', APP_STATE.pertPlotMode === 'line');
+      if (btnBar) btnBar.classList.toggle('active', APP_STATE.pertPlotMode === 'bar');
+      updatePerturbationPanelHeader();
       drawPerturbationTimeCourse(0);
       drawExpressionHeatmap(sim.X, sim.gene_names);
     }
@@ -3787,26 +3817,93 @@
       ctx.fillStyle = tc.textMain;
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(`Measured Response: Perturbation of ${targetGene} (Empirical Observations, No ODE)`, pad.l, 16);
+      const chartHeader = sim.is_empirical_direct
+        ? `Measured Response: Perturbation of ${targetGene} (Empirical Observations, No ODE)`
+        : `Perturbation Response Profile: ${targetGene} (Steady-State Shift ΔX)`;
+      ctx.fillText(chartHeader, pad.l, 16);
 
       ctx.fillStyle = tc.textMuted;
       ctx.font = '9px Inter, sans-serif';
-      ctx.fillText(`Empirical relative shift ΔX across ${numGenes} genes • Blue = Target • Green = Up • Red = Down`, pad.l, 28);
+      const chartSub = sim.is_empirical_direct
+        ? `Empirical relative shift ΔX across ${numGenes} genes • Blue = Target • Green = Up • Red = Down`
+        : `Relative shift ΔX across ${numGenes} genes • Blue = Target • Green = Up • Red = Down`;
+      ctx.fillText(chartSub, pad.l, 28);
+    }
+
+    function setPerturbationPlotMode(mode) {
+      APP_STATE.pertPlotMode = (mode === 'bar') ? 'bar' : 'line';
+      const btnLine = document.getElementById('btn-pert-plot-line');
+      const btnBar = document.getElementById('btn-pert-plot-bar');
+      if (btnLine) btnLine.classList.toggle('active', APP_STATE.pertPlotMode === 'line');
+      if (btnBar) btnBar.classList.toggle('active', APP_STATE.pertPlotMode === 'bar');
+
+      updatePerturbationPanelHeader();
+
+      const pertSel = document.getElementById('select-pert-gene');
+      const pertIdx = parseInt(pertSel ? pertSel.value : '0') || 0;
+      drawPerturbationTimeCourse(pertIdx);
+    }
+
+    function updatePerturbationPanelHeader() {
+      const pertTitle = document.getElementById('pert-panel-title-text');
+      const pertSub = document.getElementById('pert-panel-subtitle-text');
+      const sim = APP_STATE.sim;
+      const isEmpirical = Boolean(sim && sim.is_empirical_direct);
+      const isBiophysical = Boolean(sim && sim.is_biophysical_fit);
+
+      if (APP_STATE.pertPlotMode === 'bar') {
+        if (pertTitle) {
+          pertTitle.textContent = isEmpirical
+            ? 'Step 4: Measured Experimental Perturbation Profile'
+            : 'Step 4: Steady-State Expression Shifts (ΔX Profile)';
+        }
+        if (pertSub) {
+          pertSub.textContent = isEmpirical
+            ? 'Direct empirical relative expression shifts across genes for selected target (No ODE integration performed)'
+            : 'Equilibrium relative change ΔX across all genes under target perturbation';
+        }
+      } else {
+        if (pertTitle) {
+          pertTitle.textContent = isEmpirical
+            ? 'Step 4: Perturbation Relaxation Trajectory (Simulated Dynamics)'
+            : (isBiophysical ? 'Step 4: Simulated Relaxation Dynamics (Calibrated ODEs)' : 'Step 4: Perturbation ODE Time-Course');
+        }
+        if (pertSub) {
+          pertSub.textContent = isEmpirical
+            ? 'Simulated ODE relaxation dynamics for empirical network structure'
+            : (isBiophysical ? 'Non-linear Runge-Kutta 4/5 integration to perturbed steady states' : 'Relaxation to perturbed steady state (web_run_p_model.m)');
+        }
+      }
     }
 
     function drawPerturbationTimeCourse(pertIdx) {
       const sim = APP_STATE.sim;
       if (!sim) return;
 
-      if (sim.is_empirical_direct) {
+      if (APP_STATE.pertPlotMode === 'bar') {
         drawEmpiricalResponseProfile(pertIdx);
         return;
       }
 
-      if (!sim.perturbation_trajectories) return;
-      const traj = sim.perturbation_trajectories[pertIdx];
-      if (!traj) return;
+      // Plot mode is 'line'
+      if (!sim.perturbation_trajectories || !sim.perturbation_trajectories.length || !sim.perturbation_trajectories[pertIdx]) {
+        const canvas = document.getElementById('canvas-pert-traj');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          const tc = getThemeColors();
+          ctx.fillStyle = tc.stageBg;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = tc.textMuted;
+          ctx.font = '600 11px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('ODE time-course trajectories unavailable for this dataset.', canvas.width / 2, canvas.height / 2 - 10);
+          ctx.font = '10px Inter, sans-serif';
+          ctx.fillText('Click [ 📊 Bar Plot ] above to view steady-state perturbation profile.', canvas.width / 2, canvas.height / 2 + 12);
+        }
+        return;
+      }
 
+      const traj = sim.perturbation_trajectories[pertIdx];
       const palette = ['#0284c7', '#10b981', '#d97706', '#9333ea', '#db2777', '#0d9488', '#4f46e5', '#ca8a04', '#ea580c'];
       const series = traj.map((row, idx) => ({
         label: sim.gene_names[idx],
@@ -3814,8 +3911,11 @@
         color: idx === pertIdx ? '#ef4444' : palette[idx % palette.length],
         width: idx === pertIdx ? 3.0 : 1.35,
       }));
-      const gName = sim.gene_names[pertIdx] || `G${pertIdx + 1}`;
-      drawSeriesCanvas('canvas-pert-traj', series, `Perturbed ${gName} (thick red) + ${sim.num_genes - 1} Responding Genes`);
+      const gName = (sim.gene_names && sim.gene_names[pertIdx]) || `G${pertIdx + 1}`;
+      const subtitle = sim.is_empirical_direct
+        ? `Relaxation Trajectory: Perturbed ${gName} (thick red) + ${sim.num_genes - 1} Responding Genes`
+        : `Perturbed ${gName} (thick red) + ${sim.num_genes - 1} Responding Genes`;
+      drawSeriesCanvas('canvas-pert-traj', series, subtitle);
     }
 
     function drawExpressionHeatmap(X, geneNames) {

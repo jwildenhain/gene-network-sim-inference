@@ -167,7 +167,10 @@ on Real Data        & Forward Predictions
   2. **Simulation Wizard Configuration Locked**: Step 2 (topology generators, degree $k_{\text{av}}$, noise sliders, ODE solvers) is **greyed out and disabled** (`.is-disabled-empirical`) with an explicit lock warning badge (`#step2-empirical-locked-message`) preventing accidental parameter adjustments.
   3. **Step 3 Label Adjustment (Literature Ground Truth)**: Adjusted from "Generated Ground-Truth Network" to **"Step 3: Experimentally Validated Ground-Truth Network"** with badge `Step 3: Literature Curated`. Network edges represent experimentally verified physical interactions ($A_{\text{true}}$) rather than synthetic assignments.
   4. **Step 4 Label Adjustment (Empirical Measurements)**: Adjusted from "Perturbation ODE Time-Course" to **"Step 4: Measured Experimental Perturbation Profile"** and **"Step 4: Measured Experimental Expression Matrix ($X$)"** with badge `Step 4: Real Data`.
-  5. **Direct Observational Response Profile Canvas**: Instead of continuous ODE relaxation curves (which imply simulation), `#canvas-pert-traj` plots discrete empirical expression shift bars across all genes for the selected target perturbation condition.
+  5. **Direct Observational Response Profile Canvas & Interactive Toggle**: Instead of being locked into either view, Step 4A features an interactive segmented toggle (`[ 📈 Line Plot ] [ 📊 Bar Plot ]`):
+     - **📊 Bar Plot Mode**: Renders discrete relative expression shift bars ($\Delta X$) across all genes for the selected target perturbation condition.
+     - **📈 Line Plot Mode**: Renders continuous dynamic trajectories / relaxation curves ($x_i(t)$) over time.
+     - **Freely Switchable Anytime**: Users can switch back and forth between line and bar plots seamlessly across both synthetic simulation and real-world benchmark datasets.
   6. **Reversibility**: Users can click **"↩ Switch to Synthetic Simulation Mode"** at any time to unlock controls, re-enable Step 2 sliders, and restore standard ODE generation labels.
 
 ### Mode B: 🔬 Biophysical Parameter Estimation Mode (`loading_mode="biophysical_fit"`)
@@ -196,9 +199,9 @@ on Real Data        & Forward Predictions
 | :---: | :---: |
 | ![Step 4 Empirical Profile](screenshots/26_tab1_step4_empirical_measurements_profile.png) | ![Restored Synthetic Mode](screenshots/27_tab1_restored_synthetic_ode_simulation.png) |
 
-| Tab 1: Biophysical Parameter Estimation Labels |
-| :---: |
-| ![Biophysical Mode](screenshots/28_tab1_biophysical_mode_calibrated_labels.png) |
+| Tab 1: Biophysical Parameter Estimation Labels | Tab 1: Step 4 Toggle Line Plot vs Bar Plot |
+| :---: | :---: |
+| ![Biophysical Mode](screenshots/28_tab1_biophysical_mode_calibrated_labels.png) | ![Step 4 Toggle Line vs Bar](screenshots/29_tab1_step4_toggle_line_vs_bar.png) |
 
 ---
 
@@ -212,5 +215,5 @@ on Real Data        & Forward Predictions
   - `test_simulation_loading_modes_distinction`: **PASS** (distinct state emission verified).
 - **Playwright Tab 2 Benchmarks Test** ([`tests/test_playwright_tab2_benchmarks.py`](../tests/test_playwright_tab2_benchmarks.py)):
   - **PASS** across all 4 datasets, dropdown menu toggling, provenance cards, and dual-mode loading transitions.
-- **Playwright UX Loading Bar & Label Distinctions Test** ([`tests/test_playwright_benchmark_loading_and_ux_distinction.py`](../tests/test_playwright_benchmark_loading_and_ux_distinction.py)):
-  - **PASS** (10/10 checks: benchmark loading bar, real data verification banner, greyed-out Step 2 controls, Step 3 validated topology labels, Step 4 empirical response profile bars, switch to synthetic mode recovery, and biophysical calibrated ODE dynamics).
+- **Playwright UX Loading Bar, Label Distinctions & Step 4 Toggle Test** ([`tests/test_playwright_benchmark_loading_and_ux_distinction.py`](../tests/test_playwright_benchmark_loading_and_ux_distinction.py)):
+  - **PASS** (100% checks: benchmark loading bar, real data verification banner, greyed-out Step 2 controls, Step 3 validated topology labels, Step 4 empirical response profile bars, interactive Step 4 toggle between Line Plot and Bar Plot with dynamic title/subtitle updates, switch to synthetic mode recovery, and biophysical calibrated ODE dynamics).

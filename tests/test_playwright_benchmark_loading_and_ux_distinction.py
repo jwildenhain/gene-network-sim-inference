@@ -149,6 +149,40 @@ def test_benchmark_loading_bar_and_ux_distinctions():
         page.screenshot(path=str(DOCS_SCREENSHOTS / "26_tab1_step4_empirical_measurements_profile.png"))
 
         # ---------------------------------------------------------------------
+        # TEST 6B: STEP 4 TOGGLE BETWEEN LINE PLOT AND BAR PLOT
+        # ---------------------------------------------------------------------
+        print("8b. Testing Step 4 toggle between Line Plot and Bar Plot...")
+        assert page.is_visible("#btn-pert-plot-line"), "Line plot toggle button must be visible"
+        assert page.is_visible("#btn-pert-plot-bar"), "Bar plot toggle button must be visible"
+
+        # Initially for wrangled direct, Bar Plot should be active
+        bar_classes = page.get_attribute("#btn-pert-plot-bar", "class")
+        assert "active" in bar_classes, "Bar plot button should be active for wrangled direct"
+        line_classes = page.get_attribute("#btn-pert-plot-line", "class")
+        assert "active" not in line_classes, "Line plot button should not be active initially"
+
+        # Switch to Line Plot
+        print("8c. Switching to 📈 Line Plot...")
+        page.click("#btn-pert-plot-line")
+        page.wait_for_timeout(300)
+        assert "active" in page.get_attribute("#btn-pert-plot-line", "class"), "Line plot button must become active"
+        assert "active" not in page.get_attribute("#btn-pert-plot-bar", "class"), "Bar plot button must become inactive"
+        pert_title_line = page.inner_text("#pert-panel-title-text")
+        assert "Relaxation Trajectory" in pert_title_line or "ODE" in pert_title_line
+
+        # Switch back to Bar Plot
+        print("8d. Switching back to 📊 Bar Plot...")
+        page.click("#btn-pert-plot-bar")
+        page.wait_for_timeout(300)
+        assert "active" in page.get_attribute("#btn-pert-plot-bar", "class"), "Bar plot button must become active again"
+        assert "active" not in page.get_attribute("#btn-pert-plot-line", "class"), "Line plot button must become inactive again"
+        pert_title_bar = page.inner_text("#pert-panel-title-text")
+        assert "Measured Experimental Perturbation Profile" in pert_title_bar
+
+        page.screenshot(path=str(ARTIFACT_DIR / "tab1_step4_toggle_line_vs_bar.png"))
+        page.screenshot(path=str(DOCS_SCREENSHOTS / "29_tab1_step4_toggle_line_vs_bar.png"))
+
+        # ---------------------------------------------------------------------
         # TEST 7: SWITCH BACK TO SYNTHETIC SIMULATION MODE
         # ---------------------------------------------------------------------
         print("9. Testing 'Switch to Synthetic Simulation Mode' button...")
@@ -172,6 +206,22 @@ def test_benchmark_loading_bar_and_ux_distinctions():
         assert "Network & ODE Kinetics" in page.inner_text("#wstep-3-label")
         assert "Perturbation ODE Time-Course" in page.inner_text("#pert-panel-title-text")
         assert "Perturbation Time-Courses" in page.inner_text("#wstep-4-label")
+
+        # In synthetic mode, Line Plot is active and toggles smoothly
+        assert "active" in page.get_attribute("#btn-pert-plot-line", "class"), "Line plot should be active in synthetic mode"
+        assert "active" not in page.get_attribute("#btn-pert-plot-bar", "class"), "Bar plot should be inactive in synthetic mode"
+
+        # Toggle to Bar Plot in synthetic mode
+        page.click("#btn-pert-plot-bar")
+        page.wait_for_timeout(300)
+        assert "active" in page.get_attribute("#btn-pert-plot-bar", "class")
+        assert "Steady-State Expression Shifts" in page.inner_text("#pert-panel-title-text")
+
+        # Toggle back to Line Plot in synthetic mode
+        page.click("#btn-pert-plot-line")
+        page.wait_for_timeout(300)
+        assert "active" in page.get_attribute("#btn-pert-plot-line", "class")
+        assert "Perturbation ODE Time-Course" in page.inner_text("#pert-panel-title-text")
 
         page.screenshot(path=str(ARTIFACT_DIR / "tab1_restored_synthetic_ode_simulation.png"))
         page.screenshot(path=str(DOCS_SCREENSHOTS / "27_tab1_restored_synthetic_ode_simulation.png"))
