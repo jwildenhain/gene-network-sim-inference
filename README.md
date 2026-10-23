@@ -151,6 +151,8 @@ In Tab 3 (Previous Simulations Archive), Step 4 is split into **two side-by-side
 
 ### 11. Complete 12-Algorithm Benchmark, Overall Statistics & Cross-Architecture Evaluation (Tabs 3 & 5)
 
+> 📊 **Full Technical & Benchmark Specification**: See [`docs/BENCHMARK_12_ALGORITHMS_AND_ARCHITECTURES.md`](docs/BENCHMARK_12_ALGORITHMS_AND_ARCHITECTURES.md) for complete mathematical formulations, per-architecture leaderboards, and parameter sweeps across Random, Scale-Free, and Hierarchical Modular topologies.
+
 A comprehensive systematic parameter sweep benchmark across 4 continuous and structural axes (**Network Size $N \in [6..16]$**, **Topologies**, **Measurement Noise $\sigma_m \in [0.0..0.20]$**, and **Connectivity $k_{\text{av}} \in [1.0..3.5]$**) evaluates **all 12 comparative reverse-engineering algorithms** across 720 evaluated algorithmic runs (60 networks):
 
 1. **Tab 5 Renamed to "5. Overall Statistics"**:
