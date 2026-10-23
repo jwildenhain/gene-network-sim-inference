@@ -162,7 +162,13 @@ on Real Data        & Forward Predictions
 - **Algorithm Consumption**:
   All 12 reverse-engineering algorithms (**S2G**, **G2S**, **Voting Ensemble**, **CellBox Neural ODE**, **GENIE3**, **Network Deconvolution**, **RidgeCV**, **CPA-Lite**, **AtlasShift**, **NIR**, **FAST**, **By-Chance**) ingest $(X, U)$ directly to reconstruct causal Jacobians:
   $$\hat{\mathbf{A}} \mathbf{X} \approx -\mathbf{U}$$
-- **Tab 1 Display**: Step 4 displays the true measured expression heatmap. Step 5 computes AIC optimization profiles directly from the real measurements. Step 6 evaluates the 9-state reconstruction against the known physical ground truth.
+- **Tab 1 UX & Visual Distinctions**:
+  1. **Real Experimental Data Verification Banner**: A prominent emerald confirmation card at the top of Tab 1 displays the verified biological dataset source, organism, technology, and confirms that numerical ODE simulation is bypassed.
+  2. **Simulation Wizard Configuration Locked**: Step 2 (topology generators, degree $k_{\text{av}}$, noise sliders, ODE solvers) is **greyed out and disabled** (`.is-disabled-empirical`) with an explicit lock warning badge (`#step2-empirical-locked-message`) preventing accidental parameter adjustments.
+  3. **Step 3 Label Adjustment (Literature Ground Truth)**: Adjusted from "Generated Ground-Truth Network" to **"Step 3: Experimentally Validated Ground-Truth Network"** with badge `Step 3: Literature Curated`. Network edges represent experimentally verified physical interactions ($A_{\text{true}}$) rather than synthetic assignments.
+  4. **Step 4 Label Adjustment (Empirical Measurements)**: Adjusted from "Perturbation ODE Time-Course" to **"Step 4: Measured Experimental Perturbation Profile"** and **"Step 4: Measured Experimental Expression Matrix ($X$)"** with badge `Step 4: Real Data`.
+  5. **Direct Observational Response Profile Canvas**: Instead of continuous ODE relaxation curves (which imply simulation), `#canvas-pert-traj` plots discrete empirical expression shift bars across all genes for the selected target perturbation condition.
+  6. **Reversibility**: Users can click **"↩ Switch to Synthetic Simulation Mode"** at any time to unlock controls, re-enable Step 2 sliders, and restore standard ODE generation labels.
 
 ### Mode B: 🔬 Biophysical Parameter Estimation Mode (`loading_mode="biophysical_fit"`)
 - **How It Works**: Uses the empirical steady states to estimate biophysical parameters for non-linear Hill kinetics:
@@ -172,23 +178,27 @@ on Real Data        & Forward Predictions
   4. **Hill cooperativity exponents $n_{ij}$**: Set to $n = 2.0$ (cooperative homodimer binding).
 - **Numerical ODE Simulation**: The Runge-Kutta solver integrates the fitted biophysical model:
   $$\frac{dx_i}{dt} = v_i \prod_{j \in \text{Inh}} \left(\frac{K_{ij}^{n}}{x_j^n + K_{ij}^n}\right) \prod_{k \in \text{Act}} \left(1 + \frac{x_k^n}{x_k^n + K_{k}^n}\right) - B_i x_i + u_i$$
-- **Tab 1 Display**: Step 3 displays the estimated parameter table ($v_i, B_i, K_A, n$). Step 4 displays continuous dynamic relaxation curves $x(t)$ towards equilibrium ($\text{efnorm} \le 10^{-4}$).
+- **Tab 1 Display**: Step 3 displays **"Step 3: Calibrated Biophysical Network & ODE Kinetics"** with fitted parameters. Step 4 displays **"Step 4: Simulated Relaxation Dynamics (Calibrated ODEs)"** with continuous Runge-Kutta relaxation trajectories.
 
 ---
 
-## 4. Visual Tour of New Tab 2 Capabilities
+## 4. Visual Tour of New Tab 2 & Tab 1 UX Capabilities
 
-| Raw Data Download Menu Open | Norman 2019 Real CRISPRa Provenance Card |
+| Tab 2: Raw Data Download Menu Open | Tab 2: Norman 2019 Provenance Card |
 | :---: | :---: |
 | ![Raw Download Menu](screenshots/17_tab2_raw_download_menu_open.png) | ![Norman 2019 Provenance Card](screenshots/18_tab2_norman_real_provenance_card.png) |
 
-| Replogle 2022 p53 Circuit Provenance Card | Tab 1 Loaded in Wrangled Direct Mode |
+| Tab 1: Locked Simulation Wizard (Greyed Out) | Tab 1: Step 3 Validated Circuit Label |
 | :---: | :---: |
-| ![Replogle p53 Provenance Card](screenshots/19_tab2_replogle_p53_provenance_card.png) | ![Tab 1 Loaded Wrangled Direct](screenshots/20_tab1_loaded_wrangled_direct.png) |
+| ![Simulation Wizard Locked](screenshots/24_tab1_simulation_controls_greyed_out.png) | ![Step 3 Validated Circuit](screenshots/25_tab1_step3_validated_circuit_label.png) |
 
-| Tab 1 Loaded in Biophysical Fit Mode |
+| Tab 1: Step 4 Empirical Response Profile (No ODE) | Tab 1: Restored Synthetic Simulation Mode |
+| :---: | :---: |
+| ![Step 4 Empirical Profile](screenshots/26_tab1_step4_empirical_measurements_profile.png) | ![Restored Synthetic Mode](screenshots/27_tab1_restored_synthetic_ode_simulation.png) |
+
+| Tab 1: Biophysical Parameter Estimation Labels |
 | :---: |
-| ![Tab 1 Loaded Biophysical Fit](screenshots/21_tab1_loaded_biophysical_fit.png) |
+| ![Biophysical Mode](screenshots/28_tab1_biophysical_mode_calibrated_labels.png) |
 
 ---
 
@@ -200,5 +210,7 @@ on Real Data        & Forward Predictions
   - `test_estimate_biophysical_parameters`: **PASS** (non-linear Hill parameter calibration verified).
   - `test_build_raw_benchmark_download_all_types`: **PASS** (TSV, JSON, and ZIP stream verification).
   - `test_simulation_loading_modes_distinction`: **PASS** (distinct state emission verified).
-- **Playwright Browser E2E Test** ([`tests/test_playwright_tab2_benchmarks.py`](../tests/test_playwright_tab2_benchmarks.py)):
+- **Playwright Tab 2 Benchmarks Test** ([`tests/test_playwright_tab2_benchmarks.py`](../tests/test_playwright_tab2_benchmarks.py)):
   - **PASS** across all 4 datasets, dropdown menu toggling, provenance cards, and dual-mode loading transitions.
+- **Playwright UX Loading Bar & Label Distinctions Test** ([`tests/test_playwright_benchmark_loading_and_ux_distinction.py`](../tests/test_playwright_benchmark_loading_and_ux_distinction.py)):
+  - **PASS** (10/10 checks: benchmark loading bar, real data verification banner, greyed-out Step 2 controls, Step 3 validated topology labels, Step 4 empirical response profile bars, switch to synthetic mode recovery, and biophysical calibrated ODE dynamics).

@@ -93,15 +93,23 @@ Rigorous end-to-end verification across real biological datasets (*E. coli* SOS,
 | ![E. coli SOS Node Click Trajectory](docs/screenshots/playwright_real_dataset_node_click_trajectory.png) | ![Norman 2019 Real Node Trajectory](docs/screenshots/playwright_norman_real_node_trajectory.png) |
 
 ### 7. Real-World Benchmarks Studio: Provenance Cards, Raw Downloads & Dual Loading Modes (Tab 2)
-Tab 2 integrates comprehensive real-world experimental benchmarks (*E. coli* SOS, Norman et al. 2019 CRISPRa 16-TF, DREAM4, Replogle et al. 2022 p53), multi-format raw dataset downloads, detailed experimental provenance cards, and dual-mode transfer into Tab 1:
+Tab 2 integrates comprehensive real-world experimental benchmarks (*E. coli* SOS, Norman et al. 2019 CRISPRa 16-TF, DREAM4, Replogle et al. 2022 p53), multi-format raw dataset downloads, detailed experimental provenance cards, and dual-mode transfer into Tab 1 with strict UX distinctions:
 
 | Tab 2: Raw Data Download Menu | Tab 2: Norman 2019 Provenance Card | Tab 2: Replogle p53 Provenance Card |
 | :---: | :---: | :---: |
 | ![Raw Download Menu](docs/screenshots/17_tab2_raw_download_menu_open.png) | ![Norman 2019 Provenance Card](docs/screenshots/18_tab2_norman_real_provenance_card.png) | ![Replogle p53 Provenance Card](docs/screenshots/19_tab2_replogle_p53_provenance_card.png) |
 
-| Tab 1: Direct Empirical Wrangled Mode | Tab 1: Biophysical Parameter Estimation Mode |
+| Tab 1: Locked Simulation Wizard (Greyed Out) | Tab 1: Step 3 Validated Circuit Label |
 | :---: | :---: |
-| ![Tab 1 Loaded Wrangled Direct](docs/screenshots/20_tab1_loaded_wrangled_direct.png) | ![Tab 1 Loaded Biophysical Fit](docs/screenshots/21_tab1_loaded_biophysical_fit.png) |
+| ![Simulation Wizard Locked](docs/screenshots/24_tab1_simulation_controls_greyed_out.png) | ![Step 3 Validated Circuit](docs/screenshots/25_tab1_step3_validated_circuit_label.png) |
+
+| Tab 1: Step 4 Empirical Response Profile (No ODE) | Tab 1: Restored Synthetic Simulation Mode |
+| :---: | :---: |
+| ![Step 4 Empirical Profile](docs/screenshots/26_tab1_step4_empirical_measurements_profile.png) | ![Restored Synthetic Mode](docs/screenshots/27_tab1_restored_synthetic_ode_simulation.png) |
+
+| Tab 1: Biophysical Parameter Estimation Labels |
+| :---: |
+| ![Biophysical Mode](docs/screenshots/28_tab1_biophysical_mode_calibrated_labels.png) |
 
 ---
 
@@ -473,7 +481,8 @@ gene-network-sim-inference/
     ├── test_playwright_wizard_steps.py # 6-step interactive spotlight & focus mode test
     ├── test_playwright_node_click_trajectories.py # Real dataset node click dynamics test
     ├── test_playwright_table_sorting.py # Multi-table column sorting verification test
-    └── test_playwright_tab2_benchmarks.py # Tab 2 provenance cards, downloads & dual load test
+    ├── test_playwright_tab2_benchmarks.py # Tab 2 provenance cards, downloads & dual load test
+    └── test_playwright_benchmark_loading_and_ux_distinction.py # Benchmark loading bar, locked controls & UX labels test
 ```
 
 

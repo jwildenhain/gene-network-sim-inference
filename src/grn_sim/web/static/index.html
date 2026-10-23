@@ -864,6 +864,54 @@
       font-family: var(--font-mono);
       margin-top: 2px;
     }
+
+    /* Benchmark Loading Bar & Progress Shimmer */
+    .benchmark-loading-bar-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes shimmerProgress {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner-inline {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--accent-blue);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* Empirical Direct Mode: Greying out Simulation Configuration */
+    .is-disabled-empirical {
+      opacity: 0.45 !important;
+      pointer-events: none !important;
+      filter: grayscale(0.7) !important;
+      cursor: not-allowed !important;
+      user-select: none !important;
+      position: relative;
+    }
+
+    .empirical-verification-card {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.12), rgba(2, 132, 199, 0.08));
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 10px rgba(16, 185, 129, 0.12);
+    }
   </style>
 </head>
 <body>
@@ -922,10 +970,10 @@
             <span class="step-num">2</span> Topology &amp; Noise
           </div>
           <div class="wizard-step active" id="wstep-3" onclick="selectWizardStep(3)" title="Step 3: Ground-Truth Network Architecture &amp; Non-linear Hill Kinetics">
-            <span class="step-num">3</span> Network &amp; ODE Kinetics
+            <span class="step-num">3</span> <span id="wstep-3-label">Network &amp; ODE Kinetics</span>
           </div>
           <div class="wizard-step active" id="wstep-4" onclick="selectWizardStep(4)" title="Step 4: Systematic Perturbation Dynamic Trajectories &amp; Matrix X">
-            <span class="step-num">4</span> Perturbation Time-Courses
+            <span class="step-num">4</span> <span id="wstep-4-label">Perturbation Time-Courses</span>
           </div>
           <div class="wizard-step active" id="wstep-5" onclick="selectWizardStep(5)" title="Step 5: Reverse-Engineering Algorithms (S2G/G2S) &amp; AIC Cost Profile">
             <span class="step-num">5</span> Reverse-Engineering
@@ -940,6 +988,27 @@
           <a class="btn btn-secondary btn-sm" href="/api/download?format=dot" download>Download .dot</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=svg" download>Download .svg</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=h5ad" download title="Single-cell Perturb-seq AnnData .h5ad (400 cells/cond)">Download .h5ad</a>
+        </div>
+      </div>
+
+      <!-- Real Experimental Data Verification Banner (Visible in Mode A: Wrangled Direct & Benchmark Modes) -->
+      <div id="empirical-verification-banner" class="empirical-verification-card" style="display:none;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+          <div style="flex:1;min-width:280px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+              <span class="badge badge-emerald" style="font-weight:700;font-size:11px;">🟢 REAL EXPERIMENTAL DATA VERIFIED</span>
+              <strong id="empirical-banner-name" style="font-size:14px;color:var(--text-main);">E. coli SOS DNA Repair Network</strong>
+              <span class="badge" id="empirical-banner-mode" style="background:var(--accent-blue);color:#fff;font-size:10.5px;">⚡ Direct Empirical Wrangled Mode</span>
+            </div>
+            <p id="empirical-banner-desc" style="margin:4px 0 0 0;font-size:12px;color:var(--text-muted);line-height:1.45;">
+              Authentic biological perturbation measurements loaded directly into reverse-engineering algorithms. <b>Numerical ODE time-course simulation is bypassed</b>; all 12 algorithms reconstruct causal interactions ($\hat{A} X \approx -U$) directly from measured observations. Simulation wizard configuration is locked to empirical parameters.
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-switch-to-synthetic" onclick="switchToSyntheticMode()" title="Unlock simulation configuration and switch to synthetic in silico ODE network generation">
+              ↩ Switch to Synthetic Simulation Mode
+            </button>
+          </div>
         </div>
       </div>
 
@@ -987,8 +1056,10 @@
             </div>
             <select id="sim-mode" onchange="onModeChange()">
               <option value="insilico" selected>In Silico ODE Network Generation</option>
-              <option value="sos">E. coli 9-Gene SOS Experimental Data</option>
+              <option value="sos">E. coli 9-Gene SOS Experimental Data (Gardner 2003)</option>
               <option value="benchmark_norman_2019_real_16tf">Norman et al. 2019 Real CRISPRa Perturb-seq (16 TFs, K562)</option>
+              <option value="benchmark_dream4_10gene">DREAM4 In Silico Gold Standard (10 Genes)</option>
+              <option value="benchmark_replogle_2022_p53">Replogle et al. 2022 Core p53 Circuit (12 Genes, K562/RPE1)</option>
             </select>
             <div id="sim-mode-info" class="sim-mode-info-card">
               🔬 <b>In Silico ODE Generation</b>: Synthetic non-linear Hill enzyme kinetics with user-configured network topology and measurement noise.
@@ -1000,6 +1071,10 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <span style="font-size:12px;font-weight:700;color:var(--text-main);">Step 2: Topology &amp; Kinetic Noise</span>
               <span class="badge badge-sm" style="font-size:10px;">Step 2</span>
+            </div>
+            <!-- Lock message when direct empirical data is loaded -->
+            <div id="step2-empirical-locked-message" class="empirical-lock-badge" style="display:none;background:rgba(239, 68, 68, 0.08);border:1px solid rgba(239, 68, 68, 0.28);color:var(--text-main);padding:8px 10px;border-radius:6px;font-size:11.5px;margin-bottom:10px;">
+              🔒 <b>Simulation Wizard Locked</b>: Using authentic empirical observations from <span id="locked-dataset-name" style="font-weight:700;color:var(--accent-blue);">real benchmark</span>. Graph synthesis, noise sliders, and ODE kinetics are disabled because calculations consume real laboratory measurements directly.
             </div>
 
             <div class="form-group">
@@ -1112,8 +1187,8 @@
               Simulate &amp; Re-Engineer Network
             </button>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <button class="btn btn-secondary btn-sm" onclick="runSimulateOnly()">Step 3–4: Simulate Only</button>
-              <button class="btn btn-secondary btn-sm" onclick="runInferOnly()">Step 5–6: Resolve Only</button>
+              <button class="btn btn-secondary btn-sm" id="btn-simulate-only" onclick="runSimulateOnly()">Step 3–4: Simulate Only</button>
+              <button class="btn btn-secondary btn-sm" id="btn-infer-only" onclick="runInferOnly()">Step 5–6: Resolve Only</button>
             </div>
           </div>
 
@@ -1141,10 +1216,10 @@
               <div class="panel-header">
                 <div>
                   <div class="panel-title">
-                    Step 3: Generated Ground-Truth Network
+                    <span id="gt-panel-title-text">Step 3: Generated Ground-Truth Network</span>
                     <span class="badge" id="gt-summary-badge">12 Genes</span>
                   </div>
-                  <div style="font-size:11px;color:var(--text-muted);">Click any node ($G_i$) or edge ($G_j \to G_i$) to inspect ODE Hill parameters</div>
+                  <div id="gt-panel-subtitle-text" style="font-size:11px;color:var(--text-muted);">Click any node ($G_i$) or edge ($G_j \to G_i$) to inspect ODE Hill parameters</div>
                 </div>
                 <div style="display:flex;gap:4px;">
                   <button class="btn btn-secondary btn-sm active" id="btn-gt-canvas" onclick="setGtView('canvas')">Force Canvas</button>
@@ -1254,8 +1329,8 @@
             <div class="panel">
               <div class="panel-header">
                 <div>
-                  <div class="panel-title">Step 4: Perturbation ODE Time-Course</div>
-                  <div style="font-size:11px;color:var(--text-muted);">Relaxation to perturbed steady state (web_run_p_model.m)</div>
+                  <div class="panel-title" id="pert-panel-title-text">Step 4: Perturbation ODE Time-Course</div>
+                  <div id="pert-panel-subtitle-text" style="font-size:11px;color:var(--text-muted);">Relaxation to perturbed steady state (web_run_p_model.m)</div>
                 </div>
                 <select id="select-pert-gene" style="width:auto;padding:4px 8px;font-size:11.5px;" onchange="drawPerturbationTimeCourse(parseInt(this.value))"></select>
               </div>
@@ -1266,10 +1341,10 @@
             <div class="panel">
               <div class="panel-header">
                 <div>
-                  <div class="panel-title">Steady-State Expression Matrix (X)</div>
-                  <div style="font-size:11px;color:var(--text-muted);">Relative change $X_{ij} = (x_i^j - x_i^{ss}) / x_i^{ss}$</div>
+                  <div class="panel-title" id="heatmap-panel-title-text">Steady-State Expression Matrix (X)</div>
+                  <div id="heatmap-panel-subtitle-text" style="font-size:11px;color:var(--text-muted);">Relative change $X_{ij} = (x_i^j - x_i^{ss}) / x_i^{ss}$</div>
                 </div>
-                <span class="badge">mRNA Ratios</span>
+                <span class="badge" id="heatmap-panel-badge">mRNA Ratios</span>
               </div>
               <canvas id="canvas-x-heatmap" class="chart-canvas" width="380" height="230" style="width:100%;height:230px;"></canvas>
             </div>
@@ -1348,6 +1423,20 @@
     <!-- ========================================================================= -->
     <section id="tab-sos" class="tab-pane">
       <div class="panel" style="margin-bottom:16px;">
+        <!-- Tab 2 Animated Loading Bar -->
+        <div id="benchmark-loading-bar-container" class="benchmark-loading-bar-container" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+            <span id="benchmark-loading-text" style="display:flex;align-items:center;gap:6px;">
+              <span class="spinner-inline"></span>
+              <span>Loading benchmark dataset &amp; computing reverse-engineering models...</span>
+            </span>
+            <span id="benchmark-loading-status" style="font-weight:700;color:var(--accent-blue);font-size:11px;">Please wait...</span>
+          </div>
+          <div class="progress-track" style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;position:relative;">
+            <div id="benchmark-loading-progress-bar" style="height:100%;width:100%;background:linear-gradient(90deg, #38bdf8, #10b981, #6366f1, #38bdf8);background-size:200% 100%;animation:shimmerProgress 1.4s infinite linear;"></div>
+          </div>
+        </div>
+
         <div class="panel-header" style="margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
             <div class="panel-title" style="font-size:16px;display:flex;align-items:center;gap:8px;">
@@ -2539,6 +2628,213 @@
       selectWizardStep(stepNum, false);
     }
 
+    function applyDataModeUxDistinction(simData, loadingMode) {
+      if (!simData) return;
+      const isEmpirical = Boolean(simData.is_empirical_direct || loadingMode === 'wrangled_direct');
+      const isBiophysical = Boolean(simData.is_biophysical_fit || loadingMode === 'biophysical_fit');
+      const prov = simData.provenance || {};
+      const dsName = prov.short_name || prov.name || simData.dataset_source || 'Real Benchmark';
+
+      const vBanner = document.getElementById('empirical-verification-banner');
+      const bName = document.getElementById('empirical-banner-name');
+      const bMode = document.getElementById('empirical-banner-mode');
+      const bDesc = document.getElementById('empirical-banner-desc');
+      const s2LockMsg = document.getElementById('step2-empirical-locked-message');
+      const lockedDsName = document.getElementById('locked-dataset-name');
+      const step2Section = document.getElementById('step-section-2');
+      const btnRunAll = document.getElementById('btn-run-all');
+      const btnSimulateOnly = document.getElementById('btn-simulate-only');
+
+      const gtTitle = document.getElementById('gt-panel-title-text');
+      const gtSub = document.getElementById('gt-panel-subtitle-text');
+      const gtBadge = document.getElementById('gt-summary-badge');
+      const wstep3Label = document.getElementById('wstep-3-label');
+
+      const pertTitle = document.getElementById('pert-panel-title-text');
+      const pertSub = document.getElementById('pert-panel-subtitle-text');
+      const heatTitle = document.getElementById('heatmap-panel-title-text');
+      const heatSub = document.getElementById('heatmap-panel-subtitle-text');
+      const heatBadge = document.getElementById('heatmap-panel-badge');
+      const wstep4Label = document.getElementById('wstep-4-label');
+      const infoBox = document.getElementById('sim-mode-info');
+
+      const step2Inputs = [
+        'sim-topology', 'sim-kinetics-engine', 'sim-dynamics-preset',
+        'sim-num-genes', 'sim-kav', 'sim-ratio', 'sim-noise', 'sim-biovar', 'sim-seed'
+      ];
+
+      if (isEmpirical) {
+        // 1. Show Real Experimental Data Verification Banner
+        if (vBanner) vBanner.style.display = 'block';
+        if (bName) bName.textContent = prov.name || dsName;
+        if (bMode) {
+          bMode.textContent = '⚡ Direct Empirical Wrangled Mode';
+          bMode.className = 'badge badge-emerald';
+        }
+        if (bDesc) {
+          bDesc.innerHTML = `Authentic biological perturbation measurements from <b>${prov.name || dsName}</b> (${prov.technology || 'Laboratory Assay'}). <b>Numerical ODE time-course simulation is bypassed</b>; all 12 reverse-engineering algorithms reconstruct causal interactions ($\\hat{A} X \\approx -U$) directly from measured observations. Simulation wizard configuration is locked.`;
+        }
+
+        // 2. Grey out Step 2 Simulation Wizard Configuration
+        if (step2Section) step2Section.classList.add('is-disabled-empirical');
+        if (s2LockMsg) s2LockMsg.style.display = 'block';
+        if (lockedDsName) lockedDsName.textContent = dsName;
+        step2Inputs.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.disabled = true;
+        });
+        if (btnSimulateOnly) {
+          btnSimulateOnly.disabled = true;
+          btnSimulateOnly.title = 'Simulation disabled for direct empirical measurements';
+        }
+        if (btnRunAll) {
+          btnRunAll.textContent = '🚀 Run Reverse-Engineering on Real Data (Steps 5–6)';
+        }
+
+        // 3. Adjust Step 3 Labels: Validated Circuit, not Generated Ground Truth
+        if (gtTitle) gtTitle.textContent = 'Step 3: Experimentally Validated Ground-Truth Network';
+        if (gtSub) gtSub.textContent = 'Literature-curated physical regulatory topology (A_true) established by published experimental biology';
+        if (gtBadge) gtBadge.textContent = `Verified Biology • ${simData.total_edges} Curated Edges (+${simData.activations} / -${simData.inhibitions})`;
+        if (wstep3Label) wstep3Label.textContent = 'Validated Circuit';
+
+        if (STEP_DEFINITIONS[3]) {
+          STEP_DEFINITIONS[3].title = 'Experimentally Validated Ground-Truth Network';
+          STEP_DEFINITIONS[3].badge = 'Step 3: Literature Curated';
+          STEP_DEFINITIONS[3].desc = 'Displays the literature-curated physical regulatory network topology (A_true) established by experimental biology. No synthetic kinetic parameters were generated; edges represent documented physical interactions.';
+          STEP_DEFINITIONS[3].actionText = '🔍 Inspect Validated Circuit';
+        }
+
+        // 4. Adjust Step 4 Labels: Measured Data, not ODE Time Course
+        if (pertTitle) pertTitle.textContent = 'Step 4: Measured Experimental Perturbation Profile';
+        if (pertSub) pertSub.textContent = 'Direct empirical relative expression shifts across genes for selected target (No ODE integration performed)';
+        if (heatTitle) heatTitle.textContent = 'Step 4: Measured Experimental Expression Matrix (X)';
+        if (heatSub) heatSub.textContent = `Empirical relative expression shifts across ${simData.num_genes} perturbation conditions (authentic laboratory measurements)`;
+        if (heatBadge) heatBadge.textContent = 'Empirical Observations';
+        if (wstep4Label) wstep4Label.textContent = 'Measured Data (X)';
+
+        if (STEP_DEFINITIONS[4]) {
+          STEP_DEFINITIONS[4].title = 'Empirical Observational Measurements (X)';
+          STEP_DEFINITIONS[4].badge = 'Step 4: Real Data';
+          STEP_DEFINITIONS[4].desc = 'Empirical relative expression shifts (X_ij) measured across laboratory perturbation conditions. Numerical ODE integration is bypassed; values represent authentic biological steady states.';
+          STEP_DEFINITIONS[4].actionText = '📊 View Measured Observations (X)';
+        }
+
+        if (infoBox) {
+          infoBox.innerHTML = `⚡ <b>Real-World Wrangled Data (${dsName})</b>: 12 reverse-engineering algorithms consume the raw wrangled expression matrix directly. Numerical ODE simulation is bypassed; algorithms reconstruct causal Jacobians $\\hat{A}$ directly from experimental observations.`;
+        }
+
+      } else if (isBiophysical) {
+        // Mode B: Biophysical Parameter Estimation
+        if (vBanner) vBanner.style.display = 'block';
+        if (bName) bName.textContent = `${dsName} (Biophysical Parameter Estimation)`;
+        if (bMode) {
+          bMode.textContent = '🔬 Biophysical Parameter Estimation Mode';
+          bMode.className = 'badge badge-accent';
+        }
+        if (bDesc) {
+          bDesc.innerHTML = `Non-linear Hill ODE parameters (basal rates $v_i$, degradation $B_i$, Hill affinities $K_A, K_I$, cooperativity $n=2$) were estimated directly from experimental steady-state ratios and integrated numerically with Runge-Kutta.`;
+        }
+
+        if (step2Section) step2Section.classList.remove('is-disabled-empirical');
+        if (s2LockMsg) s2LockMsg.style.display = 'none';
+        step2Inputs.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.disabled = false;
+        });
+        if (btnSimulateOnly) {
+          btnSimulateOnly.disabled = false;
+          btnSimulateOnly.title = '';
+        }
+        if (btnRunAll) btnRunAll.textContent = 'Simulate & Re-Engineer Network';
+
+        if (gtTitle) gtTitle.textContent = 'Step 3: Calibrated Biophysical Network & ODE Kinetics';
+        if (gtSub) gtSub.textContent = 'Estimated biophysical parameters (v_i, B_i, K_A, n=2) integrated with non-linear Hill kinetics';
+        if (gtBadge) gtBadge.textContent = `Calibrated ODEs • ${simData.total_edges} Edges`;
+        if (wstep3Label) wstep3Label.textContent = 'Calibrated Circuit';
+
+        if (STEP_DEFINITIONS[3]) {
+          STEP_DEFINITIONS[3].title = 'Calibrated Biophysical Network & ODE Kinetics';
+          STEP_DEFINITIONS[3].badge = 'Step 3: Biophysical Fit';
+          STEP_DEFINITIONS[3].desc = 'Evaluates non-linear Hill enzyme kinetics parameterized from experimental steady-state observations.';
+          STEP_DEFINITIONS[3].actionText = '⚡ Simulate Calibrated Network';
+        }
+
+        if (pertTitle) pertTitle.textContent = 'Step 4: Simulated Relaxation Dynamics (Calibrated ODEs)';
+        if (pertSub) pertSub.textContent = 'Non-linear Runge-Kutta 4/5 integration to perturbed steady states';
+        if (heatTitle) heatTitle.textContent = 'Step 4: Simulated Steady-State Expression Matrix (X)';
+        if (heatSub) heatSub.textContent = 'Equilibrium relative change X_{ij} from calibrated ODE dynamics';
+        if (heatBadge) heatBadge.textContent = 'Calibrated ODEs';
+        if (wstep4Label) wstep4Label.textContent = 'Relaxation Trajectories';
+
+        if (STEP_DEFINITIONS[4]) {
+          STEP_DEFINITIONS[4].title = 'Simulated Relaxation Dynamics from Calibrated ODEs';
+          STEP_DEFINITIONS[4].badge = 'Step 4: ODE Trajectories';
+          STEP_DEFINITIONS[4].desc = 'Numerically integrates single-gene perturbations over time using biophysically fitted Hill equations.';
+          STEP_DEFINITIONS[4].actionText = '📈 View Relaxation Dynamics';
+        }
+
+        if (infoBox) {
+          infoBox.innerHTML = `🔬 <b>Biophysical Parameter Estimation Mode (${dsName})</b>: Non-linear Hill ODE parameters (basal rates $v_i$, degradation $B_i$, Hill affinities $K_A, K_I$, cooperativity $n=2$) were estimated directly from experimental steady-state ratios and integrated numerically with Runge-Kutta.`;
+        }
+
+      } else {
+        // Mode C: Synthetic In Silico ODE Simulation
+        if (vBanner) vBanner.style.display = 'none';
+        if (step2Section) step2Section.classList.remove('is-disabled-empirical');
+        if (s2LockMsg) s2LockMsg.style.display = 'none';
+        step2Inputs.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.disabled = false;
+        });
+        if (btnSimulateOnly) {
+          btnSimulateOnly.disabled = false;
+          btnSimulateOnly.title = '';
+        }
+        if (btnRunAll) btnRunAll.textContent = 'Simulate & Re-Engineer Network';
+
+        if (gtTitle) gtTitle.textContent = 'Step 3: Generated Ground-Truth Network';
+        if (gtSub) gtSub.textContent = 'Click any node ($G_i$) or edge ($G_j \\to G_i$) to inspect ODE Hill parameters';
+        if (gtBadge) gtBadge.textContent = `${simData.num_genes || 12} Genes • ${simData.total_edges || 0} Edges (+${simData.activations || 0} / -${simData.inhibitions || 0})`;
+        if (wstep3Label) wstep3Label.textContent = 'Network & ODE Kinetics';
+
+        if (STEP_DEFINITIONS[3]) {
+          STEP_DEFINITIONS[3].title = 'Ground-Truth Network & ODE Kinetics';
+          STEP_DEFINITIONS[3].badge = 'Step 3 of 6';
+          STEP_DEFINITIONS[3].desc = 'Evaluates non-linear Hill enzyme kinetics to unperturbed steady state x^ss. Inspect interactive Force Canvas, Graphviz Dot/Neato layouts, and kinetic parameters (v_i, B_i, n, K).';
+          STEP_DEFINITIONS[3].actionText = '⚡ Simulate Network (Steps 1–3)';
+        }
+
+        if (pertTitle) pertTitle.textContent = 'Step 4: Perturbation ODE Time-Course';
+        if (pertSub) pertSub.textContent = 'Relaxation to perturbed steady state (web_run_p_model.m)';
+        if (heatTitle) heatTitle.textContent = 'Steady-State Expression Matrix (X)';
+        if (heatSub) heatSub.textContent = 'Relative change $X_{ij} = (x_i^j - x_i^{ss}) / x_i^{ss}$';
+        if (heatBadge) heatBadge.textContent = 'mRNA Ratios';
+        if (wstep4Label) wstep4Label.textContent = 'Perturbation Time-Courses';
+
+        if (STEP_DEFINITIONS[4]) {
+          STEP_DEFINITIONS[4].title = 'Perturbation ODE Time-Courses & Matrix X';
+          STEP_DEFINITIONS[4].badge = 'Step 4 of 6';
+          STEP_DEFINITIONS[4].desc = 'Numerically integrates single-gene perturbations over time to perturbed equilibria. Generates proportional relative expression ratio matrix X and dynamic relaxation curves.';
+          STEP_DEFINITIONS[4].actionText = '📈 View Perturbation Dynamics';
+        }
+
+        if (infoBox) {
+          infoBox.innerHTML = '🔬 <b>In Silico ODE Generation</b>: Synthetic non-linear Hill enzyme kinetics with user-configured network topology and measurement noise.';
+        }
+      }
+
+      // Refresh banner if active
+      if (typeof selectWizardStep === 'function') {
+        selectWizardStep(APP_STATE.activeStep || 1, false);
+      }
+    }
+
+    function switchToSyntheticMode() {
+      const modeSelect = document.getElementById('sim-mode');
+      if (modeSelect) modeSelect.value = 'insilico';
+      updateModeUI('insilico', true);
+    }
+
     function updateModeUI(mode, autoRun = false) {
       const numGenesInput = document.getElementById('sim-num-genes');
       const lblNumGenes = document.getElementById('lbl-num-genes');
@@ -2577,6 +2873,32 @@
           modeInfo.innerHTML = '🧬 <b>Norman et al. 2019 Real CRISPRa Perturb-seq</b>: 16 transcription factors in human K562 erythroid cells (~400 single cells/cond). Fractional proportional fold changes relative to non-targeting guides.';
         }
         if (autoRun) runFullPipeline();
+      } else if (mode === 'benchmark_dream4_10gene') {
+        if (numGenesInput) {
+          numGenesInput.value = 10;
+          numGenesInput.disabled = true;
+        }
+        if (lblNumGenes) lblNumGenes.textContent = '10 (Fixed)';
+        if (topoSelect) topoSelect.disabled = true;
+        if (kavInput) kavInput.disabled = true;
+        if (ratioInput) ratioInput.disabled = true;
+        if (modeInfo) {
+          modeInfo.innerHTML = '🏆 <b>DREAM4 In Silico Gold Standard</b>: 10 genes canonical gold standard regulatory network with signed causal feedback loops.';
+        }
+        if (autoRun) runFullPipeline();
+      } else if (mode === 'benchmark_replogle_2022_p53') {
+        if (numGenesInput) {
+          numGenesInput.value = 12;
+          numGenesInput.disabled = true;
+        }
+        if (lblNumGenes) lblNumGenes.textContent = '12 (Fixed)';
+        if (topoSelect) topoSelect.disabled = true;
+        if (kavInput) kavInput.disabled = true;
+        if (ratioInput) ratioInput.disabled = true;
+        if (modeInfo) {
+          modeInfo.innerHTML = '🧪 <b>Replogle et al. 2022 Core p53 Circuit</b>: 12 core checkpoint genes in K562/RPE1 cells profiled with high-throughput CRISPRi.';
+        }
+        if (autoRun) runFullPipeline();
       } else {
         // insilico
         if (numGenesInput) numGenesInput.disabled = false;
@@ -2587,6 +2909,12 @@
         if (modeInfo) {
           modeInfo.innerHTML = '🔬 <b>In Silico ODE Generation</b>: Synthetic non-linear Hill enzyme kinetics with user-configured network topology and measurement noise.';
         }
+        applyDataModeUxDistinction({
+          is_empirical_direct: false,
+          is_biophysical_fit: false,
+          num_genes: parseInt(numGenesInput ? numGenesInput.value : 12) || 12,
+          total_edges: 0
+        }, 'insilico');
         if (autoRun) runFullPipeline();
       }
     }
@@ -2598,7 +2926,24 @@
 
     function applySettingsToForm(settings, sim) {
       const s = settings || {};
-      const mode = s.mode || (sim && sim.mode) || 'insilico';
+      let mode = s.mode || (sim && sim.mode) || 'insilico';
+      if (sim && sim.dataset_source && !mode.startsWith('benchmark_') && mode !== 'sos') {
+        mode = sim.dataset_source === 'ecoli_sos' ? 'sos' : `benchmark_${sim.dataset_source}`;
+      }
+      const modeSelect = document.getElementById('sim-mode');
+      if (modeSelect) {
+        let found = false;
+        for (let opt of modeSelect.options) {
+          if (opt.value === mode) { found = true; break; }
+        }
+        if (!found) {
+          const opt = document.createElement('option');
+          opt.value = mode;
+          opt.textContent = `Benchmark: ${mode.replace('benchmark_', '')}`;
+          modeSelect.appendChild(opt);
+        }
+        modeSelect.value = mode;
+      }
       const topo = s.topology || (sim && sim.topology === 'biological_sos' ? 'power_law' : (sim && sim.topology)) || 'power_law';
       const n = s.num_genes || (sim && sim.num_genes) || 12;
       const kav = s.k_av ?? (sim && sim.k_average) ?? 1.8;
@@ -2608,7 +2953,6 @@
       const seed = s.seed ?? (sim && sim.seed) ?? 42;
       const kengine = s.kinetics_engine || (sim && sim.kinetics_engine) || 'hill_nonlinear';
 
-      document.getElementById('sim-mode').value = mode;
       updateModeUI(mode, false);
       document.getElementById('sim-topology').value = topo === 'biological_sos' ? 'power_law' : topo;
       if (document.getElementById('sim-kinetics-engine')) {
@@ -2634,7 +2978,7 @@
       }
 
       if (sim && (sim.loading_mode || sim.is_empirical_direct || sim.is_biophysical_fit)) {
-        updateStudioBenchmarkModeBanner(sim, sim.loading_mode || (sim.is_biophysical_fit ? 'biophysical_fit' : 'wrangled_direct'));
+        applyDataModeUxDistinction(sim, sim.loading_mode || (sim.is_biophysical_fit ? 'biophysical_fit' : 'wrangled_direct'));
       }
     }
 
@@ -3355,9 +3699,111 @@
       });
     }
 
+    function drawEmpiricalResponseProfile(pertIdx) {
+      const canvas = document.getElementById('canvas-pert-traj');
+      const sim = APP_STATE.sim;
+      if (!canvas || !sim || !sim.X) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
+      const X = sim.X;
+      const numGenes = sim.num_genes || X.length;
+      const geneNames = sim.gene_names || Array.from({ length: numGenes }, (_, i) => `G${i+1}`);
+      const targetGene = geneNames[pertIdx] || `Gene #${pertIdx + 1}`;
+
+      const vals = [];
+      for (let i = 0; i < numGenes; i++) {
+        const v = (X[i] && X[i][pertIdx] != null) ? X[i][pertIdx] : 0;
+        vals.push(v);
+      }
+
+      let maxAbs = 0.05;
+      vals.forEach(v => {
+        if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
+      });
+      maxAbs = maxAbs * 1.25;
+
+      const pad = { l: 45, r: 15, t: 36, b: 38 };
+      const plotW = W - pad.l - pad.r;
+      const plotH = H - pad.t - pad.b;
+      const zeroY = pad.t + plotH / 2;
+
+      ctx.strokeStyle = tc.grid;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, zeroY);
+      ctx.lineTo(pad.l + plotW, zeroY);
+      ctx.stroke();
+
+      ctx.strokeStyle = tc.grid;
+      ctx.strokeRect(pad.l, pad.t, plotW, plotH);
+
+      ctx.fillStyle = tc.textMuted;
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`+${maxAbs.toFixed(2)}`, pad.l - 5, pad.t + 10);
+      ctx.fillText('0.00', pad.l - 5, zeroY + 3);
+      ctx.fillText(`-${maxAbs.toFixed(2)}`, pad.l - 5, pad.t + plotH);
+
+      const colStep = plotW / numGenes;
+      const barW = Math.max(3, colStep - 4);
+
+      for (let i = 0; i < numGenes; i++) {
+        const v = vals[i];
+        const x = pad.l + i * colStep + (colStep - barW) / 2;
+        const barH = (Math.abs(v) / maxAbs) * (plotH / 2);
+        const isTarget = (i === pertIdx);
+
+        if (v >= 0) {
+          ctx.fillStyle = isTarget ? '#0284c7' : '#10b981';
+          ctx.fillRect(x, zeroY - barH, barW, barH);
+        } else {
+          ctx.fillStyle = isTarget ? '#d97706' : '#ef4444';
+          ctx.fillRect(x, zeroY, barW, barH);
+        }
+
+        ctx.strokeStyle = isTarget ? '#38bdf8' : 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = isTarget ? 1.5 : 0.5;
+        if (v >= 0) {
+          ctx.strokeRect(x, zeroY - barH, barW, barH);
+        } else {
+          ctx.strokeRect(x, zeroY, barW, barH);
+        }
+
+        ctx.save();
+        ctx.translate(x + barW / 2, pad.t + plotH + 12);
+        ctx.rotate(numGenes > 10 ? -Math.PI / 4 : 0);
+        ctx.fillStyle = isTarget ? tc.accentBlue : tc.textMuted;
+        ctx.font = isTarget ? 'bold 10px Inter, sans-serif' : '9px Inter, sans-serif';
+        ctx.textAlign = numGenes > 10 ? 'right' : 'center';
+        ctx.fillText(geneNames[i], 0, 0);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = tc.textMain;
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Measured Response: Perturbation of ${targetGene} (Empirical Observations, No ODE)`, pad.l, 16);
+
+      ctx.fillStyle = tc.textMuted;
+      ctx.font = '9px Inter, sans-serif';
+      ctx.fillText(`Empirical relative shift ΔX across ${numGenes} genes • Blue = Target • Green = Up • Red = Down`, pad.l, 28);
+    }
+
     function drawPerturbationTimeCourse(pertIdx) {
       const sim = APP_STATE.sim;
-      if (!sim || !sim.perturbation_trajectories) return;
+      if (!sim) return;
+
+      if (sim.is_empirical_direct) {
+        drawEmpiricalResponseProfile(pertIdx);
+        return;
+      }
+
+      if (!sim.perturbation_trajectories) return;
       const traj = sim.perturbation_trajectories[pertIdx];
       if (!traj) return;
 
@@ -3593,7 +4039,20 @@
     // TAB 2: REAL-WORLD & IN SILICO BENCHMARK STUDIO (SOS, DREAM4, Perturb-seq)
     // ============================================================================
     async function loadSosFullStudio(datasetId = 'ecoli_sos') {
+      const loadingBar = document.getElementById('benchmark-loading-bar-container');
+      const loadingText = document.getElementById('benchmark-loading-text');
+      const datasetButtons = document.querySelectorAll('#tab-sos [id^="pill-ds-"], #btn-load-wrangled, #btn-load-biophysical');
+
       try {
+        if (loadingBar) {
+          loadingBar.style.display = 'block';
+          if (loadingText) {
+            loadingText.innerHTML = `<span class="spinner-inline"></span> <span>Loading <b>${datasetId}</b> benchmark dataset &amp; computing reverse-engineering models...</span>`;
+          }
+        }
+        datasetButtons.forEach(b => b.disabled = true);
+        document.getElementById('bench-dataset-provenance-card')?.style.setProperty('opacity', '0.6');
+
         APP_STATE.activeBenchmark = datasetId;
         const res = await fetch(`/api/benchmark/dataset?id=${encodeURIComponent(datasetId)}`);
         const data = await res.json();
@@ -3720,6 +4179,10 @@
         }
       } catch (e) {
         console.error('Benchmark Studio error:', e);
+      } finally {
+        if (loadingBar) loadingBar.style.display = 'none';
+        datasetButtons.forEach(b => b.disabled = false);
+        document.getElementById('bench-dataset-provenance-card')?.style.removeProperty('opacity');
       }
     }
 
@@ -3729,15 +4192,24 @@
 
     async function loadBenchmarkIntoStudio(loadingMode = 'wrangled_direct') {
       const datasetId = APP_STATE.activeBenchmark || 'ecoli_sos';
+      const loadingBar = document.getElementById('benchmark-loading-bar-container');
+      const loadingText = document.getElementById('benchmark-loading-text');
       const btnWrangled = document.getElementById('btn-load-wrangled');
       const btnBiophysical = document.getElementById('btn-load-biophysical');
       const activeBtn = loadingMode === 'biophysical_fit' ? btnBiophysical : btnWrangled;
       const origText = activeBtn ? activeBtn.innerHTML : '';
-      if (activeBtn) {
-        activeBtn.innerHTML = 'Loading...';
-        activeBtn.disabled = true;
-      }
+
       try {
+        if (loadingBar) {
+          loadingBar.style.display = 'block';
+          if (loadingText) {
+            loadingText.innerHTML = `<span class="spinner-inline"></span> <span>Transferring <b>${datasetId}</b> into Simulation Studio (${loadingMode === 'biophysical_fit' ? 'Estimating biophysical parameters & simulating Hill ODEs' : 'Direct empirical wrangled mode'})...</span>`;
+          }
+        }
+        if (activeBtn) {
+          activeBtn.innerHTML = 'Loading...';
+          activeBtn.disabled = true;
+        }
         const res = await fetch('/api/benchmark/load_to_studio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3748,6 +4220,7 @@
           APP_STATE.sim = data;
           APP_STATE.inferred = data.inferred || {};
           applySettingsToForm(data.settings, data);
+          applyDataModeUxDistinction(data, loadingMode);
           renderAllSimulationViews();
           if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
             renderAllInferenceViews();
@@ -3756,11 +4229,11 @@
             selectWizardStep(loadingMode === 'biophysical_fit' ? 3 : 4, false);
           }
           switchMainTab('tab-wizard');
-          updateStudioBenchmarkModeBanner(data, loadingMode);
         }
       } catch (err) {
         console.error('Error loading benchmark dataset to studio:', err);
       } finally {
+        if (loadingBar) loadingBar.style.display = 'none';
         if (activeBtn) {
           activeBtn.innerHTML = origText;
           activeBtn.disabled = false;
