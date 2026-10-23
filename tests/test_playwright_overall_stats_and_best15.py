@@ -1,0 +1,241 @@
+"""
+Playwright End-to-End Test for:
+1. Systematic Benchmark Overall Statistics (Tab 5 renamed to "5. Overall Statistics"):
+   - Dynamic Leaderboard Table (7 algorithms evaluated across multi-parameter sweep).
+   - Figure 1A & 1B: Network Size vs Power & FDR.
+   - Figure 2: Network Topology Impact (Random vs Scale-Free vs Hierarchical).
+   - Figure 3: Average Connectivity Sweep (k_av ∈ [1.0, 4.0]).
+   - Figure 4: Measurement Noise Sensitivity Sweep (σ_m ∈ [0.0, 0.25]).
+   - Instant toggle between New Parameter Sweep Stats and Authentic 2004 MATLAB Historical Gallery.
+2. Tab 3 Previous Simulations Archive Restricted View:
+   - Restricts display strictly to the best 15 simulations for each set (Responsive, Flat, Oscillating, Topologies).
+   - Dynamic rank badges (#1 in Set .. #15 in Set) and F1 Score column.
+   - Step 4 Side-by-Side Continuous ODE Relaxation & Expression Matrix (X) + 3×3 Shift Bar Grid toggle.
+"""
+
+from pathlib import Path
+import shutil
+import pytest
+from playwright.sync_api import sync_playwright
+
+BASE_URL = "http://localhost:8085"
+ARTIFACT_DIR = Path("/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed")
+DOCS_SCREENSHOTS = Path(__file__).resolve().parent.parent / "docs" / "screenshots"
+DOCS_SCREENSHOTS.mkdir(parents=True, exist_ok=True)
+
+
+def test_overall_stats_and_best15_restricted_archive():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(viewport={"width": 1600, "height": 1100})
+        page = context.new_page()
+
+        print("1. Opening phpIoRN web application...")
+        page.goto(BASE_URL, wait_until="networkidle", timeout=30000)
+        page.wait_for_timeout(1000)
+
+        # -----------------------------------------------------------------
+        # STEP 1: VERIFY TOP NAVIGATION RENAMED TO "5. Overall Statistics"
+        # -----------------------------------------------------------------
+        print("2. Verifying top navigation tabs...")
+        tab5_btn = page.locator("button[data-tab='tab-figures']")
+        assert tab5_btn.is_visible()
+        tab5_text = tab5_btn.inner_text().strip()
+        print(f"Tab 5 text: '{tab5_text}'")
+        assert "5. Overall Statistics" in tab5_text, f"Expected '5. Overall Statistics', got '{tab5_text}'"
+
+        tab3_btn = page.locator("button[data-tab='tab-history']")
+        assert tab3_btn.is_visible()
+        tab3_text = tab3_btn.inner_text().strip()
+        print(f"Tab 3 text: '{tab3_text}'")
+        assert "3. Previous Simulations" in tab3_text
+
+        # -----------------------------------------------------------------
+        # STEP 2: VERIFY TAB 5 OVERALL STATISTICS (NEW PARAMETER SWEEP)
+        # -----------------------------------------------------------------
+        print("3. Navigating to Tab 5 (Overall Statistics)...")
+        tab5_btn.click()
+        page.wait_for_timeout(1000)
+
+        assert page.is_visible("#tab-figures")
+        assert page.is_visible("#tab5-view-overall"), "Overall stats view must be visible by default"
+        assert not page.is_visible("#tab5-view-historical"), "Historical gallery view must be hidden by default"
+
+        # Verify KPI Cards
+        kpi_total = page.locator("#kpi-overall-total-runs").inner_text().strip()
+        kpi_alg = page.locator("#kpi-overall-alg-evals").inner_text().strip()
+        kpi_top = page.locator("#kpi-overall-top-alg").inner_text().strip()
+        kpi_single = page.locator("#kpi-overall-best-single").inner_text().strip()
+        print(f"KPIs: Total={kpi_total}, AlgEvals={kpi_alg}, Top={kpi_top}, BestSingle={kpi_single}")
+        assert int(kpi_total) >= 40, f"Expected >= 40 runs, found {kpi_total}"
+        assert "1,237" in kpi_alg
+        assert "Voting" in kpi_top
+        assert "S2G" in kpi_single
+
+        # Verify Leaderboard Table
+        lb_rows = page.locator("#tbl-overall-leaderboard tbody tr")
+        lb_count = lb_rows.count()
+        print(f"Leaderboard rows found: {lb_count}")
+        assert lb_count == 7, f"Expected 7 algorithms in leaderboard, found {lb_count}"
+
+        # Row 1 must be Voting Ensemble
+        first_row_text = lb_rows.first.inner_text()
+        print(f"Leaderboard #1: {first_row_text}")
+        assert "Voting Ensemble" in first_row_text
+        assert "#1" in first_row_text
+
+        # Verify Canvases
+        for cid in [
+            "canvas-overall-size-power",
+            "canvas-overall-size-fdr",
+            "canvas-overall-topology",
+            "canvas-overall-connectivity",
+            "canvas-overall-noise",
+        ]:
+            canvas = page.locator(f"#{cid}")
+            assert canvas.is_visible(), f"Canvas #{cid} must be visible"
+
+        # Capture Screenshot: Overall Statistics View
+        shot47 = DOCS_SCREENSHOTS / "47_tab5_overall_statistics_sweep.png"
+        page.screenshot(path=str(shot47), full_page=False)
+        shutil.copy(shot47, ARTIFACT_DIR / "47_tab5_overall_statistics_sweep.png")
+        print(f"Captured: {shot47}")
+
+        # -----------------------------------------------------------------
+        # STEP 3: TEST TOGGLE TO HISTORICAL THESIS & PAPER GALLERY (2004)
+        # -----------------------------------------------------------------
+        print("4. Testing toggle to Historical Figures Gallery...")
+        page.click("#btn-tab5-view-historical")
+        page.wait_for_timeout(800)
+
+        assert not page.is_visible("#tab5-view-overall"), "Overall stats view must now be hidden"
+        assert page.is_visible("#tab5-view-historical"), "Historical gallery view must now be visible"
+
+        # Verify authentic 2004 MATLAB elements
+        assert page.is_visible("#btn-fig-src-matlab")
+        assert page.is_visible("#fig-overallstats-bar")
+        assert page.is_visible("#canvas-fig-topology")
+        assert page.is_visible("#canvas-fig-connectivity")
+        assert page.is_visible("#canvas-fig-noise")
+        assert page.is_visible("#canvas-fig-voting")
+        assert page.is_visible("#tbl-fig2-4gene")
+
+        # Capture Screenshot: Historical Gallery View
+        shot48 = DOCS_SCREENSHOTS / "48_tab5_historical_gallery_toggle.png"
+        page.screenshot(path=str(shot48), full_page=False)
+        shutil.copy(shot48, ARTIFACT_DIR / "48_tab5_historical_gallery_toggle.png")
+        print(f"Captured: {shot48}")
+
+        # Switch back to Overall Statistics
+        page.click("#btn-tab5-view-overall")
+        page.wait_for_timeout(500)
+        assert page.is_visible("#tab5-view-overall")
+
+        # -----------------------------------------------------------------
+        # STEP 4: VERIFY TAB 3 PREVIOUS SIMULATIONS ARCHIVE (BEST 15 PER SET)
+        # -----------------------------------------------------------------
+        print("5. Navigating to Tab 3 (Previous Simulations Archive)...")
+        tab3_btn.click()
+        page.wait_for_timeout(1000)
+
+        assert page.is_visible("#tab-history")
+        assert page.is_visible("#archive-best15-banner")
+        banner_text = page.locator("#archive-best15-banner-text").inner_text()
+        print(f"Banner text: {banner_text}")
+        assert "Best 15" in banner_text
+
+        # 4A. Default 'all' filter: Curated corpus has exactly 45 runs (15 responsive + 15 flat + 15 oscillating)
+        table_rows = page.locator("#tbl-history tbody tr")
+        total_all_rows = table_rows.count()
+        print(f"Visible rows under 'all' curated filter: {total_all_rows}")
+        assert total_all_rows == 45, f"Expected 45 curated runs (15 per dynamics set), got {total_all_rows}"
+
+        # Verify Rank Badge and F1 Score in the table
+        first_row = table_rows.first
+        first_row_text = first_row.inner_text()
+        print(f"Tab 3 Row 1 text: {first_row_text}")
+        assert "#1 in Responsive" in first_row_text
+        # F1 score must be displayed (e.g. 1.000)
+        assert "1.000" in first_row_text or "0." in first_row_text
+
+        # 4B. Filter: 'responsive' (strictly best 15)
+        print("Testing filter 'responsive'...")
+        page.select_option("#archive-filter-type", "responsive")
+        page.wait_for_timeout(600)
+        resp_count = page.locator("#tbl-history tbody tr").count()
+        print(f"Responsive runs count: {resp_count}")
+        assert resp_count == 15, f"Expected strictly 15 responsive runs, got {resp_count}"
+        assert "#1 in Responsive" in page.locator("#tbl-history tbody tr").first.inner_text()
+
+        # 4C. Filter: 'flat' (strictly best 15)
+        print("Testing filter 'flat'...")
+        page.select_option("#archive-filter-type", "flat")
+        page.wait_for_timeout(600)
+        flat_count = page.locator("#tbl-history tbody tr").count()
+        print(f"Flat runs count: {flat_count}")
+        assert flat_count == 15, f"Expected strictly 15 flat runs, got {flat_count}"
+        assert "#1 in Flat Levels" in page.locator("#tbl-history tbody tr").first.inner_text()
+
+        # 4D. Filter: 'oscillating' (strictly best 15)
+        print("Testing filter 'oscillating'...")
+        page.select_option("#archive-filter-type", "oscillating")
+        page.wait_for_timeout(600)
+        osc_count = page.locator("#tbl-history tbody tr").count()
+        print(f"Oscillating runs count: {osc_count}")
+        assert osc_count == 15, f"Expected strictly 15 oscillating runs, got {osc_count}"
+        assert "#1 in Oscillating" in page.locator("#tbl-history tbody tr").first.inner_text()
+
+        # 4E. Filter: 'power_law' (strictly best 15 scale-free)
+        print("Testing filter 'power_law'...")
+        page.select_option("#archive-filter-type", "power_law")
+        page.wait_for_timeout(600)
+        topo_count = page.locator("#tbl-history tbody tr").count()
+        print(f"Power-law runs count: {topo_count}")
+        assert topo_count == 15, f"Expected strictly 15 power-law runs, got {topo_count}"
+        assert "#1 in Scale-Free Topo" in page.locator("#tbl-history tbody tr").first.inner_text()
+
+        # Reset filter to 'all' for clean full screenshot
+        page.select_option("#archive-filter-type", "all")
+        page.wait_for_timeout(600)
+
+        # Capture Screenshot: Tab 3 Archive Best 15 View
+        shot49 = DOCS_SCREENSHOTS / "49_tab3_best15_restricted_view.png"
+        page.screenshot(path=str(shot49), full_page=False)
+        shutil.copy(shot49, ARTIFACT_DIR / "49_tab3_best15_restricted_view.png")
+        print(f"Captured: {shot49}")
+
+        # -----------------------------------------------------------------
+        # STEP 5: VERIFY STEP 4 SIDE-BY-SIDE & 3x3 SHIFT BAR GRID INSPECTOR
+        # -----------------------------------------------------------------
+        print("6. Verifying Detailed Inspector for Run #1...")
+        # Select first row
+        page.locator("#tbl-history tbody tr").first.click()
+        page.wait_for_timeout(800)
+
+        # Ensure detailed inspector panel is visible
+        assert page.is_visible("#history-detail-panel")
+        assert page.is_visible("#hist-step4-dual-container")
+        assert page.is_visible("#canvas-hist-pert-timecourse")
+        assert page.is_visible("#canvas-hist-pert-matrix")
+
+        # Toggle to 3x3 Shift Bar Grid
+        print("Testing 3x3 Shift Bar Grid toggle...")
+        page.click("#btn-hist-pert-mode-bar")
+        page.wait_for_timeout(600)
+        assert page.is_visible("#hist-step4-grid-container")
+        assert page.is_visible("#canvas-hist-pert-grid")
+
+        # Capture Screenshot: Detailed Inspector with 3x3 Grid
+        shot50 = DOCS_SCREENSHOTS / "50_tab3_step4_dual_and_inspector.png"
+        page.locator("#history-detail-panel").scroll_into_view_if_needed()
+        page.wait_for_timeout(400)
+        page.screenshot(path=str(shot50), full_page=False)
+        shutil.copy(shot50, ARTIFACT_DIR / "50_tab3_step4_dual_and_inspector.png")
+        print(f"Captured: {shot50}")
+
+        browser.close()
+        print("All tests passed successfully!")
+
+
+if __name__ == "__main__":
+    test_overall_stats_and_best15_restricted_archive()

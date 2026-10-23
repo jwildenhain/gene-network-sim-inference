@@ -188,6 +188,18 @@ def save_simulation_to_db(
         conn.close()
 
 
+def _compute_entry_f1(entry: Dict[str, Any]) -> float:
+    """Computes F1 score for re-engineering accuracy from power (recall) and PPV (precision)."""
+    best_alg = entry.get("best_alg_key") or (entry.get("best_algorithm", "vote").lower())
+    m = entry.get("metrics_summary", {}).get(best_alg, {})
+    power = float(entry.get("best_power_pct", m.get("power", 0))) / 100.0
+    ppv = float(m.get("ppv", 0)) / 100.0
+    if power + ppv > 0:
+        return round(2.0 * (power * ppv) / (power + ppv), 4)
+    tot_err = float(entry.get("best_total_errors", 99))
+    return round(1.0 / (1.0 + tot_err), 4)
+
+
 def load_all_history_from_db(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
     """Loads all archived simulation history entries from the SQLite `nw` table (matching `showpre.php`)."""
     path = init_db(db_path)
@@ -212,6 +224,7 @@ def load_all_history_from_db(db_path: Optional[str] = None) -> List[Dict[str, An
                     entry["response_type"] = r_type or "responsive"
                 if r_stats_json and r_stats_json != "{}":
                     entry["response_dynamics"] = json.loads(r_stats_json)
+                entry["f1_score"] = entry.get("f1_score") or _compute_entry_f1(entry)
                 entries.append(entry)
             except Exception:
                 continue

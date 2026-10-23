@@ -319,3 +319,32 @@ UI Mapping:
 2. **Visual Spotlight & Animated Halo (`.step-highlight-active`)**: Applies an animated glowing border to the targeted panel and scrolls it smoothly into view.
 3. **Step Focus Mode (`APP_STATE.stepFocusMode`)**: When enabled, dims non-active panels to 35% opacity, focusing the workspace exclusively on the current step's controls and visualizers.
 4. **Data Mode Synchronization (`onModeChange()`)**: Switching modes in Step 1 immediately locks fixed parameters (e.g., $N=9$ for SOS, $N=16$ for Norman 2019), displays a detailed dataset summary card, and synchronizes the simulation engine.
+
+---
+
+## 5. Overall Statistics Benchmark & Curated Best-15 Archive (Tabs 3 & 5)
+
+### 5.1 Systematic Parameter Sweep Multi-Axis Benchmark (Tab 5: Overall Statistics)
+Systematic parameter sweeps across 4 continuous and structural axes evaluate algorithm scalability and limits:
+1. **Network Size Axis ($N \in [5, 30]$)**: Power (Recall) and False Discovery Rate (FDR) scaling under identical edge density $k_{\text{av}} = 2.0$.
+2. **Network Topology Axis**: Random Erdős-Rényi, Scale-Free / Power-Law (Barabási-Albert), and Hierarchical Modular (Ravasz-Barabási) comparison.
+3. **Connectivity Axis ($k_{\text{av}} \in [1.0, 4.0]$)**: Evaluates high regulator density and combinatorial regression challenges.
+4. **Measurement Noise Axis ($\sigma_m \in [0.0, 0.25]$)**: Assesses noise degradation from pristine in silico conditions to noisy microarray/scRNA-seq.
+
+#### Leaderboard Results Across 1,237 Algorithmic Evaluations:
+| Rank | Algorithm | Method Type | Mean $F_1$ | Power (%) | Specificity (%) | FDR (%) | Total Errors |
+|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|
+| **#1** | **Voting Ensemble** | Consensus ($S2G \cap G2S$) | **0.438** | 36.5% | **95.3%** | **41.0%** | **20.8** |
+| **#2** | **Simple-to-General (S2G)** | Forward Stepwise AIC | 0.427 | **56.8%** | 81.1% | 64.1% | 36.9 |
+| **#3** | **General-to-Specific (G2S)** | Backward Stepwise AIC | 0.421 | 46.3% | 87.9% | 60.8% | 29.3 |
+| **#4** | **NIR** | Multiple Linear Regression | 0.367 | 40.0% | 86.6% | 66.0% | 33.2 |
+| **#5** | **FAST** | SVD Truncation Inversion | 0.295 | 32.4% | 85.0% | 72.8% | 37.0 |
+| **#6** | **RidgeCV** | Multi-Output L2 Regularized | 0.290 | 64.2% | 52.8% | 80.6% | 82.2 |
+| **#7** | **By-Chance** | Null Bernoulli Random Model | 0.155 | 17.0% | 83.3% | 85.5% | 44.9 |
+
+- **Historical Reference Switcher**: Instant toggle displays the authentic 2004 MATLAB `.mat` figures gallery (Figures 4.1–4.12, 4-gene kinetic parameters, and $N \in [10..70]$ inspect bar) as is for historical comparison.
+
+### 5.2 Curated Best-15 Archive View (Tab 3: Previous Simulations)
+- **Top 15 Restriction**: Restricts archive views strictly to the top 15 highest-performing runs within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), sorted by $F_1$ re-engineering accuracy and lowest total errors.
+- **Dynamic Rank Indicators**: Shows `#1 in Set` through `#15 in Set` with dedicated rank badges and explicit $F_1$ score column.
+- **Curated Corpus**: Default "All" view displays 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) out of 131 persisted runs in SQLite `rgn_db`.

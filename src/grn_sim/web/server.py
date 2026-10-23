@@ -19,6 +19,7 @@ import time
 import urllib.parse
 import zipfile
 from typing import Dict, Any, List, Optional, Tuple
+from pathlib import Path
 import numpy as np
 
 from grn_sim.core.topology import generate_topology, TopologyType, NetworkTopology
@@ -1886,6 +1887,22 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 source = query.get("source", ["matlab_mat"])[0]
                 repeats = int(query.get("repeats", [1])[0])
                 payload = _build_thesis_figures_data(source=source, repeats=repeats)
+                self._set_headers(200)
+                self.wfile.write(json.dumps(payload).encode("utf-8"))
+            except Exception as e:
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/benchmark/overall_stats":
+            try:
+                stats_file = Path(__file__).resolve().parent.parent.parent.parent / "data" / "overall_statistics_sweep.json"
+                if stats_file.exists():
+                    with open(stats_file, "r", encoding="utf-8") as f:
+                        payload = json.load(f)
+                else:
+                    from grn_sim.benchmarks.parameter_sweep import run_systematic_sweep
+                    payload = run_systematic_sweep()
                 self._set_headers(200)
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
             except Exception as e:

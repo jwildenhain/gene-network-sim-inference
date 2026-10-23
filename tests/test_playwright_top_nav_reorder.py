@@ -39,7 +39,7 @@ def test_top_navigation_reorder():
             ("tab-sos", "2. Real-World Benchmarks"),
             ("tab-history", "3. Previous Simulations Archive"),
             ("tab-vcc", "4. Virtual Cell Challenge & AtlasShift"),
-            ("tab-figures", "5. Thesis & Paper Figures Gallery"),
+            ("tab-figures", "5. Overall Statistics"),
         ]
 
         tabs = page.locator("nav.nav-tabs button.nav-tab")

@@ -36,8 +36,8 @@ def capture_3_representative_examples():
         page.evaluate("selectArchiveRun('iorn-rep-responsive')")
         page.wait_for_timeout(1000)
 
-        # Ensure in timecourse mode
-        page.click("#btn-hist-pert-mode-timecourse")
+        # Ensure in dual mode
+        page.click("#btn-hist-pert-mode-dual")
         page.wait_for_timeout(500)
 
         # Scroll into view of step 4
@@ -61,7 +61,7 @@ def capture_3_representative_examples():
         page.evaluate("selectArchiveRun('iorn-rep-flat')")
         page.wait_for_timeout(1000)
 
-        page.click("#btn-hist-pert-mode-timecourse")
+        page.click("#btn-hist-pert-mode-dual")
         page.wait_for_timeout(500)
         page.locator("#panel-hist-step4").scroll_into_view_if_needed()
         page.wait_for_timeout(500)
@@ -82,7 +82,7 @@ def capture_3_representative_examples():
         page.evaluate("selectArchiveRun('iorn-rep-oscillating')")
         page.wait_for_timeout(1000)
 
-        page.click("#btn-hist-pert-mode-timecourse")
+        page.click("#btn-hist-pert-mode-dual")
         page.wait_for_timeout(500)
         page.locator("#panel-hist-step4").scroll_into_view_if_needed()
         page.wait_for_timeout(500)

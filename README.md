@@ -84,9 +84,9 @@ Rigorous end-to-end verification across real biological datasets (*E. coli* SOS,
 | :---: | :---: | :---: |
 | ![Tab 1 Studio Verified](docs/screenshots/audit_01_tab1_studio_verified.png) | ![Tab 2 Real Benchmarks](docs/screenshots/audit_02_tab2_benchmarks_verified.png) | ![Tab 3 Previous Simulations Archive](docs/screenshots/audit_04_tab4_archive_verified.png) |
 
-| Tab 4: Virtual Cell Challenge Studio | Tab 5: Thesis & Paper Figures Gallery | Reordered Top Navigation Header |
+| Tab 4: Virtual Cell Challenge Studio | Tab 5: Overall Statistics & Historical Gallery | Reordered Top Navigation Header |
 | :---: | :---: | :---: |
-| ![Tab 4 VCC Studio](docs/screenshots/audit_05_tab5_vcc_verified.png) | ![Tab 5 Thesis Figures](docs/screenshots/audit_03_tab3_thesis_figures_verified.png) | ![Reordered Top Navigation](docs/screenshots/42_top_navigation_bar_crop.png) |
+| ![Tab 4 VCC Studio](docs/screenshots/audit_05_tab5_vcc_verified.png) | ![Tab 5 Overall Statistics](docs/screenshots/47_tab5_overall_statistics_sweep.png) | ![Reordered Top Navigation](docs/screenshots/42_top_navigation_bar_crop.png) |
 
 | Interactive Node Click Dynamics (*E. coli* SOS) | Single-Cell CRISPRa Trajectory (Norman 2019) |
 | :---: | :---: |
@@ -148,6 +148,35 @@ In Tab 3 (Previous Simulations Archive), Step 4 is split into **two side-by-side
 | Tab 3: Side-by-Side Dual Graph (Time-Course & Matrix) | Tab 3: Side-by-Side Dual View (Limit Cycle Oscillations) |
 | :---: | :---: |
 | ![Side by Side Dual Graph](docs/screenshots/37_tab4_step4_dual_side_by_side_responsive.png) | ![Dual Oscillating](docs/screenshots/40_tab4_step4_dual_side_by_side_oscillating.png) |
+
+### 11. Systematic Parameter Sweep Benchmark, Overall Statistics & Restricted Archive View (Tabs 3 & 5)
+
+A multi-parameter sweep benchmark across 4 key axes (**Network Size $N \in [5..30]$**, **Topologies**, **Measurement Noise $\sigma_m \in [0.0..0.25]$**, and **Connectivity $k_{\text{av}} \in [1.0..4.0]$**) evaluates 7 comparative reverse-engineering algorithms across 1,237 evaluated algorithmic runs:
+
+1. **Tab 5 Renamed to "5. Overall Statistics"**:
+   - **Interactive Algorithm Leaderboard**: Real-time cross-parameter evaluation of 7 inference methods (Voting Ensemble, S2G Forward AIC, G2S Backward AIC, NIR Multiple Regression, FAST SVD Inversion, RidgeCV L2 Inverse, and By-Chance Null Model).
+   - **Leaderboard Performance Summary**:
+     - **#1 Voting Ensemble**: Consensus ($S2G \cap G2S$) achieves top standing with Mean $F_1 = 0.438$, Specificity $= 95.3\%$, False Discovery Rate $= 41.0\%$, and lowest Mean Total Errors $= 20.8$.
+     - **#2 Simple-to-General (S2G)**: Highest single-method Power / Recall $= 56.8\%$ with Mean $F_1 = 0.427$.
+     - **#3 General-to-Specific (G2S)**: Backward elimination achieving Power $= 46.3\%$ and Specificity $= 87.9\%$.
+   - **Figure 1A & 1B: Network Size Scaling ($N \in [5, 30]$)**: True interaction recovery rate (Power %) and FDR suppression as network dimensionality scales.
+   - **Figure 2: Topology Impact (Random vs Scale-Free vs Hierarchical)**: Grouped comparison of Mean $F_1$, Power, and FDR across graph architectures.
+   - **Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 4.0]$)**: Performance degradation and error rates as regulator density escalates.
+   - **Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.25]$)**: Robustness evaluation across increasing experimental noise.
+   - **Dual Mode View Toggle**: One-click instant switcher between **"📊 Overall Statistics (New Parameter Sweep)"** (default) and **"📜 Historical Figures Gallery (Thesis & 2006 Paper)"** (preserved as is for historical reference from 2004 MATLAB `.mat` archives).
+
+2. **Tab 3 Previous Simulations Archive: Restricted View to Best 15 for Each Set**:
+   - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs for each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best).
+   - **Dynamic Rank Badges & F1 Column**: Each row is badged with its exact ranking within its set (`#1 in Responsive` .. `#15 in Responsive`), its calculated $F_1$ score, Power %, Specificity %, and Total Errors.
+   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) are displayed out of the 131 persisted runs in SQLite `rgn_db`.
+
+| Tab 5: Overall Statistics (Leaderboard & Figures 1–4) | Tab 5: Historical 2004 Figures Gallery Toggle |
+| :---: | :---: |
+| ![Tab 5 Overall Statistics](docs/screenshots/47_tab5_overall_statistics_sweep.png) | ![Tab 5 Historical Gallery](docs/screenshots/48_tab5_historical_gallery_toggle.png) |
+
+| Tab 3: Restricted View (Best 15 in Set & F1 Badges) | Tab 3: Step 4 Dual Side-by-Side & 3×3 Grid Inspector |
+| :---: | :---: |
+| ![Tab 3 Best 15 Restricted View](docs/screenshots/49_tab3_best15_restricted_view.png) | ![Tab 3 Detailed Inspector](docs/screenshots/50_tab3_step4_dual_and_inspector.png) |
 
 ---
 

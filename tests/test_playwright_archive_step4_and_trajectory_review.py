@@ -47,14 +47,14 @@ def test_archive_step4_toggle_and_trajectory_review():
         assert page.is_visible("#panel-hist-step4"), "Step 4 panel must be visible in archive detail inspector"
         assert page.is_visible("#canvas-hist-pert-timecourse") or page.is_visible("#canvas-hist-pert"), "Step 4 canvas must be visible"
 
-        # Check toggle buttons
-        assert page.is_visible("#btn-hist-pert-mode-timecourse")
-        assert page.is_visible("#btn-hist-pert-mode-matrix")
+        # Check toggle buttons (Side-by-side Dual and 3x3 Bar Grid)
+        assert page.is_visible("#btn-hist-pert-mode-dual")
         assert page.is_visible("#btn-hist-pert-mode-bar")
+        assert not page.is_visible("#btn-hist-pert-mode-timecourse")
+        assert not page.is_visible("#btn-hist-pert-mode-matrix")
 
-        # By default, dual or timecourse should be active
-        has_active = ("active" in (page.get_attribute("#btn-hist-pert-mode-dual", "class") or "")) or ("active" in (page.get_attribute("#btn-hist-pert-mode-timecourse", "class") or ""))
-        assert has_active, "Dual or timecourse toggle button must be active"
+        # By default, dual should be active
+        assert "active" in (page.get_attribute("#btn-hist-pert-mode-dual", "class") or "")
 
         # Check trajectory diagnosis banner for clear level changes
         diag_text = page.inner_text("#hist-trajectory-diagnosis-banner")
@@ -66,15 +66,13 @@ def test_archive_step4_toggle_and_trajectory_review():
         page.screenshot(path=str(DOCS_SCREENSHOTS / "30_tab4_step4_timecourse_responsive.png"))
 
         # -------------------------------------------------------------
-        # TEST 2: TOGGLE TO EXPRESSION MATRIX (X)
+        # TEST 2: SIDE-BY-SIDE DUAL VIEW (TIMECOURSE & MATRIX)
         # -------------------------------------------------------------
-        print("4. Toggling to Expression Matrix (X)...")
-        page.click("#btn-hist-pert-mode-matrix")
-        page.wait_for_timeout(400)
-        assert "active" in page.get_attribute("#btn-hist-pert-mode-matrix", "class")
-        assert "active" not in page.get_attribute("#btn-hist-pert-mode-timecourse", "class")
-        # Condition dropdown should be hidden in matrix view
-        assert not page.is_visible("#select-hist-pert-gene")
+        print("4. Verifying Side-by-Side Dual View (Time-Course & Matrix)...")
+        assert "active" in page.get_attribute("#btn-hist-pert-mode-dual", "class")
+        assert page.is_visible("#canvas-hist-pert-timecourse")
+        assert page.is_visible("#canvas-hist-pert-matrix")
+        assert page.is_visible("#select-hist-pert-gene")
 
         # Capture screenshot of expression matrix heatmap
         page.screenshot(path=str(ARTIFACT_DIR / "tab4_step4_expression_matrix.png"))
@@ -98,8 +96,8 @@ def test_archive_step4_toggle_and_trajectory_review():
         page.click("#tbl-history tbody tr:first-child button:first-child")
         page.wait_for_timeout(1000)
 
-        # Switch to timecourse
-        page.click("#btn-hist-pert-mode-timecourse")
+        # Ensure dual mode
+        page.click("#btn-hist-pert-mode-dual")
         page.wait_for_timeout(400)
 
         diag_text_flat = page.inner_text("#hist-trajectory-diagnosis-banner")

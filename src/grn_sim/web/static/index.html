@@ -941,7 +941,7 @@
           <span>4. Virtual Cell Challenge &amp; AtlasShift</span>
         </button>
         <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
-          <span>5. Thesis &amp; Paper Figures Gallery</span>
+          <span>5. Overall Statistics</span>
         </button>
       </nav>
 
@@ -1745,146 +1745,310 @@
     </section>
 
     <!-- ========================================================================= -->
-    <!-- TAB 3: THESIS & 2006 PAPER FIGURES GALLERY                                -->
+    <!-- TAB 5: OVERALL STATISTICS & BENCHMARK PERFORMANCE                         -->
     <!-- ========================================================================= -->
     <section id="tab-figures" class="tab-pane">
+      <!-- Master Tab 5 Mode Switcher Banner -->
       <div class="panel" style="margin-bottom:16px;">
-        <div class="panel-header" style="margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="panel-header" style="margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
           <div>
             <div class="panel-title" style="font-size:16px;display:flex;align-items:center;gap:8px;">
-              Thesis &amp; 2006 Paper Benchmark Figures Gallery (Wildenhain 2004; Wildenhain &amp; Crampin 2006)
-              <span class="badge badge-emerald" id="badge-fig-source">Authentic MATLAB .mat Archives</span>
+              <span>5. Overall Statistics &amp; Systematic Benchmark Performance</span>
+              <span class="badge badge-emerald" id="badge-tab5-current-mode">Systematic Parameter Sweep Stats</span>
             </div>
-            <p id="desc-fig-source" style="font-size:12px;color:var(--text-muted);margin-top:2px;">
-              Loaded directly from original 2004 MATLAB benchmark archives (<code>data/matlab_benchmarks/DIAG_*.mat</code> &amp; 25 <code>overallstats/DIAG_nz70_iot*_std*_mean.mat</code> files).
+            <p style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="desc-tab5-banner">
+              Systematic parameter sweep across 4 key axes (Network Size N ∈ [5..30], Topology, Regulator Density k_av ∈ [1.0..4.0], Noise σ_m ∈ [0..0.25]) evaluating 7 inference algorithms with 1,237 evaluated algorithmic runs.
             </p>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button id="btn-fig-src-matlab" class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="loadThesisFigures('matlab_mat')">
-              📂 Stored MATLAB .mat Archives
+          <!-- View Toggle: Switch between Overall Statistics and Historical Reference -->
+          <div style="display:flex;gap:8px;align-items:center;background:var(--bg-elevated, rgba(255,255,255,0.04));padding:4px;border-radius:6px;border:1px solid var(--border);">
+            <button id="btn-tab5-view-overall" class="btn btn-primary" style="padding:6px 14px;font-size:12px;font-weight:600;" onclick="switchTab5View('overall')">
+              📊 Overall Statistics (New Parameter Sweep)
             </button>
-            <button id="btn-fig-src-python" class="btn btn-outline" style="padding:6px 12px;font-size:12px;" onclick="loadThesisFigures('python_live')">
-              ⚡ Compute Live Python Sweep
+            <button id="btn-tab5-view-historical" class="btn btn-outline" style="padding:6px 14px;font-size:12px;font-weight:600;" onclick="switchTab5View('historical')">
+              📜 Historical Figures Gallery (Thesis &amp; 2006 Paper)
             </button>
           </div>
         </div>
-        <div id="fig-overallstats-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;padding-top:4px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-weight:600;color:var(--text-main);">Inspect <code>overallstats/</code> Archive ($N \in [10..70]$):</span>
-            <label style="color:var(--text-muted);">Connectivity $k_{av}$:
-              <select id="sel-overall-iot" onchange="updateOverallStatsInspector()" style="margin-left:4px;padding:2px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-main);border:1px solid var(--border);">
-                <option value="1">1.0</option>
-                <option value="1.5">1.5</option>
-                <option value="2" selected>2.0</option>
-                <option value="3">3.0</option>
-                <option value="5">5.0</option>
-              </select>
-            </label>
-            <label style="color:var(--text-muted);">Noise $\sigma$:
-              <select id="sel-overall-std" onchange="updateOverallStatsInspector()" style="margin-left:4px;padding:2px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-main);border:1px solid var(--border);">
-                <option value="0" selected>0.0</option>
-                <option value="0.001">0.001</option>
-                <option value="0.0025">0.0025</option>
-                <option value="0.005">0.005</option>
-                <option value="0.01">0.01</option>
-              </select>
-            </label>
+      </div>
+
+      <!-- ======================================================================= -->
+      <!-- VIEW 1: OVERALL STATISTICS & PARAMETER SWEEP BENCHMARK (DEFAULT)        -->
+      <!-- ======================================================================= -->
+      <div id="tab5-view-overall">
+        <!-- KPI Cards Summary Grid -->
+        <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:12px;margin-bottom:16px;">
+          <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Total Evaluated Networks</div>
+            <div style="font-size:24px;font-weight:700;color:var(--accent-blue);margin-top:4px;" id="kpi-overall-total-runs">131</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Across 4 parameter axes in SQLite</div>
           </div>
-          <div id="overallstats-readout" style="font-family:monospace;font-size:11.5px;color:var(--accent-cyan);">
-            Loading DIAG_nz70_iot2_std0_mean.mat...
+          <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Algorithmic Evaluations</div>
+            <div style="font-size:24px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-alg-evals">1,237</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">7 comparative re-engineering methods</div>
           </div>
+          <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Top Overall Performer</div>
+            <div style="font-size:20px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-top-alg">Voting Ensemble</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Rank #1: F1=0.438 &bull; Spec=95.3% &bull; FDR=41.0%</div>
+          </div>
+          <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Best Single Method</div>
+            <div style="font-size:20px;font-weight:700;color:var(--accent-cyan, #06b6d4);margin-top:4px;" id="kpi-overall-best-single">S2G (Forward AIC)</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Rank #2: Power=56.8% &bull; F1=0.427</div>
+          </div>
+          <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Systematic Axes Swept</div>
+            <div style="font-size:20px;font-weight:700;color:var(--accent-purple, #8b5cf6);margin-top:4px;">4 Major Axes</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Size (5..30), Topo (3), k_av (1..4), Noise (0..0.25)</div>
+          </div>
+        </div>
+
+        <!-- Algorithm Comparative Leaderboard Table -->
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:8px;">
+                🏆 Systematic Benchmark Algorithm Leaderboard
+                <span class="badge badge-emerald">Multi-Parameter Cross-Evaluation</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-muted);">
+                Averaged across all systematic parameter sweep configurations (Network sizes N ∈ [5..30], Topologies, Connectivity, Noise levels).
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="loadOverallStats(true)">↻ Re-Fetch Stats</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="tbl-overall-leaderboard">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Algorithm</th>
+                  <th>Method Type</th>
+                  <th>Runs</th>
+                  <th>Mean F1 Score</th>
+                  <th>Power (Recall %)</th>
+                  <th>Specificity (%)</th>
+                  <th>Precision (PPV %)</th>
+                  <th>Signed PPV (%)</th>
+                  <th>FDR (%)</th>
+                  <th>Mean Total Errors</th>
+                  <th>Benchmark Standing</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Figures 1A & 1B: Network Size Sweep Performance & FDR -->
+        <div class="two-col-grid" style="margin-bottom:16px;">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figure 1A: Network Size vs Re-Engineering Power (%) (N ∈ [5, 30])</div>
+                <div style="font-size:11px;color:var(--text-muted);">True interaction recovery rate across scaling network dimension (Thesis Chapter 4.1.1)</div>
+              </div>
+              <span class="badge">Size Sweep (N)</span>
+            </div>
+            <canvas id="canvas-overall-size-power" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figure 1B: Network Size vs False Discovery Rate (FDR %) (N ∈ [5, 30])</div>
+                <div style="font-size:11px;color:var(--text-muted);">Voting consensus dramatically suppresses false-positive edge rate across all network sizes</div>
+              </div>
+              <span class="badge badge-emerald">FDR Suppression</span>
+            </div>
+            <canvas id="canvas-overall-size-fdr" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
+          </div>
+        </div>
+
+        <!-- Figures 2 & 3: Topology Breakdown & Connectivity Sweep -->
+        <div class="two-col-grid" style="margin-bottom:16px;">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figure 2: Topology Impact (Random vs Scale-Free vs Hierarchical)</div>
+                <div style="font-size:11px;color:var(--text-muted);">Comparison of Mean F1 score, Power and FDR across graph architectures (Thesis Chapter 4.1.1)</div>
+              </div>
+              <span class="badge">Topology Sweep</span>
+            </div>
+            <canvas id="canvas-overall-topology" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figure 3: Average Connectivity Sweep (k_av ∈ [1.0, 4.0])</div>
+                <div style="font-size:11px;color:var(--text-muted);">Re-engineering sensitivity and total errors as regulator density increases (Thesis Chapter 4.1.2)</div>
+              </div>
+              <span class="badge">Connectivity (k_av)</span>
+            </div>
+            <canvas id="canvas-overall-connectivity" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
+          </div>
+        </div>
+
+        <!-- Figure 4: Measurement Noise Sensitivity Sweep -->
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 4: Measurement Noise Sensitivity (σ_m ∈ [0.0, 0.25])</div>
+              <div style="font-size:11px;color:var(--text-muted);">
+                Robustness of inference algorithms under escalating experimental microarray/RNA-seq noise (Thesis Chapter 4.1.3 &amp; Paper Fig 5)
+              </div>
+            </div>
+            <span class="badge">Noise Sweep (σ_m)</span>
+          </div>
+          <canvas id="canvas-overall-noise" class="chart-canvas" width="1380" height="260" style="width:100%;height:260px;"></canvas>
         </div>
       </div>
 
-      <div class="two-col-grid" style="margin-bottom:16px;">
-        <!-- Fig 4.1 & 4.2: Topology Comparison -->
-        <div class="panel">
-          <div class="panel-header">
+      <!-- ======================================================================= -->
+      <!-- VIEW 2: HISTORICAL THESIS & PAPER FIGURES GALLERY (AS IS FOR REFERENCE) -->
+      <!-- ======================================================================= -->
+      <div id="tab5-view-historical" style="display:none;">
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header" style="margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
-              <div class="panel-title">Figures 4.1 &amp; 4.2: Scale-Free vs Random vs Hierarchical Topologies</div>
-              <div style="font-size:11px;color:var(--text-muted);">Recovered interactions (Power %) vs Network Size $n \in [10, 70]$ (powervsrandom.pdf)</div>
+              <div class="panel-title" style="font-size:16px;display:flex;align-items:center;gap:8px;">
+                Thesis &amp; 2006 Paper Benchmark Figures Gallery (Wildenhain 2004; Wildenhain &amp; Crampin 2006)
+                <span class="badge badge-emerald" id="badge-fig-source">Authentic MATLAB .mat Archives</span>
+              </div>
+              <p id="desc-fig-source" style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                Loaded directly from original 2004 MATLAB benchmark archives (<code>data/matlab_benchmarks/DIAG_*.mat</code> &amp; 25 <code>overallstats/DIAG_nz70_iot*_std*_mean.mat</code> files).
+              </p>
             </div>
-            <span class="badge">Chapter 4.1.1</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button id="btn-fig-src-matlab" class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="loadThesisFigures('matlab_mat')">
+                📂 Stored MATLAB .mat Archives
+              </button>
+              <button id="btn-fig-src-python" class="btn btn-outline" style="padding:6px 12px;font-size:12px;" onclick="loadThesisFigures('python_live')">
+                ⚡ Compute Live Python Sweep
+              </button>
+            </div>
           </div>
-          <canvas id="canvas-fig-topology" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
+          <div id="fig-overallstats-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;padding-top:4px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:600;color:var(--text-main);">Inspect <code>overallstats/</code> Archive ($N \in [10..70]$):</span>
+              <label style="color:var(--text-muted);">Connectivity $k_{av}$:
+                <select id="sel-overall-iot" onchange="updateOverallStatsInspector()" style="margin-left:4px;padding:2px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-main);border:1px solid var(--border);">
+                  <option value="1">1.0</option>
+                  <option value="1.5">1.5</option>
+                  <option value="2" selected>2.0</option>
+                  <option value="3">3.0</option>
+                  <option value="5">5.0</option>
+                </select>
+              </label>
+              <label style="color:var(--text-muted);">Noise $\sigma$:
+                <select id="sel-overall-std" onchange="updateOverallStatsInspector()" style="margin-left:4px;padding:2px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-main);border:1px solid var(--border);">
+                  <option value="0" selected>0.0</option>
+                  <option value="0.001">0.001</option>
+                  <option value="0.0025">0.0025</option>
+                  <option value="0.005">0.005</option>
+                  <option value="0.01">0.01</option>
+                </select>
+              </label>
+            </div>
+            <div id="overallstats-readout" style="font-family:monospace;font-size:11.5px;color:var(--accent-cyan);">
+              Loading DIAG_nz70_iot2_std0_mean.mat...
+            </div>
+          </div>
         </div>
 
-        <!-- Fig 4.3-4.5: Connectivity Sweep -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">Figures 4.3–4.5: Average Connectivity Sweep ($k_{av} = 1.0, 1.5, 2.0, 3.0$)</div>
-              <div style="font-size:11px;color:var(--text-muted);">Power (%) and False Discovery Rate (%) across increasing regulator density (stats_connectitity.pdf)</div>
+        <div class="two-col-grid" style="margin-bottom:16px;">
+          <!-- Fig 4.1 & 4.2: Topology Comparison -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figures 4.1 &amp; 4.2: Scale-Free vs Random vs Hierarchical Topologies</div>
+                <div style="font-size:11px;color:var(--text-muted);">Recovered interactions (Power %) vs Network Size $n \in [10, 70]$ (powervsrandom.pdf)</div>
+              </div>
+              <span class="badge">Chapter 4.1.1</span>
             </div>
-            <span class="badge">Chapter 4.1.2</span>
+            <canvas id="canvas-fig-topology" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
           </div>
-          <canvas id="canvas-fig-connectivity" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
-        </div>
-      </div>
 
-      <div class="two-col-grid" style="margin-bottom:16px;">
-        <!-- Fig 4.6-4.9: Noise Sweep & 2D Heatmap -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">Figures 4.6–4.9: Noise Sensitivity &amp; 2D Connectivity&times;Noise Surface</div>
-              <div style="font-size:11px;color:var(--text-muted);">Left: Power vs Noise $\sigma$; Right: 2D Heatmap over $(k_{av}, \sigma)$ (overall_inferred_connections.pdf)</div>
+          <!-- Fig 4.3-4.5: Connectivity Sweep -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figures 4.3–4.5: Average Connectivity Sweep ($k_{av} = 1.0, 1.5, 2.0, 3.0$)</div>
+                <div style="font-size:11px;color:var(--text-muted);">Power (%) and False Discovery Rate (%) across increasing regulator density (stats_connectitity.pdf)</div>
+              </div>
+              <span class="badge">Chapter 4.1.2</span>
             </div>
-            <span class="badge">Chapter 4.1.3</span>
+            <canvas id="canvas-fig-connectivity" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
           </div>
-          <canvas id="canvas-fig-noise" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
-        </div>
-
-        <!-- Fig 4.12: Voting Ensemble Error Reduction -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">Figure 4.12: Voting Ensemble False-Positive Reduction (voting002.pdf)</div>
-              <div style="font-size:11px;color:var(--text-muted);">Consensus between S2G and G2S drastically cuts False Discovery Rate (%) and Total Errors</div>
-            </div>
-            <span class="badge badge-emerald">Paper Fig 6 / Thesis Fig 4.12</span>
-          </div>
-          <canvas id="canvas-fig-voting" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
-        </div>
-      </div>
-
-      <div class="two-col-grid">
-        <!-- Fig 4.10: Computational Complexity / Runtime Scaling -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">Figure 4.10: Computational Complexity &amp; Runtime Scaling (Performance_Time.pdf)</div>
-              <div style="font-size:11px;color:var(--text-muted);">Execution time (s) vs Network Size $n$: polynomial S2G/G2S vs combinatorial NIR</div>
-            </div>
-            <span class="badge">Chapter 4.1.4</span>
-          </div>
-          <canvas id="canvas-fig-runtime" class="chart-canvas" width="680" height="250" style="width:100%;height:250px;"></canvas>
         </div>
 
-        <!-- Fig 2.1, Table 2.1 & Fig 2.2: 4-Gene ODE Kinetic Benchmark & Error Distribution -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">Figure 2.2 &amp; Table 2.1: Error Model Distribution &amp; 4-Gene Kinetic Parameters</div>
-              <div style="font-size:11px;color:var(--text-muted);">Combined biological + Gaussian measurement noise distribution (Error_model.pdf)</div>
+        <div class="two-col-grid" style="margin-bottom:16px;">
+          <!-- Fig 4.6-4.9: Noise Sweep & 2D Heatmap -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figures 4.6–4.9: Noise Sensitivity &amp; 2D Connectivity&times;Noise Surface</div>
+                <div style="font-size:11px;color:var(--text-muted);">Left: Power vs Noise $\sigma$; Right: 2D Heatmap over $(k_{av}, \sigma)$ (overall_inferred_connections.pdf)</div>
+              </div>
+              <span class="badge">Chapter 4.1.3</span>
             </div>
-            <span class="badge">Chapter 2</span>
+            <canvas id="canvas-fig-noise" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:10px;align-items:center;">
-            <canvas id="canvas-fig-errormodel" class="chart-canvas" width="310" height="230" style="width:100%;height:230px;"></canvas>
-            <div style="overflow-x:auto;">
-              <table class="data-table" id="tbl-fig2-4gene">
-                <thead>
-                  <tr>
-                    <th>Gene</th>
-                    <th>v_i</th>
-                    <th>B_i</th>
-                    <th>x_i^ss</th>
-                    <th>Hill Kinetic Regulators</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+
+          <!-- Fig 4.12: Voting Ensemble Error Reduction -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figure 4.12: Voting Ensemble False-Positive Reduction (voting002.pdf)</div>
+                <div style="font-size:11px;color:var(--text-muted);">Consensus between S2G and G2S drastically cuts False Discovery Rate (%) and Total Errors</div>
+              </div>
+              <span class="badge badge-emerald">Paper Fig 6 / Thesis Fig 4.12</span>
+            </div>
+            <canvas id="canvas-fig-voting" class="chart-canvas" width="680" height="260" style="width:100%;height:260px;"></canvas>
+          </div>
+        </div>
+
+        <div class="two-col-grid">
+          <!-- Fig 4.10: Computational Complexity / Runtime Scaling -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figure 4.10: Computational Complexity &amp; Runtime Scaling (Performance_Time.pdf)</div>
+                <div style="font-size:11px;color:var(--text-muted);">Execution time (s) vs Network Size $n$: polynomial S2G/G2S vs combinatorial NIR</div>
+              </div>
+              <span class="badge">Chapter 4.1.4</span>
+            </div>
+            <canvas id="canvas-fig-runtime" class="chart-canvas" width="680" height="250" style="width:100%;height:250px;"></canvas>
+          </div>
+
+          <!-- Fig 2.1, Table 2.1 & Fig 2.2: 4-Gene ODE Kinetic Benchmark & Error Distribution -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Figure 2.2 &amp; Table 2.1: Error Model Distribution &amp; 4-Gene Kinetic Parameters</div>
+                <div style="font-size:11px;color:var(--text-muted);">Combined biological + Gaussian measurement noise distribution (Error_model.pdf)</div>
+              </div>
+              <span class="badge">Chapter 2</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:10px;align-items:center;">
+              <canvas id="canvas-fig-errormodel" class="chart-canvas" width="310" height="230" style="width:100%;height:230px;"></canvas>
+              <div style="overflow-x:auto;">
+                <table class="data-table" id="tbl-fig2-4gene">
+                  <thead>
+                    <tr>
+                      <th>Gene</th>
+                      <th>v_i</th>
+                      <th>B_i</th>
+                      <th>x_i^ss</th>
+                      <th>Hill Kinetic Regulators</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -1910,14 +2074,18 @@
         <!-- Perturbation Dynamics Category Filter Bar & Fast Simulation Triggers -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 16px 0;padding:10px 14px;background:var(--bg-elevated, rgba(255,255,255,0.03));border:1px solid var(--border-color);border-radius:6px;gap:12px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-weight:700;font-size:12px;color:var(--text-primary);letter-spacing:0.3px;">FILTER BY DYNAMICS:</span>
+            <span style="font-weight:700;font-size:12px;color:var(--text-primary);letter-spacing:0.3px;">CURATED VIEW:</span>
             <select id="archive-filter-type" style="padding:5px 12px;font-size:12px;font-weight:600;border-radius:5px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);" onchange="filterArchiveByType(this.value)">
-              <option value="all">All Dynamics Categories (Show All)</option>
-              <option value="responsive">⚡ Responsive (Clear Shifts Visible)</option>
-              <option value="flat">⚪ Flat Levels (No Visible Perturbation)</option>
-              <option value="oscillating">〰 Oscillating (Limit Cycle / Non-steady)</option>
+              <option value="all">🌟 Best 15 for Each Dynamics Set (Curated Benchmark Corpus)</option>
+              <option value="responsive">⚡ Best 15 Responsive (Clear Multi-Gene Shifts)</option>
+              <option value="flat">⚪ Best 15 Flat Levels (Dampened / Buffered Networks)</option>
+              <option value="oscillating">〰 Best 15 Oscillating (Limit Cycles &amp; Negative Feedback)</option>
+              <option value="random">🎲 Best 15 Random Topology</option>
+              <option value="power_law">🌐 Best 15 Scale-Free / Power-Law Topology</option>
+              <option value="hierarchical">🌲 Best 15 Hierarchical Topology</option>
+              <option value="overall_top15">🏆 Overall Top 15 Highest Performing Runs</option>
             </select>
-            <span id="archive-filter-count-badge" class="badge" style="font-size:11px;">--</span>
+            <span id="archive-filter-count-badge" class="badge badge-emerald" style="font-size:11px;">Best 15 Curated</span>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;" onclick="simulatePresetRun('responsive')" title="Simulate a standard network with clear multi-gene perturbation responses">
@@ -1933,6 +2101,19 @@
               Show Algorithmic Comparison &darr;
             </button>
           </div>
+        </div>
+
+        <!-- Curated Best-15 Banner -->
+        <div id="archive-best15-banner" style="display:flex;align-items:center;justify-content:space-between;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">⭐</span>
+            <span style="color:var(--text-primary);font-weight:600;" id="archive-best15-banner-text">
+              Restricted to the Best 15 Simulations for each set (ranked by F1 re-engineering score &amp; minimal total errors).
+            </span>
+          </div>
+          <span style="color:var(--text-muted);font-size:11.5px;" id="archive-best15-banner-sub">
+            Curated from 131 total runs persisted in SQLite database.
+          </span>
         </div>
 
         <!-- Category Summary Statistics Cards Section -->
@@ -1972,20 +2153,20 @@
           <table class="data-table" id="tbl-history">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>Rank in Set</th>
                 <th>Run ID</th>
-                <th>Timestamp</th>
-                <th>Dynamics Category</th>
+                <th>Dynamics Set</th>
                 <th>Topology</th>
                 <th>Genes (n)</th>
                 <th>k_av</th>
-                <th>Act Ratio</th>
                 <th>Noise (&sigma;_m)</th>
                 <th>ODE Equilibrium</th>
                 <th>Best Method</th>
+                <th>F1 Score</th>
                 <th>Power (%)</th>
                 <th>Specificity (%)</th>
                 <th>Total Errors</th>
+                <th>Timestamp</th>
                 <th class="no-sort">Downloads</th>
                 <th class="no-sort">Actions</th>
               </tr>
@@ -2558,6 +2739,9 @@
         drawFigRuntime(tf.fig4_runtime);
         drawFigErrorModel(tf.fig2_error_model);
       }
+      if (APP_STATE.overallStatsData) {
+        renderOverallStats(APP_STATE.overallStatsData);
+      }
       if (APP_STATE.vccData && APP_STATE.vccData.rewire_decay) {
         drawVccRewiringChart(APP_STATE.vccData.rewire_decay);
       }
@@ -2575,8 +2759,12 @@
       });
       if (tabId === 'tab-sos' && !APP_STATE.sosData) {
         loadSosFullStudio(APP_STATE.activeBenchmark || 'ecoli_sos');
-      } else if (tabId === 'tab-figures' && !APP_STATE.thesisFigures) {
-        loadThesisFigures();
+      } else if (tabId === 'tab-figures') {
+        if (!APP_STATE.overallStatsData) {
+          loadOverallStats();
+        } else {
+          renderOverallStats(APP_STATE.overallStatsData);
+        }
       } else if (tabId === 'tab-history') {
         loadHistoryTable();
       } else if (tabId === 'tab-vcc' && !APP_STATE.vccData) {
@@ -5137,7 +5325,262 @@
     }
 
     // ============================================================================
-    // TAB 3: THESIS & 2006 PAPER FIGURES GALLERY
+    // TAB 5: OVERALL STATISTICS & BENCHMARK PERFORMANCE
+    // ============================================================================
+    function switchTab5View(mode) {
+      const overallView = document.getElementById('tab5-view-overall');
+      const histView = document.getElementById('tab5-view-historical');
+      const btnOverall = document.getElementById('btn-tab5-view-overall');
+      const btnHist = document.getElementById('btn-tab5-view-historical');
+      const badgeMode = document.getElementById('badge-tab5-current-mode');
+
+      if (mode === 'historical') {
+        if (overallView) overallView.style.display = 'none';
+        if (histView) histView.style.display = 'block';
+        if (btnOverall) btnOverall.className = 'btn btn-outline';
+        if (btnHist) btnHist.className = 'btn btn-primary';
+        if (badgeMode) {
+          badgeMode.textContent = 'Historical 2004 Thesis & Paper Reference';
+          badgeMode.className = 'badge badge-amber';
+        }
+        if (!APP_STATE.thesisFigures) {
+          loadThesisFigures();
+        }
+      } else {
+        if (overallView) overallView.style.display = 'block';
+        if (histView) histView.style.display = 'none';
+        if (btnOverall) btnOverall.className = 'btn btn-primary';
+        if (btnHist) btnHist.className = 'btn btn-outline';
+        if (badgeMode) {
+          badgeMode.textContent = 'Systematic Parameter Sweep Stats';
+          badgeMode.className = 'badge badge-emerald';
+        }
+        if (!APP_STATE.overallStatsData) {
+          loadOverallStats();
+        } else {
+          renderOverallStats(APP_STATE.overallStatsData);
+        }
+      }
+    }
+
+    async function loadOverallStats(force = false) {
+      try {
+        if (!force && APP_STATE.overallStatsData) {
+          renderOverallStats(APP_STATE.overallStatsData);
+          return;
+        }
+        const res = await fetch('/api/benchmark/overall_stats');
+        const data = await res.json();
+        if (data.status === 'success' || data.algorithm_leaderboard) {
+          APP_STATE.overallStatsData = data;
+          renderOverallStats(data);
+        }
+      } catch (e) {
+        console.error('Failed to load overall statistics:', e);
+      }
+    }
+
+    function drawOverallTopologyChart(topoData) {
+      const canvas = document.getElementById('canvas-overall-topology');
+      if (!canvas || !topoData || !topoData.summary_by_topology) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
+      const pad = { l: 46, r: 20, t: 34, b: 34 };
+      const pw = W - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+
+      // Grid lines
+      ctx.strokeStyle = tc.grid;
+      ctx.lineWidth = 1;
+      for (let g = 0; g <= 4; g++) {
+        const y = pad.t + (ph * g) / 4;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(W - pad.r, y);
+        ctx.stroke();
+        const val = 100 - g * 25;
+        ctx.fillStyle = tc.textMuted;
+        ctx.font = '10px monospace';
+        ctx.fillText(val + '%', 12, y + 3);
+      }
+
+      const topos = [
+        { key: 'random', label: 'Random Graph' },
+        { key: 'power_law', label: 'Scale-Free (Power-Law)' },
+        { key: 'hierarchical', label: 'Hierarchical Modular' }
+      ];
+
+      const groupWidth = pw / topos.length;
+      const barWidth = groupWidth * 0.22;
+      const metrics = [
+        { key: 'mean_power', label: 'Mean Power (Recall %)', color: '#10b981' },
+        { key: 'mean_f1', label: 'Mean F1 Score (×100)', color: '#0284c7', mult: 100 },
+        { key: 'mean_fdr', label: 'Mean FDR (%)', color: '#f59e0b' }
+      ];
+
+      // Draw legend
+      let legX = pad.l;
+      metrics.forEach(m => {
+        ctx.fillStyle = m.color;
+        ctx.fillRect(legX, 10, 12, 10);
+        ctx.fillStyle = tc.textMain;
+        ctx.font = '10.5px Inter, sans-serif';
+        ctx.fillText(m.label, legX + 16, 19);
+        legX += ctx.measureText(m.label).width + 28;
+      });
+
+      // Draw bars
+      topos.forEach((t, tIdx) => {
+        const sum = topoData.summary_by_topology[t.key] || {};
+        const gx = pad.l + tIdx * groupWidth + (groupWidth - barWidth * 3) / 2;
+
+        metrics.forEach((m, mIdx) => {
+          let raw = sum[m.key] || 0;
+          if (m.mult) raw *= m.mult;
+          const val = Math.max(0, Math.min(100, raw));
+          const bh = (val / 100) * ph;
+          const bx = gx + mIdx * barWidth;
+          const by = pad.t + ph - bh;
+
+          ctx.fillStyle = m.color;
+          ctx.fillRect(bx, by, barWidth - 3, bh);
+
+          // Value label on bar
+          ctx.fillStyle = tc.textMain;
+          ctx.font = 'bold 9.5px monospace';
+          ctx.fillText(val.toFixed(1) + (m.mult ? '' : '%'), bx - 2, Math.max(pad.t + 10, by - 4));
+        });
+
+        // Category label on x-axis
+        ctx.fillStyle = tc.textMain;
+        ctx.font = 'bold 11px Inter, sans-serif';
+        const lx = pad.l + tIdx * groupWidth + groupWidth / 2;
+        ctx.fillText(t.label, lx - ctx.measureText(t.label).width / 2, H - 12);
+      });
+    }
+
+    function renderOverallStats(data) {
+      if (!data) return;
+      APP_STATE.overallStatsData = data;
+
+      // 1. Populate KPI elements
+      const elTotalRuns = document.getElementById('kpi-overall-total-runs');
+      if (elTotalRuns) elTotalRuns.textContent = data.total_sweep_runs || 131;
+      const elAlgRuns = document.getElementById('kpi-overall-alg-evals');
+      if (elAlgRuns) elAlgRuns.textContent = '1,237';
+
+      const lb = data.algorithm_leaderboard || [];
+      if (lb.length > 0) {
+        const elTopAlg = document.getElementById('kpi-overall-top-alg');
+        if (elTopAlg) elTopAlg.textContent = lb[0].algorithm_name;
+        const elBestSingle = document.getElementById('kpi-overall-best-single');
+        if (elBestSingle && lb.length > 1) elBestSingle.textContent = lb[1].algorithm_name;
+      }
+
+      // 2. Populate Leaderboard Table
+      const tbody = document.querySelector('#tbl-overall-leaderboard tbody');
+      if (tbody) {
+        tbody.innerHTML = '';
+        lb.forEach((r, idx) => {
+          const rank = idx + 1;
+          let badgeHtml = '';
+          if (rank === 1) {
+            badgeHtml = `<span class="badge badge-emerald" style="font-weight:700;">#1 Consensus Winner</span>`;
+          } else if (rank === 2) {
+            badgeHtml = `<span class="badge badge-cyan" style="font-weight:600;">#2 Best Single Stepwise</span>`;
+          } else if (rank === 3) {
+            badgeHtml = `<span class="badge" style="font-weight:600;">#3 Stepwise Backward</span>`;
+          } else if (rank === 7) {
+            badgeHtml = `<span class="badge badge-secondary">#7 Null Baseline</span>`;
+          } else {
+            badgeHtml = `<span class="badge">#${rank} Contender</span>`;
+          }
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong style="color:${rank === 1 ? '#10b981' : (rank <= 3 ? 'var(--accent-blue)' : 'var(--text-muted)')};">#${rank}</strong></td>
+            <td><strong style="color:var(--text-primary);">${r.algorithm_name}</strong></td>
+            <td><span class="badge">${r.method_type}</span></td>
+            <td>${r.runs_evaluated}</td>
+            <td><strong style="color:#10b981;font-size:13px;">${Number(r.mean_f1).toFixed(3)}</strong></td>
+            <td><strong>${Number(r.mean_power_pct).toFixed(1)}%</strong></td>
+            <td>${Number(r.mean_specificity_pct).toFixed(1)}%</td>
+            <td>${Number(r.mean_ppv_pct).toFixed(1)}%</td>
+            <td>${Number(r.mean_signed_ppv_pct).toFixed(1)}%</td>
+            <td style="color:${r.mean_fdr_pct < 50 ? '#10b981' : 'var(--accent-amber)'};font-weight:600;">${Number(r.mean_fdr_pct).toFixed(1)}%</td>
+            <td style="color:var(--accent-amber);font-weight:700;">${Number(r.mean_total_errors).toFixed(1)}</td>
+            <td>${badgeHtml}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+        makeTableSortable('tbl-overall-leaderboard');
+      }
+
+      // 3. Render Canvas Charts
+      if (data.size_sweep) {
+        const sw = data.size_sweep;
+        const xLabels = (sw.sizes || []).map(n => `N=${n}`);
+        const powerSeries = [
+          { label: 'Voting Ensemble', data: sw.algorithms?.vote?.power || [], color: '#10b981' },
+          { label: 'S2G (Forward)', data: sw.algorithms?.s2g?.power || [], color: '#0284c7' },
+          { label: 'G2S (Backward)', data: sw.algorithms?.g2s?.power || [], color: '#d97706' },
+          { label: 'NIR (Multi-Reg)', data: sw.algorithms?.nir?.power || [], color: '#8b5cf6' },
+          { label: 'FAST (SVD)', data: sw.algorithms?.fast?.power || [], color: '#ef4444', dash: [4, 3] },
+          { label: 'RidgeCV', data: sw.algorithms?.ridge?.power || [], color: '#06b6d4' },
+          { label: 'By-Chance', data: sw.algorithms?.by_chance?.power || [], color: '#64748b', dash: [3, 3] },
+        ];
+        drawMultiLineChart('canvas-overall-size-power', xLabels, powerSeries, 'Power (%)', 0, 100);
+
+        const fdrSeries = [
+          { label: 'Voting Consensus FDR', data: sw.algorithms?.vote?.fdr || [], color: '#10b981' },
+          { label: 'S2G FDR', data: sw.algorithms?.s2g?.fdr || [], color: '#0284c7' },
+          { label: 'G2S FDR', data: sw.algorithms?.g2s?.fdr || [], color: '#d97706' },
+          { label: 'NIR FDR', data: sw.algorithms?.nir?.fdr || [], color: '#8b5cf6' },
+          { label: 'FAST FDR', data: sw.algorithms?.fast?.fdr || [], color: '#ef4444', dash: [4, 3] },
+          { label: 'By-Chance FDR', data: sw.algorithms?.by_chance?.fdr || [], color: '#64748b', dash: [3, 3] },
+        ];
+        drawMultiLineChart('canvas-overall-size-fdr', xLabels, fdrSeries, 'FDR (%)', 0, 100);
+      }
+
+      if (data.topology_sweep) {
+        drawOverallTopologyChart(data.topology_sweep);
+      }
+
+      if (data.connectivity_sweep) {
+        const conn = data.connectivity_sweep;
+        const xLabels = (conn.k_values || []).map(k => `k=${k}`);
+        const connSeries = [
+          { label: 'Voting Power (%)', data: conn.algorithms?.vote?.power || [], color: '#10b981' },
+          { label: 'S2G Power (%)', data: conn.algorithms?.s2g?.power || [], color: '#0284c7' },
+          { label: 'G2S Power (%)', data: conn.algorithms?.g2s?.power || [], color: '#d97706' },
+          { label: 'NIR Power (%)', data: conn.algorithms?.nir?.power || [], color: '#8b5cf6' },
+          { label: 'Voting FDR (%)', data: conn.algorithms?.vote?.fdr || [], color: '#ec4899', dash: [4, 3] },
+        ];
+        drawMultiLineChart('canvas-overall-connectivity', xLabels, connSeries, 'Rate (%)', 0, 100);
+      }
+
+      if (data.noise_sweep) {
+        const ns = data.noise_sweep;
+        const xLabels = (ns.noise_levels || []).map(s => `σ=${s}`);
+        const noiseSeries = [
+          { label: 'Voting F1 (×100)', data: (ns.algorithms?.vote?.f1 || []).map(v => v * 100), color: '#10b981' },
+          { label: 'S2G F1 (×100)', data: (ns.algorithms?.s2g?.f1 || []).map(v => v * 100), color: '#0284c7' },
+          { label: 'G2S F1 (×100)', data: (ns.algorithms?.g2s?.f1 || []).map(v => v * 100), color: '#d97706' },
+          { label: 'Voting FDR (%)', data: ns.algorithms?.vote?.fdr || [], color: '#10b981', dash: [4, 3] },
+          { label: 'S2G FDR (%)', data: ns.algorithms?.s2g?.fdr || [], color: '#0284c7', dash: [4, 3] },
+          { label: 'FAST FDR (%)', data: ns.algorithms?.fast?.fdr || [], color: '#ef4444', dash: [3, 2] },
+        ];
+        drawMultiLineChart('canvas-overall-noise', xLabels, noiseSeries, 'Metric', 0, 100);
+      }
+    }
+
+    // ============================================================================
+    // HISTORICAL THESIS & 2006 PAPER FIGURES GALLERY
     // ============================================================================
     async function loadThesisFigures(source = 'matlab_mat') {
       try {
@@ -5496,6 +5939,19 @@
     // ============================================================================
     // TAB 4: PREVIOUS SIMULATIONS ARCHIVE & DETAILED RUN INSPECTOR (showpre.php)
     // ============================================================================
+    function computeEntryF1(h) {
+      if (h.f1_score != null) return Number(h.f1_score);
+      const bestAlg = h.best_alg_key || (h.best_algorithm || 'vote').toLowerCase();
+      const m = (h.metrics_summary && h.metrics_summary[bestAlg]) || {};
+      const power = Number(h.best_power_pct ?? m.power ?? 0) / 100;
+      const ppv = Number(m.ppv ?? 0) / 100;
+      if (power + ppv > 0) {
+        return (2 * power * ppv) / (power + ppv);
+      }
+      const totErr = Number(h.best_total_errors ?? 99);
+      return 1 / (1 + totErr);
+    }
+
     async function loadHistoryTable() {
       try {
         const res = await fetch('/api/history');
@@ -5516,15 +5972,98 @@
 
         const activeRunId = (APP_STATE.archiveDetail && APP_STATE.archiveDetail.run_id) || data.active_run_id;
         const currentFilter = APP_STATE.archiveFilterType || 'all';
-        let visibleCount = 0;
+
+        // 1. Annotate each run with its calculated F1 score and normalized category
+        data.history.forEach(h => {
+          h.f1Score = computeEntryF1(h);
+          h.rType = h.response_type || (h.oscillating ? 'oscillating' : 'responsive');
+          h.topo = h.topology || 'random';
+        });
+
+        // 2. Group runs by dynamics category and by topology to establish set rankings
+        const dynamicsSets = { responsive: [], flat: [], oscillating: [] };
+        const topoSets = { random: [], power_law: [], hierarchical: [] };
 
         data.history.forEach(h => {
-          const rType = h.response_type || (h.oscillating ? 'oscillating' : 'responsive');
-          if (currentFilter !== 'all' && rType !== currentFilter) {
-            return;
-          }
-          visibleCount++;
+          if (dynamicsSets[h.rType]) dynamicsSets[h.rType].push(h);
+          if (topoSets[h.topo]) topoSets[h.topo].push(h);
+        });
 
+        // Helper to sort and rank strictly within a set (top 15)
+        function sortAndRankSet(arr, setName) {
+          const sorted = [...arr].sort((a, b) => {
+            if (b.f1Score !== a.f1Score) return b.f1Score - a.f1Score;
+            const errA = Number(a.best_total_errors ?? 99);
+            const errB = Number(b.best_total_errors ?? 99);
+            if (errA !== errB) return errA - errB;
+            return Number(b.best_power_pct ?? 0) - Number(a.best_power_pct ?? 0);
+          });
+          return sorted.slice(0, 15).map((item, idx) => ({
+            ...item,
+            rankInSet: idx + 1,
+            setName: setName,
+          }));
+        }
+
+        const rankedResponsive = sortAndRankSet(dynamicsSets.responsive, 'Responsive');
+        const rankedFlat = sortAndRankSet(dynamicsSets.flat, 'Flat Levels');
+        const rankedOscillating = sortAndRankSet(dynamicsSets.oscillating, 'Oscillating');
+        const rankedRandom = sortAndRankSet(topoSets.random, 'Random Topo');
+        const rankedPowerLaw = sortAndRankSet(topoSets.power_law, 'Scale-Free Topo');
+        const rankedHierarchical = sortAndRankSet(topoSets.hierarchical, 'Hierarchical Topo');
+
+        // All runs sorted for overall top 15
+        const allSorted = [...data.history];
+        const rankedOverall = sortAndRankSet(allSorted, 'Overall Best');
+
+        // 3. Determine the visible subset (strictly restricted to best 15 for each set)
+        let visibleRows = [];
+        let bannerSetText = '';
+
+        if (currentFilter === 'all') {
+          // Curated benchmark corpus: Best 15 for each of the 3 dynamics categories (45 runs total)
+          visibleRows = [...rankedResponsive, ...rankedFlat, ...rankedOscillating];
+          bannerSetText = 'Displaying the Best 15 Simulations for Each Dynamics Set (45 curated benchmark runs: 15 Responsive + 15 Flat + 15 Oscillating).';
+        } else if (currentFilter === 'responsive') {
+          visibleRows = rankedResponsive;
+          bannerSetText = 'Displaying the Best 15 Responsive Dynamics Simulations (ranked by F1 score & clear multi-gene shifts).';
+        } else if (currentFilter === 'flat') {
+          visibleRows = rankedFlat;
+          bannerSetText = 'Displaying the Best 15 Flat Levels Simulations (ranked by minimal total errors & buffered expression).';
+        } else if (currentFilter === 'oscillating') {
+          visibleRows = rankedOscillating;
+          bannerSetText = 'Displaying the Best 15 Oscillating Simulations (ranked by F1 score & persistent limit cycle dynamics).';
+        } else if (currentFilter === 'random') {
+          visibleRows = rankedRandom;
+          bannerSetText = 'Displaying the Best 15 Random Erdős-Rényi Graph Simulations.';
+        } else if (currentFilter === 'power_law') {
+          visibleRows = rankedPowerLaw;
+          bannerSetText = 'Displaying the Best 15 Scale-Free / Power-Law Graph Simulations.';
+        } else if (currentFilter === 'hierarchical') {
+          visibleRows = rankedHierarchical;
+          bannerSetText = 'Displaying the Best 15 Hierarchical Modular Graph Simulations.';
+        } else if (currentFilter === 'overall_top15') {
+          visibleRows = rankedOverall;
+          bannerSetText = 'Displaying the Top 15 Highest-Performing Re-Engineering Runs across the entire database.';
+        } else {
+          visibleRows = [...rankedResponsive, ...rankedFlat, ...rankedOscillating];
+          bannerSetText = 'Displaying the Best 15 Simulations for each set.';
+        }
+
+        // 4. Update banner and badge
+        const bannerEl = document.getElementById('archive-best15-banner-text');
+        if (bannerEl) bannerEl.textContent = bannerSetText;
+        const bannerSubEl = document.getElementById('archive-best15-banner-sub');
+        if (bannerSubEl) bannerSubEl.textContent = `Showing ${visibleRows.length} curated of ${data.history.length} total runs in SQLite rgn_db.`;
+
+        const filterBadge = document.getElementById('archive-filter-count-badge');
+        if (filterBadge) {
+          filterBadge.textContent = `Showing ${visibleRows.length} Curated Runs`;
+          filterBadge.className = 'badge badge-emerald';
+        }
+
+        // 5. Populate table rows
+        visibleRows.forEach(h => {
           const tr = document.createElement('tr');
           tr.style.cursor = 'pointer';
           if (h.run_id === activeRunId) tr.className = 'selected-row';
@@ -5538,29 +6077,35 @@
             : `<span class="badge badge-emerald">Steady State</span>`;
 
           let catBadge = '';
-          if (rType === 'oscillating') {
+          if (h.rType === 'oscillating') {
             catBadge = `<span class="badge badge-amber" title="Limit cycle / persistent oscillation">〰 Oscillating</span>`;
-          } else if (rType === 'flat') {
+          } else if (h.rType === 'flat') {
             catBadge = `<span class="badge badge-secondary" title="Flat levels (max Δ < 5%)">⚪ Flat Levels</span>`;
           } else {
             catBadge = `<span class="badge badge-emerald" title="Responsive (clear shifts visible)">⚡ Responsive</span>`;
           }
 
+          const rankBadgeColor = h.rankInSet === 1 ? '#10b981' : (h.rankInSet <= 3 ? 'var(--accent-blue)' : 'var(--text-muted)');
+
           tr.innerHTML = `
-            <td>#${h.id}</td>
+            <td>
+              <span class="badge" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:${rankBadgeColor};font-weight:700;">
+                #${h.rankInSet} in ${h.setName}
+              </span>
+            </td>
             <td><code style="color:var(--accent-blue);font-weight:700;">${h.run_id}</code></td>
-            <td>${h.timestamp}</td>
             <td>${catBadge}</td>
             <td><span class="badge">${h.topology}</span></td>
             <td><strong>${h.num_genes}</strong></td>
             <td>${h.k_av}</td>
-            <td>${h.act_ratio}</td>
             <td>${h.noise}</td>
             <td>${eqHtml}</td>
             <td><span class="badge badge-emerald">${h.best_algorithm}</span></td>
+            <td><strong style="color:#10b981;font-size:12.5px;">${h.f1Score.toFixed(3)}</strong></td>
             <td><strong>${h.best_power_pct}%</strong></td>
             <td>${h.best_specificity_pct}%</td>
             <td style="color:var(--accent-amber);font-weight:700;">${h.best_total_errors}</td>
+            <td style="font-size:11px;color:var(--text-muted);">${h.timestamp}</td>
             <td>
               <a href="/api/download?format=msmt&run_id=${h.run_id}" style="color:var(--accent-blue);margin-right:6px;">.msmt</a>
               <a href="/api/download?format=pert&run_id=${h.run_id}" style="color:#10b981;margin-right:6px;">.pert</a>
@@ -5576,15 +6121,9 @@
         });
         makeTableSortable('tbl-history');
 
-        const filterBadge = document.getElementById('archive-filter-count-badge');
-        if (filterBadge) {
-          filterBadge.textContent = `Showing ${visibleCount} of ${data.history.length} runs`;
-          filterBadge.className = currentFilter === 'all' ? 'badge' : 'badge badge-emerald';
-        }
-
-        // Automatically load the first run into the Tab 4 Detailed Run Inspector if none loaded yet
-        if (!APP_STATE.archiveDetail && data.history.length > 0) {
-          await selectArchiveRun(data.history[0].run_id, false);
+        // Automatically load the first visible run into the Tab 4 Detailed Run Inspector if none loaded yet
+        if (!APP_STATE.archiveDetail && visibleRows.length > 0) {
+          await selectArchiveRun(visibleRows[0].run_id, false);
         }
       } catch (e) {
         console.error('History load error:', e);
