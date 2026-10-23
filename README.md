@@ -107,9 +107,9 @@ Tab 2 integrates comprehensive real-world experimental benchmarks (*E. coli* SOS
 | :---: | :---: |
 | ![Step 4 Empirical Profile](docs/screenshots/26_tab1_step4_empirical_measurements_profile.png) | ![Restored Synthetic Mode](docs/screenshots/27_tab1_restored_synthetic_ode_simulation.png) |
 
-| Tab 1: Biophysical Parameter Estimation Labels |
-| :---: |
-| ![Biophysical Mode](docs/screenshots/28_tab1_biophysical_mode_calibrated_labels.png) |
+| Tab 1: Biophysical Parameter Estimation Labels | Tab 1: Step 4 Toggle Line Plot vs Bar Plot |
+| :---: | :---: |
+| ![Biophysical Mode](docs/screenshots/28_tab1_biophysical_mode_calibrated_labels.png) | ![Step 4 Toggle Line vs Bar](docs/screenshots/29_tab1_step4_toggle_line_vs_bar.png) |
 
 ---
 
@@ -123,7 +123,7 @@ The Simulation & Inference Studio (Tab 1) organizes the complete reverse-enginee
 flowchart LR
     S1["Step 1: Mode &amp; Source"] --> S2["Step 2: Topology &amp; Noise"]
     S2 --> S3["Step 3: Network &amp; ODE Kinetics"]
-    S3 --> S4["Step 4: Perturbation Time-Courses"]
+    S3 --> S4["Step 4: Perturbation Dynamics &amp; Matrix X"]
     S4 --> S5["Step 5: Reverse-Engineering"]
     S5 --> S6["Step 6: 9-State Graph &amp; Metrics"]
 ```
@@ -132,8 +132,8 @@ flowchart LR
 | :---: | :--- | :--- | :--- |
 | **1** | **Mode & Source** | Selects between synthetic ODE generation or real biological benchmark datasets (*E. coli* SOS, Norman 2019 CRISPRa). | [`sim-mode`](src/grn_sim/web/static/index.html) / [`_execute_simulation`](src/grn_sim/web/server.py) |
 | **2** | **Topology & Noise** | Configures network graph architecture (Scale-Free, Random, Hierarchical), noise levels ($\sigma_m, \sigma_b$), and dynamics presets. | [`NetworkTopology`](src/grn_sim/simulation/topology.py) (`netsim.m`) |
-| **3** | **Network & ODE Kinetics** | Solves non-linear Hill ODEs to equilibrium and displays ground-truth network structure. | [`GeneNetwork`](src/grn_sim/simulation/network.py) (`create_network.m` / `draw_dot.m`) |
-| **4** | **Perturbation Time-Courses** | Numerically integrates single-gene perturbations over time and computes expression ratio matrix $X$. | [`PerturbationSimulator`](src/grn_sim/simulation/simulator.py) (`do_perturbation.m`) |
+| **3** | **Network & ODE Kinetics** | Solves non-linear Hill ODEs to equilibrium and displays ground-truth or validated physical network structure. | [`GeneNetwork`](src/grn_sim/simulation/network.py) (`create_network.m` / `draw_dot.m`) |
+| **4** | **Perturbation Dynamics & Profiles** | Renders continuous dynamic trajectories $x_i(t)$ or discrete steady-state expression shift profiles ($\Delta X$) with an interactive segmented toggle (`📈 Line Plot` vs `📊 Bar Plot`), plus the full $N \times N$ ratio matrix $X$. | [`PerturbationSimulator`](src/grn_sim/simulation/simulator.py) (`do_perturbation.m`) |
 | **5** | **Reverse-Engineering** | Runs 12 causal reconstruction algorithms (S2G, G2S, Voting, CellBox, NIR, etc.) and computes AIC profiles. | [`grn_sim.inference`](src/grn_sim/inference/) (`getvar.m` / `gen2spec.m`) |
 | **6** | **9-State Graph & Metrics** | Compares inferred edges against ground truth using the 9-state classification matrix and $TMP\_STATMAT$ ribbon. | [`new_stats_9state`](src/grn_sim/metrics/stats.py) (`statsgraph_to_dot.m`) |
 

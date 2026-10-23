@@ -50,7 +50,7 @@ The primary studio workspace implements the full 6-step reverse-engineering pipe
 - **Visualizers**:
   - **Ground Truth Stage**: Provides Force-Directed Canvas, Graphviz Hierarchical (`dot`), Graphviz Spring (`neato`), and raw DOT source code.
   - **ODE Parameter Inspector**: Inline preview and dialog modal displaying $v_i, B_i, n_A, K_A$ and basal trajectory relaxation.
-  - **Perturbation Time-Courses**: Dynamic multi-line plot showing transient relaxation of all genes under perturbation of any selected gene.
+  - **Perturbation Time-Courses & Profiles**: Dynamic multi-line plot showing transient relaxation of all genes under perturbation of any selected gene, with an interactive segmented toggle (`[ 📈 Line Plot ] [ 📊 Bar Plot ]`) to view continuous trajectories or discrete empirical expression shifts ($\Delta X$).
   - **Expression Heatmap ($X$)**: Matrix display with emerald for upregulation and red for downregulation.
   - **AIC Cost Profile**: Plots $AIC(K) = \frac{2K}{P} + \ln\left(\frac{RSS}{\sigma_y^2}\right)$ across regulator subset sizes $K = 0 \dots N$, illustrating model selection.
   - **9-State Differential Reconstruction**: Highlights true positives, false positives, false negatives, and sign errors in accordance with thesis Figure 3.4.

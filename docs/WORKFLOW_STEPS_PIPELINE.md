@@ -186,9 +186,12 @@ $$X_{ij} = \frac{x_i^{\text{pert}_j} - x_i^{\text{ss}}}{x_i^{\text{ss}}}$$
 - $X_{ij} < 0$ (Red): Gene $i$ is downregulated when gene $j$ is perturbed.
 - $X_{ij} \approx 0$ (Black / Dark): Gene $i$ is unaffected by gene $j$.
 
-#### Visualizations:
-- **Perturbation Time-Course Plot**: Interactive multi-line dynamic chart showing how all genes relax in response to the perturbation of any selected target gene.
-- **Matrix Heatmap ($X$)**: $N \times N$ proportional expression ratio matrix.
+#### Visualizations & Interactive View Controls:
+- **Interactive Mode Toggle (`[ 📈 Line Plot ] [ 📊 Bar Plot ]`)**:
+  - **📈 Line Plot Mode**: Renders continuous time-course relaxation trajectories $x_i(t)$ as genes dynamically transition toward perturbed steady states under target gene perturbation.
+  - **📊 Bar Plot Mode**: Renders discrete relative expression shift bars ($\Delta X_{ij} = (x_i^j - x_i^{\text{ss}}) / x_i^{\text{ss}}$) across all $N$ genes for the selected target condition, color-coded by direction (Blue: perturbed target gene, Green: up-regulated, Red: down-regulated).
+  - **Universal Reversibility**: Users can freely toggle between line dynamics and bar profiles at any time across both synthetic simulations and real-world benchmark datasets.
+- **Matrix Heatmap ($X$)**: $N \times N$ proportional expression ratio matrix showing comprehensive pairwise responses across all perturbation conditions.
 
 ---
 
