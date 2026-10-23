@@ -77,6 +77,21 @@ Complete integration of 4 simulation dynamics engines (`hill_nonlinear`, `cellbo
 | :---: | :---: |
 | ![Norman 2019 Perturb-seq Benchmark](docs/screenshots/15_tab2_benchmarks_norman_tf16.png) | ![Norman 2019 Loaded in Studio](docs/screenshots/16_tab1_loaded_norman_tf16_studio.png) |
 
+### 6. Comprehensive Application Audit & Verified Real Biological Dynamics (Tabs 1–5)
+Rigorous end-to-end verification across real biological datasets (*E. coli* SOS, Norman 2019 CRISPRa 16-TF screen, DREAM4, Replogle 2022 p53), interactive clickable node dynamics, universal table sorting, and persistent SQLite dynamics archive:
+
+| Tab 1: Studio Verified (6-Step Pipeline) | Tab 2: Real Benchmarks Studio | Tab 3: Thesis & Paper Figures Gallery |
+| :---: | :---: | :---: |
+| ![Tab 1 Studio Verified](docs/screenshots/audit_01_tab1_studio_verified.png) | ![Tab 2 Real Benchmarks](docs/screenshots/audit_02_tab2_benchmarks_verified.png) | ![Tab 3 Thesis Figures](docs/screenshots/audit_03_tab3_thesis_figures_verified.png) |
+
+| Tab 4: SQLite Archive (Dynamics Breakdown) | Tab 5: Virtual Cell Challenge Studio |
+| :---: | :---: |
+| ![Tab 4 SQLite Archive](docs/screenshots/audit_04_tab4_archive_verified.png) | ![Tab 5 VCC Studio](docs/screenshots/audit_05_tab5_vcc_verified.png) |
+
+| Interactive Node Click Dynamics (*E. coli* SOS) | Single-Cell CRISPRa Trajectory (Norman 2019) |
+| :---: | :---: |
+| ![E. coli SOS Node Click Trajectory](docs/screenshots/playwright_real_dataset_node_click_trajectory.png) | ![Norman 2019 Real Node Trajectory](docs/screenshots/playwright_norman_real_node_trajectory.png) |
+
 ---
 
 ## 🔄 6-Step Reverse-Engineering Workflow Pipeline & Data Modes
@@ -102,6 +117,21 @@ flowchart LR
 | **4** | **Perturbation Time-Courses** | Numerically integrates single-gene perturbations over time and computes expression ratio matrix $X$. | [`PerturbationSimulator`](src/grn_sim/simulation/simulator.py) (`do_perturbation.m`) |
 | **5** | **Reverse-Engineering** | Runs 12 causal reconstruction algorithms (S2G, G2S, Voting, CellBox, NIR, etc.) and computes AIC profiles. | [`grn_sim.inference`](src/grn_sim/inference/) (`getvar.m` / `gen2spec.m`) |
 | **6** | **9-State Graph & Metrics** | Compares inferred edges against ground truth using the 9-state classification matrix and $TMP\_STATMAT$ ribbon. | [`new_stats_9state`](src/grn_sim/metrics/stats.py) (`statsgraph_to_dot.m`) |
+
+---
+
+## 🔍 Comprehensive Application & Interface Audit
+
+An exhaustive audit of the complete platform was conducted across all 5 user interface tabs, 12 inference engines, 4 simulation dynamics engines, interactive Graphviz visualizations, and data export endpoints.
+
+> 📄 **Complete Audit Report**: For full methodology, per-algorithm confusion matrices, and benchmark tables, read the [Comprehensive Audit Report](docs/COMPREHENSIVE_AUDIT_REPORT.md).
+
+### Audit Summary: 100% Verified Functionality
+- **Authentic Biological Datasets**: Verified that *E. coli* SOS (9 genes, 43 edges, Gardner et al. 2003), Norman et al. 2019 CRISPRa (16 master TFs), DREAM4, and Replogle 2022 p53 load real experimental matrices and compute causal Jacobians.
+- **Interactive Node Dynamics**: Clicking any node in Graphviz SVG displays its real-time basal relaxation trajectory $x_i(t)$, multi-condition expression bar states, and upstream/downstream regulator navigation pills.
+- **Universal Multi-Column Sorting**: All summary and benchmark tables sort ascending/descending across IDs, numbers, percentages, timestamps, and status badges.
+- **Persistence & Export**: Validated SQLite simulation archive categorization (⚡ Responsive, ⚪ Flat, 〰 Oscillating) and streaming exports for `.msmt`, `.pert`, `.dot`, `.svg`, and `.h5ad` AnnData.
+- **Automated Test Coverage**: 100% pass rate across the full Playwright browser audit ([`tests/test_playwright_full_audit.py`](tests/test_playwright_full_audit.py)), step spotlight tests ([`tests/test_playwright_wizard_steps.py`](tests/test_playwright_wizard_steps.py)), clickable node trajectories ([`tests/test_playwright_node_click_trajectories.py`](tests/test_playwright_node_click_trajectories.py)), and table sorting tests ([`tests/test_playwright_table_sorting.py`](tests/test_playwright_table_sorting.py)).
 
 ---
 
@@ -348,11 +378,14 @@ python3 -m grn_sim.web.server --host 0.0.0.0 --port 8085
 
 ### Run Verification Test Suite
 ```bash
-# Run all 30 unit, ODE, topology, MATLAB-equivalence, and AtlasShift/Perturb-seq tests
+# Run all unit, ODE, topology, MATLAB-equivalence, and AtlasShift/Perturb-seq tests
 pytest -v
 
 # Run full Playwright E2E browser + SQLite persistence test against live server
 pytest tests/test_playwright_e2e.py -v -s
+
+# Run comprehensive Playwright full audit suite across all 5 tabs and real datasets
+pytest tests/test_playwright_full_audit.py -v -s
 ```
 
 ---
@@ -368,7 +401,9 @@ gene-network-sim-inference/
 ├── pyproject.toml            # Package configuration (PEP 517/518, anndata, pandas, h5py)
 ├── demo.py                   # Interactive CLI demo script
 ├── docs/
-│   └── screenshots/          # Verified Docker & Playwright UI screenshots (11 views)
+│   ├── COMPREHENSIVE_AUDIT_REPORT.md # Full audit analysis, test results & benchmark tables
+│   ├── WORKFLOW_STEPS_PIPELINE.md    # 6-step wizard specification & math derivations
+│   └── screenshots/          # Verified Docker & Playwright UI screenshots (20+ views)
 ├── data/
 │   ├── results_gapa_20021209_and_mmc_dbl.mat  # Gardner 2003 E. coli SOS dataset
 │   ├── SOSdata.txt           # Tabular SOS expression & perturbation data
@@ -398,7 +433,11 @@ gene-network-sim-inference/
     ├── test_topology.py      # Random, Scale-Free, and Hierarchical graph tests
     ├── test_web_and_visualization.py # Web server, Graphviz DOT & API tests
     ├── test_atlasshift_and_perturbseq.py # AtlasShift & AnnData .h5ad generator tests
-    └── test_playwright_e2e.py # Full Playwright browser + SQLite E2E test
+    ├── test_playwright_e2e.py # Full Playwright browser + SQLite E2E test
+    ├── test_playwright_full_audit.py # Comprehensive 5-tab audit & export stream test
+    ├── test_playwright_wizard_steps.py # 6-step interactive spotlight & focus mode test
+    ├── test_playwright_node_click_trajectories.py # Real dataset node click dynamics test
+    └── test_playwright_table_sorting.py # Multi-table column sorting verification test
 ```
 
 
