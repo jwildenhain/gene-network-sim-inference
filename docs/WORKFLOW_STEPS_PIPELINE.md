@@ -193,13 +193,16 @@ $$X_{ij} = \frac{x_i^{\text{pert}_j} - x_i^{\text{ss}}}{x_i^{\text{ss}}}$$
   - **Universal Reversibility**: Users can freely toggle between line dynamics and bar profiles at any time across both synthetic simulations and real-world benchmark datasets.
 - **Matrix Heatmap ($X$)**: $N \times N$ proportional expression ratio matrix showing comprehensive pairwise responses across all perturbation conditions.
 
-#### Tab 4 Previous Simulations Archive: Step 4 Inspection & Trajectory Dynamics Review:
-In the Historical Archive (Tab 4, `#tab-history`, `#history-detail-panel`), users can inspect the complete perturbation dynamics of any past run via the dedicated **Step 4: Perturbation ODE Time-Course & Expression Matrix** panel:
-- **3-Way View Toggle**:
-  - `[ 📈 Perturbation Time-Course ]` (`#btn-hist-pert-mode-timecourse`): Renders continuous time-course trajectories $x_i(t)$ under target perturbation.
-  - `[ ▦ Expression Matrix (X) ]` (`#btn-hist-pert-mode-matrix`): Renders the full $N \times N$ proportional expression ratio heatmap.
-  - `[ 📊 Shift Bar Profile (ΔX) ]` (`#btn-hist-pert-mode-bar`): Renders discrete relative expression shift bars for the active condition.
-- **Condition Dropdown (`#select-hist-pert-gene`)**: Switches the perturbation target gene (e.g. Condition #1 (G1), Condition #2 (G2)) to immediately update trajectories, bar shifts, and dynamical metrics.
+#### Tab 4 Previous Simulations Archive: Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Bar Grid:
+In the Historical Archive (Tab 4, `#tab-history`, `#history-detail-panel`), users can inspect the complete perturbation dynamics of any past run via the dedicated **Step 4: Perturbation ODE Time-Course, Expression Matrix & Multi-Shift Profiles** panel:
+- **Side-by-Side Dual Graph Layout (Default)**:
+  - **Left Graph**: Continuous ODE time-course relaxation trajectories $x_i(t)$ with target condition selector (`#select-hist-pert-gene`).
+  - **Right Graph**: Full $N \times N$ steady-state expression ratio matrix heatmap ($X$).
+- **3×3 Multi-Perturbation Shift Bar Grid (Toggle View)**:
+  - Toggling to `[ 📊 3×3 Shift Bar Grid ]` (`#btn-hist-pert-mode-bar`) switches the workspace to an interactive 3×3 matrix of 9 subplots simultaneously.
+  - Each cell in the 3×3 grid displays the relative expression shift profile ($\Delta X_{i, j}$) for a distinct perturbation experiment, highlighting the perturbed target gene in Cyan/Blue (`#0284c7`), up-regulated genes in Green (`#10b981`), and down-regulated genes in Red (`#ef4444`).
+  - Includes condition pagination (`◀ Prev 9` / `Next 9 ▶`) for networks with $N > 9$.
+- **Focus Modes**: Full-width single-panel views via `[ 📈 Time-Course Focus ]` and `[ ▦ Matrix Focus ]`.
 - **Automated Dynamical Trajectory Diagnosis (`#hist-trajectory-diagnosis-banner`)**:
   Every archived simulation is evaluated dynamically and categorized:
   1. **⚡ Clear Level Changes (`responsive`)**: Perturbation induces noticeable multi-gene departures from baseline ($\max |\Delta X| \ge 5.0\%$, observed up to $107.7\%$) and converges cleanly to a new stable equilibrium (tail fluctuation $< 0.001$).

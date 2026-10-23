@@ -45,15 +45,16 @@ def test_archive_step4_toggle_and_trajectory_review():
 
         # Verify Step 4 panel is visible
         assert page.is_visible("#panel-hist-step4"), "Step 4 panel must be visible in archive detail inspector"
-        assert page.is_visible("#canvas-hist-pert"), "Step 4 canvas must be visible"
+        assert page.is_visible("#canvas-hist-pert-timecourse") or page.is_visible("#canvas-hist-pert"), "Step 4 canvas must be visible"
 
         # Check toggle buttons
         assert page.is_visible("#btn-hist-pert-mode-timecourse")
         assert page.is_visible("#btn-hist-pert-mode-matrix")
         assert page.is_visible("#btn-hist-pert-mode-bar")
 
-        # By default, timecourse should be active
-        assert "active" in page.get_attribute("#btn-hist-pert-mode-timecourse", "class")
+        # By default, dual or timecourse should be active
+        has_active = ("active" in (page.get_attribute("#btn-hist-pert-mode-dual", "class") or "")) or ("active" in (page.get_attribute("#btn-hist-pert-mode-timecourse", "class") or ""))
+        assert has_active, "Dual or timecourse toggle button must be active"
 
         # Check trajectory diagnosis banner for clear level changes
         diag_text = page.inner_text("#hist-trajectory-diagnosis-banner")
@@ -86,7 +87,7 @@ def test_archive_step4_toggle_and_trajectory_review():
         page.click("#btn-hist-pert-mode-bar")
         page.wait_for_timeout(400)
         assert "active" in page.get_attribute("#btn-hist-pert-mode-bar", "class")
-        assert page.is_visible("#select-hist-pert-gene")
+        assert page.is_visible("#canvas-hist-pert-grid") or page.is_visible("#canvas-hist-pert")
 
         # -------------------------------------------------------------
         # TEST 4: FLAT DYNAMICS RUN

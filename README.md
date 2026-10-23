@@ -130,6 +130,17 @@ Following a rigorous audit of the ODE simulation engine and a 100-parameter dyna
 | ![Representative Responsive](docs/screenshots/34_representative_responsive_timecourse.png) | ![Representative Flat](docs/screenshots/35_representative_flat_timecourse.png) | ![Representative Oscillating](docs/screenshots/36_representative_oscillating_timecourse.png) |
 | **⚡ Clear Level Changes**: Target gene transitions smoothly to new stable steady state ($\max \|\Delta X\| = 107.7\% \ge 5\%$). Tail fluctuation $< 0.0001$. | **⚪ Flat / Insensitive**: Perturbations produce negligible response ($\max \|\Delta X\| = 0.2\% < 5\%$). Trajectory settles horizontally. | **〰 Persistent Oscillations**: Limit cycle dynamics where the simulation **does NOT reach steady state** after perturbation (amplitude $= 335.8\%$). |
 
+### 10. Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Shift Bar Grid (Tab 4)
+In Tab 4 (Previous Simulations Archive), Step 4 is split into **two side-by-side graphs** showing continuous ODE time-course relaxation trajectories alongside the full steady-state expression ratio matrix heatmap ($X$). Toggling to the **Shift Bar Profile** renders several perturbation responses simultaneously in an interactive **3×3 multi-perturbation grid**:
+
+| Tab 4: Side-by-Side Dual Graph (Time-Course & Matrix) | Tab 4: 3×3 Multi-Perturbation Shift Bar Grid (9 Simultaneous Responses) |
+| :---: | :---: |
+| ![Side by Side Dual Graph](docs/screenshots/37_tab4_step4_dual_side_by_side_responsive.png) | ![3x3 Multi-Perturbation Grid](docs/screenshots/38_tab4_step4_3x3_shift_bar_grid.png) |
+
+| Tab 4: Side-by-Side Dual View (Flat Dynamics) | Tab 4: Side-by-Side Dual View (Limit Cycle Oscillations) |
+| :---: | :---: |
+| ![Dual Flat](docs/screenshots/39_tab4_step4_dual_side_by_side_flat.png) | ![Dual Oscillating](docs/screenshots/40_tab4_step4_dual_side_by_side_oscillating.png) |
+
 ---
 
 ## 🔄 6-Step Reverse-Engineering Workflow Pipeline & Data Modes
@@ -267,9 +278,13 @@ When loading a real-world benchmark into Tab 1, users can choose between two dis
 ### 4. Persistent SQLite Archive & Thesis Figures Gallery
 * **Persistent SQLite Archive (`dumpdb.sql` / `database.py`)**:
   Stores every simulation run and per-algorithm evaluation into `data/rgn_db.sqlite` using the original `phpIoRN` relational schema (`nw` table for network parameters + `alg` table for per-algorithm metrics), plus full JSON state recovery for instant inspection in Tab 4 (`showpre.php`).
-* **Step 4 Inspection Panel & Trajectory Dynamics Review (Tab 4)**:
-  Historical runs can be inspected in depth with a dedicated Step 4 view panel featuring:
-  - **3-Way View Toggle**: Switch seamlessly between **`[ 📈 Perturbation Time-Course ]`**, **`[ ▦ Expression Matrix (X) ]`**, and **`[ 📊 Shift Bar Profile (ΔX) ]`**.
+* **Step 4 Inspection Panel: Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Bar Grid (Tab 4)**:
+  Historical runs can be inspected in depth with a redesigned Step 4 view panel featuring:
+  - **Side-by-Side Dual Graphs (Default View)**: Splits Step 4 into two concurrent graphs:
+    - **Left Graph**: Continuous ODE time-course relaxation trajectories $x_i(t)$ with target condition selector.
+    - **Right Graph**: Full $N \times N$ steady-state expression ratio matrix heatmap ($X$).
+  - **3×3 Multi-Perturbation Shift Bar Grid (Toggle View)**: Toggling to **`[ 📊 3×3 Shift Bar Grid ]`** renders 9 perturbation responses simultaneously in a 3×3 matrix of subplots, displaying relative expression shifts ($\Delta X$) across genes for each condition with pagination controls for $N > 9$.
+  - **View Focus Modes**: Dedicated focus toggles **`[ 📈 Time-Course Focus ]`** and **`[ ▦ Matrix Focus ]`** maximize individual visualizers to full panel width.
   - **Condition Selector**: Inspect continuous relaxation trajectories $x_i(t)$ and relative expression shift profiles ($\Delta X$) for any individual perturbed target gene condition.
   - **Dynamical Trajectory Diagnosis Banner**: Analyzes whether the archived perturbation trajectory exhibits **Clear Level Changes**, is **Flat (Damped/Insensitive)**, or displays **Persistent Oscillations**:
     - **⚡ Clear Level Changes (`responsive`)**: Perturbation causes significant multi-gene shifts ($\max |\Delta X| \ge 5.0\%$, observed up to $107.7\%$) and settles cleanly to a new stable perturbed steady state.

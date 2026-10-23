@@ -2073,26 +2073,29 @@
           <div class="panel-header" style="margin-bottom:8px;flex-wrap:wrap;gap:8px;">
             <div>
               <div class="panel-title" id="hist-pert-panel-title">
-                Step 4: Archived Perturbation Dynamics &amp; Expression Matrix (<span id="hist-pert-mode-label">Time-Course</span>)
+                Step 4: Archived Perturbation Dynamics, Expression Matrix &amp; Multi-Shift Profiles (<span id="hist-pert-mode-label">Side-by-Side: Time-Course &amp; Matrix</span>)
               </div>
               <div style="font-size:11.5px;color:var(--text-muted);" id="hist-pert-panel-subtitle">
-                Relaxation trajectories $x_i(t)$ &amp; relative steady-state expression matrix $X$
+                Side-by-side ODE relaxation trajectories $x_i(t)$ &amp; matrix $X$, toggling to 3×3 multi-perturbation shift bar grid
               </div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <!-- View Mode Segmented Toggle -->
               <div class="btn-group" role="group" style="display:inline-flex;" aria-label="Archived Step 4 plot mode toggle">
-                <button class="btn btn-secondary btn-sm active" id="btn-hist-pert-mode-timecourse" onclick="setArchivePertPlotMode('timecourse')" title="Display continuous ODE relaxation trajectories over time">
-                  📈 Perturbation Time-Course
+                <button class="btn btn-secondary btn-sm active" id="btn-hist-pert-mode-dual" onclick="setArchivePertPlotMode('dual')" title="Display side-by-side: Continuous ODE time-course relaxation and full expression matrix (X)">
+                  📈▤ Side-by-Side (Time-Course &amp; Matrix)
                 </button>
-                <button class="btn btn-secondary btn-sm" id="btn-hist-pert-mode-matrix" onclick="setArchivePertPlotMode('matrix')" title="Display full N x N steady-state expression ratio matrix heatmap (X)">
-                  ▦ Expression Matrix (X)
+                <button class="btn btn-secondary btn-sm" id="btn-hist-pert-mode-bar" onclick="setArchivePertPlotMode('bar')" title="Display 3×3 multi-perturbation shift bar grid showing several perturbations simultaneously">
+                  📊 3×3 Shift Bar Grid (Multi-Perturbations)
                 </button>
-                <button class="btn btn-secondary btn-sm" id="btn-hist-pert-mode-bar" onclick="setArchivePertPlotMode('bar')" title="Display discrete steady-state expression shift bars (ΔX) across genes">
-                  📊 Shift Bar Profile (ΔX)
+                <button class="btn btn-secondary btn-sm" id="btn-hist-pert-mode-timecourse" onclick="setArchivePertPlotMode('timecourse')" title="Maximize continuous ODE relaxation trajectories to full width">
+                  📈 Time-Course Focus
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-hist-pert-mode-matrix" onclick="setArchivePertPlotMode('matrix')" title="Maximize full N x N steady-state expression ratio matrix heatmap (X)">
+                  ▦ Matrix Focus
                 </button>
               </div>
-              <!-- Condition Selector -->
+              <!-- Condition Selector for Single / Focus Mode -->
               <div style="display:flex;align-items:center;gap:4px;" id="hist-pert-gene-select-container">
                 <label for="select-hist-pert-gene" style="font-size:11.5px;font-weight:600;color:var(--text-muted);">Target:</label>
                 <select id="select-hist-pert-gene" style="width:auto;padding:4px 8px;font-size:11.5px;" onchange="drawArchivePerturbationView(parseInt(this.value))"></select>
@@ -2109,9 +2112,54 @@
             <div id="hist-diag-stats" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">--</div>
           </div>
 
-          <!-- Canvas Stage Area -->
-          <div style="position:relative;width:100%;height:270px;background:var(--stage-bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;display:flex;justify-content:center;align-items:center;">
-            <canvas id="canvas-hist-pert" class="chart-canvas" width="850" height="270" style="width:100%;height:270px;"></canvas>
+          <!-- 1. Dual Side-by-Side View Container (Default) -->
+          <div id="hist-step4-dual-container" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;margin-bottom:4px;">
+            <!-- Left Side: Time-Course -->
+            <div style="background:var(--stage-bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;position:relative;height:310px;display:flex;flex-direction:column;">
+              <div style="padding:6px 10px;font-size:11.5px;font-weight:600;color:var(--text-main);background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span style="display:flex;align-items:center;gap:6px;">📈 <span>Perturbation ODE Time-Course</span></span>
+                <span style="font-size:10.5px;color:var(--text-muted);" id="hist-dual-target-label">Target: G1</span>
+              </div>
+              <div style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <canvas id="canvas-hist-pert-timecourse" class="chart-canvas" width="540" height="275" style="width:100%;height:100%;"></canvas>
+              </div>
+            </div>
+
+            <!-- Right Side: Expression Matrix Heatmap -->
+            <div style="background:var(--stage-bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;position:relative;height:310px;display:flex;flex-direction:column;">
+              <div style="padding:6px 10px;font-size:11.5px;font-weight:600;color:var(--text-main);background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span style="display:flex;align-items:center;gap:6px;">▦ <span>Expression Ratio Matrix ($X$)</span></span>
+                <span id="hist-matrix-dims-badge" class="badge" style="font-size:10px;font-family:var(--font-mono);">N × N</span>
+              </div>
+              <div style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <canvas id="canvas-hist-pert-matrix" class="chart-canvas" width="540" height="275" style="width:100%;height:100%;"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 3x3 Multi-Perturbation Shift Bar Grid Container (Toggled via Shift Bar Profile) -->
+          <div id="hist-step4-grid-container" style="display:none;width:100%;margin-bottom:4px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;flex-wrap:wrap;gap:8px;">
+              <div style="font-size:11.5px;font-weight:600;color:var(--text-main);display:flex;align-items:center;gap:6px;">
+                <span>📊</span>
+                <span>3×3 Multi-Perturbation Shift Bar Grid (Simultaneous Response Profiles across Conditions)</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" id="hist-grid-page-label">Conditions 1–9</span>
+                <div class="btn-group" role="group" id="hist-grid-page-controls" style="display:inline-flex;">
+                  <button class="btn btn-secondary btn-sm" id="btn-hist-grid-prev" onclick="stepArchiveGridPage(-1)" style="padding:2px 8px;font-size:11px;">◀ Prev 9</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-hist-grid-next" onclick="stepArchiveGridPage(1)" style="padding:2px 8px;font-size:11px;">Next 9 ▶</button>
+                </div>
+              </div>
+            </div>
+            <div style="background:var(--stage-bg);border:1px solid var(--border);border-radius:6px;padding:8px;position:relative;overflow:hidden;">
+              <canvas id="canvas-hist-pert-grid" class="chart-canvas" width="980" height="540" style="width:100%;height:540px;"></canvas>
+            </div>
+          </div>
+
+          <!-- 3. Full-Width Single Focus Container (For backward compatibility & single view focus) -->
+          <div id="hist-step4-single-container" style="display:none;position:relative;width:100%;height:300px;background:var(--stage-bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;display:flex;justify-content:center;align-items:center;">
+            <canvas id="canvas-hist-pert" class="chart-canvas" width="980" height="300" style="width:100%;height:300px;"></canvas>
           </div>
         </div>
 
@@ -2357,8 +2405,9 @@
       thesisFigures: null,
       archiveDetail: null,
       archiveActiveAlg: 'vote',
-      archivePertPlotMode: 'timecourse',
+      archivePertPlotMode: 'dual',
       archiveSelectedPertGene: 0,
+      archiveGridPage: 0,
       vccData: null,
       archiveFilterType: 'all',
       summaryByType: null,
@@ -5631,7 +5680,8 @@
         pertSel.value = '0';
       }
       APP_STATE.archiveSelectedPertGene = 0;
-      setArchivePertPlotMode(APP_STATE.archivePertPlotMode || 'timecourse');
+      APP_STATE.archiveGridPage = 0;
+      setArchivePertPlotMode(APP_STATE.archivePertPlotMode || 'dual');
 
       renderArchiveDetailAlg(bestAlg);
       makeTableSortable('tbl-hist-alg-comparison');
@@ -5671,19 +5721,39 @@
     // ============================================================================
     function setArchivePertPlotMode(mode) {
       APP_STATE.archivePertPlotMode = mode;
-      ['timecourse', 'matrix', 'bar'].forEach(m => {
+      ['dual', 'bar', 'timecourse', 'matrix'].forEach(m => {
         const btn = document.getElementById(`btn-hist-pert-mode-${m}`);
         if (btn) btn.classList.toggle('active', m === mode);
       });
 
+      const dualContainer = document.getElementById('hist-step4-dual-container');
+      const gridContainer = document.getElementById('hist-step4-grid-container');
+      const singleContainer = document.getElementById('hist-step4-single-container');
       const selectContainer = document.getElementById('hist-pert-gene-select-container');
-      if (selectContainer) {
-        selectContainer.style.display = (mode === 'matrix') ? 'none' : 'flex';
+
+      if (mode === 'dual') {
+        if (dualContainer) dualContainer.style.display = 'grid';
+        if (gridContainer) gridContainer.style.display = 'none';
+        if (singleContainer) singleContainer.style.display = 'none';
+        if (selectContainer) selectContainer.style.display = 'flex';
+      } else if (mode === 'bar') {
+        if (dualContainer) dualContainer.style.display = 'none';
+        if (gridContainer) gridContainer.style.display = 'block';
+        if (singleContainer) singleContainer.style.display = 'none';
+        if (selectContainer) selectContainer.style.display = 'none';
+      } else {
+        if (dualContainer) dualContainer.style.display = 'none';
+        if (gridContainer) gridContainer.style.display = 'none';
+        if (singleContainer) singleContainer.style.display = 'block';
+        if (selectContainer) selectContainer.style.display = (mode === 'matrix') ? 'none' : 'flex';
       }
 
       const lbl = document.getElementById('hist-pert-mode-label');
       if (lbl) {
-        lbl.textContent = (mode === 'matrix') ? 'Expression Matrix (X)' : (mode === 'bar' ? 'Shift Bar Profile (ΔX)' : 'Perturbation Time-Course');
+        if (mode === 'dual') lbl.textContent = 'Side-by-Side: Time-Course & Matrix';
+        else if (mode === 'bar') lbl.textContent = '3×3 Multi-Perturbation Shift Bar Grid';
+        else if (mode === 'matrix') lbl.textContent = 'Expression Matrix (X) Focus';
+        else lbl.textContent = 'Perturbation Time-Course Focus';
       }
 
       drawArchivePerturbationView(APP_STATE.archiveSelectedPertGene || 0);
@@ -5722,32 +5792,9 @@
       }
     }
 
-    function drawArchivePerturbationView(pertIdx) {
-      if (pertIdx !== undefined) {
-        APP_STATE.archiveSelectedPertGene = pertIdx;
-      } else {
-        pertIdx = APP_STATE.archiveSelectedPertGene || 0;
-      }
-      const data = APP_STATE.archiveDetail;
-      if (!data) return;
-
-      const mode = APP_STATE.archivePertPlotMode || 'timecourse';
-      updateArchiveTrajectoryDiagnosis(data, pertIdx);
-
-      const canvas = document.getElementById('canvas-hist-pert');
+    function drawCustomTimeCourseOnCanvas(canvasId, data, pertIdx, title) {
+      const canvas = document.getElementById(canvasId);
       if (!canvas) return;
-
-      if (mode === 'matrix') {
-        drawExpressionHeatmap(data.X, data.gene_names, 'canvas-hist-pert', `Archived Steady-State Expression Ratio Matrix X (${data.num_genes} × ${data.num_genes})`);
-        return;
-      }
-
-      if (mode === 'bar') {
-        drawCustomBarProfileOnCanvas('canvas-hist-pert', data, pertIdx);
-        return;
-      }
-
-      // Time-course mode
       const trajs = data.perturbation_trajectories || [];
       if (!trajs.length || !trajs[pertIdx]) {
         const ctx = canvas.getContext('2d');
@@ -5762,7 +5809,7 @@
       }
 
       const traj = trajs[pertIdx];
-      const geneNames = data.gene_names || Array.from({ length: data.num_genes }, (_, i) => `G${i+1}`);
+      const geneNames = data.gene_names || Array.from({ length: data.num_genes || traj.length }, (_, i) => `G${i+1}`);
       const targetGene = geneNames[pertIdx] || `G${pertIdx + 1}`;
       const palette = ['#0284c7', '#10b981', '#d97706', '#9333ea', '#db2777', '#0d9488', '#4f46e5', '#ca8a04', '#ea580c'];
       const series = traj.map((row, idx) => ({
@@ -5771,7 +5818,276 @@
         color: idx === pertIdx ? '#ef4444' : palette[idx % palette.length],
         width: idx === pertIdx ? 3.0 : 1.35,
       }));
-      drawSeriesCanvas('canvas-hist-pert', series, `Archived Perturbation ODE Time-Course: Perturbed ${targetGene} (thick red) + ${data.num_genes - 1} Responding Genes`);
+      drawSeriesCanvas(canvasId, series, title);
+    }
+
+    function stepArchiveGridPage(delta) {
+      const data = APP_STATE.archiveDetail;
+      if (!data || !data.X) return;
+      const numPerts = data.X[0] ? data.X[0].length : (data.num_genes || 10);
+      const totalPages = Math.ceil(numPerts / 9);
+
+      APP_STATE.archiveGridPage = (APP_STATE.archiveGridPage || 0) + delta;
+      if (APP_STATE.archiveGridPage < 0) APP_STATE.archiveGridPage = 0;
+      if (APP_STATE.archiveGridPage >= totalPages) APP_STATE.archiveGridPage = totalPages - 1;
+
+      const startIdx = APP_STATE.archiveGridPage * 9;
+      const endIdx = Math.min(numPerts, startIdx + 9);
+
+      const lbl = document.getElementById('hist-grid-page-label');
+      if (lbl) {
+        lbl.textContent = `Conditions ${startIdx + 1}–${endIdx} of ${numPerts}`;
+      }
+
+      const prevBtn = document.getElementById('btn-hist-grid-prev');
+      const nextBtn = document.getElementById('btn-hist-grid-next');
+      if (prevBtn) prevBtn.disabled = (APP_STATE.archiveGridPage <= 0);
+      if (nextBtn) nextBtn.disabled = (APP_STATE.archiveGridPage >= totalPages - 1);
+
+      drawArchive3x3PerturbationGrid('canvas-hist-pert-grid', data, startIdx);
+    }
+
+    function drawArchive3x3PerturbationGrid(canvasId, runData, startIdx = 0) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas || !runData || !runData.X) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const tc = getThemeColors();
+
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
+      const X = runData.X;
+      const numGenes = runData.num_genes || X.length;
+      const geneNames = runData.gene_names || Array.from({ length: numGenes }, (_, i) => `G${i+1}`);
+      const numPerts = X[0] ? X[0].length : numGenes;
+
+      const totalPages = Math.ceil(numPerts / 9);
+      const pageControls = document.getElementById('hist-grid-page-controls');
+      if (pageControls) {
+        pageControls.style.display = totalPages > 1 ? 'inline-flex' : 'none';
+      }
+      const pageLbl = document.getElementById('hist-grid-page-label');
+      if (pageLbl) {
+        const endIdx = Math.min(numPerts, startIdx + 9);
+        pageLbl.textContent = `Conditions ${startIdx + 1}–${endIdx} of ${numPerts}`;
+      }
+
+      const cols = 3;
+      const rows = 3;
+      const padOuter = 8;
+      const gap = 8;
+      const cellW = (W - padOuter * 2 - gap * (cols - 1)) / cols;
+      const cellH = (H - padOuter * 2 - gap * (rows - 1)) / rows;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const pertIdx = startIdx + r * cols + c;
+          const cellX = padOuter + c * (cellW + gap);
+          const cellY = padOuter + r * (cellH + gap);
+
+          // Subplot card background & border
+          ctx.fillStyle = tc.bgCard;
+          ctx.strokeStyle = tc.border;
+          ctx.lineWidth = 1;
+
+          // Rounded card frame
+          const rad = 6;
+          ctx.beginPath();
+          ctx.moveTo(cellX + rad, cellY);
+          ctx.lineTo(cellX + cellW - rad, cellY);
+          ctx.quadraticCurveTo(cellX + cellW, cellY, cellX + cellW, cellY + rad);
+          ctx.lineTo(cellX + cellW, cellY + cellH - rad);
+          ctx.quadraticCurveTo(cellX + cellW, cellY + cellH, cellX + cellW - rad, cellY + cellH);
+          ctx.lineTo(cellX + rad, cellY + cellH);
+          ctx.quadraticCurveTo(cellX, cellY + cellH, cellX, cellY + cellH - rad);
+          ctx.lineTo(cellX, cellY + rad);
+          ctx.quadraticCurveTo(cellX, cellY, cellX + rad, cellY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          if (pertIdx < numPerts) {
+            const targetGene = geneNames[pertIdx] || `G${pertIdx + 1}`;
+            const vals = [];
+            for (let i = 0; i < numGenes; i++) {
+              vals.push((X[i] && X[i][pertIdx] != null) ? X[i][pertIdx] : 0);
+            }
+
+            const selfVal = vals[pertIdx] || 0;
+            const selfPct = (selfVal * 100).toFixed(1);
+            const signStr = selfVal >= 0 ? '+' : '';
+
+            // Subplot title
+            ctx.fillStyle = tc.textMain;
+            ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Cond #${pertIdx + 1}: ${targetGene}`, cellX + 8, cellY + 15);
+
+            // Shift badge
+            const badgeText = `ΔX: ${signStr}${selfPct}%`;
+            ctx.font = 'bold 9px monospace';
+            const badgeW = ctx.measureText(badgeText).width + 8;
+            ctx.fillStyle = selfVal >= 0 ? 'rgba(2, 132, 199, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+            ctx.strokeStyle = selfVal >= 0 ? '#0284c7' : '#ef4444';
+            ctx.lineWidth = 1;
+            ctx.fillRect(cellX + cellW - badgeW - 8, cellY + 4, badgeW, 14);
+            ctx.strokeRect(cellX + cellW - badgeW - 8, cellY + 4, badgeW, 14);
+            ctx.fillStyle = selfVal >= 0 ? '#38bdf8' : '#f87171';
+            ctx.textAlign = 'center';
+            ctx.fillText(badgeText, cellX + cellW - 8 - badgeW / 2, cellY + 14);
+
+            // Plot area inside cell
+            const innerPad = { l: 26, r: 8, t: 24, b: 18 };
+            const plotX = cellX + innerPad.l;
+            const plotY = cellY + innerPad.t;
+            const plotW = cellW - innerPad.l - innerPad.r;
+            const plotH = cellH - innerPad.t - innerPad.b;
+            const zeroY = plotY + plotH / 2;
+
+            let maxAbs = 0.05;
+            vals.forEach(v => {
+              if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
+            });
+            maxAbs = maxAbs * 1.25;
+
+            // Zero line
+            ctx.strokeStyle = tc.grid;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(plotX, zeroY);
+            ctx.lineTo(plotX + plotW, zeroY);
+            ctx.stroke();
+
+            // Axis ticks
+            ctx.fillStyle = tc.textMuted;
+            ctx.font = '8px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`+${maxAbs.toFixed(1)}`, plotX - 3, plotY + 7);
+            ctx.fillText('0', plotX - 3, zeroY + 3);
+            ctx.fillText(`-${maxAbs.toFixed(1)}`, plotX - 3, plotY + plotH);
+
+            // Bars
+            const colStep = plotW / numGenes;
+            const barW = Math.max(2, colStep - 2);
+
+            for (let i = 0; i < numGenes; i++) {
+              const v = vals[i];
+              const bx = plotX + i * colStep + (colStep - barW) / 2;
+              const barH = (Math.abs(v) / maxAbs) * (plotH / 2);
+              const isTarget = (i === pertIdx);
+
+              if (v >= 0) {
+                ctx.fillStyle = isTarget ? '#0284c7' : '#10b981';
+                ctx.fillRect(bx, zeroY - barH, barW, barH);
+              } else {
+                ctx.fillStyle = isTarget ? '#d97706' : '#ef4444';
+                ctx.fillRect(bx, zeroY, barW, barH);
+              }
+
+              if (isTarget) {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1.2;
+                ctx.strokeRect(bx, v >= 0 ? zeroY - barH : zeroY, barW, barH);
+              }
+
+              // Gene index on bottom axis
+              if (numGenes <= 10 || i % 2 === 0) {
+                ctx.fillStyle = isTarget ? tc.accentBlue : tc.textMuted;
+                ctx.font = isTarget ? 'bold 7.5px Inter, sans-serif' : '7.5px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(geneNames[i], bx + barW / 2, plotY + plotH + 11);
+              }
+            }
+          } else {
+            // Unperturbed placeholder cell (for networks with N < 9)
+            ctx.fillStyle = tc.textMuted;
+            ctx.font = 'italic 10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Condition #${pertIdx + 1} (Unperturbed)`, cellX + cellW / 2, cellY + cellH / 2);
+          }
+        }
+      }
+    }
+
+    function drawArchivePerturbationView(pertIdx) {
+      if (pertIdx !== undefined) {
+        APP_STATE.archiveSelectedPertGene = pertIdx;
+      } else {
+        pertIdx = APP_STATE.archiveSelectedPertGene || 0;
+      }
+      const data = APP_STATE.archiveDetail;
+      if (!data) return;
+
+      const mode = APP_STATE.archivePertPlotMode || 'dual';
+      updateArchiveTrajectoryDiagnosis(data, pertIdx);
+
+      const geneNames = data.gene_names || Array.from({ length: data.num_genes || 10 }, (_, i) => `G${i+1}`);
+      const targetGene = geneNames[pertIdx] || `G${pertIdx + 1}`;
+      const numGenes = data.num_genes || (data.X ? data.X.length : 10);
+
+      // 1. Dual Mode: Side-by-Side Time-Course & Expression Matrix (Default)
+      if (mode === 'dual') {
+        const dualContainer = document.getElementById('hist-step4-dual-container');
+        if (dualContainer) dualContainer.style.display = 'grid';
+        const gridContainer = document.getElementById('hist-step4-grid-container');
+        if (gridContainer) gridContainer.style.display = 'none';
+        const singleContainer = document.getElementById('hist-step4-single-container');
+        if (singleContainer) singleContainer.style.display = 'none';
+
+        const dualTargetLbl = document.getElementById('hist-dual-target-label');
+        if (dualTargetLbl) dualTargetLbl.textContent = `Target: ${targetGene}`;
+        const dimsBadge = document.getElementById('hist-matrix-dims-badge');
+        if (dimsBadge) dimsBadge.textContent = `${numGenes} × ${numGenes}`;
+
+        // Left canvas: Time-course
+        drawCustomTimeCourseOnCanvas('canvas-hist-pert-timecourse', data, pertIdx, `Time-Course: ${targetGene} (thick red) + ${numGenes - 1} Responders`);
+        // Right canvas: Expression matrix heatmap
+        drawExpressionHeatmap(data.X, geneNames, 'canvas-hist-pert-matrix', `Expression Matrix X (${numGenes} × ${numGenes})`);
+        // Fallback for single canvas
+        drawCustomTimeCourseOnCanvas('canvas-hist-pert', data, pertIdx, `Archived Time-Course: ${targetGene}`);
+        return;
+      }
+
+      // 2. Bar Mode: 3x3 Multi-Perturbation Shift Bar Grid
+      if (mode === 'bar') {
+        const dualContainer = document.getElementById('hist-step4-dual-container');
+        if (dualContainer) dualContainer.style.display = 'none';
+        const gridContainer = document.getElementById('hist-step4-grid-container');
+        if (gridContainer) gridContainer.style.display = 'block';
+        const singleContainer = document.getElementById('hist-step4-single-container');
+        if (singleContainer) singleContainer.style.display = 'none';
+
+        const startIdx = (APP_STATE.archiveGridPage || 0) * 9;
+        drawArchive3x3PerturbationGrid('canvas-hist-pert-grid', data, startIdx);
+        // Fallback for single canvas
+        drawCustomBarProfileOnCanvas('canvas-hist-pert', data, pertIdx);
+        return;
+      }
+
+      // 3. Matrix Focus Mode
+      if (mode === 'matrix') {
+        const dualContainer = document.getElementById('hist-step4-dual-container');
+        if (dualContainer) dualContainer.style.display = 'none';
+        const gridContainer = document.getElementById('hist-step4-grid-container');
+        if (gridContainer) gridContainer.style.display = 'none';
+        const singleContainer = document.getElementById('hist-step4-single-container');
+        if (singleContainer) singleContainer.style.display = 'block';
+
+        drawExpressionHeatmap(data.X, geneNames, 'canvas-hist-pert', `Archived Steady-State Matrix X (${numGenes} × ${numGenes})`);
+        return;
+      }
+
+      // 4. Time-Course Focus Mode
+      const dualContainer = document.getElementById('hist-step4-dual-container');
+      if (dualContainer) dualContainer.style.display = 'none';
+      const gridContainer = document.getElementById('hist-step4-grid-container');
+      if (gridContainer) gridContainer.style.display = 'none';
+      const singleContainer = document.getElementById('hist-step4-single-container');
+      if (singleContainer) singleContainer.style.display = 'block';
+
+      drawCustomTimeCourseOnCanvas('canvas-hist-pert', data, pertIdx, `Archived Perturbation ODE Time-Course: Perturbed ${targetGene} (thick red) + ${numGenes - 1} Responding Genes`);
     }
 
     function drawCustomBarProfileOnCanvas(canvasId, runData, pertIdx) {
