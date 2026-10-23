@@ -58,6 +58,12 @@ from grn_sim.inference import (
     AtlasShift,
     CPALite,
     ByChance,
+    AracneAlgorithm,
+    CausalGRNAlgorithm,
+    DMDGRNAlgorithm,
+    DeepRIGAlgorithm,
+    SFINNAlgorithm,
+    NOTEARSAlgorithm,
 )
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.visualization.graph_export import (
@@ -81,6 +87,12 @@ ALGO_METADATA = {
     "ridge": {"name": "Multi-Output RidgeCV", "type": "L2 Regularized Inverse", "badge": "L2 Ridge Baseline"},
     "cpa_lite": {"name": "CPA-Lite Autoencoder", "type": "Latent Perturbation AE", "badge": "Latent Autoencoder"},
     "by_chance": {"name": "By-Chance (Random)", "type": "Null Bernoulli Model", "badge": "Null Random Baseline"},
+    "arachne": {"name": "ARACNE", "type": "Information Theoretic (MI + DPI)", "badge": "Mutual Info & DPI"},
+    "causalgrn": {"name": "CausalGRN", "type": "Interventional Causal Discovery", "badge": "Causal Do-Calculus"},
+    "dmdgrn": {"name": "DMD-GRN", "type": "Dynamic Mode Decomposition", "badge": "Koopman Dynamics"},
+    "deeprig": {"name": "DeepRIG", "type": "Graph Autoencoder (GCN)", "badge": "Deep Graph AE"},
+    "sfinn": {"name": "SFINN", "type": "Shared Factor & Integrated NN", "badge": "Neighborhood GCN+FNN"},
+    "notears": {"name": "NOTEARS", "type": "Differentiable Acyclic DAG", "badge": "Continuous DAG Optimization"},
 }
 
 
@@ -168,6 +180,12 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
             "ridge": KaggleMultiOutputRidge(),
             "cpa_lite": CPALite(epochs=10),
             "by_chance": ByChance(k_interactions=k_est, seed=seed),
+            "arachne": AracneAlgorithm(k_interactions=k_est),
+            "causalgrn": CausalGRNAlgorithm(k_interactions=k_est),
+            "dmdgrn": DMDGRNAlgorithm(k_interactions=k_est),
+            "deeprig": DeepRIGAlgorithm(k_interactions=k_est, seed=seed),
+            "sfinn": SFINNAlgorithm(k_interactions=k_est, seed=seed),
+            "notears": NOTEARSAlgorithm(k_interactions=k_est),
         }
 
         preds = {}
@@ -614,7 +632,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
         json.dump(overall_stats, f, indent=2)
 
     elapsed = time.time() - t_start
-    print(f"Sweep complete in {elapsed:.1f}s: {len(sweep_runs)} runs, {overall_stats['total_algorithmic_evaluations']} algorithmic evaluations across 12 algorithms and 3 architectures.")
+    print(f"Sweep complete in {elapsed:.1f}s: {len(sweep_runs)} runs, {overall_stats['total_algorithmic_evaluations']} algorithmic evaluations across {len(all_algorithms)} algorithms and 3 architectures.")
     print(f"Saved aggregated statistics: {out_json_path}")
 
     return overall_stats

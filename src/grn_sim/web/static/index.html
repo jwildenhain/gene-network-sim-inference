@@ -1179,6 +1179,12 @@
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="nir" checked /> NIR (Gardner)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="fast" checked /> FAST (SVD)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="by_chance" checked /> By-Chance Null</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="arachne" checked /> ARACNE (MI+DPI)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="causalgrn" checked /> CausalGRN (Causal)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="dmdgrn" checked /> DMD-GRN (Koopman)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="deeprig" checked /> DeepRIG (GAE+GCN)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="sfinn" checked /> SFINN (Neighborhood NN)</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="notears" checked /> NOTEARS (Acyclic DAG)</label>
             </div>
           </div>
 
@@ -1274,6 +1280,12 @@
                     <option value="nir">NIR (Gardner)</option>
                     <option value="fast">FAST (SVD)</option>
                     <option value="by_chance">By-Chance</option>
+                    <option value="arachne">ARACNE (MI+DPI)</option>
+                    <option value="causalgrn">CausalGRN (Do-Calc)</option>
+                    <option value="dmdgrn">DMD-GRN (Koopman)</option>
+                    <option value="deeprig">DeepRIG (GAE+GCN)</option>
+                    <option value="sfinn">SFINN (Neighborhood NN)</option>
+                    <option value="notears">NOTEARS (Acyclic DAG)</option>
                   </select>
                   <button class="btn btn-secondary btn-sm active" id="btn-inf-canvas" onclick="setInfView('canvas')">Canvas</button>
                   <button class="btn btn-secondary btn-sm" id="btn-inf-dot" onclick="setInfView('dot')">dot SVG</button>
@@ -1504,6 +1516,12 @@
                 <option value="nir">NIR (Gardner et al.)</option>
                 <option value="fast">FAST (SVD)</option>
                 <option value="by_chance">By-Chance Null</option>
+                <option value="arachne">ARACNE (MI+DPI)</option>
+                <option value="causalgrn">CausalGRN (Do-Calc)</option>
+                <option value="dmdgrn">DMD-GRN (Koopman)</option>
+                <option value="deeprig">DeepRIG (GAE+GCN)</option>
+                <option value="sfinn">SFINN (Neighborhood NN)</option>
+                <option value="notears">NOTEARS (Acyclic DAG)</option>
               </select>
             </div>
           </div>
@@ -1786,7 +1804,7 @@
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Algorithmic Evaluations</div>
             <div style="font-size:24px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-alg-evals">720</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">12 comparative re-engineering methods</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">18 comparative re-engineering methods</div>
           </div>
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Top Overall Performer</div>
@@ -1810,7 +1828,7 @@
           <div class="panel-header">
             <div>
               <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:8px;">
-                🏆 Systematic Benchmark Algorithm Leaderboard (12 Algorithms Evaluated)
+                🏆 Systematic Benchmark Algorithm Leaderboard (18 Algorithms Evaluated)
                 <span class="badge badge-emerald">Complete Cross-Architecture Evaluation</span>
               </div>
               <div style="font-size:11.5px;color:var(--text-muted);">
@@ -1851,10 +1869,10 @@
                 <span class="badge badge-emerald">Complete Cross-Topology Sweep</span>
               </div>
               <div style="font-size:11.5px;color:var(--text-muted);">
-                Systematic benchmark evaluated across Random Erdős-Rényi, Scale-Free Barabási-Albert, and Hierarchical Modular Ravasz-Barabási topologies across all 12 algorithms.
+                Systematic benchmark evaluated across Random Erdős-Rényi, Scale-Free Barabási-Albert, and Hierarchical Modular Ravasz-Barabási topologies across all 18 algorithms.
               </div>
             </div>
-            <span class="badge" id="badge-overall-arch-count">3 Architectures &bull; 12 Algorithms</span>
+            <span class="badge" id="badge-overall-arch-count">3 Architectures &bull; 18 Algorithms</span>
           </div>
           <div id="overall-arch-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));gap:12px;padding:4px 0;">
             <!-- Populated dynamically by renderOverallStats() -->
@@ -2223,6 +2241,12 @@
               <option value="ridge">RidgeCV (L2 Inverse)</option>
               <option value="cpa_lite">CPA-Lite Autoencoder</option>
               <option value="by_chance">By-Chance (Null Model)</option>
+              <option value="arachne">ARACNE (MI + DPI)</option>
+              <option value="causalgrn">CausalGRN (Do-Calculus)</option>
+              <option value="dmdgrn">DMD-GRN (Dynamic Mode Decomp)</option>
+              <option value="deeprig">DeepRIG (Graph Autoencoder)</option>
+              <option value="sfinn">SFINN (Neighborhood NN)</option>
+              <option value="notears">NOTEARS (Acyclic DAG)</option>
             </select>
             <button class="btn btn-primary btn-sm" style="width:auto;padding:6px 14px;" onclick="openArchiveRunInStudio()">
               Open Settings &amp; Edit in Studio (Tab 1) &rarr;
@@ -4600,7 +4624,7 @@
 
         const tbody = document.querySelector('#tbl-sos-benchmark tbody');
         tbody.innerHTML = '';
-        const order = ['vote', 'cellbox', 'genie3', 's2g', 'g2s', 'netdeconv', 'ridge_cv', 'cpa_lite', 'atlasshift', 'nir', 'fast', 'by_chance'];
+        const order = ['vote', 'cellbox', 'genie3', 's2g', 'g2s', 'arachne', 'causalgrn', 'dmdgrn', 'deeprig', 'sfinn', 'notears', 'netdeconv', 'ridge_cv', 'cpa_lite', 'atlasshift', 'nir', 'fast', 'by_chance'];
         const allKeys = Object.keys(data.table_4_1 || {});
         const displayKeys = [...order.filter(k => allKeys.includes(k)), ...allKeys.filter(k => !order.includes(k))];
 
@@ -5547,7 +5571,13 @@
           'fast': 'FAST (SVD)',
           'genie3': 'GENIE3 (Forest)',
           'cpa_lite': 'CPA-Lite Autoenc',
-          'by_chance': 'By-Chance'
+          'by_chance': 'By-Chance',
+          'arachne': 'ARACNE (MI+DPI)',
+          'causalgrn': 'CausalGRN (Causal)',
+          'dmdgrn': 'DMD-GRN (Koopman)',
+          'deeprig': 'DeepRIG (GAE+GCN)',
+          'sfinn': 'SFINN (GCN+FNN)',
+          'notears': 'NOTEARS (DAG)'
         };
 
         const archKeys = ['random', 'power_law', 'hierarchical'];

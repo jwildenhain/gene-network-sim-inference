@@ -15,6 +15,12 @@ from grn_sim.inference.genie3 import GENIE3Algorithm
 from grn_sim.inference.network_deconv import NetworkDeconvolution
 from grn_sim.inference.ridge_cv import KaggleMultiOutputRidge
 from grn_sim.inference.cpa_lite import CPALite
+from grn_sim.inference.arachne import AracneAlgorithm
+from grn_sim.inference.causalgrn import CausalGRNAlgorithm
+from grn_sim.inference.dmdgrn import DMDGRNAlgorithm
+from grn_sim.inference.deeprig import DeepRIGAlgorithm
+from grn_sim.inference.sfinn import SFINNAlgorithm
+from grn_sim.inference.notears import NOTEARSAlgorithm
 
 __all__ = [
     "BaseInferenceAlgorithm",
@@ -31,5 +37,11 @@ __all__ = [
     "NetworkDeconvolution",
     "KaggleMultiOutputRidge",
     "CPALite",
+    "AracneAlgorithm",
+    "CausalGRNAlgorithm",
+    "DMDGRNAlgorithm",
+    "DeepRIGAlgorithm",
+    "SFINNAlgorithm",
+    "NOTEARSAlgorithm",
 ]
 

@@ -37,6 +37,12 @@ from grn_sim.inference.genie3 import GENIE3Algorithm
 from grn_sim.inference.network_deconv import NetworkDeconvolution
 from grn_sim.inference.ridge_cv import KaggleMultiOutputRidge
 from grn_sim.inference.cpa_lite import CPALite
+from grn_sim.inference.arachne import AracneAlgorithm
+from grn_sim.inference.causalgrn import CausalGRNAlgorithm
+from grn_sim.inference.dmdgrn import DMDGRNAlgorithm
+from grn_sim.inference.deeprig import DeepRIGAlgorithm
+from grn_sim.inference.sfinn import SFINNAlgorithm
+from grn_sim.inference.notears import NOTEARSAlgorithm
 from grn_sim.simulator.model_engine import run_simulation_with_engine
 from grn_sim.benchmarks.benchmark_datasets import (
     list_benchmark_datasets,
@@ -618,6 +624,12 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "netdeconv": NetworkDeconvolution(),
         "ridge_cv": KaggleMultiOutputRidge(k_interactions=k_est if use_reg else None, perturbation_mode=pm),
         "cpa_lite": CPALite(epochs=40),
+        "arachne": AracneAlgorithm(k_interactions=k_est if use_reg else None),
+        "causalgrn": CausalGRNAlgorithm(k_interactions=k_est if use_reg else None),
+        "dmdgrn": DMDGRNAlgorithm(k_interactions=k_est if use_reg else None),
+        "deeprig": DeepRIGAlgorithm(k_interactions=k_est if use_reg else None),
+        "sfinn": SFINNAlgorithm(k_interactions=k_est if use_reg else None),
+        "notears": NOTEARSAlgorithm(k_interactions=k_est if use_reg else None),
     }
 
     metrics_dict = {}
@@ -886,6 +898,12 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         "cpa_lite": CPALite(epochs=30),
         "atlasshift": AtlasShift(de_threshold=0.15),
         "by_chance": ByChance(k_interactions=k_conn, seed=101),
+        "arachne": AracneAlgorithm(k_interactions=k_conn),
+        "causalgrn": CausalGRNAlgorithm(k_interactions=k_conn),
+        "dmdgrn": DMDGRNAlgorithm(k_interactions=k_conn),
+        "deeprig": DeepRIGAlgorithm(k_interactions=k_conn),
+        "sfinn": SFINNAlgorithm(k_interactions=k_conn),
+        "notears": NOTEARSAlgorithm(k_interactions=k_conn),
     }
 
     table_4_1 = {}

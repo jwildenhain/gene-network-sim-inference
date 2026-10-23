@@ -243,17 +243,23 @@ Step 5 reverse-engineers the underlying network topology. Only the noisy measure
 #### 3. AIC Cost Profile Curve:
 The UI renders the AIC cost curve across regulator subset sizes $K = 0 \dots N$ (Thesis Figure 3.1), visually demonstrating model complexity penalization and preventing overfitting.
 
-#### 4. Additional Supported Algorithms:
-- **Voting Consensus**: Combines predictions from multiple algorithms using majority voting.
-- **CellBox Continuous Neural ODE**: Recurrent neural network formulation modeling continuous ODE relaxation.
+#### 4. Additional Supported Algorithms (18 Re-Engineering Paradigms):
+- **Voting Consensus**: Combines predictions from multiple algorithms using majority voting and intersection consensus ($S2G \cap G2S$).
+- **CellBox Continuous Neural ODE**: Recurrent neural network formulation modeling continuous ODE relaxation ($\dot{x}_i = \tanh(\sum_j W_{ij} x_j + u_i) - \alpha_i x_i$).
 - **NIR (Multiple Linear Regression)**: Network Identification by Multiple Regression (*Gardner et al., Science 2003*).
-- **GENIE3**: Random forest ensemble tree regression.
-- **Network Deconvolution**: Direct vs. indirect transitive interaction matrix deconvolution.
-- **RidgeCV**: Cross-validated L2 regularized regression.
-- **CPA-Lite**: Compositional Perturbation Autoencoder latent embedding.
-- **AtlasShift**: Vector alignment from the Virtual Cell Challenge benchmark.
-- **FAST**: SVD-based linear dynamical reconstruction.
+- **GENIE3**: Random forest ensemble tree regression over perturbation-conditioned targets.
+- **Network Deconvolution**: Direct vs. indirect transitive interaction matrix deconvolution ($G_{\text{dir}} = G_{\text{obs}} (I + G_{\text{obs}})^{-1}$).
+- **RidgeCV**: Cross-validated L2 regularized regression across $\alpha \in [10^{-3}, 10^3]$.
+- **CPA-Lite**: Compositional Perturbation Autoencoder latent embedding ($z_{\text{pert}} = z_{\text{ctrl}} + \Delta z$).
+- **AtlasShift**: Empirical cross-atlas latent transfer and cosine similarity (*Meng et al., Arc Institute VCC 2026*).
+- **FAST**: SVD-based linear dynamical reconstruction with degree-guided truncation.
 - **By-Chance**: Null benchmark predicting random edges matching degree expectation.
+- **ARACNE**: Information-theoretic mutual information reconstruction with Data Processing Inequality (DPI) triplet pruning (*Margolin et al., Nature Protocols 2006*).
+- **CausalGRN**: Causal skeleton estimation using first-order partial correlations with interventional *do-calculus* asymmetric orientation.
+- **DMD-GRN**: Dynamic Mode Decomposition & Koopman transition operator inversion across perturbation snapshots.
+- **DeepRIG**: Graph Convolutional Autoencoder (GAE) with 2-layer GCN encoder over correlation topology and inner-product link decoder (*Zhang et al., Bioinformatics 2024*).
+- **SFINN**: Shared Factor Interaction Neural Network conditioning embeddings on perturbation factors with GCN + feedforward classifier.
+- **NOTEARS**: Continuous differentiable DAG optimization enforcing acyclicity constraint $h(W) = \text{Tr}(e^{W \circ W}) - d = 0$ via Augmented Lagrangian (*Zheng et al., NeurIPS 2018*).
 
 ---
 

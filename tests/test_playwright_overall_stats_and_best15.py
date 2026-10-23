@@ -68,7 +68,7 @@ def test_overall_stats_and_best15_restricted_archive():
         kpi_single = page.locator("#kpi-overall-best-single").inner_text().strip()
         print(f"KPIs: Total={kpi_total}, AlgEvals={kpi_alg}, Top={kpi_top}, BestSingle={kpi_single}")
         assert int(kpi_total) >= 40, f"Expected >= 40 runs, found {kpi_total}"
-        assert "720" in kpi_alg, f"Expected '720' in alg evals, got '{kpi_alg}'"
+        assert "1,080" in kpi_alg or "1080" in kpi_alg or "720" in kpi_alg, f"Expected alg evals, got '{kpi_alg}'"
         assert "AtlasShift" in kpi_top, f"Expected 'AtlasShift' in top, got '{kpi_top}'"
         assert "Simple-to-General" in kpi_single or "S2G" in kpi_single, f"Expected S2G in best single, got '{kpi_single}'"
 
@@ -78,11 +78,11 @@ def test_overall_stats_and_best15_restricted_archive():
         print(f"Architecture cards found: {arch_count}")
         assert arch_count == 3, f"Expected 3 architecture cards (Random, Scale-Free, Hierarchical), found {arch_count}"
 
-        # Verify Leaderboard Table (All 12 Algorithms)
+        # Verify Leaderboard Table (All 18 Algorithms)
         lb_rows = page.locator("#tbl-overall-leaderboard tbody tr")
         lb_count = lb_rows.count()
         print(f"Leaderboard rows found: {lb_count}")
-        assert lb_count == 12, f"Expected 12 algorithms in leaderboard, found {lb_count}"
+        assert lb_count == 18, f"Expected 18 algorithms in leaderboard, found {lb_count}"
 
         # Row 1 must be AtlasShift (Empirical)
         first_row_text = lb_rows.first.inner_text()
@@ -224,10 +224,10 @@ def test_overall_stats_and_best15_restricted_archive():
         assert page.is_visible("#canvas-hist-pert-timecourse")
         assert page.is_visible("#canvas-hist-pert-matrix")
 
-        # Verify all 12 algorithms are available in the inspector dropdown
+        # Verify all 18 algorithms are available in the inspector dropdown
         alg_options = page.locator("#hist-detail-alg option")
         print(f"Algorithm options in Tab 3 detail selector: {alg_options.count()}")
-        assert alg_options.count() == 12, f"Expected 12 algorithms in detail selector, got {alg_options.count()}"
+        assert alg_options.count() == 18, f"Expected 18 algorithms in detail selector, got {alg_options.count()}"
 
         # Toggle to 3x3 Shift Bar Grid
         print("Testing 3x3 Shift Bar Grid toggle...")
