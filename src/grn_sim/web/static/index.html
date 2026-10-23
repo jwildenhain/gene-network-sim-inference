@@ -1163,8 +1163,13 @@
           <!-- Step 5: Inference Algorithms -->
           <div class="form-group step-section" id="step-section-5" style="border-radius:8px;padding:10px 12px;margin-top:14px;background:var(--bg-card);border:1px solid var(--border);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <label class="form-label" style="margin:0;font-weight:700;">Step 5: Reverse-Engineering (S2G / G2S)</label>
-              <span class="badge badge-sm" style="font-size:10px;">Step 5</span>
+              <label class="form-label" style="margin:0;font-weight:700;">Step 5: Reverse-Engineering (18 Algorithms)</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(true)" title="Select all 18 available reverse-engineering algorithms">All (18)</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(false)" title="Clear all selections">Clear</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setThesisCoreAlgorithms()" title="Select the 6 core 2004/2006 thesis algorithms (S2G, G2S, Vote, NIR, FAST, By-Chance)">Thesis Core (6)</button>
+                <span class="badge badge-sm" style="font-size:10px;">Step 5</span>
+              </div>
             </div>
             <div class="alg-checkboxes">
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="s2g" checked /> S2G (Forward AIC)</label>
@@ -2831,8 +2836,12 @@
         }
       } else if (tabId === 'tab-history') {
         loadHistoryTable();
-      } else if (tabId === 'tab-vcc' && !APP_STATE.vccData) {
-        loadVccBenchmarkData();
+      } else if (tabId === 'tab-vcc') {
+        if (!APP_STATE.vccData) {
+          loadVccBenchmarkData();
+        } else {
+          renderVccBenchmarkUI(APP_STATE.vccData);
+        }
       }
     }
 
@@ -3377,7 +3386,8 @@
 
       if (Array.isArray(s.algorithms) && s.algorithms.length) {
         document.querySelectorAll('.alg-cb').forEach(cb => {
-          cb.checked = s.algorithms.includes(cb.value);
+          const val = cb.value;
+          cb.checked = s.algorithms.includes(val) || (val === 'ridge_cv' && (s.algorithms.includes('ridge') || s.algorithms.length >= 15));
         });
       }
 
@@ -3578,6 +3588,7 @@
         loadSosFullStudio();
         loadThesisFigures();
         loadHistoryTable();
+        loadVccBenchmarkData();
         initAllSortableTables();
       } catch (err) {
         console.error('Initialization error:', err);
@@ -3588,6 +3599,17 @@
       const algs = [];
       document.querySelectorAll('.alg-cb:checked').forEach(cb => algs.push(cb.value));
       return algs.length ? algs : ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
+    }
+
+    function setAllAlgorithms(checked) {
+      document.querySelectorAll('.alg-cb').forEach(cb => { cb.checked = Boolean(checked); });
+    }
+
+    function setThesisCoreAlgorithms() {
+      const core = ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
+      document.querySelectorAll('.alg-cb').forEach(cb => {
+        cb.checked = core.includes(cb.value);
+      });
     }
 
     async function runFullPipeline() {
@@ -4557,7 +4579,13 @@
         APP_STATE.activeBenchmark = datasetId;
         const res = await fetch(`/api/benchmark/dataset?id=${encodeURIComponent(datasetId)}`);
         const data = await res.json();
-        if (data.status !== 'success') return;
+        if (data.status !== 'success') {
+          console.error('Failed to load benchmark dataset:', data);
+          if (loadingText) {
+            loadingText.innerHTML = `<span style="color:var(--accent-pink);">❌ Error loading ${datasetId}: ${data.error || 'Server error'}</span>`;
+          }
+          return;
+        }
         APP_STATE.sosData = data;
 
         // Update active class on dataset selector pills

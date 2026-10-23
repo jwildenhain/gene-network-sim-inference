@@ -115,7 +115,7 @@ class SFINNAlgorithm(BaseInferenceAlgorithm):
                 zj = Z[j, :]
                 pair_feat = np.concatenate([zj, zi, np.abs(zj - zi), zj * zi, [S_dir[i, j]]])
                 h1 = np.maximum(0.0, pair_feat @ W_mlp1 + b_mlp1)
-                logit = float(h1 @ W_mlp2 + b_mlp2)
+                logit = float(np.asarray(h1 @ W_mlp2 + b_mlp2).reshape(-1)[0])
                 prob = 1.0 / (1.0 + np.exp(-np.clip(logit, -10.0, 10.0)))
 
                 sign_val = np.sign(S_dir[i, j]) if abs(S_dir[i, j]) > 1e-4 else np.sign(G_shared[i, j])
