@@ -2113,16 +2113,16 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-weight:700;font-size:12px;color:var(--text-primary);letter-spacing:0.3px;">CURATED VIEW:</span>
             <select id="archive-filter-type" style="padding:5px 12px;font-size:12px;font-weight:600;border-radius:5px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);" onchange="filterArchiveByType(this.value)">
-              <option value="all">🌟 Best 15 for Each Dynamics Set (Curated Benchmark Corpus)</option>
-              <option value="responsive">⚡ Best 15 Responsive (Clear Multi-Gene Shifts)</option>
-              <option value="flat">⚪ Best 15 Flat Levels (Dampened / Buffered Networks)</option>
-              <option value="oscillating">〰 Best 15 Oscillating (Limit Cycles &amp; Negative Feedback)</option>
-              <option value="random">🎲 Best 15 Random Topology</option>
-              <option value="power_law">🌐 Best 15 Scale-Free / Power-Law Topology</option>
-              <option value="hierarchical">🌲 Best 15 Hierarchical Topology</option>
-              <option value="overall_top15">🏆 Overall Top 15 Highest Performing Runs</option>
+              <option value="all">🌟 Best 15 for Each Dynamics Set (Curated N ≥ 12 Benchmark Corpus)</option>
+              <option value="responsive">⚡ Best 15 Responsive (N ≥ 12, Clear Multi-Gene Shifts)</option>
+              <option value="flat">⚪ Best 15 Flat Levels (N ≥ 12, Dampened / Buffered)</option>
+              <option value="oscillating">〰 Best 15 Oscillating (N ≥ 12, Limit Cycles &amp; Negative Feedback)</option>
+              <option value="random">🎲 Best 15 Random Topology (N ≥ 12)</option>
+              <option value="power_law">🌐 Best 15 Scale-Free / Power-Law Topology (N ≥ 12)</option>
+              <option value="hierarchical">🌲 Best 15 Hierarchical Topology (N ≥ 12)</option>
+              <option value="overall_top15">🏆 Overall Top 15 Highest Performing Runs (N ≥ 12)</option>
             </select>
-            <span id="archive-filter-count-badge" class="badge badge-emerald" style="font-size:11px;">Best 15 Curated</span>
+            <span id="archive-filter-count-badge" class="badge badge-emerald" style="font-size:11px;">Best 15 (N ≥ 12)</span>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;" onclick="simulatePresetRun('responsive')" title="Simulate a standard network with clear multi-gene perturbation responses">
@@ -2145,7 +2145,7 @@
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:16px;">⭐</span>
             <span style="color:var(--text-primary);font-weight:600;" id="archive-best15-banner-text">
-              Restricted to the Best 15 Simulations for each set (ranked by F1 re-engineering score &amp; minimal total errors).
+              Restricted to the Best 15 Simulations (N ≥ 12) for each set (ranked by F1 re-engineering score &amp; minimal total errors).
             </span>
           </div>
           <span style="color:var(--text-muted);font-size:11.5px;" id="archive-best15-banner-sub">
@@ -6205,9 +6205,10 @@
           if (topoSets[h.topo]) topoSets[h.topo].push(h);
         });
 
-        // Helper to sort and rank strictly within a set (top 15)
+        // Helper to sort and rank strictly within a set (top 15, minimum network size N >= 12)
         function sortAndRankSet(arr, setName) {
-          const sorted = [...arr].sort((a, b) => {
+          const eligible = (arr || []).filter(item => Number(item.num_genes || 0) >= 12);
+          const sorted = [...eligible].sort((a, b) => {
             if (b.f1Score !== a.f1Score) return b.f1Score - a.f1Score;
             const errA = Number(a.best_total_errors ?? 99);
             const errB = Number(b.best_total_errors ?? 99);
@@ -6228,42 +6229,42 @@
         const rankedPowerLaw = sortAndRankSet(topoSets.power_law, 'Scale-Free Topo');
         const rankedHierarchical = sortAndRankSet(topoSets.hierarchical, 'Hierarchical Topo');
 
-        // All runs sorted for overall top 15
+        // All runs sorted for overall top 15 (minimum network size N >= 12)
         const allSorted = [...data.history];
         const rankedOverall = sortAndRankSet(allSorted, 'Overall Best');
 
-        // 3. Determine the visible subset (strictly restricted to best 15 for each set)
+        // 3. Determine the visible subset (strictly restricted to best 15 for each set with N >= 12)
         let visibleRows = [];
         let bannerSetText = '';
 
         if (currentFilter === 'all') {
-          // Curated benchmark corpus: Best 15 for each of the 3 dynamics categories (45 runs total)
+          // Curated benchmark corpus: Best 15 for each of the 3 dynamics categories (45 runs total, N >= 12)
           visibleRows = [...rankedResponsive, ...rankedFlat, ...rankedOscillating];
-          bannerSetText = 'Displaying the Best 15 Simulations for Each Dynamics Set (45 curated benchmark runs: 15 Responsive + 15 Flat + 15 Oscillating).';
+          bannerSetText = 'Displaying the Best 15 Simulations for Each Dynamics Set (45 curated benchmark runs: 15 Responsive + 15 Flat + 15 Oscillating, minimum network size N ≥ 12).';
         } else if (currentFilter === 'responsive') {
           visibleRows = rankedResponsive;
-          bannerSetText = 'Displaying the Best 15 Responsive Dynamics Simulations (ranked by F1 score & clear multi-gene shifts).';
+          bannerSetText = 'Displaying the Best 15 Responsive Dynamics Simulations (N ≥ 12, ranked by F1 score & clear multi-gene shifts).';
         } else if (currentFilter === 'flat') {
           visibleRows = rankedFlat;
-          bannerSetText = 'Displaying the Best 15 Flat Levels Simulations (ranked by minimal total errors & buffered expression).';
+          bannerSetText = 'Displaying the Best 15 Flat Levels Simulations (N ≥ 12, ranked by minimal total errors & buffered expression).';
         } else if (currentFilter === 'oscillating') {
           visibleRows = rankedOscillating;
-          bannerSetText = 'Displaying the Best 15 Oscillating Simulations (ranked by F1 score & persistent limit cycle dynamics).';
+          bannerSetText = 'Displaying the Best 15 Oscillating Simulations (N ≥ 12, ranked by F1 score & persistent limit cycle dynamics).';
         } else if (currentFilter === 'random') {
           visibleRows = rankedRandom;
-          bannerSetText = 'Displaying the Best 15 Random Erdős-Rényi Graph Simulations.';
+          bannerSetText = 'Displaying the Best 15 Random Erdős-Rényi Graph Simulations (N ≥ 12).';
         } else if (currentFilter === 'power_law') {
           visibleRows = rankedPowerLaw;
-          bannerSetText = 'Displaying the Best 15 Scale-Free / Power-Law Graph Simulations.';
+          bannerSetText = 'Displaying the Best 15 Scale-Free / Power-Law Graph Simulations (N ≥ 12).';
         } else if (currentFilter === 'hierarchical') {
           visibleRows = rankedHierarchical;
-          bannerSetText = 'Displaying the Best 15 Hierarchical Modular Graph Simulations.';
+          bannerSetText = 'Displaying the Best 15 Hierarchical Modular Graph Simulations (N ≥ 12).';
         } else if (currentFilter === 'overall_top15') {
           visibleRows = rankedOverall;
-          bannerSetText = 'Displaying the Top 15 Highest-Performing Re-Engineering Runs across the entire database.';
+          bannerSetText = 'Displaying the Top 15 Highest-Performing Re-Engineering Runs (N ≥ 12) across the entire database.';
         } else {
           visibleRows = [...rankedResponsive, ...rankedFlat, ...rankedOscillating];
-          bannerSetText = 'Displaying the Best 15 Simulations for each set.';
+          bannerSetText = 'Displaying the Best 15 Simulations for each set (N ≥ 12).';
         }
 
         // 4. Update banner and badge
@@ -7163,7 +7164,7 @@
           body: JSON.stringify({
             dynamics_preset: presetType,
             auto_infer: true,
-            num_genes: presetType === 'oscillating' ? 6 : (presetType === 'flat' ? 10 : 12),
+            num_genes: 12,
             topology: presetType === 'oscillating' ? 'random' : (presetType === 'flat' ? 'hierarchical' : 'power_law'),
             seed: Date.now() % 10000,
           }),

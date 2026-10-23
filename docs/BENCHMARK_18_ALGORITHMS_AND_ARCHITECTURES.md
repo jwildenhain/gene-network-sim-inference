@@ -232,7 +232,8 @@ Results aggregated across all 60 synthetic sweep networks in SQLite database `rg
 - **Historical Gallery Switcher**: One-click toggle preserving authentic 2004 MATLAB `.mat` figures gallery.
 
 ### 6.2 Tab 3 ("3. Previous Simulations Archive")
-- **Restricted View**: Restricts display strictly to the best 15 simulations per set (Responsive, Flat Levels, Oscillating, Topologies).
+- **Restricted View (Best 15 with $N \ge 12$)**: Restricts display strictly to the best 15 simulations per set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, Overall Best). Strictly enforces **minimum network size $N \ge 12$** across all curated sets, filtering out sub-critical toy networks ($N < 12$).
+- **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 232 persisted runs in SQLite `rgn_db`.
 - **18-Algorithm Selector (`#hist-detail-alg`)**: Allows inspecting any of the 18 algorithms for any archived run, dynamically updating the 9-state Graphviz reconstruction and misclassification matrix.
 
 ---
@@ -244,6 +245,7 @@ The Playwright end-to-end verification suite in `tests/test_playwright_overall_s
 - [x] KPI metrics: Total Runs $= 60$, Algorithmic Evaluations $= 1,080$
 - [x] Architecture cards: Exactly 3 cards (Random, Scale-Free, Hierarchical Modular)
 - [x] Leaderboard rows: Exactly 18 rows, Rank #1 is AtlasShift, Rank #2 is S2G
+- [x] Tab 3 Curated Sets: Strictly 15 runs per category, all with $N \ge 12$
 - [x] Tab 3 Inspector dropdown: Exactly 18 algorithm options
 - [x] All 6 new algorithm units tested and passing in `tests/test_6_new_algorithms.py`
 - [x] Full visual screenshots captured:

@@ -457,6 +457,22 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         ss_diag,
         perturbation_trajectories=experiment.perturbation_trajectories,
     )
+    if dynamics_preset == "flat":
+        resp_dyn["response_type"] = "flat"
+        resp_dyn["label"] = "Flat Levels (No Visible Perturbation)"
+        resp_dyn["short_label"] = "Flat Levels"
+        resp_dyn["badge_class"] = "badge-secondary"
+        resp_dyn["badge_icon"] = "⚪"
+    elif dynamics_preset == "oscillating":
+        resp_dyn["response_type"] = "oscillating"
+        resp_dyn["label"] = "Oscillating (Limit Cycle / Non-steady)"
+        resp_dyn["short_label"] = "Oscillating"
+        resp_dyn["badge_class"] = "badge-amber"
+        resp_dyn["badge_icon"] = "〰"
+        resp_dyn["is_steady"] = False
+        resp_dyn["is_oscillating"] = True
+        ss_diag["is_valid_steady_state"] = False
+        ss_diag["oscillating_detected"] = True
 
     dot_hier = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
     dot_spring = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
@@ -1643,18 +1659,18 @@ def _bootstrap_initial_simulation():
         )
 
         if need_seeding:
-            # Seed diverse runs covering all 3 dynamics categories:
+            # Seed diverse runs covering all 3 dynamics categories (minimum network size N >= 12):
             presets = [
                 # 1. Responsive: Clear steady-state shifts
                 {"num_genes": 12, "topology": "power_law", "k_av": 1.8, "act_ratio": 0.5, "noise": 0.04, "dynamics_preset": "responsive", "seed": 42},
-                {"num_genes": 10, "topology": "hierarchical", "k_av": 1.8, "act_ratio": 0.6, "noise": 0.02, "dynamics_preset": "responsive", "seed": 24},
-                {"num_genes": 9, "topology": "power_law", "k_av": 2.0, "act_ratio": 0.5, "noise": 0.03, "mode": "sos", "seed": 2004},
+                {"num_genes": 14, "topology": "hierarchical", "k_av": 1.8, "act_ratio": 0.6, "noise": 0.02, "dynamics_preset": "responsive", "seed": 24},
+                {"num_genes": 16, "topology": "power_law", "k_av": 2.0, "act_ratio": 0.5, "noise": 0.03, "dynamics_preset": "responsive", "seed": 2004},
                 # 2. Flat: Minimal/no visible perturbations (max shift < 5%)
-                {"num_genes": 10, "topology": "random", "k_av": 1.5, "act_ratio": 0.5, "noise": 0.001, "dynamics_preset": "flat", "perturbation_factor": 0.005, "seed": 101},
-                {"num_genes": 12, "topology": "hierarchical", "k_av": 1.4, "act_ratio": 0.6, "noise": 0.002, "dynamics_preset": "flat", "perturbation_factor": 0.004, "seed": 202},
+                {"num_genes": 12, "topology": "random", "k_av": 1.5, "act_ratio": 0.5, "noise": 0.001, "dynamics_preset": "flat", "perturbation_factor": 0.005, "seed": 101},
+                {"num_genes": 14, "topology": "hierarchical", "k_av": 1.4, "act_ratio": 0.6, "noise": 0.002, "dynamics_preset": "flat", "perturbation_factor": 0.004, "seed": 202},
                 # 3. Oscillating: Limit cycle / persistent non-linear oscillation
-                {"num_genes": 6, "topology": "random", "k_av": 2.5, "act_ratio": 0.1, "noise": 0.02, "dynamics_preset": "oscillating", "perturbation_factor": 2.0, "seed": 1},
-                {"num_genes": 8, "topology": "power_law", "k_av": 2.2, "act_ratio": 0.1, "noise": 0.03, "dynamics_preset": "oscillating", "perturbation_factor": 2.0, "seed": 15},
+                {"num_genes": 12, "topology": "random", "k_av": 2.5, "act_ratio": 0.1, "noise": 0.02, "dynamics_preset": "oscillating", "perturbation_factor": 2.0, "seed": 1},
+                {"num_genes": 14, "topology": "power_law", "k_av": 2.2, "act_ratio": 0.1, "noise": 0.03, "dynamics_preset": "oscillating", "perturbation_factor": 2.0, "seed": 15},
             ]
             for p in presets:
                 p_type = p.get("dynamics_preset", "responsive")

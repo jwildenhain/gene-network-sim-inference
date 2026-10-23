@@ -150,11 +150,23 @@ def test_overall_stats_and_best15_restricted_archive():
         print(f"Banner text: {banner_text}")
         assert "Best 15" in banner_text
 
-        # 4A. Default 'all' filter: Curated corpus has exactly 45 runs (15 responsive + 15 flat + 15 oscillating)
+        # Helper to verify minimum network size N >= 12 for all rows
+        def verify_current_table_min_genes(expected_count: int, set_name: str):
+            rows = page.locator("#tbl-history tbody tr")
+            count = rows.count()
+            assert count == expected_count, f"[{set_name}] Expected {expected_count} rows, got {count}"
+            for i in range(count):
+                row_cells = rows.nth(i).locator("td")
+                gene_text = row_cells.nth(4).inner_text().strip()
+                n_genes = int(gene_text)
+                assert n_genes >= 12, f"[{set_name}] Row {i+1} has num_genes={n_genes} < 12!"
+
+        # 4A. Default 'all' filter: Curated corpus has exactly 45 runs (15 responsive + 15 flat + 15 oscillating, all N >= 12)
         table_rows = page.locator("#tbl-history tbody tr")
         total_all_rows = table_rows.count()
         print(f"Visible rows under 'all' curated filter: {total_all_rows}")
         assert total_all_rows == 45, f"Expected 45 curated runs (15 per dynamics set), got {total_all_rows}"
+        verify_current_table_min_genes(45, "all")
 
         # Verify Rank Badge and F1 Score in the table
         first_row = table_rows.first
@@ -164,41 +176,54 @@ def test_overall_stats_and_best15_restricted_archive():
         # F1 score must be displayed (e.g. 1.000)
         assert "1.000" in first_row_text or "0." in first_row_text
 
-        # 4B. Filter: 'responsive' (strictly best 15)
+        # 4B. Filter: 'responsive' (strictly best 15, N >= 12)
         print("Testing filter 'responsive'...")
         page.select_option("#archive-filter-type", "responsive")
         page.wait_for_timeout(600)
-        resp_count = page.locator("#tbl-history tbody tr").count()
-        print(f"Responsive runs count: {resp_count}")
-        assert resp_count == 15, f"Expected strictly 15 responsive runs, got {resp_count}"
+        verify_current_table_min_genes(15, "responsive")
         assert "#1 in Responsive" in page.locator("#tbl-history tbody tr").first.inner_text()
 
-        # 4C. Filter: 'flat' (strictly best 15)
+        # 4C. Filter: 'flat' (strictly best 15, N >= 12)
         print("Testing filter 'flat'...")
         page.select_option("#archive-filter-type", "flat")
         page.wait_for_timeout(600)
-        flat_count = page.locator("#tbl-history tbody tr").count()
-        print(f"Flat runs count: {flat_count}")
-        assert flat_count == 15, f"Expected strictly 15 flat runs, got {flat_count}"
+        verify_current_table_min_genes(15, "flat")
         assert "#1 in Flat Levels" in page.locator("#tbl-history tbody tr").first.inner_text()
 
-        # 4D. Filter: 'oscillating' (strictly best 15)
+        # 4D. Filter: 'oscillating' (strictly best 15, N >= 12)
         print("Testing filter 'oscillating'...")
         page.select_option("#archive-filter-type", "oscillating")
         page.wait_for_timeout(600)
-        osc_count = page.locator("#tbl-history tbody tr").count()
-        print(f"Oscillating runs count: {osc_count}")
-        assert osc_count == 15, f"Expected strictly 15 oscillating runs, got {osc_count}"
+        verify_current_table_min_genes(15, "oscillating")
         assert "#1 in Oscillating" in page.locator("#tbl-history tbody tr").first.inner_text()
 
-        # 4E. Filter: 'power_law' (strictly best 15 scale-free)
+        # 4E. Filter: 'power_law' (strictly best 15 scale-free, N >= 12)
         print("Testing filter 'power_law'...")
         page.select_option("#archive-filter-type", "power_law")
         page.wait_for_timeout(600)
-        topo_count = page.locator("#tbl-history tbody tr").count()
-        print(f"Power-law runs count: {topo_count}")
-        assert topo_count == 15, f"Expected strictly 15 power-law runs, got {topo_count}"
+        verify_current_table_min_genes(15, "power_law")
         assert "#1 in Scale-Free Topo" in page.locator("#tbl-history tbody tr").first.inner_text()
+
+        # 4F. Filter: 'random' (strictly best 15 random, N >= 12)
+        print("Testing filter 'random'...")
+        page.select_option("#archive-filter-type", "random")
+        page.wait_for_timeout(600)
+        verify_current_table_min_genes(15, "random")
+        assert "#1 in Random Topo" in page.locator("#tbl-history tbody tr").first.inner_text()
+
+        # 4G. Filter: 'hierarchical' (strictly best 15 hierarchical, N >= 12)
+        print("Testing filter 'hierarchical'...")
+        page.select_option("#archive-filter-type", "hierarchical")
+        page.wait_for_timeout(600)
+        verify_current_table_min_genes(15, "hierarchical")
+        assert "#1 in Hierarchical Topo" in page.locator("#tbl-history tbody tr").first.inner_text()
+
+        # 4H. Filter: 'overall_top15' (strictly overall top 15, N >= 12)
+        print("Testing filter 'overall_top15'...")
+        page.select_option("#archive-filter-type", "overall_top15")
+        page.wait_for_timeout(600)
+        verify_current_table_min_genes(15, "overall_top15")
+        assert "#1 in Overall Best" in page.locator("#tbl-history tbody tr").first.inner_text()
 
         # Reset filter to 'all' for clean full screenshot
         page.select_option("#archive-filter-type", "all")

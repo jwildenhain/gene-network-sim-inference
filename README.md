@@ -186,11 +186,13 @@ A comprehensive systematic parameter sweep benchmark across 4 continuous and str
    - **Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.20]$)**: Robustness evaluation across increasing experimental noise.
    - **Dual Mode View Toggle**: One-click switcher between **"📊 Overall Statistics (New Parameter Sweep)"** and **"📜 Historical Figures Gallery (Thesis & 2006 Paper)"** (preserved from 2004 MATLAB `.mat` archives).
 
-2. **Tab 3 Previous Simulations Archive: Restricted View to Best 15 for Each Set**:
-   - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best).
+2. **Tab 3 Previous Simulations Archive: Restricted View to Best 15 for Each Set ($N \ge 12$)**:
+   - **Minimum Network Size Rule ($N \ge 12$)**: In accordance with benchmark rigor, all curated sets in the Top 15 archive view strictly enforce a minimum network size of $N \ge 12$ genes, filtering out smaller sub-critical toy models ($N < 12$).
+   - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs ($N \ge 12$) within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), ranked by $F_1$ score and minimal total errors.
+   - **Balanced Database Benchmark Corpus**: The SQLite `rgn_db.sqlite` archive was augmented with $N \ge 12$ oscillating and flat simulations, ensuring that all 7 sets have at least 15 qualifying runs ($N \in [12, 18]$) for complete, robust representation.
    - **Dynamic Rank Badges & F1 Column**: Each row is badged with its exact ranking within its set (`#1 in Responsive` .. `#15 in Responsive`), its calculated $F_1$ score, Power %, Specificity %, and Total Errors.
    - **18-Algorithm Detailed Inspector**: Supports inspecting re-engineering performance across **all 18 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
-   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) are displayed out of the 196 persisted runs in SQLite `rgn_db`.
+   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 232 persisted runs in SQLite `rgn_db`.
 
 | Tab 5: Complete 18-Algorithm Leaderboard | Tab 5: Architecture Cross-Comparison (Random, Scale-Free, Hierarchical) |
 | :---: | :---: |

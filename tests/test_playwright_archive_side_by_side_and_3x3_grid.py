@@ -35,8 +35,14 @@ def test_archive_side_by_side_and_3x3_grid():
         # -------------------------------------------------------------
         # TEST 1: DEFAULT DUAL SIDE-BY-SIDE VIEW (RESPONSIVE RUN)
         # -------------------------------------------------------------
-        print("3. Loading Representative Responsive Run (iorn-rep-responsive)...")
-        page.evaluate("selectArchiveRun('iorn-rep-responsive')")
+        print("3. Loading Representative Responsive Run...")
+        page.select_option("#archive-filter-type", "responsive")
+        page.wait_for_timeout(600)
+        first_row_btn = page.query_selector("#tbl-history tbody tr button")
+        if first_row_btn:
+            first_row_btn.click()
+        else:
+            page.click("#tbl-history tbody tr")
         page.wait_for_timeout(1000)
 
         # Scroll into view of step 4
@@ -122,8 +128,14 @@ def test_archive_side_by_side_and_3x3_grid():
         # -------------------------------------------------------------
         # TEST 4: DUAL VIEW FOR FLAT RUN
         # -------------------------------------------------------------
-        print("6. Testing Dual View on Representative Flat Run (iorn-rep-flat)...")
-        page.evaluate("selectArchiveRun('iorn-rep-flat')")
+        print("6. Testing Dual View on Representative Flat Run...")
+        page.select_option("#archive-filter-type", "flat")
+        page.wait_for_timeout(600)
+        first_row_btn = page.query_selector("#tbl-history tbody tr button")
+        if first_row_btn:
+            first_row_btn.click()
+        else:
+            page.click("#tbl-history tbody tr")
         page.wait_for_timeout(1000)
 
         page.locator("#panel-hist-step4").scroll_into_view_if_needed()
@@ -137,8 +149,14 @@ def test_archive_side_by_side_and_3x3_grid():
         # -------------------------------------------------------------
         # TEST 5: DUAL VIEW FOR OSCILLATING RUN
         # -------------------------------------------------------------
-        print("7. Testing Dual View on Representative Oscillating Run (iorn-rep-oscillating)...")
-        page.evaluate("selectArchiveRun('iorn-rep-oscillating')")
+        print("7. Testing Dual View on Representative Oscillating Run...")
+        page.select_option("#archive-filter-type", "oscillating")
+        page.wait_for_timeout(600)
+        first_row_btn = page.query_selector("#tbl-history tbody tr button")
+        if first_row_btn:
+            first_row_btn.click()
+        else:
+            page.click("#tbl-history tbody tr")
         page.wait_for_timeout(1000)
 
         page.locator("#panel-hist-step4").scroll_into_view_if_needed()
