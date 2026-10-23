@@ -193,8 +193,8 @@ $$X_{ij} = \frac{x_i^{\text{pert}_j} - x_i^{\text{ss}}}{x_i^{\text{ss}}}$$
   - **Universal Reversibility**: Users can freely toggle between line dynamics and bar profiles at any time across both synthetic simulations and real-world benchmark datasets.
 - **Matrix Heatmap ($X$)**: $N \times N$ proportional expression ratio matrix showing comprehensive pairwise responses across all perturbation conditions.
 
-#### Tab 4 Previous Simulations Archive: Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Bar Grid:
-In the Historical Archive (Tab 4, `#tab-history`, `#history-detail-panel`), users can inspect the complete perturbation dynamics of any past run via the dedicated **Step 4: Perturbation ODE Time-Course, Expression Matrix & Multi-Shift Profiles** panel:
+#### Tab 3 Previous Simulations Archive: Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Bar Grid:
+In the Historical Archive (Tab 3, `#tab-history`, `#history-detail-panel`), users can inspect the complete perturbation dynamics of any past run via the dedicated **Step 4: Perturbation ODE Time-Course, Expression Matrix & Multi-Shift Profiles** panel:
 - **Side-by-Side Dual Graph Layout (Default)**:
   - **Left Graph**: Continuous ODE time-course relaxation trajectories $x_i(t)$ with target condition selector (`#select-hist-pert-gene`).
   - **Right Graph**: Full $N \times N$ steady-state expression ratio matrix heatmap ($X$).

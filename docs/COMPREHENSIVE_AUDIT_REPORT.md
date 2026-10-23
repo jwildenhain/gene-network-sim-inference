@@ -31,7 +31,7 @@ The application **faithfully implements and executes everything it states**:
 | **Clickable Graph Nodes** | Interactive SVG nodes with hover glow and dynamic trajectory inspector | Playwright Node Clicks | **PASS** | Plots $x_{\text{basal}}(t)$, $x_{\text{self}}(t)$, upstream regulator curves, and condition bar states. |
 | **Table Column Sorting** | Universal sorting on IDs, integers, decimals, percentages, dates, and emojis | Playwright Multi-Table Sort | **PASS** | Verified on `#tbl-history`, `#tbl-sos-benchmark`, `#tbl-alg-comparison`, `#tbl-vcc-summary`. |
 | **Dynamics Categorization** | Classification into ⚡ Responsive, ⚪ Flat Levels, and 〰 Limit Cycle Oscillations | SQLite Query & Filter Audit | **PASS** | Stored in SQLite database with summary statistics and algorithm performance breakdowns. |
-| **Virtual Cell Challenge (VCC 2026)** | Mechanistic GRN vs Empirical Transfer (AtlasShift) benchmark | Tab 5 Playwright Audit | **PASS** | Evaluates in-distribution ($r=0.567$ vs $0.524$) and OOD generalization ($r=0.719$ vs $0.000$). |
+| **Virtual Cell Challenge (VCC 2026)** | Mechanistic GRN vs Empirical Transfer (AtlasShift) benchmark | Tab 4 Playwright Audit | **PASS** | Evaluates in-distribution ($r=0.567$ vs $0.524$) and OOD generalization ($r=0.719$ vs $0.000$). |
 | **File Exports & Downloads** | Generation of `.msmt`, `.pert`, `.dot`, `.svg`, and `.h5ad` AnnData files | HTTP Stream & Size Verification | **PASS** | All formats return HTTP 200 with non-empty payloads (including ~1.47 MB `.h5ad` container). |
 
 ---
@@ -82,21 +82,7 @@ Tab 2 is dedicated to benchmark evaluation on real biological datasets:
 
 ---
 
-### Tab 3: Thesis & Paper Figures Gallery
-Faithfully reproduces the figures from *Wildenhain (2004)* and *Wildenhain & Crampin (2006)*:
-- **Fig 4.1 Topology vs. Network Size**: Compares power-law scale-free vs. Erdős–Rényi random vs. hierarchical modular topologies across network sizes $N \in [10, 30]$. Demonstrates that scale-free networks exhibit higher reconstruction sensitivity due to hub connectivity.
-- **Fig 4.2 Connectivity Sweep ($k_{\text{av}}$)**: Reconstructability curves as average connectivity varies from $k_{\text{av}} = 1.0$ to $4.0$.
-- **Fig 4.3 Noise Sensitivity Sweep**: Power and FDR degradation as log-normal measurement noise increases from $\sigma_m = 0.0$ to $0.25$.
-- **Fig 4.4 Voting Ensemble Consensus**: Demonstrates that the Voting Ensemble significantly reduces false discovery rate (FDR) and total error count compared to individual algorithms.
-- **Fig 4.5 Runtime Complexity Scaling**: Empirical execution time curves scaling as $O(N^3)$.
-- **Fig 2.1 Microarray Log-Normal Error Model**: Histogram and density fit of log-normal experimental error $\exp(\mathcal{N}(0, \sigma_m^2))$.
-- **Table 2.1 4-Gene Toy Network Benchmark**: Tabular comparison of S2G, G2S, and Voting consensus on the classical 4-gene test network.
-
-![Tab 3 Thesis & Paper Figures Gallery](screenshots/audit_03_tab3_thesis_figures_verified.png)
-
----
-
-### Tab 4: Previous Simulations Archive (`showpre.php`)
+### Tab 3: Previous Simulations Archive (`showpre.php`)
 Replicates the persistent simulation database from `phpIoRN`:
 - **SQLite Persistence**: 50+ simulation runs stored persistently in `/app/data/rgn_db.sqlite` across `nw` and `alg` tables.
 - **Dynamics Categorization**:
@@ -109,11 +95,11 @@ Replicates the persistent simulation database from `phpIoRN`:
   - Multi-column sortable table with ascending/descending toggles.
   - Comparative Algorithm Breakdown table analyzing average F1 scores, power, specificity, and total error counts.
 
-![Tab 4 SQLite Previous Simulations Archive](screenshots/audit_04_tab4_archive_verified.png)
+![Tab 3 SQLite Previous Simulations Archive](screenshots/audit_04_tab4_archive_verified.png)
 
 ---
 
-### Tab 5: Virtual Cell Challenge 2026 & AtlasShift Studio
+### Tab 4: Virtual Cell Challenge 2026 & AtlasShift Studio
 Integrates modern single-cell perturbation benchmarking against the Virtual Cell Challenge 2026:
 - **Mechanistic vs. Empirical Paradigm Comparison**:
   - **In-Distribution Perturbations (Seen Targets)**: Both Mechanistic GRN ($r = 0.567$) and AtlasShift ($r = 0.524$) accurately predict response shifts.
@@ -123,7 +109,21 @@ Integrates modern single-cell perturbation benchmarking against the Virtual Cell
 - **Single-Cell AnnData Export**:
   - Exports standard `.h5ad` AnnData files containing 400 simulated single cells per condition with count layers, obs metadata, and ground truth Jacobians.
 
-![Tab 5 Virtual Cell Challenge Studio](screenshots/audit_05_tab5_vcc_verified.png)
+![Tab 4 Virtual Cell Challenge Studio](screenshots/audit_05_tab5_vcc_verified.png)
+
+---
+
+### Tab 5: Thesis & Paper Figures Gallery
+Faithfully reproduces the figures from *Wildenhain (2004)* and *Wildenhain & Crampin (2006)*:
+- **Fig 4.1 Topology vs. Network Size**: Compares power-law scale-free vs. Erdős–Rényi random vs. hierarchical modular topologies across network sizes $N \in [10, 30]$. Demonstrates that scale-free networks exhibit higher reconstruction sensitivity due to hub connectivity.
+- **Fig 4.2 Connectivity Sweep ($k_{\text{av}}$)**: Reconstructability curves as average connectivity varies from $k_{\text{av}} = 1.0$ to $4.0$.
+- **Fig 4.3 Noise Sensitivity Sweep**: Power and FDR degradation as log-normal measurement noise increases from $\sigma_m = 0.0$ to $0.25$.
+- **Fig 4.4 Voting Ensemble Consensus**: Demonstrates that the Voting Ensemble significantly reduces false discovery rate (FDR) and total error count compared to individual algorithms.
+- **Fig 4.5 Runtime Complexity Scaling**: Empirical execution time curves scaling as $O(N^3)$.
+- **Fig 2.1 Microarray Log-Normal Error Model**: Histogram and density fit of log-normal experimental error $\exp(\mathcal{N}(0, \sigma_m^2))$.
+- **Table 2.1 4-Gene Toy Network Benchmark**: Tabular comparison of S2G, G2S, and Voting consensus on the classical 4-gene test network.
+
+![Tab 5 Thesis & Paper Figures Gallery](screenshots/audit_03_tab3_thesis_figures_verified.png)
 
 ---
 

@@ -59,10 +59,10 @@ Replication of the 9-gene *E. coli* SOS DNA Repair Pathway (Gardner et al., *Sci
 | :---: | :---: | :---: |
 | ![E. coli SOS Pathway](docs/screenshots/06_ecoli_sos_pathway.png) | ![Thesis and Paper Figures Gallery](docs/screenshots/07_thesis_paper_figures_gallery.png) | ![SQLite Simulation Archive Inspector](docs/screenshots/08_sqlite_archive_detail.png) |
 
-### 4. Virtual Cell Challenge 2026 & AtlasShift Studio (Tabs 1 & 5)
+### 4. Virtual Cell Challenge 2026 & AtlasShift Studio (Tabs 1 & 4)
 Direct comparative benchmarking between Mechanistic Causal GRN modeling (`phpIoRN`) and Cross-Atlas Empirical Transfer (`AtlasShift`, Kaipeng Meng, Arc Institute VCC 2026 Leaderboard #82). Features in-distribution vs. out-of-distribution (OOD) perturbation generalization analysis, cell line edge rewiring sensitivity curves ($\rho \in [0\%, 50\%]$), and single-cell `.h5ad` AnnData export (400 cells/condition):
 
-| Tab 1: Studio with AtlasShift | Tab 5: VCC Benchmark (Dark Theme) | Tab 5: VCC Benchmark (Light Theme) |
+| Tab 1: Studio with AtlasShift | Tab 4: VCC Benchmark (Dark Theme) | Tab 4: VCC Benchmark (Light Theme) |
 | :---: | :---: | :---: |
 | ![AtlasShift in Studio](docs/screenshots/09_tab1_atlasshift_inference_studio.png) | ![VCC Benchmark Dark](docs/screenshots/10_tab5_vcc_atlasshift_benchmark_dark.png) | ![VCC Benchmark Light](docs/screenshots/11_tab5_vcc_atlasshift_benchmark_light.png) |
 
@@ -80,13 +80,13 @@ Complete integration of 4 simulation dynamics engines (`hill_nonlinear`, `cellbo
 ### 6. Comprehensive Application Audit & Verified Real Biological Dynamics (Tabs 1–5)
 Rigorous end-to-end verification across real biological datasets (*E. coli* SOS, Norman 2019 CRISPRa 16-TF screen, DREAM4, Replogle 2022 p53), interactive clickable node dynamics, universal table sorting, and persistent SQLite dynamics archive:
 
-| Tab 1: Studio Verified (6-Step Pipeline) | Tab 2: Real Benchmarks Studio | Tab 3: Thesis & Paper Figures Gallery |
+| Tab 1: Studio Verified (6-Step Pipeline) | Tab 2: Real Benchmarks Studio | Tab 3: Previous Simulations Archive |
 | :---: | :---: | :---: |
-| ![Tab 1 Studio Verified](docs/screenshots/audit_01_tab1_studio_verified.png) | ![Tab 2 Real Benchmarks](docs/screenshots/audit_02_tab2_benchmarks_verified.png) | ![Tab 3 Thesis Figures](docs/screenshots/audit_03_tab3_thesis_figures_verified.png) |
+| ![Tab 1 Studio Verified](docs/screenshots/audit_01_tab1_studio_verified.png) | ![Tab 2 Real Benchmarks](docs/screenshots/audit_02_tab2_benchmarks_verified.png) | ![Tab 3 Previous Simulations Archive](docs/screenshots/audit_04_tab4_archive_verified.png) |
 
-| Tab 4: SQLite Archive (Dynamics Breakdown) | Tab 5: Virtual Cell Challenge Studio |
-| :---: | :---: |
-| ![Tab 4 SQLite Archive](docs/screenshots/audit_04_tab4_archive_verified.png) | ![Tab 5 VCC Studio](docs/screenshots/audit_05_tab5_vcc_verified.png) |
+| Tab 4: Virtual Cell Challenge Studio | Tab 5: Thesis & Paper Figures Gallery | Reordered Top Navigation Header |
+| :---: | :---: | :---: |
+| ![Tab 4 VCC Studio](docs/screenshots/audit_05_tab5_vcc_verified.png) | ![Tab 5 Thesis Figures](docs/screenshots/audit_03_tab3_thesis_figures_verified.png) | ![Reordered Top Navigation](docs/screenshots/42_top_navigation_bar_crop.png) |
 
 | Interactive Node Click Dynamics (*E. coli* SOS) | Single-Cell CRISPRa Trajectory (Norman 2019) |
 | :---: | :---: |
@@ -277,8 +277,8 @@ When loading a real-world benchmark into Tab 1, users can choose between two dis
 
 ### 4. Persistent SQLite Archive & Thesis Figures Gallery
 * **Persistent SQLite Archive (`dumpdb.sql` / `database.py`)**:
-  Stores every simulation run and per-algorithm evaluation into `data/rgn_db.sqlite` using the original `phpIoRN` relational schema (`nw` table for network parameters + `alg` table for per-algorithm metrics), plus full JSON state recovery for instant inspection in Tab 4 (`showpre.php`).
-* **Step 4 Inspection Panel: Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Bar Grid (Tab 4)**:
+  Stores every simulation run and per-algorithm evaluation into `data/rgn_db.sqlite` using the original `phpIoRN` relational schema (`nw` table for network parameters + `alg` table for per-algorithm metrics), plus full JSON state recovery for instant inspection in Tab 3 (`showpre.php`).
+* **Step 4 Inspection Panel: Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Bar Grid (Tab 3)**:
   Historical runs can be inspected in depth with a redesigned Step 4 view panel featuring:
   - **Side-by-Side Dual Graphs (Default View)**: Splits Step 4 into two concurrent graphs:
     - **Left Graph**: Continuous ODE time-course relaxation trajectories $x_i(t)$ with target condition selector.
@@ -300,8 +300,8 @@ When loading a real-world benchmark into Tab 1, users can choose between two dis
     - **Responsive / Clear Level Changes**: **120 runs** (92.3%)
     - **Flat / Insensitive**: **7 runs** (5.4%)
     - **Persistent Oscillations / Limit Cycles**: **3 runs** (2.3%)
-* **Thesis & Paper Figures Gallery (Dual Engine)**:
-  Tab 3 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
+* **Thesis & Paper Figures Gallery (Dual Engine, Tab 5)**:
+  Tab 5 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
 
 ### 5. Single-Cell Perturb-seq Generation & Arc Institute Virtual Cell Challenge (VCC 2026)
 
