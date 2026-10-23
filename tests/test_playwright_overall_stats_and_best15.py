@@ -102,6 +102,44 @@ def test_overall_stats_and_best15_restricted_archive():
             canvas = page.locator(f"#{cid}")
             assert canvas.is_visible(), f"Canvas #{cid} must be visible"
 
+        # -----------------------------------------------------------------
+        # STEP 2B: VERIFY GRAPH LINES HOVER SHOWING ALGORITHM
+        # -----------------------------------------------------------------
+        print("3b. Testing interactive line graph hover showing algorithm...")
+        canvas_power = page.locator("#canvas-overall-size-power")
+        canvas_power.scroll_into_view_if_needed()
+        page.wait_for_timeout(300)
+
+        # Move mouse over S2G point at N=40
+        s2g_coords = page.evaluate('''() => {
+            const c = document.getElementById('canvas-overall-size-power');
+            const s = c._chartConfig.seriesList[1]; // S2G
+            const pad = { l: 46, r: 20, t: 42, b: 32 };
+            const pw = c.width - pad.l - pad.r;
+            const ph = c.height - pad.t - pad.b;
+            const ptX = pad.l + (pw * 3) / 5; // N=40
+            const ptY = pad.t + ph * (1 - (s.data[3] - 0) / 100);
+            const rect = c.getBoundingClientRect();
+            return {
+                clientX: rect.left + (ptX / c.width) * rect.width,
+                clientY: rect.top + (ptY / c.height) * rect.height
+            };
+        }''')
+        page.mouse.move(s2g_coords['clientX'], s2g_coords['clientY'])
+        page.wait_for_timeout(300)
+
+        cursor_style = page.evaluate("() => document.getElementById('canvas-overall-size-power').style.cursor")
+        assert cursor_style == "pointer", f"Expected pointer cursor on line hover, got {cursor_style}"
+
+        # Capture Screenshot: Overall Statistics View with Hover Active
+        shot54 = DOCS_SCREENSHOTS / "54_tab5_hover_algorithm_line.png"
+        canvas_power.screenshot(path=str(shot54))
+        shutil.copy(shot54, ARTIFACT_DIR / "54_tab5_hover_algorithm_line.png")
+
+        # Move mouse away to reset
+        page.mouse.move(10, 10)
+        page.wait_for_timeout(200)
+
         # Capture Screenshot: Overall Statistics View
         shot47 = DOCS_SCREENSHOTS / "47_tab5_overall_statistics_sweep.png"
         page.screenshot(path=str(shot47), full_page=False)

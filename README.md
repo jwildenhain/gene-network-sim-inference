@@ -191,6 +191,12 @@ A comprehensive systematic parameter sweep benchmark extended to match **Jan Wil
    - **Figure 3: Average Connectivity Sweep ($k_{\text{av}} \in [1.0, 5.0]$)**: Performance degradation as regulator density escalates up to $k_{\text{av}} = 5.0$.
    - **Figure 4: Measurement Noise Sensitivity ($\sigma_m \in [0.0, 0.25]$)**: Robustness evaluation across increasing experimental noise up to $\sigma_m = 0.25$.
    - **Figure 5: Computational Runtime Scaling vs Network Size ($N \in [12, 60]$)**: Live interactive profiling of CPU execution seconds vs network dimension, matching Thesis Figure 4.10.
+   - **Interactive Algorithm Line & Point Hover Tooltips**:
+     - Hovering over any graph curve or point in Figures 1A, 1B, 3, 4, and 5 instantly highlights that specific algorithm with a bold line ($3.6\text{px}$ width), vibrant color glow, and halo ring on the nearest data point.
+     - Automatically dims all other algorithm curves ($0.22$ opacity), isolating the selected method across complex multi-series sweeps.
+     - Displays a floating tooltip card showing the **Algorithm Name**, **Data Point Coordinate**, and **Exact Metric Value** (e.g. `S2G (Forward) • N=40 ➔ 57.3% (Power)` or `G2S (Backward AIC) • N=60 ➔ 6.0398s`).
+     - Supports legend item hover: hovering any algorithm in the chart header highlights its curve and legend badge.
+     - Fully responsive with dark mode and light mode theme integration.
    - **Dual Mode View Toggle**: One-click switcher between **"📊 Overall Statistics (New Parameter Sweep)"** and **"📜 Historical Figures Gallery (Thesis & 2006 Paper)"** (preserved from 2004 MATLAB `.mat` archives).
 
 2. **Tab 3 Previous Simulations Archive: Restricted View to Best 15 for Each Set ($N \ge 12$)**:
@@ -208,6 +214,10 @@ A comprehensive systematic parameter sweep benchmark extended to match **Jan Wil
 | Tab 5: Figures 2, 3 & 4 (Topology, Connectivity, Noise) | Tab 5: Historical 2004 Figures Gallery Toggle |
 | :---: | :---: |
 | ![Tab 5 Figures 2, 3, 4](docs/screenshots/52_tab5_figures_2_3_4.png) | ![Tab 5 Historical Gallery](docs/screenshots/48_tab5_historical_gallery_toggle.png) |
+
+| Tab 5: Figure 1A Interactive Algorithm Line Hover | Tab 5: Figure 5 Runtime Scaling Line Hover |
+| :---: | :---: |
+| ![Figure 1A Hover](docs/screenshots/54_tab5_hover_algorithm_line.png) | ![Figure 5 Hover](docs/screenshots/55_tab5_hover_runtime_line.png) |
 
 | Tab 3: Restricted View (Best 15 in Set & F1 Badges) | Tab 3: Detailed Inspector with 18-Algorithm Selector |
 | :---: | :---: |

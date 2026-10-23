@@ -5444,13 +5444,13 @@
       }
     }
 
-    function drawOverallTopologyChart(topoData) {
-      const canvas = document.getElementById('canvas-overall-topology');
-      if (!canvas || !topoData || !topoData.summary_by_topology) return;
+    function renderOverallTopologyChartCanvas(canvas, topoData, hoverState) {
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
       const H = canvas.height;
       const tc = getThemeColors();
+      const isDark = !isLightMode();
+
       ctx.fillStyle = tc.stageBg;
       ctx.fillRect(0, 0, W, H);
 
@@ -5514,13 +5514,28 @@
           const bx = gx + mIdx * barWidth;
           const by = pad.t + ph - bh;
 
+          const isThisHovered = hoverState && hoverState.tIdx === tIdx && hoverState.mIdx === mIdx;
+          const isOtherHovered = hoverState && !isThisHovered;
+
+          ctx.save();
+          if (isOtherHovered) {
+            ctx.globalAlpha = 0.35;
+          }
+
           ctx.fillStyle = m.color;
           ctx.fillRect(bx, by, barWidth - 3, bh);
 
+          if (isThisHovered) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(bx, by, barWidth - 3, bh);
+          }
+
           // Value label on bar
-          ctx.fillStyle = tc.textMain;
-          ctx.font = 'bold 9px monospace';
+          ctx.fillStyle = isThisHovered ? (isDark ? '#38bdf8' : '#0284c7') : tc.textMain;
+          ctx.font = isThisHovered ? 'bold 10px monospace' : 'bold 9px monospace';
           ctx.fillText(val.toFixed(1) + (m.mult ? '' : '%'), bx - 2, Math.max(pad.t + 10, by - 4));
+          ctx.restore();
         });
 
         // Category label on x-axis
@@ -5529,6 +5544,135 @@
         const lx = pad.l + tIdx * groupWidth + groupWidth / 2;
         ctx.fillText(t.label, lx - ctx.measureText(t.label).width / 2, H - 12);
       });
+
+      // Draw Tooltip if bar is hovered
+      if (hoverState) {
+        const { t, m, val, bx, by } = hoverState;
+        const line1 = t.label;
+        const line2 = `${m.label}: ${val.toFixed(1)}%`;
+
+        ctx.save();
+        ctx.font = 'bold 11.5px Inter, sans-serif';
+        const w1 = ctx.measureText(line1).width + 24;
+        ctx.font = '10.5px monospace';
+        const w2 = ctx.measureText(line2).width + 16;
+        const tipW = Math.max(w1, w2) + 16;
+        const tipH = 44;
+
+        let tipX = bx + barWidth / 2 - tipW / 2;
+        if (tipX < pad.l + 4) tipX = pad.l + 4;
+        if (tipX + tipW > W - pad.r - 4) tipX = W - pad.r - tipW - 4;
+
+        let tipY = by - tipH - 10;
+        if (tipY < pad.t + 4) tipY = by + 14;
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 4;
+
+        ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.97)';
+        ctx.strokeStyle = m.color;
+        ctx.lineWidth = 1.8;
+
+        drawRoundRect(ctx, tipX, tipY, tipW, tipH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.arc(tipX + 14, tipY + 14, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = m.color;
+        ctx.fill();
+
+        ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.fillText(line1, tipX + 24, tipY + 18);
+
+        ctx.fillStyle = m.color;
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(line2, tipX + 14, tipY + 34);
+
+        ctx.restore();
+      }
+    }
+
+    function drawOverallTopologyChart(topoData) {
+      const canvas = document.getElementById('canvas-overall-topology');
+      if (!canvas || !topoData || !topoData.summary_by_topology) return;
+
+      canvas._topoData = topoData;
+
+      if (!canvas._hasHoverListeners) {
+        canvas._hasHoverListeners = true;
+        canvas.style.cursor = 'default';
+
+        canvas.addEventListener('mousemove', (evt) => {
+          const td = canvas._topoData;
+          if (!td) return;
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          const mx = (evt.clientX - rect.left) * scaleX;
+          const my = (evt.clientY - rect.top) * scaleY;
+
+          const pad = { l: 46, r: 20, t: 34, b: 34 };
+          const pw = canvas.width - pad.l - pad.r;
+          const ph = canvas.height - pad.t - pad.b;
+
+          const topos = [
+            { key: 'random', label: 'Random Graph (ER)' },
+            { key: 'power_law', label: 'Scale-Free (BA)' },
+            { key: 'hierarchical', label: 'Hierarchical Modular' }
+          ];
+          const metrics = [
+            { key: 'mean_power', label: 'Power (Recall %)', color: '#10b981' },
+            { key: 'mean_specificity', label: 'Specificity (%)', color: '#8b5cf6' },
+            { key: 'mean_f1', label: 'F1 Score (×100)', color: '#0284c7', mult: 100 },
+            { key: 'mean_fdr', label: 'FDR (%)', color: '#f59e0b' }
+          ];
+
+          const groupWidth = pw / topos.length;
+          const barWidth = groupWidth * 0.18;
+          let foundHover = null;
+
+          for (let tIdx = 0; tIdx < topos.length; tIdx++) {
+            const t = topos[tIdx];
+            const sum = td.summary_by_topology[t.key] || {};
+            const totalBarsWidth = barWidth * metrics.length;
+            const gx = pad.l + tIdx * groupWidth + (groupWidth - totalBarsWidth) / 2;
+
+            for (let mIdx = 0; mIdx < metrics.length; mIdx++) {
+              const m = metrics[mIdx];
+              let raw = sum[m.key] || 0;
+              if (m.mult) raw *= m.mult;
+              const val = Math.max(0, Math.min(100, raw));
+              const bh = (val / 100) * ph;
+              const bx = gx + mIdx * barWidth;
+              const by = pad.t + ph - bh;
+
+              if (mx >= bx - 2 && mx <= bx + barWidth + 2 && my >= by - 2 && my <= pad.t + ph + 4) {
+                foundHover = { t, m, val, bx, by, tIdx, mIdx };
+                break;
+              }
+            }
+            if (foundHover) break;
+          }
+
+          canvas.style.cursor = foundHover ? 'pointer' : 'default';
+          renderOverallTopologyChartCanvas(canvas, td, foundHover);
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+          const td = canvas._topoData;
+          if (!td) return;
+          canvas.style.cursor = 'default';
+          renderOverallTopologyChartCanvas(canvas, td, null);
+        });
+      }
+
+      renderOverallTopologyChartCanvas(canvas, topoData, null);
     }
 
     function renderOverallStats(data) {
@@ -5902,20 +6046,165 @@
       readout.innerHTML = `<strong>${fname}</strong> (N=70): S2G Power=<strong>${s2g70}%</strong> (FDR=${fdr70}%) | G2S Power=<strong>${g2s70}%</strong> | FAST Power=<strong>${fast70}%</strong>`;
     }
 
-    function drawMultiLineChart(canvasId, xLabels, seriesList, yTitle, yMin = 40, yMax = 100) {
-      const canvas = document.getElementById(canvasId);
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
+    function drawRoundRect(ctx, x, y, w, h, r) {
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x, y + h, x, y + h - r, r);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+        ctx.closePath();
+      }
+    }
+
+    function parseAlgorithmAndMetric(label, yTitle) {
+      let alg = label;
+      let metric = yTitle || 'Value';
+      if (label.endsWith(' Power')) {
+        alg = label.replace(/ Power$/, '');
+        metric = 'Power (%)';
+      } else if (label.endsWith(' FDR')) {
+        alg = label.replace(/ FDR$/, '');
+        metric = 'False Discovery Rate (FDR %)';
+      } else if (label.includes(' F1')) {
+        alg = label.replace(/ F1.*$/, '');
+        metric = 'F1 Score (×100)';
+      }
+      return { alg, metric };
+    }
+
+    function computeLineChartHover(canvas, cfg, mx, my) {
       const W = canvas.width;
       const H = canvas.height;
-      const tc = getThemeColors();
-      ctx.fillStyle = tc.stageBg;
-      ctx.fillRect(0, 0, W, H);
-      const padTop = seriesList.length > 5 ? 42 : 28;
+      const padTop = cfg.seriesList.length > 5 ? 42 : 28;
       const pad = { l: 46, r: 20, t: padTop, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
 
+      // 1. Check Legend Hover
+      let legendX = pad.l;
+      let legendY = 11;
+      const ctx = canvas.getContext('2d');
+      ctx.font = '10px Inter, sans-serif';
+
+      for (let sIdx = 0; sIdx < cfg.seriesList.length; sIdx++) {
+        const s = cfg.seriesList[sIdx];
+        const textWidth = ctx.measureText(s.label).width;
+        const itemWidth = textWidth + 22;
+        if (legendX + itemWidth > W - pad.r && legendX > pad.l) {
+          legendX = pad.l;
+          legendY += 13;
+        }
+        if (mx >= legendX - 3 && mx <= legendX + itemWidth + 3 && my >= legendY - 8 && my <= legendY + 8) {
+          const nPts = s.data?.length || 1;
+          const pIdx = Math.min(nPts - 1, Math.max(0, Math.floor(nPts / 2)));
+          const ptX = pad.l + (pw * pIdx) / Math.max(1, nPts - 1);
+          const ptY = pad.t + ph * (1 - (s.data[pIdx] - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
+          return {
+            seriesIndex: sIdx,
+            pointIndex: pIdx,
+            series: s,
+            value: s.data[pIdx],
+            ptX,
+            ptY,
+            xLabel: cfg.xLabels[pIdx] || '',
+            fromLegend: true,
+          };
+        }
+        legendX += itemWidth;
+      }
+
+      // 2. Check Line / Point Hover within plot area
+      if (mx < pad.l - 14 || mx > W - pad.r + 14 || my < pad.t - 14 || my > H - pad.b + 14) {
+        return null;
+      }
+
+      function distToSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const l2 = dx * dx + dy * dy;
+        if (l2 === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+      }
+
+      let bestSeriesIdx = -1;
+      let bestDist = Infinity;
+      let bestPointIdx = -1;
+
+      cfg.seriesList.forEach((s, sIdx) => {
+        if (!s.data || !s.data.length) return;
+        const nPts = s.data.length;
+        for (let i = 0; i < nPts; i++) {
+          const x = pad.l + (pw * i) / Math.max(1, nPts - 1);
+          const y = pad.t + ph * (1 - (s.data[i] - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
+          const dPt = Math.hypot(mx - x, my - y);
+          if (dPt < bestDist) {
+            bestDist = dPt;
+            bestSeriesIdx = sIdx;
+            bestPointIdx = i;
+          }
+
+          if (i < nPts - 1) {
+            const xNext = pad.l + (pw * (i + 1)) / Math.max(1, nPts - 1);
+            const yNext = pad.t + ph * (1 - (s.data[i + 1] - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
+            const dSeg = distToSegment(mx, my, x, y, xNext, yNext);
+            if (dSeg < bestDist) {
+              bestDist = dSeg;
+              bestSeriesIdx = sIdx;
+              bestPointIdx = Math.abs(mx - x) < Math.abs(mx - xNext) ? i : i + 1;
+            }
+          }
+        }
+      });
+
+      if (bestSeriesIdx >= 0 && bestDist <= 24) {
+        const s = cfg.seriesList[bestSeriesIdx];
+        const nPts = s.data.length;
+        const pIdx = Math.max(0, Math.min(nPts - 1, bestPointIdx >= 0 ? bestPointIdx : 0));
+        const val = s.data[pIdx];
+        const ptX = pad.l + (pw * pIdx) / Math.max(1, nPts - 1);
+        const ptY = pad.t + ph * (1 - (val - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
+        return {
+          seriesIndex: bestSeriesIdx,
+          pointIndex: pIdx,
+          series: s,
+          value: val,
+          ptX,
+          ptY,
+          xLabel: cfg.xLabels[pIdx] || '',
+          fromLegend: false,
+        };
+      }
+
+      return null;
+    }
+
+    function renderMultiLineChartCanvas(canvas, cfg, hoverState) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const tc = getThemeColors();
+      const isDark = !isLightMode();
+
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
+      const padTop = cfg.seriesList.length > 5 ? 42 : 28;
+      const pad = { l: 46, r: 20, t: padTop, b: 32 };
+      const pw = W - pad.l - pad.r;
+      const ph = H - pad.t - pad.b;
+
+      // 1. Grid lines and Y-axis values
       ctx.strokeStyle = tc.grid;
       ctx.lineWidth = 1;
       for (let g = 0; g <= 4; g++) {
@@ -5924,31 +6213,56 @@
         ctx.moveTo(pad.l, y);
         ctx.lineTo(W - pad.r, y);
         ctx.stroke();
-        const val = yMax - ((yMax - yMin) * g) / 4;
+        const val = cfg.yMax - ((cfg.yMax - cfg.yMin) * g) / 4;
         ctx.fillStyle = tc.textMuted;
         ctx.font = '10px monospace';
         ctx.fillText(val < 10 ? val.toFixed(1) : val.toFixed(0), 10, y + 3);
       }
 
-      xLabels.forEach((xl, i) => {
-        const x = pad.l + (pw * i) / Math.max(1, xLabels.length - 1);
+      // 2. X-axis labels
+      cfg.xLabels.forEach((xl, i) => {
+        const x = pad.l + (pw * i) / Math.max(1, cfg.xLabels.length - 1);
         ctx.fillStyle = tc.textMuted;
         ctx.font = '10.5px Inter, sans-serif';
         ctx.fillText(String(xl), x - 10, H - 10);
       });
 
-      seriesList.forEach((s) => {
+      // 3. Vertical Crosshair Guideline (when hovered)
+      if (hoverState && !hoverState.fromLegend) {
+        ctx.save();
+        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(hoverState.ptX, pad.t);
+        ctx.lineTo(hoverState.ptX, H - pad.b);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4. Series Lines
+      const isHovering = hoverState !== null;
+
+      // First pass: Draw non-hovered series (dimmed if hovering)
+      cfg.seriesList.forEach((s, sIdx) => {
         if (!s.data || !s.data.length) return;
+        if (isHovering && sIdx === hoverState.seriesIndex) return;
+
+        ctx.save();
+        if (isHovering) {
+          ctx.globalAlpha = 0.22;
+        }
+
         ctx.strokeStyle = s.color;
         ctx.fillStyle = s.color;
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = isHovering ? 1.6 : 2.2;
         if (s.dash) ctx.setLineDash(s.dash);
         else ctx.setLineDash([]);
 
         ctx.beginPath();
         s.data.forEach((v, i) => {
           const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
-          const y = pad.t + ph * (1 - (v - yMin) / Math.max(1e-6, yMax - yMin));
+          const y = pad.t + ph * (1 - (v - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
@@ -5957,24 +6271,108 @@
 
         s.data.forEach((v, i) => {
           const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
-          const y = pad.t + ph * (1 - (v - yMin) / Math.max(1e-6, yMax - yMin));
+          const y = pad.t + ph * (1 - (v - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
           ctx.beginPath();
-          ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+          ctx.arc(x, y, isHovering ? 2.2 : 3.2, 0, Math.PI * 2);
           ctx.fill();
         });
+
+        ctx.restore();
       });
 
+      // Second pass: Draw hovered series with full prominence and glow
+      if (isHovering && hoverState.seriesIndex >= 0) {
+        const s = cfg.seriesList[hoverState.seriesIndex];
+        if (s && s.data && s.data.length) {
+          ctx.save();
+          ctx.globalAlpha = 1.0;
+
+          ctx.shadowColor = s.color;
+          ctx.shadowBlur = 10;
+          ctx.strokeStyle = s.color;
+          ctx.fillStyle = s.color;
+          ctx.lineWidth = 3.6;
+          if (s.dash) ctx.setLineDash(s.dash);
+          else ctx.setLineDash([]);
+
+          ctx.beginPath();
+          s.data.forEach((v, i) => {
+            const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
+            const y = pad.t + ph * (1 - (v - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.shadowBlur = 0;
+
+          s.data.forEach((v, i) => {
+            const x = pad.l + (pw * i) / Math.max(1, s.data.length - 1);
+            const y = pad.t + ph * (1 - (v - cfg.yMin) / Math.max(1e-6, cfg.yMax - cfg.yMin));
+            ctx.beginPath();
+            ctx.arc(x, y, 4.0, 0, Math.PI * 2);
+            ctx.fillStyle = s.color;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          });
+
+          if (hoverState.pointIndex >= 0 && hoverState.pointIndex < s.data.length) {
+            const px = hoverState.ptX;
+            const py = hoverState.ptY;
+
+            ctx.beginPath();
+            ctx.arc(px, py, 9.0, 0, Math.PI * 2);
+            ctx.fillStyle = s.color + '44';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(px, py, 5.2, 0, Math.PI * 2);
+            ctx.fillStyle = s.color;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+      }
+
+      // 5. Draw Legend (with highlight on active algorithm)
       let legendX = pad.l;
       let legendY = 11;
       ctx.font = '10px Inter, sans-serif';
-      seriesList.forEach((s) => {
-        const labelText = s.label;
-        const textWidth = ctx.measureText(labelText).width;
+      cfg.seriesList.forEach((s, sIdx) => {
+        const isThisHovered = isHovering && hoverState.seriesIndex === sIdx;
+        const textWidth = ctx.measureText(s.label).width;
         const itemWidth = textWidth + 22;
         if (legendX + itemWidth > W - pad.r && legendX > pad.l) {
           legendX = pad.l;
           legendY += 13;
         }
+
+        ctx.save();
+        if (isHovering && !isThisHovered) {
+          ctx.globalAlpha = 0.45;
+        }
+
+        if (isThisHovered) {
+          ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = 1.2;
+          const rx = legendX - 3;
+          const ry = legendY - 8;
+          const rw = itemWidth + 2;
+          const rh = 16;
+          drawRoundRect(ctx, rx, ry, rw, rh, 4);
+          ctx.fill();
+          ctx.stroke();
+        }
+
         ctx.fillStyle = s.color;
         ctx.fillRect(legendX, legendY - 5, 10, 4);
         if (s.dash) {
@@ -5982,10 +6380,151 @@
           ctx.lineWidth = 1;
           ctx.strokeRect(legendX, legendY - 5, 10, 4);
         }
-        ctx.fillStyle = tc.textMain;
-        ctx.fillText(labelText, legendX + 14, legendY);
+
+        ctx.fillStyle = isThisHovered ? (isDark ? '#38bdf8' : '#0284c7') : tc.textMain;
+        ctx.font = isThisHovered ? 'bold 10.5px Inter, sans-serif' : '10px Inter, sans-serif';
+        ctx.fillText(s.label, legendX + 14, legendY);
+        ctx.restore();
+
         legendX += itemWidth;
       });
+
+      // 6. Draw Interactive Floating Tooltip Box
+      if (isHovering && hoverState.series) {
+        const s = hoverState.series;
+        const { alg, metric } = parseAlgorithmAndMetric(s.label, cfg.yTitle);
+
+        let valStr = '';
+        if (cfg.yTitle && (cfg.yTitle.includes('Seconds') || cfg.yTitle.includes('s'))) {
+          valStr = Number(hoverState.value).toFixed(4) + 's';
+        } else if (cfg.yTitle && (cfg.yTitle.includes('%') || cfg.yTitle.includes('Power') || cfg.yTitle.includes('FDR') || cfg.yTitle.includes('Rate') || cfg.yTitle.includes('Metric'))) {
+          valStr = Number(hoverState.value).toFixed(1) + '%';
+        } else {
+          valStr = Number(hoverState.value).toFixed(2);
+        }
+
+        const line1 = alg;
+        const line2 = `${hoverState.xLabel} ➔ ${valStr} (${metric})`;
+
+        ctx.save();
+        ctx.font = 'bold 11.5px Inter, sans-serif';
+        const w1 = ctx.measureText(line1).width + 24;
+        ctx.font = '10.5px monospace';
+        const w2 = ctx.measureText(line2).width + 16;
+        const tipW = Math.max(w1, w2) + 16;
+        const tipH = 46;
+
+        let tipX = hoverState.ptX - tipW / 2;
+        if (tipX < pad.l + 4) tipX = pad.l + 4;
+        if (tipX + tipW > W - pad.r - 4) tipX = W - pad.r - tipW - 4;
+
+        let tipY = hoverState.ptY - tipH - 12;
+        let isAbove = true;
+        if (tipY < pad.t + 4) {
+          tipY = hoverState.ptY + 14;
+          isAbove = false;
+        }
+
+        // Drop shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 4;
+
+        // Card background
+        ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.97)';
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 1.8;
+
+        drawRoundRect(ctx, tipX, tipY, tipW, tipH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Pointer triangle
+        ctx.beginPath();
+        if (isAbove) {
+          ctx.moveTo(hoverState.ptX - 5, tipY + tipH);
+          ctx.lineTo(hoverState.ptX, tipY + tipH + 5);
+          ctx.lineTo(hoverState.ptX + 5, tipY + tipH);
+        } else {
+          ctx.moveTo(hoverState.ptX - 5, tipY);
+          ctx.lineTo(hoverState.ptX, tipY - 5);
+          ctx.lineTo(hoverState.ptX + 5, tipY);
+        }
+        ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.97)';
+        ctx.fill();
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Color bullet indicator
+        ctx.beginPath();
+        ctx.arc(tipX + 14, tipY + 15, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Line 1: Algorithm Name
+        ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
+        ctx.font = 'bold 11.5px Inter, sans-serif';
+        ctx.fillText(line1, tipX + 25, tipY + 18);
+
+        // Line 2: Value and Metric
+        ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
+        ctx.font = '10.5px monospace';
+        ctx.fillText(`${hoverState.xLabel} ➔ `, tipX + 14, tipY + 36);
+
+        const prefixW = ctx.measureText(`${hoverState.xLabel} ➔ `).width;
+        ctx.fillStyle = s.color;
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(`${valStr} (${metric})`, tipX + 14 + prefixW, tipY + 36);
+
+        ctx.restore();
+      }
+    }
+
+    function drawMultiLineChart(canvasId, xLabels, seriesList, yTitle, yMin = 40, yMax = 100) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+
+      canvas._chartConfig = {
+        canvasId,
+        xLabels,
+        seriesList,
+        yTitle,
+        yMin,
+        yMax,
+      };
+
+      if (!canvas._hasHoverListeners) {
+        canvas._hasHoverListeners = true;
+        canvas.style.cursor = 'default';
+
+        canvas.addEventListener('mousemove', (evt) => {
+          const cfg = canvas._chartConfig;
+          if (!cfg) return;
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          const mx = (evt.clientX - rect.left) * scaleX;
+          const my = (evt.clientY - rect.top) * scaleY;
+
+          const hoverState = computeLineChartHover(canvas, cfg, mx, my);
+          canvas.style.cursor = hoverState ? 'pointer' : 'default';
+          renderMultiLineChartCanvas(canvas, cfg, hoverState);
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+          const cfg = canvas._chartConfig;
+          if (!cfg) return;
+          canvas.style.cursor = 'default';
+          renderMultiLineChartCanvas(canvas, cfg, null);
+        });
+      }
+
+      renderMultiLineChartCanvas(canvas, canvas._chartConfig, null);
     }
 
     function drawFigTopology(topo) {
