@@ -2144,11 +2144,27 @@
                 <span>📊</span>
                 <span>3×3 Multi-Perturbation Shift Bar Grid (Simultaneous Response Profiles across Conditions)</span>
               </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" id="hist-grid-page-label">Conditions 1–9</span>
-                <div class="btn-group" role="group" id="hist-grid-page-controls" style="display:inline-flex;">
-                  <button class="btn btn-secondary btn-sm" id="btn-hist-grid-prev" onclick="stepArchiveGridPage(-1)" style="padding:2px 8px;font-size:11px;">◀ Prev 9</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-hist-grid-next" onclick="stepArchiveGridPage(1)" style="padding:2px 8px;font-size:11px;">Next 9 ▶</button>
+              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:10px;font-size:11px;">
+                  <span style="display:inline-flex;align-items:center;gap:4px;" title="Pastel green background zone: expression increases above unperturbed steady state">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(16,185,129,0.25);border:1px solid #10b981;"></span>
+                    <span style="color:var(--text-muted);font-weight:500;">▲ Up-regulation (+ΔX)</span>
+                  </span>
+                  <span style="display:inline-flex;align-items:center;gap:4px;" title="Pastel red background zone: expression decreases below unperturbed steady state">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,0.25);border:1px solid #ef4444;"></span>
+                    <span style="color:var(--text-muted);font-weight:500;">▼ Down-regulation (-ΔX)</span>
+                  </span>
+                  <span style="display:inline-flex;align-items:center;gap:4px;" title="Perturbed target gene highlight">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#0284c7;border:1px solid #38bdf8;"></span>
+                    <span style="color:var(--text-muted);font-weight:500;">Target Gene</span>
+                  </span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" id="hist-grid-page-label">Conditions 1–9</span>
+                  <div class="btn-group" role="group" id="hist-grid-page-controls" style="display:inline-flex;">
+                    <button class="btn btn-secondary btn-sm" id="btn-hist-grid-prev" onclick="stepArchiveGridPage(-1)" style="padding:2px 8px;font-size:11px;">◀ Prev 9</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-hist-grid-next" onclick="stepArchiveGridPage(1)" style="padding:2px 8px;font-size:11px;">Next 9 ▶</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2445,6 +2461,8 @@
       const light = isLightMode();
       return {
         stageBg: light ? '#ffffff' : '#090d16',
+        bgCard: light ? '#ffffff' : '#0f172a',
+        border: light ? '#e2e8f0' : '#1e293b',
         grid: light ? '#e2e8f0' : '#1e293b',
         textMuted: light ? '#475569' : '#94a3b8',
         textMain: light ? '#0f172a' : '#f8fafc',
@@ -2452,6 +2470,14 @@
         nodeSelFill: light ? '#bae6fd' : '#1e3a8a',
         nodeStroke: light ? '#0284c7' : '#64748b',
         nodeSelStroke: light ? '#0369a1' : '#38bdf8',
+        accentBlue: '#0284c7',
+        // Soft transparent pastel colors for up- and down-regulation
+        pastelGreenBg: light ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.12)',
+        pastelRedBg: light ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.12)',
+        pastelGreenBorder: light ? 'rgba(16, 185, 129, 0.28)' : 'rgba(16, 185, 129, 0.38)',
+        pastelRedBorder: light ? 'rgba(239, 68, 68, 0.28)' : 'rgba(239, 68, 68, 0.38)',
+        pastelGreenText: light ? '#047857' : '#34d399',
+        pastelRedText: light ? '#b91c1c' : '#f87171',
       };
     }
 
@@ -3862,6 +3888,22 @@
       const plotW = W - pad.l - pad.r;
       const plotH = H - pad.t - pad.b;
       const zeroY = pad.t + plotH / 2;
+
+      // 1. Up-regulation Zone (y > 0): Soft transparent pastel green
+      ctx.fillStyle = tc.pastelGreenBg;
+      ctx.fillRect(pad.l, pad.t, plotW, plotH / 2);
+      ctx.fillStyle = tc.pastelGreenText;
+      ctx.font = '600 8.5px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('▲ Up-regulation (+ΔX)', pad.l + plotW - 6, pad.t + 12);
+
+      // 2. Down-regulation Zone (y < 0): Soft transparent pastel red
+      ctx.fillStyle = tc.pastelRedBg;
+      ctx.fillRect(pad.l, zeroY, plotW, plotH / 2);
+      ctx.fillStyle = tc.pastelRedText;
+      ctx.font = '600 8.5px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('▼ Down-regulation (-ΔX)', pad.l + plotW - 6, pad.t + plotH - 5);
 
       ctx.strokeStyle = tc.grid;
       ctx.lineWidth = 1;
@@ -5854,6 +5896,7 @@
       const W = canvas.width;
       const H = canvas.height;
       const tc = getThemeColors();
+      const light = isLightMode();
 
       ctx.fillStyle = tc.stageBg;
       ctx.fillRect(0, 0, W, H);
@@ -5887,27 +5930,6 @@
           const cellX = padOuter + c * (cellW + gap);
           const cellY = padOuter + r * (cellH + gap);
 
-          // Subplot card background & border
-          ctx.fillStyle = tc.bgCard;
-          ctx.strokeStyle = tc.border;
-          ctx.lineWidth = 1;
-
-          // Rounded card frame
-          const rad = 6;
-          ctx.beginPath();
-          ctx.moveTo(cellX + rad, cellY);
-          ctx.lineTo(cellX + cellW - rad, cellY);
-          ctx.quadraticCurveTo(cellX + cellW, cellY, cellX + cellW, cellY + rad);
-          ctx.lineTo(cellX + cellW, cellY + cellH - rad);
-          ctx.quadraticCurveTo(cellX + cellW, cellY + cellH, cellX + cellW - rad, cellY + cellH);
-          ctx.lineTo(cellX + rad, cellY + cellH);
-          ctx.quadraticCurveTo(cellX, cellY + cellH, cellX, cellY + cellH - rad);
-          ctx.lineTo(cellX, cellY + rad);
-          ctx.quadraticCurveTo(cellX, cellY, cellX + rad, cellY);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-
           if (pertIdx < numPerts) {
             const targetGene = geneNames[pertIdx] || `G${pertIdx + 1}`;
             const vals = [];
@@ -5918,23 +5940,45 @@
             const selfVal = vals[pertIdx] || 0;
             const selfPct = (selfVal * 100).toFixed(1);
             const signStr = selfVal >= 0 ? '+' : '';
+            const isUpPert = (selfVal >= 0);
 
-            // Subplot title
+            // Subplot card background & border (tinted subtly with soft transparent pastel by perturbation direction)
+            ctx.fillStyle = tc.bgCard;
+            ctx.strokeStyle = isUpPert ? tc.pastelGreenBorder : tc.pastelRedBorder;
+            ctx.lineWidth = 1;
+
+            // Rounded card frame
+            const rad = 6;
+            ctx.beginPath();
+            ctx.moveTo(cellX + rad, cellY);
+            ctx.lineTo(cellX + cellW - rad, cellY);
+            ctx.quadraticCurveTo(cellX + cellW, cellY, cellX + cellW, cellY + rad);
+            ctx.lineTo(cellX + cellW, cellY + cellH - rad);
+            ctx.quadraticCurveTo(cellX + cellW, cellY + cellH, cellX + cellW - rad, cellY + cellH);
+            ctx.lineTo(cellX + rad, cellY + cellH);
+            ctx.quadraticCurveTo(cellX, cellY + cellH, cellX, cellY + cellH - rad);
+            ctx.lineTo(cellX, cellY + rad);
+            ctx.quadraticCurveTo(cellX, cellY, cellX + rad, cellY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Subplot header with target condition name
             ctx.fillStyle = tc.textMain;
             ctx.font = 'bold 10px Inter, sans-serif';
             ctx.textAlign = 'left';
             ctx.fillText(`Cond #${pertIdx + 1}: ${targetGene}`, cellX + 8, cellY + 15);
 
-            // Shift badge
-            const badgeText = `ΔX: ${signStr}${selfPct}%`;
-            ctx.font = 'bold 9px monospace';
+            // Shift badge with soft pastel green (up) / red (down) styling
+            const badgeText = `ΔX: ${signStr}${selfPct}% ${isUpPert ? '▲' : '▼'}`;
+            ctx.font = 'bold 8.5px monospace';
             const badgeW = ctx.measureText(badgeText).width + 8;
-            ctx.fillStyle = selfVal >= 0 ? 'rgba(2, 132, 199, 0.18)' : 'rgba(239, 68, 68, 0.18)';
-            ctx.strokeStyle = selfVal >= 0 ? '#0284c7' : '#ef4444';
+            ctx.fillStyle = isUpPert ? tc.pastelGreenBg : tc.pastelRedBg;
+            ctx.strokeStyle = isUpPert ? '#10b981' : '#ef4444';
             ctx.lineWidth = 1;
             ctx.fillRect(cellX + cellW - badgeW - 8, cellY + 4, badgeW, 14);
             ctx.strokeRect(cellX + cellW - badgeW - 8, cellY + 4, badgeW, 14);
-            ctx.fillStyle = selfVal >= 0 ? '#38bdf8' : '#f87171';
+            ctx.fillStyle = isUpPert ? tc.pastelGreenText : tc.pastelRedText;
             ctx.textAlign = 'center';
             ctx.fillText(badgeText, cellX + cellW - 8 - badgeW / 2, cellY + 14);
 
@@ -5952,9 +5996,34 @@
             });
             maxAbs = maxAbs * 1.25;
 
-            // Zero line
-            ctx.strokeStyle = tc.grid;
+            // 1. Up-regulation Zone (y > 0): Soft transparent pastel green background
+            ctx.fillStyle = tc.pastelGreenBg;
+            ctx.fillRect(plotX, plotY, plotW, plotH / 2);
+
+            // Subtle watermark label for up-regulation
+            ctx.fillStyle = tc.pastelGreenText;
+            ctx.font = '600 7px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('▲ Up-regulation', plotX + plotW - 4, plotY + 8);
+
+            // 2. Down-regulation Zone (y < 0): Soft transparent pastel red background
+            ctx.fillStyle = tc.pastelRedBg;
+            ctx.fillRect(plotX, zeroY, plotW, plotH / 2);
+
+            // Subtle watermark label for down-regulation
+            ctx.fillStyle = tc.pastelRedText;
+            ctx.font = '600 7px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('▼ Down-regulation', plotX + plotW - 4, plotY + plotH - 3);
+
+            // 3. Surrounding plot area border
+            ctx.strokeStyle = tc.border;
             ctx.lineWidth = 1;
+            ctx.strokeRect(plotX, plotY, plotW, plotH);
+
+            // 4. Center zero divider baseline
+            ctx.strokeStyle = light ? 'rgba(71, 85, 105, 0.45)' : 'rgba(148, 163, 184, 0.45)';
+            ctx.lineWidth = 1.2;
             ctx.beginPath();
             ctx.moveTo(plotX, zeroY);
             ctx.lineTo(plotX + plotW, zeroY);
@@ -5981,15 +6050,15 @@
               if (v >= 0) {
                 ctx.fillStyle = isTarget ? '#0284c7' : '#10b981';
                 ctx.fillRect(bx, zeroY - barH, barW, barH);
+                ctx.strokeStyle = isTarget ? '#38bdf8' : 'rgba(5, 150, 105, 0.6)';
+                ctx.lineWidth = isTarget ? 1.4 : 0.6;
+                ctx.strokeRect(bx, zeroY - barH, barW, barH);
               } else {
                 ctx.fillStyle = isTarget ? '#d97706' : '#ef4444';
                 ctx.fillRect(bx, zeroY, barW, barH);
-              }
-
-              if (isTarget) {
-                ctx.strokeStyle = '#38bdf8';
-                ctx.lineWidth = 1.2;
-                ctx.strokeRect(bx, v >= 0 ? zeroY - barH : zeroY, barW, barH);
+                ctx.strokeStyle = isTarget ? '#fbbf24' : 'rgba(220, 38, 38, 0.6)';
+                ctx.lineWidth = isTarget ? 1.4 : 0.6;
+                ctx.strokeRect(bx, zeroY, barW, barH);
               }
 
               // Gene index on bottom axis
@@ -6002,6 +6071,24 @@
             }
           } else {
             // Unperturbed placeholder cell (for networks with N < 9)
+            const rad = 6;
+            ctx.beginPath();
+            ctx.moveTo(cellX + rad, cellY);
+            ctx.lineTo(cellX + cellW - rad, cellY);
+            ctx.quadraticCurveTo(cellX + cellW, cellY, cellX + cellW, cellY + rad);
+            ctx.lineTo(cellX + cellW, cellY + cellH - rad);
+            ctx.quadraticCurveTo(cellX + cellW, cellY + cellH, cellX + cellW - rad, cellY + cellH);
+            ctx.lineTo(cellX + rad, cellY + cellH);
+            ctx.quadraticCurveTo(cellX, cellY + cellH, cellX, cellY + cellH - rad);
+            ctx.lineTo(cellX, cellY + rad);
+            ctx.quadraticCurveTo(cellX, cellY, cellX + rad, cellY);
+            ctx.closePath();
+            ctx.fillStyle = tc.bgCard;
+            ctx.strokeStyle = tc.border;
+            ctx.lineWidth = 1;
+            ctx.fill();
+            ctx.stroke();
+
             ctx.fillStyle = tc.textMuted;
             ctx.font = 'italic 10px Inter, sans-serif';
             ctx.textAlign = 'center';
@@ -6121,6 +6208,22 @@
       const plotW = W - pad.l - pad.r;
       const plotH = H - pad.t - pad.b;
       const zeroY = pad.t + plotH / 2;
+
+      // 1. Up-regulation Zone (y > 0): Soft transparent pastel green
+      ctx.fillStyle = tc.pastelGreenBg;
+      ctx.fillRect(pad.l, pad.t, plotW, plotH / 2);
+      ctx.fillStyle = tc.pastelGreenText;
+      ctx.font = '600 8.5px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('▲ Up-regulation (+ΔX)', pad.l + plotW - 6, pad.t + 12);
+
+      // 2. Down-regulation Zone (y < 0): Soft transparent pastel red
+      ctx.fillStyle = tc.pastelRedBg;
+      ctx.fillRect(pad.l, zeroY, plotW, plotH / 2);
+      ctx.fillStyle = tc.pastelRedText;
+      ctx.font = '600 8.5px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('▼ Down-regulation (-ΔX)', pad.l + plotW - 6, pad.t + plotH - 5);
 
       ctx.strokeStyle = tc.grid;
       ctx.lineWidth = 1;

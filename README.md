@@ -130,16 +130,24 @@ Following a rigorous audit of the ODE simulation engine and a 100-parameter dyna
 | ![Representative Responsive](docs/screenshots/34_representative_responsive_timecourse.png) | ![Representative Flat](docs/screenshots/35_representative_flat_timecourse.png) | ![Representative Oscillating](docs/screenshots/36_representative_oscillating_timecourse.png) |
 | **⚡ Clear Level Changes**: Target gene transitions smoothly to new stable steady state ($\max \|\Delta X\| = 107.7\% \ge 5\%$). Tail fluctuation $< 0.0001$. | **⚪ Flat / Insensitive**: Perturbations produce negligible response ($\max \|\Delta X\| = 0.2\% < 5\%$). Trajectory settles horizontally. | **〰 Persistent Oscillations**: Limit cycle dynamics where the simulation **does NOT reach steady state** after perturbation (amplitude $= 335.8\%$). |
 
-### 10. Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Shift Bar Grid (Tab 4)
-In Tab 4 (Previous Simulations Archive), Step 4 is split into **two side-by-side graphs** showing continuous ODE time-course relaxation trajectories alongside the full steady-state expression ratio matrix heatmap ($X$). Toggling to the **Shift Bar Profile** renders several perturbation responses simultaneously in an interactive **3×3 multi-perturbation grid**:
+### 10. Side-by-Side Dual Graphs & 3×3 Multi-Perturbation Shift Bar Grid (Tab 3)
+In Tab 3 (Previous Simulations Archive), Step 4 is split into **two side-by-side graphs** showing continuous ODE time-course relaxation trajectories alongside the full steady-state expression ratio matrix heatmap ($X$). Toggling to the **Shift Bar Profile** renders several perturbation responses simultaneously in an interactive **3×3 multi-perturbation grid** with soft transparent pastel background zoning:
+- **▲ Up-regulation Zone ($y > 0$, $+\Delta X$)**: Soft transparent pastel green background (`rgba(16, 185, 129, 0.08)` in light, `0.12` in dark) indicating genes whose steady-state expression increases above baseline.
+- **▼ Down-regulation Zone ($y < 0$, $-\Delta X$)**: Soft transparent pastel red background (`rgba(239, 68, 68, 0.08)` in light, `0.12` in dark) indicating genes whose steady-state expression decreases below baseline.
+- **Subplot Card Framing & Condition Badges**: Adapts border and badge tints dynamically to the perturbation type: pastel green for induction/over-expression ($\Delta X \ge 0$), pastel red for inhibition/knockdown ($\Delta X < 0$).
+- **Integrated Color Legend**: Built-in toolbar badges define Up-regulation (Pastel Green), Down-regulation (Pastel Red), and Target Gene (Cyan/Blue).
 
-| Tab 4: Side-by-Side Dual Graph (Time-Course & Matrix) | Tab 4: 3×3 Multi-Perturbation Shift Bar Grid (9 Simultaneous Responses) |
+| Tab 3: 3×3 Pastel Grid (Dark Mode) | Tab 3: 3×3 Pastel Grid (Light Mode) |
 | :---: | :---: |
-| ![Side by Side Dual Graph](docs/screenshots/37_tab4_step4_dual_side_by_side_responsive.png) | ![3x3 Multi-Perturbation Grid](docs/screenshots/38_tab4_step4_3x3_shift_bar_grid.png) |
+| ![3x3 Pastel Grid Dark](docs/screenshots/43_tab3_step4_3x3_pastel_grid_dark.png) | ![3x3 Pastel Grid Light](docs/screenshots/44_tab3_step4_3x3_pastel_grid_light.png) |
 
-| Tab 4: Side-by-Side Dual View (Flat Dynamics) | Tab 4: Side-by-Side Dual View (Limit Cycle Oscillations) |
+| Tab 3: 3×3 Pastel Grid Detail (Dark) | Tab 3: 3×3 Pastel Grid Detail (Light) |
 | :---: | :---: |
-| ![Dual Flat](docs/screenshots/39_tab4_step4_dual_side_by_side_flat.png) | ![Dual Oscillating](docs/screenshots/40_tab4_step4_dual_side_by_side_oscillating.png) |
+| ![3x3 Pastel Crop Dark](docs/screenshots/45_tab3_step4_3x3_pastel_grid_crop.png) | ![3x3 Pastel Crop Light](docs/screenshots/46_tab3_step4_3x3_pastel_grid_crop_light.png) |
+
+| Tab 3: Side-by-Side Dual Graph (Time-Course & Matrix) | Tab 3: Side-by-Side Dual View (Limit Cycle Oscillations) |
+| :---: | :---: |
+| ![Side by Side Dual Graph](docs/screenshots/37_tab4_step4_dual_side_by_side_responsive.png) | ![Dual Oscillating](docs/screenshots/40_tab4_step4_dual_side_by_side_oscillating.png) |
 
 ---
 

@@ -200,6 +200,10 @@ In the Historical Archive (Tab 3, `#tab-history`, `#history-detail-panel`), user
   - **Right Graph**: Full $N \times N$ steady-state expression ratio matrix heatmap ($X$).
 - **3×3 Multi-Perturbation Shift Bar Grid (Toggle View)**:
   - Toggling to `[ 📊 3×3 Shift Bar Grid ]` (`#btn-hist-pert-mode-bar`) switches the workspace to an interactive 3×3 matrix of 9 subplots simultaneously.
+  - **Soft Transparent Pastel Color Zoning**:
+    - **▲ Up-regulation Zone ($y > 0$, $+\Delta X$)**: Soft transparent pastel green background (`rgba(16, 185, 129, 0.08)` light / `0.12` dark) with subtle `▲ Up-regulation` label.
+    - **▼ Down-regulation Zone ($y < 0$, $-\Delta X$)**: Soft transparent pastel red background (`rgba(239, 68, 68, 0.08)` light / `0.12` dark) with subtle `▼ Down-regulation` label.
+    - **Subplot Card Styling**: Card border and header badge adapt to induction (pastel green) or knockdown (pastel red).
   - Each cell in the 3×3 grid displays the relative expression shift profile ($\Delta X_{i, j}$) for a distinct perturbation experiment, highlighting the perturbed target gene in Cyan/Blue (`#0284c7`), up-regulated genes in Green (`#10b981`), and down-regulated genes in Red (`#ef4444`).
   - Includes condition pagination (`◀ Prev 9` / `Next 9 ▶`) for networks with $N > 9$.
 - **Focus Modes**: Full-width single-panel views via `[ 📈 Time-Course Focus ]` and `[ ▦ Matrix Focus ]`.
