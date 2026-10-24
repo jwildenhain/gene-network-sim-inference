@@ -12,6 +12,8 @@ Covers:
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 import json
+import os
+import tempfile
 import numpy as np
 import scipy.linalg
 
@@ -20,7 +22,36 @@ from grn_sim.core.topology import NetworkTopology, TopologyType
 
 
 RAW_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "benchmarks" / "raw"
-RAW_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _writable_export_dir(preferred: Path) -> Path:
+    """
+    The folder raw exports are written to: ``preferred`` when this process can write there, otherwise a
+    per-machine temp folder (e.g. a read-only install, or a data/ folder owned by another user).
+    """
+    try:
+        preferred.mkdir(parents=True, exist_ok=True)
+        if os.access(preferred, os.W_OK | os.X_OK):
+            return preferred
+    except OSError:
+        pass
+    fallback = Path(tempfile.gettempdir()) / "grn_sim_raw"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    """
+    Replaces ``path`` through a temporary sibling file. Overwriting in place fails for a file this process does
+    not own (for example one the Docker container exported earlier as root), while renaming over it only needs
+    write access to the folder.
+    """
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(text)
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 BENCHMARK_PROVENANCE: Dict[str, Dict[str, Any]] = {
@@ -273,8 +304,7 @@ def export_benchmark_raw_files(dataset_id: str, out_dir: Optional[Path] = None) 
     """
     from grn_sim.benchmarks.benchmark_datasets import load_benchmark_dataset
 
-    target_dir = out_dir or RAW_DIR
-    target_dir.mkdir(parents=True, exist_ok=True)
+    target_dir = _writable_export_dir(out_dir or RAW_DIR)
 
     ds = load_benchmark_dataset(dataset_id)
     prov = get_benchmark_provenance(dataset_id)
@@ -287,30 +317,24 @@ def export_benchmark_raw_files(dataset_id: str, out_dir: Optional[Path] = None) 
 
     # 1. Expression Matrix TSV (Genes x Perturbations)
     expr_file = target_dir / f"{dataset_id}_expression.tsv"
-    with open(expr_file, "w") as f:
-        headers = ["Gene"] + [f"Pert_{g}" for g in gene_names]
-        f.write("\t".join(headers) + "\n")
-        for i, g in enumerate(gene_names):
-            vals = [g] + [f"{X[i, j]:.6f}" for j in range(X.shape[1])]
-            f.write("\t".join(vals) + "\n")
+    lines = ["\t".join(["Gene"] + [f"Pert_{g}" for g in gene_names])]
+    for i, g in enumerate(gene_names):
+        lines.append("\t".join([g] + [f"{X[i, j]:.6f}" for j in range(X.shape[1])]))
+    _write_text_atomic(expr_file, "\n".join(lines) + "\n")
 
     # 2. Perturbation Matrix TSV (Genes x Perturbations)
     pert_file = target_dir / f"{dataset_id}_perturbation.tsv"
-    with open(pert_file, "w") as f:
-        headers = ["Gene"] + [f"Pert_{g}" for g in gene_names]
-        f.write("\t".join(headers) + "\n")
-        for i, g in enumerate(gene_names):
-            vals = [g] + [f"{U[i, j]:.6f}" for j in range(U.shape[1])]
-            f.write("\t".join(vals) + "\n")
+    lines = ["\t".join(["Gene"] + [f"Pert_{g}" for g in gene_names])]
+    for i, g in enumerate(gene_names):
+        lines.append("\t".join([g] + [f"{U[i, j]:.6f}" for j in range(U.shape[1])]))
+    _write_text_atomic(pert_file, "\n".join(lines) + "\n")
 
     # 3. Ground Truth Adjacency Matrix TSV
     true_file = target_dir / f"{dataset_id}_ground_truth.tsv"
-    with open(true_file, "w") as f:
-        headers = ["Regulator_Target"] + list(gene_names)
-        f.write("\t".join(headers) + "\n")
-        for i, g in enumerate(gene_names):
-            vals = [g] + [str(int(A_true[i, j])) for j in range(num_genes)]
-            f.write("\t".join(vals) + "\n")
+    lines = ["\t".join(["Regulator_Target"] + list(gene_names))]
+    for i, g in enumerate(gene_names):
+        lines.append("\t".join([g] + [str(int(A_true[i, j])) for j in range(num_genes)]))
+    _write_text_atomic(true_file, "\n".join(lines) + "\n")
 
     # 4. JSON Bundle with Full Provenance and Numerical Arrays
     bundle_file = target_dir / f"{dataset_id}_bundle.json"
@@ -326,8 +350,7 @@ def export_benchmark_raw_files(dataset_id: str, out_dir: Optional[Path] = None) 
         "U_perturbation_matrix": U.tolist(),
         "true_adjacency_matrix": A_true.tolist(),
     }
-    with open(bundle_file, "w") as f:
-        json.dump(bundle_data, f, indent=2)
+    _write_text_atomic(bundle_file, json.dumps(bundle_data, indent=2))
 
     return {
         "expression_tsv": expr_file,

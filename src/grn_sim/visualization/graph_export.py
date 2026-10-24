@@ -11,6 +11,8 @@ import subprocess
 import math
 import numpy as np
 
+from grn_sim.visualization.layered_layout import bounding_box, layered_layout
+
 
 # Exact 9-state edge style specification from statsgraph_to_dot.m
 NINE_STATE_STYLES: Dict[int, Dict[str, str]] = {
@@ -288,19 +290,142 @@ def export_9state_graphviz_dot(
     return "\n".join(lines)
 
 
+_NODE_RX, _NODE_RY = 26.0, 18.0  # node ellipse of the pure-Python SVG fallback
+
+
+def _ellipse_exit(cx: float, cy: float, px: float, py: float, ux: float, uy: float) -> Tuple[float, float]:
+    """Point where the ray from (px, py), inside the node ellipse centred on (cx, cy), leaves it along (ux, uy)."""
+    a = (ux / _NODE_RX) ** 2 + (uy / _NODE_RY) ** 2
+    b = 2.0 * ((px - cx) * ux / _NODE_RX ** 2 + (py - cy) * uy / _NODE_RY ** 2)
+    c = ((px - cx) / _NODE_RX) ** 2 + ((py - cy) / _NODE_RY) ** 2 - 1.0
+    t = (-b + math.sqrt(max(b * b - 4.0 * a * c, 0.0))) / (2.0 * a)
+    return px + t * ux, py + t * uy
+
+
+def _arrow_head_svg(tip: Tuple[float, float], u: Tuple[float, float], kind: str, color: str, onclick: str) -> Tuple[str, float]:
+    """
+    Graphviz-style arrow head at ``tip`` for an edge travelling along the unit vector ``u``:
+    a filled triangle for 'normal' (activation) or a perpendicular bar for 'tee' (inhibition).
+    Returns the SVG element and how far the shaft has to stop short of ``tip``.
+    """
+    tx, ty = tip
+    nx, ny = -u[1], u[0]
+    common = f'stroke="{color}" style="cursor:pointer" onclick="{onclick}"'
+    if kind == "tee":
+        bx, by = tx - u[0] * 2.0, ty - u[1] * 2.0
+        return (
+            f'<line data-arrowhead="tee" x1="{bx + nx * 7:.1f}" y1="{by + ny * 7:.1f}" '
+            f'x2="{bx - nx * 7:.1f}" y2="{by - ny * 7:.1f}" stroke-width="3" {common}/>'
+        ), 2.0
+    length, half = 11.0, 5.0
+    bx, by = tx - u[0] * length, ty - u[1] * length
+    points = f"{tx:.1f},{ty:.1f} {bx + nx * half:.1f},{by + ny * half:.1f} {bx - nx * half:.1f},{by - ny * half:.1f}"
+    return f'<polygon data-arrowhead="normal" points="{points}" fill="{color}" stroke-linejoin="round" {common}/>', length
+
+
+def _self_loop_svg(x: float, y: float, side: str, kind: str, color: str, dash: str, onclick: str) -> List[str]:
+    """
+    Self-regulation loop attached to the node centred on (x, y), with the arrow head where the loop
+    re-enters the node outline. ``side='right'`` suits layered layouts (edges arrive from above and
+    leave below, so the sides are free); ``'top'`` suits the circular layout.
+    """
+    if side == "right":
+        cx, cy, r = x + 28.0, y, 11.0
+    else:
+        cx, cy, r = x, y - 24.0, 14.0
+
+    def outline(theta: float) -> float:  # <1 inside the node ellipse, >1 outside
+        px, py = cx + r * math.cos(theta) - x, cy + r * math.sin(theta) - y
+        return (px / _NODE_RX) ** 2 + (py / _NODE_RY) ** 2
+
+    # walking clockwise on screen (increasing angle): the point where the circle dips into the node
+    steps = 360
+    theta = math.radians(90)
+    for k in range(steps):
+        a, b = math.radians(k), math.radians(k + 1)
+        if outline(a) >= 1.0 > outline(b):
+            theta = a + (b - a) * (outline(a) - 1.0) / (outline(a) - outline(b))
+            break
+    head, _ = _arrow_head_svg(
+        (cx + r * math.cos(theta), cy + r * math.sin(theta)), (-math.sin(theta), math.cos(theta)), kind, color, onclick
+    )
+    circle = (
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:g}" fill="none" stroke="{color}" stroke-width="2" {dash} '
+        f'style="cursor:pointer" onclick="{onclick}"/>'
+    )
+    return [circle, head]
+
+
+def _route_svg(
+    route: List[Tuple[float, float]],
+    kind: str,
+    color: str,
+    dash: str,
+    onclick: str,
+    offset: float = 0.0,
+) -> List[str]:
+    """
+    Draws one edge along ``route`` (centre of the source node, optional waypoints, centre of the target):
+    the shaft runs from the source outline to the base of the arrow head, which sits on the target outline.
+    ``offset`` shifts the whole route sideways so reciprocal edges do not lie on top of each other.
+    """
+    (x1, y1), (x2, y2) = route[0], route[-1]
+    dist = math.hypot(x2 - x1, y2 - y1)
+    if dist < 1.0:
+        return []
+    ox, oy = -(y2 - y1) / dist * offset, (x2 - x1) / dist * offset
+    pts = [(x + ox, y + oy) for x, y in route]
+
+    def unit(a: Tuple[float, float], b: Tuple[float, float]) -> Tuple[float, float]:
+        d = math.hypot(b[0] - a[0], b[1] - a[1]) or 1.0
+        return (b[0] - a[0]) / d, (b[1] - a[1]) / d
+
+    ux0, uy0 = unit(pts[0], pts[1])
+    ux1, uy1 = unit(pts[-2], pts[-1])
+    start = _ellipse_exit(x1, y1, pts[0][0], pts[0][1], ux0, uy0)
+    tip = _ellipse_exit(x2, y2, pts[-1][0], pts[-1][1], -ux1, -uy1)
+    head, back = _arrow_head_svg(tip, (ux1, uy1), kind, color, onclick)
+    body = [start] + pts[1:-1] + [(tip[0] - ux1 * back, tip[1] - uy1 * back)]
+    common = f'stroke="{color}" stroke-width="2.2" {dash} style="cursor:pointer" onclick="{onclick}"'
+    if len(body) == 2:
+        shaft = f'<line x1="{body[0][0]:.1f}" y1="{body[0][1]:.1f}" x2="{body[1][0]:.1f}" y2="{body[1][1]:.1f}" {common}/>'
+    else:
+        # bends are rounded with quadratic curves through the waypoints (the arrow keeps its straight last leg)
+        def mid(a: Tuple[float, float], b: Tuple[float, float]) -> Tuple[float, float]:
+            return (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
+
+        d = [f"M {body[0][0]:.1f} {body[0][1]:.1f}"]
+        for m in range(1, len(body) - 1):
+            a, c = mid(body[m - 1], body[m]), mid(body[m], body[m + 1])
+            d.append(f"L {a[0]:.1f} {a[1]:.1f} Q {body[m][0]:.1f} {body[m][1]:.1f} {c[0]:.1f} {c[1]:.1f}")
+        d.append(f"L {body[-1][0]:.1f} {body[-1][1]:.1f}")
+        shaft = f'<path d="{" ".join(d)}" fill="none" stroke-linecap="round" {common}/>'
+    return [shaft, head]
+
+
 def render_graphviz_svg(
     dot_source: str,
     engine: str = "dot",
     matrix: Optional[np.ndarray] = None,
     gene_names: Optional[List[str]] = None,
     is_9state: bool = False,
+    layout: str = "layered",
 ) -> str:
     """
     Renders a DOT string to an interactive SVG using the system Graphviz binary (`dot` or `neato`),
     exactly like phpIoRN's `draw_dot.m` (`dot -Tsvg` / `neato -Tsvg`).
     Falls back to a clean native SVG generator if the Graphviz binary is not installed.
+
+    ``layout`` picks the version of the hierarchical (``engine="dot"``) view:
+    - ``"layered"``: regulators on top, targets in the rows below (Graphviz when installed, otherwise the
+      built-in layered layout);
+    - ``"grid"``: the compact staggered grid, drawn by the built-in renderer only.
+    The spring (``neato``) view has a single layout and ignores the option.
     """
-    bin_path = shutil.which(engine) or shutil.which("dot")
+    if layout not in ("layered", "grid"):
+        raise ValueError(f"layout must be 'layered' or 'grid', got {layout!r}")
+    grid = engine == "dot" and layout == "grid"
+    bin_path = None if grid else (shutil.which(engine) or shutil.which("dot"))
     if bin_path:
         try:
             cmd = [bin_path, f"-K{engine}", "-Tsvg"]
@@ -329,61 +454,79 @@ def render_graphviz_svg(
     if gene_names is None:
         gene_names = [f"G{i+1}" for i in range(N)]
 
-    width, height = 560, 420
-    cx, cy = width / 2, height / 2
-    positions: List[Tuple[float, float]] = []
+    edge_list = [(j, i) for i in range(N) for j in range(N) if i != j and int(matrix[i, j]) != 0]
 
-    if engine == "dot":
-        # Hierarchical layered layout
+    if grid:
+        # Compact staggered grid, ignoring edge direction
+        width, height = 560, 420
         cols = max(2, int(math.ceil(math.sqrt(N * 1.4))))
         rows = max(1, int(math.ceil(N / cols)))
+        positions = []
         for idx in range(N):
-            r = idx // cols
-            c = idx % cols
-            x = 80 + (c + 0.5 * (r % 2)) * ((width - 160) / max(1, cols - 0.5))
-            y = 65 + r * ((height - 130) / max(1, rows - 1 if rows > 1 else 1))
-            positions.append((x, y))
+            r, c = divmod(idx, cols)
+            positions.append((
+                80 + (c + 0.5 * (r % 2)) * ((width - 160) / max(1, cols - 0.5)),
+                65 + r * ((height - 130) / max(1, rows - 1 if rows > 1 else 1)),
+            ))
+        routes = {(j, i): [positions[j], positions[i]] for j, i in edge_list}
+        view = (0.0, 0.0, float(width), float(height))
+    elif engine == "dot":
+        # Hierarchical layered layout like Graphviz `dot`: regulators on top, targets below
+        positions, routes = layered_layout(N, edge_list)
+        min_x, min_y, max_x, max_y = bounding_box(positions + [p for pts in routes.values() for p in pts])
+        pad_x, pad_y = _NODE_RX + 24, _NODE_RY + 18  # margin around the nodes (self-loops sit beside them)
+        view = (min_x - pad_x, min_y - pad_y, (max_x - min_x) + 2 * pad_x, (max_y - min_y) + 2 * pad_y)
     else:
         # Spring / circular layout
+        width, height = 560, 420
+        cx, cy = width / 2, height / 2
         radius = min(width, height) * 0.37
+        positions = []
         for idx in range(N):
             angle = (2 * math.pi * idx) / N - math.pi / 2
             positions.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
+        routes = {(j, i): [positions[j], positions[i]] for j, i in edge_list}
+        view = (0.0, 0.0, float(width), float(height))
 
+    if engine == "dot" and not grid:
+        # natural size (like Graphviz output) when shown standalone; the web page's .graph-stage CSS fits it to its box
+        size = f'width="{view[2]:.0f}" height="{view[3]:.0f}"'
+        fit = "max-width:100%;height:auto;display:block;margin:0 auto;"
+    else:
+        size, fit = 'width="100%" height="100%"', ""
     svg = [
-        f'<svg viewBox="0 0 {width} {height}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="background:transparent;font-family:Inter,sans-serif;">'
+        f'<svg viewBox="{view[0]:.1f} {view[1]:.1f} {view[2]:.1f} {view[3]:.1f}" {size} '
+        f'xmlns="http://www.w3.org/2000/svg" style="{fit}background:transparent;font-family:Inter,sans-serif;">'
     ]
-    # Edges
+    # Edges: shaft from node outline to node outline, with a Graphviz-style arrow head at the target
     for i in range(N):
         for j in range(N):
             val = int(matrix[i, j])
             if val == 0:
                 continue
-            x1, y1 = positions[j]
-            x2, y2 = positions[i]
             if is_9state and val in NINE_STATE_STYLES:
                 st = NINE_STATE_STYLES[val]
                 color = st["color"]
+                kind = st["arrowhead"]
                 dash = 'stroke-dasharray="6,4"' if st["style"] == "dashed" else ('stroke-dasharray="2,4"' if st["style"] == "dotted" else "")
             else:
                 color = "#10b981" if val > 0 else "#ef4444"
+                kind = "normal" if val > 0 else "tee"
                 dash = ""
+            onclick = f"window.inspectEdge &amp;&amp; window.inspectEdge({j},{i})"
             if i == j:
-                svg.append(
-                    f'<circle cx="{x1}" cy="{y1-24}" r="14" fill="none" stroke="{color}" stroke-width="2" {dash} '
-                    f'style="cursor:pointer" onclick="window.inspectEdge && window.inspectEdge({j},{i})"/>'
-                )
-            else:
-                svg.append(
-                    f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="2.2" {dash} '
-                    f'style="cursor:pointer" onclick="window.inspectEdge && window.inspectEdge({j},{i})"/>'
-                )
+                svg.extend(_self_loop_svg(positions[j][0], positions[j][1], "right" if engine == "dot" and not grid else "top", kind, color, dash, onclick))
+                continue
+            # reciprocal edges (j->i and i->j) are drawn side by side instead of on top of each other
+            offset = 4.5 if matrix[j, i] != 0 else 0.0
+            svg.extend(_route_svg(routes[(j, i)], kind, color, dash, onclick, offset))
 
     # Nodes
     for idx, (x, y) in enumerate(positions):
         name = gene_names[idx]
+        # same markup as Graphviz output (class "node" + <title>), so the page's node click / highlight code applies
         svg.append(
-            f'<g style="cursor:pointer" onclick="window.inspectNode && window.inspectNode({idx})">'
+            f'<g class="node" id="node_{idx}" style="cursor:pointer"><title>{name}</title>'
             f'<ellipse cx="{x:.1f}" cy="{y:.1f}" rx="26" ry="18" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>'
             f'<text x="{x:.1f}" y="{y+4:.1f}" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="600">{name}</text>'
             f'</g>'

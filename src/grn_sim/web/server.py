@@ -8,6 +8,8 @@ Replaces the legacy PHP + MATLAB + Graphviz + Perl web stack:
 - Thesis & 2006 IEE Proc. Systems Biology Paper benchmark figures & E. coli SOS pathway studio
 """
 
+import argparse
+import functools
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 import datetime
@@ -15,6 +17,7 @@ import io
 import json
 import os
 import sys
+import threading
 import time
 import urllib.parse
 import zipfile
@@ -94,6 +97,40 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
 
 
+_CLIENT_GONE = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
+
+
+class _TolerantWriter:
+    """
+    Response stream that treats a browser closing the connection mid-response (navigating away, an aborted
+    fetch) as the non-event it is, instead of letting every handler log a BrokenPipeError traceback.
+    """
+
+    def __init__(self, raw):
+        self._raw = raw
+        self.client_gone = False
+
+    def write(self, data):
+        if self.client_gone:
+            return len(data)
+        try:
+            return self._raw.write(data)
+        except _CLIENT_GONE:
+            self.client_gone = True
+            return len(data)
+
+    def flush(self):
+        if self.client_gone:
+            return
+        try:
+            self._raw.flush()
+        except _CLIENT_GONE:
+            self.client_gone = True
+
+    def __getattr__(self, name):
+        return getattr(self._raw, name)
+
+
 # Active workspace session state
 CURRENT_STATE: Dict[str, Any] = {
     "run_id": None,
@@ -118,10 +155,26 @@ CURRENT_STATE: Dict[str, Any] = {
 SIMULATION_HISTORY: List[Dict[str, Any]] = []
 SIMULATION_RUN_STORE: Dict[str, Dict[str, Any]] = {}
 
+# The handler runs on one thread per request, so everything that rewrites CURRENT_STATE /
+# SIMULATION_HISTORY / SIMULATION_RUN_STORE holds this (re-entrant) lock.
+STATE_LOCK = threading.RLock()
+
+
+def _state_locked(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        with STATE_LOCK:
+            return fn(*args, **kwargs)
+    return wrapper
+
+
 # Cache for computed benchmark figures
 BENCHMARK_CACHE: Dict[str, Any] = {}
+# Serialises VCC benchmark computation so concurrent identical requests share one run via the cache
+_VCC_LOCK = threading.Lock()
 # The VCC payload is keyed by user-supplied parameters, so only the most recent entries are kept
 VCC_CACHE_LIMIT = 16
+MAX_CELLS_PER_CONDITION = 2000
 
 
 def _downsample_trajectory(traj: Optional[np.ndarray], max_points: int = 60) -> List[List[float]]:
@@ -316,6 +369,7 @@ def _compute_aic_profile(X: np.ndarray, U: np.ndarray, target_gene: int = 0) -> 
     }
 
 
+@_state_locked
 def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
     """Runs a full in-silico or uploaded simulation and populates CURRENT_STATE."""
     mode = params.get("mode", "insilico")
@@ -479,6 +533,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
     dot_hier = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
     dot_spring = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
     svg_hier = render_graphviz_svg(dot_hier, engine="dot", matrix=adj, gene_names=gene_names)
+    svg_hier_grid = render_graphviz_svg(dot_hier, engine="dot", matrix=adj, gene_names=gene_names, layout="grid")
     svg_spring = render_graphviz_svg(dot_spring, engine="neato", matrix=adj, gene_names=gene_names)
 
     graph_json = export_graph_json(adj, gene_names)
@@ -540,6 +595,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "dot_hierarchical": dot_hier,
         "dot_spring": dot_spring,
         "svg_hierarchical": svg_hier,
+        "svg_hierarchical_grid": svg_hier_grid,
         "svg_spring": svg_spring,
         "msmt_text": msmt_text,
         "pert_text": pert_text,
@@ -589,6 +645,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "dot_hierarchical": dot_hier,
         "dot_spring": dot_spring,
         "svg_hierarchical": svg_hier,
+        "svg_hierarchical_grid": svg_hier_grid,
         "svg_spring": svg_spring,
         "msmt_text": msmt_text,
         "pert_text": pert_text,
@@ -608,6 +665,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
     return sim_payload
 
 
+@_state_locked
 def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     """Runs selected reverse-engineering algorithms on CURRENT_STATE and records to SIMULATION_HISTORY and SQLite `rgn_db`."""
     experiment = CURRENT_STATE["experiment"]
@@ -656,6 +714,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     comp_graphs = {}
     dots_dict = {}
     svgs_dot_dict = {}
+    svgs_dot_grid_dict = {}
     svgs_neato_dict = {}
     pred_matrices = {}
 
@@ -703,6 +762,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
             dot_9_neato = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"Diff_{alg}_neato", layout="neato")
             dots_dict[alg] = dot_9_hier
             svgs_dot_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
+            svgs_dot_grid_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True, layout="grid")
             svgs_neato_dict[alg] = render_graphviz_svg(dot_9_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
 
     aic_profile = _compute_aic_profile(X, U, target_gene=0)
@@ -721,6 +781,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "dot": dots_dict.get(primary_alg, ""),
         "dots": dots_dict,
         "svgs_dot": svgs_dot_dict,
+        "svgs_dot_grid": svgs_dot_grid_dict,
         "svgs_neato": svgs_neato_dict,
         "aic_profile": aic_profile,
     }
@@ -783,6 +844,55 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     return result_payload
 
 
+def _is_arrowless_fallback_svg(svg: str) -> bool:
+    """True for SVGs drawn by the first built-in renderer (no Graphviz markup, no arrow heads)."""
+    return bool(svg) and 'class="graph"' not in svg and "data-arrowhead" not in svg
+
+
+def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Brings an archived run up to date with the current graph views, in place:
+    - adds the compact "grid" version that runs archived earlier do not have,
+    - redraws hierarchical/spring SVGs that came from the first built-in renderer (no arrow heads).
+    SVGs that Graphviz drew are kept as stored.
+    """
+    true_matrix = np.array(sim_payload.get("true_matrix") or [], dtype=int)
+    names = sim_payload.get("gene_names") or []
+    if true_matrix.ndim != 2 or not true_matrix.size or len(names) != true_matrix.shape[0]:
+        return sim_payload
+
+    if _is_arrowless_fallback_svg(sim_payload.get("svg_hierarchical", "")) or not sim_payload.get("svg_hierarchical"):
+        dot = export_graphviz_dot(true_matrix, names, graph_name="GRN_archived_dot", layout="dot")
+        sim_payload["svg_hierarchical"] = render_graphviz_svg(dot, engine="dot", matrix=true_matrix, gene_names=names)
+    if _is_arrowless_fallback_svg(sim_payload.get("svg_spring", "")) or not sim_payload.get("svg_spring"):
+        dot = export_graphviz_dot(true_matrix, names, graph_name="GRN_archived_neato", layout="neato")
+        sim_payload["svg_spring"] = render_graphviz_svg(dot, engine="neato", matrix=true_matrix, gene_names=names)
+    if not sim_payload.get("svg_hierarchical_grid"):
+        dot = export_graphviz_dot(true_matrix, names, graph_name="GRN_archived_dot", layout="dot")
+        sim_payload["svg_hierarchical_grid"] = render_graphviz_svg(dot, engine="dot", matrix=true_matrix, gene_names=names, layout="grid")
+
+    inferred = sim_payload.get("inferred") or {}
+    svgs_dot = inferred.setdefault("svgs_dot", {}) if inferred else {}
+    svgs_neato = inferred.setdefault("svgs_neato", {}) if inferred else {}
+    svgs_grid = inferred.setdefault("svgs_dot_grid", {}) if inferred else {}
+    for alg, pred in (inferred.get("pred_matrices") or {}).items():
+        stale_dot = alg not in svgs_dot or _is_arrowless_fallback_svg(svgs_dot.get(alg, ""))
+        stale_neato = alg not in svgs_neato or _is_arrowless_fallback_svg(svgs_neato.get(alg, ""))
+        if not (stale_dot or stale_neato or alg not in svgs_grid):
+            continue
+        a_stats = np.array(compute_new_stats_9state(true_matrix, np.array(pred, dtype=int))["a_stats"], dtype=int)
+        dot_h = export_9state_graphviz_dot(a_stats, names, graph_name=f"Diff_{alg}_dot", layout="dot")
+        if stale_dot:
+            svgs_dot[alg] = render_graphviz_svg(dot_h, engine="dot", matrix=a_stats, gene_names=names, is_9state=True)
+        if stale_neato:
+            dot_n = export_9state_graphviz_dot(a_stats, names, graph_name=f"Diff_{alg}_neato", layout="neato")
+            svgs_neato[alg] = render_graphviz_svg(dot_n, engine="neato", matrix=a_stats, gene_names=names, is_9state=True)
+        if alg not in svgs_grid:
+            svgs_grid[alg] = render_graphviz_svg(dot_h, engine="dot", matrix=a_stats, gene_names=names, is_9state=True, layout="grid")
+    return sim_payload
+
+
+@_state_locked
 def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
     """Loads an archived simulation run into CURRENT_STATE (from memory or SQLite `rgn_db.sqlite`) and returns its full payload."""
     if not run_id:
@@ -793,6 +903,7 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         sim_payload = dict(stored["sim_payload"])
         sim_payload["settings"] = dict(stored.get("settings", sim_payload.get("settings", {})))
         sim_payload["inferred"] = stored["inferred_payload"]
+        _ensure_graph_views(sim_payload)
         if "response_type" not in sim_payload:
             sim_payload["response_type"] = stored["state"].get("response_type", "responsive")
         if "response_dynamics" not in sim_payload:
@@ -807,6 +918,7 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
     settings = dict(db_record.get("settings") or sim_payload.get("settings") or {})
     sim_payload["settings"] = settings
     sim_payload["inferred"] = inferred_payload
+    _ensure_graph_views(sim_payload)
 
     # Ensure response_dynamics reflects true trajectory convergence
     if sim_payload.get("X"):
@@ -847,6 +959,7 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         "dot_hierarchical": sim_payload.get("dot_hierarchical", ""),
         "dot_spring": sim_payload.get("dot_spring", ""),
         "svg_hierarchical": sim_payload.get("svg_hierarchical", ""),
+        "svg_hierarchical_grid": sim_payload.get("svg_hierarchical_grid", ""),
         "svg_spring": sim_payload.get("svg_spring", ""),
         "msmt_text": sim_payload.get("msmt_text", ""),
         "pert_text": sim_payload.get("pert_text", ""),
@@ -899,6 +1012,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     dot_true_neato = export_graphviz_dot(A_true, gene_names, graph_name=f"{dataset_id}_True_neato", layout="neato")
     svg_true_hier = render_graphviz_svg(dot_true_hier, engine="dot", matrix=A_true, gene_names=gene_names)
     svg_true_neato = render_graphviz_svg(dot_true_neato, engine="neato", matrix=A_true, gene_names=gene_names)
+    svg_true_grid = render_graphviz_svg(dot_true_hier, engine="dot", matrix=A_true, gene_names=gene_names, layout="grid")
 
     is_sos = (dataset_id == "ecoli_sos")
     k_conn = 5 if is_sos else max(1, int(np.round(np.sum(A_true != 0) / N)))
@@ -929,6 +1043,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     cmats = {}
     comp_graphs = {}
     svgs_dot = {}
+    svgs_dot_grid = {}
     svgs_neato = {}
 
     for alg_name, runner in algs.items():
@@ -961,6 +1076,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         d_dot = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_dot", layout="dot")
         d_neato = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_neato", layout="neato")
         svgs_dot[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
+        svgs_dot_grid[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True, layout="grid")
         svgs_neato[alg_name] = render_graphviz_svg(d_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
 
     # Compute gene dynamics profiles and node parameters for interactive inspection
@@ -1092,6 +1208,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         "U": np.round(U, 4).tolist(),
         "true_graph": export_graph_json(A_true, gene_names),
         "svg_true_dot": svg_true_hier,
+        "svg_true_dot_grid": svg_true_grid,
         "svg_true_neato": svg_true_neato,
         "perturbation_trajectories": pert_trajs,
         "basal_trajectory": basal_traj_down,
@@ -1103,6 +1220,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         "confusion_matrices": cmats,
         "comparison_graphs": comp_graphs,
         "svgs_dot": svgs_dot,
+        "svgs_dot_grid": svgs_dot_grid,
         "svgs_neato": svgs_neato,
     }
     BENCHMARK_CACHE[cache_key] = payload
@@ -1572,14 +1690,23 @@ def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: i
     # Quantise the continuous parameters so near-identical requests share one cache entry
     k_av, rewire_fraction = round(k_av, 2), round(rewire_fraction, 2)
     cache_key = f"vcc_{num_genes}_{k_av}_{seed}_{rewire_fraction}"
-    if not refresh and cache_key in BENCHMARK_CACHE:
-        return BENCHMARK_CACHE[cache_key]
+    with _VCC_LOCK:
+        if not refresh and cache_key in BENCHMARK_CACHE:
+            return BENCHMARK_CACHE[cache_key]
 
-    payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction)
-    BENCHMARK_CACHE[cache_key] = payload
-    for stale_key in [k for k in list(BENCHMARK_CACHE) if k.startswith("vcc_")][:-VCC_CACHE_LIMIT]:
-        BENCHMARK_CACHE.pop(stale_key, None)
-    return payload
+        payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction)
+        BENCHMARK_CACHE[cache_key] = payload
+        for stale_key in [k for k in list(BENCHMARK_CACHE) if k.startswith("vcc_")][:-VCC_CACHE_LIMIT]:
+            BENCHMARK_CACHE.pop(stale_key, None)
+        return payload
+
+
+def _parse_cells_per_condition(query: Dict[str, List[str]]) -> int:
+    """Reads ?cells_per_condition= (default 400); raises ValueError outside [1, MAX_CELLS_PER_CONDITION]."""
+    cells = int(query.get("cells_per_condition", [400])[0])
+    if not 1 <= cells <= MAX_CELLS_PER_CONDITION:
+        raise ValueError(f"cells_per_condition must be in [1, {MAX_CELLS_PER_CONDITION}], got {cells}")
+    return cells
 
 
 def _build_perturb_seq_h5ad_bytes(run_id: Optional[str] = None, cells_per_condition: int = 400) -> Tuple[bytes, str]:
@@ -1688,8 +1815,7 @@ def _bootstrap_initial_simulation():
             existing_db_history = load_all_history_from_db()
 
         if existing_db_history:
-            SIMULATION_HISTORY.clear()
-            SIMULATION_HISTORY.extend(existing_db_history)
+            SIMULATION_HISTORY[:] = existing_db_history
             latest_run_id = existing_db_history[0].get("run_id")
             if latest_run_id:
                 _load_archived_run(latest_run_id)
@@ -1700,16 +1826,39 @@ def _bootstrap_initial_simulation():
 class GRNWebHandler(BaseHTTPRequestHandler):
     """REST API and static file request handler for the modernized phpIoRN application."""
 
+    def setup(self) -> None:
+        super().setup()
+        self.wfile = _TolerantWriter(self.wfile)
+
     def log_message(self, format: str, *args: Any) -> None:
         # Concise server logging
         sys.stderr.write("[GRN-Sim Web] %s - %s\n" % (self.address_string(), format % args))
 
+    def _allowed_origin(self) -> str:
+        """The one extra browser origin allowed to call the API (env GRN_CORS_ORIGIN); empty = same-origin only."""
+        return os.environ.get("GRN_CORS_ORIGIN", "").strip()
+
+    def _is_cross_origin(self) -> bool:
+        """True for browser requests from a page on another origin (CSRF / DNS-rebinding style access)."""
+        origin = self.headers.get("Origin")
+        if not origin or origin == self._allowed_origin():
+            return False
+        return urllib.parse.urlparse(origin).netloc != self.headers.get("Host", "")
+
+    def _reject_cross_origin(self) -> bool:
+        if not self._is_cross_origin():
+            return False
+        self._set_headers(403)
+        self.wfile.write(json.dumps({"error": "Cross-origin requests are not allowed"}).encode("utf-8"))
+        return True
+
     def _set_headers(self, status: int = 200, content_type: str = "application/json", extra_headers: Optional[Dict[str, str]] = None):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        if self._allowed_origin():
+            self.send_header("Access-Control-Allow-Origin", self._allowed_origin())
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
         if extra_headers:
             for k, v in extra_headers.items():
                 self.send_header(k, v)
@@ -1719,6 +1868,8 @@ class GRNWebHandler(BaseHTTPRequestHandler):
         self._set_headers(200)
 
     def do_GET(self):
+        if self._reject_cross_origin():
+            return
         url = urllib.parse.urlparse(self.path)
         path = url.path
         query = urllib.parse.parse_qs(url.query)
@@ -1787,6 +1938,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 "dot_hierarchical": CURRENT_STATE.get("dot_hierarchical", ""),
                 "dot_spring": CURRENT_STATE.get("dot_spring", ""),
                 "svg_hierarchical": CURRENT_STATE.get("svg_hierarchical", ""),
+                "svg_hierarchical_grid": CURRENT_STATE.get("svg_hierarchical_grid", ""),
                 "svg_spring": CURRENT_STATE.get("svg_spring", ""),
                 "msmt_text": CURRENT_STATE.get("msmt_text", ""),
                 "pert_text": CURRENT_STATE.get("pert_text", ""),
@@ -1965,9 +2117,11 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 return
             try:
                 payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf, rewire_fraction=rewire_frac)
+                # allow_nan=False: a bare NaN is not valid JSON and would break response.json() in the browser.
+                # Serialise before sending headers so a failure becomes a clean 500, not a 200 with a broken body.
+                body = json.dumps(payload, allow_nan=False).encode("utf-8")
                 self._set_headers(200)
-                # allow_nan=False: a bare NaN is not valid JSON and would break response.json() in the browser
-                self.wfile.write(json.dumps(payload, allow_nan=False).encode("utf-8"))
+                self.wfile.write(body)
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -1977,8 +2131,13 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/export/perturb_seq_h5ad":
             try:
+                cells = _parse_cells_per_condition(query)
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            try:
                 req_run_id = query.get("run_id", [None])[0]
-                cells = int(query.get("cells_per_condition", [400])[0])
                 data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells)
                 self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                 self.wfile.write(data)
@@ -1992,8 +2151,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
         elif path == "/api/history":
             db_history = load_all_history_from_db()
             if db_history:
-                SIMULATION_HISTORY.clear()
-                SIMULATION_HISTORY.extend(db_history)
+                SIMULATION_HISTORY[:] = db_history  # one atomic swap: readers never see an empty list
             self._set_headers(200)
             self.wfile.write(json.dumps({
                 "status": "success",
@@ -2054,7 +2212,12 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 return
             elif fmt == "h5ad":
                 try:
-                    cells = int(query.get("cells_per_condition", [400])[0])
+                    cells = _parse_cells_per_condition(query)
+                except ValueError as e:
+                    self._set_headers(400)
+                    self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                    return
+                try:
                     data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells)
                     self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                     self.wfile.write(data)
@@ -2067,12 +2230,21 @@ class GRNWebHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"Not Found")
 
     def do_POST(self):
+        if self._reject_cross_origin():
+            return
         url = urllib.parse.urlparse(self.path)
         path = url.path
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        post_body = self.rfile.read(content_length)
-        params = json.loads(post_body.decode("utf-8")) if post_body else {}
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_body = self.rfile.read(content_length)
+            params = json.loads(post_body.decode("utf-8")) if post_body else {}
+            if not isinstance(params, dict):
+                raise ValueError("request body must be a JSON object")
+        except ValueError as e:  # bad Content-Length, invalid UTF-8/JSON, or a non-object body
+            self._set_headers(400)
+            self.wfile.write(json.dumps({"error": f"Invalid request body: {e}"}).encode("utf-8"))
+            return
 
         if path == "/api/simulate":
             try:
@@ -2092,10 +2264,12 @@ class GRNWebHandler(BaseHTTPRequestHandler):
         elif path == "/api/history/load":
             req_run_id = params.get("run_id")
             if req_run_id and req_run_id in SIMULATION_RUN_STORE:
-                stored = SIMULATION_RUN_STORE[req_run_id]
-                CURRENT_STATE.update(stored["state"])
-                sim_payload = dict(stored["sim_payload"])
-                sim_payload["inferred"] = stored["inferred_payload"]
+                with STATE_LOCK:
+                    stored = SIMULATION_RUN_STORE[req_run_id]
+                    CURRENT_STATE.update(stored["state"])
+                    sim_payload = dict(stored["sim_payload"])
+                    sim_payload["inferred"] = stored["inferred_payload"]
+                    _ensure_graph_views(sim_payload)
                 self._set_headers(200)
                 self.wfile.write(json.dumps(sim_payload).encode("utf-8"))
             else:
@@ -2146,7 +2320,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"Not Found")
 
 
-def run_server(port: int = 8080, host: str = "0.0.0.0", open_browser: bool = False):
+def run_server(port: int = 8080, host: str = "127.0.0.1", open_browser: bool = False):
     """Starts the GRN-Sim interactive web server."""
     _bootstrap_initial_simulation()
     server_address = (host, port)
@@ -2171,7 +2345,18 @@ def run_server(port: int = 8080, host: str = "0.0.0.0", open_browser: bool = Fal
         httpd.server_close()
 
 
+def _parse_cli(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """`python -m grn_sim.web.server [PORT] [--port N] [--host H]`; falls back to $PORT / $HOST, then 127.0.0.1:8080."""
+    parser = argparse.ArgumentParser(description="GRN-Sim / phpIoRN web server")
+    parser.add_argument("port_arg", nargs="?", type=int, metavar="PORT", help="port (same as --port)")
+    parser.add_argument("--port", type=int, help="port to listen on (default: $PORT or 8080)")
+    parser.add_argument("--host", help="interface to bind (default: $HOST or 127.0.0.1; use 0.0.0.0 to expose on the network)")
+    args = parser.parse_args(argv)
+    args.port = args.port or args.port_arg or int(os.environ.get("PORT", 8080))
+    args.host = args.host or os.environ.get("HOST", "127.0.0.1")
+    return args
+
+
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", 8080))
-    host = os.environ.get("HOST", "0.0.0.0")
-    run_server(port=port, host=host, open_browser=False)
+    cli = _parse_cli()
+    run_server(port=cli.port, host=cli.host, open_browser=False)

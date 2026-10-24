@@ -68,12 +68,16 @@ def test_response_predictions_are_positively_correlated_with_truth(benchmark):
 
 
 def test_unavailable_models_are_reported_not_substituted(benchmark):
-    unavailable = benchmark["parameters"]["unavailable_models"]
-    assert "cpa_lite" in unavailable
+    models = {m["key"]: m for m in benchmark["parameters"]["response_models"]}
+    unavailable = {k for k, m in models.items() if not m["available"]}
+    assert "cpa_lite" in unavailable and models["cpa_lite"]["reason"]
+    assert all(m["reason"] for m in models.values() if not m["available"])
+    assert not any(m["reason"] for m in models.values() if m["available"])
 
     for profile in benchmark["target_profiles"]:
-        assert not set(profile["predictions"]) & set(unavailable)
-        assert not set(profile["metrics"]) & (set(unavailable))
+        assert not set(profile["predictions"]) & unavailable
+        assert not set(profile["metrics"]) & unavailable
+        assert set(profile["predictions"]) == set(models) - unavailable
 
     # No model may silently reuse another model's predictions (CellBox used to be a copy of Vote).
     profiles = benchmark["target_profiles"]
@@ -185,3 +189,25 @@ def test_vcc_cache_is_bounded_and_quantised(monkeypatch):
     finally:
         server.BENCHMARK_CACHE.clear()
         server.BENCHMARK_CACHE.update(saved)
+
+
+# --- single registry -----------------------------------------------------------------------------
+
+def test_algorithm_registry_matches_the_runners_and_drives_the_table(benchmark):
+    keys = [k for k, _ in vcc.ALGORITHMS]
+    assert len(keys) == len(set(keys))
+    assert set(keys) == set(vcc._build_runners(1)) | {"atlasshift"}
+    assert [row["algorithm"] for row in benchmark["summary_table"]] == [k.upper() for k in keys]
+    assert all(row["paradigm"] for row in benchmark["summary_table"])
+
+
+def test_response_models_cover_runners_and_payload_order(benchmark):
+    assert {m.key for m in vcc.RESPONSE_MODELS} <= set(vcc._build_runners(1))
+    assert [m["key"] for m in benchmark["parameters"]["response_models"]] == [m.key for m in vcc.RESPONSE_MODELS]
+    assert all(m["label"] for m in benchmark["parameters"]["response_models"])
+
+
+def test_atlasshift_has_no_ignored_weights_argument():
+    import inspect
+    from grn_sim.inference.atlasshift import AtlasShift
+    assert "weights" not in inspect.signature(AtlasShift).parameters

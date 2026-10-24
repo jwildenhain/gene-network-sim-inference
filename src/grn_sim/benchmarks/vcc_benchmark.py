@@ -12,7 +12,7 @@ Provides:
 """
 
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, NamedTuple, Optional, Tuple
 import numpy as np
 from sklearn.decomposition import PCA
 
@@ -50,17 +50,52 @@ MAX_K_AV = 5.0
 # shared with server.py and parameter_sweep.py).
 FIT_INPUT_SIGN: Dict[str, float] = {"nir": -1.0, "fast": -1.0, "ridge_cv": -1.0}
 
-# Sign that turns pinv(A_est) @ u into a predicted response X[:, j], *given* the fit-time input
-# sign above. It differs per algorithm because their A_est follow different conventions
-# (DMD-GRN solves A X = -U; NIR/Ridge are fit on -U; S2G/G2S/Vote on +U). CellBox is listed with
-# +1 but learns near-zero weights at the default training budget, so its sign is not meaningful.
-RESPONSE_SIGN: Dict[str, float] = {
-    "vote": 1.0, "s2g": 1.0, "g2s": 1.0, "cellbox": 1.0, "ridge_cv": 1.0, "nir": 1.0, "dmdgrn": -1.0,
-}
-RESPONSE_MODEL_ORDER = ["vote", "cellbox", "s2g", "g2s", "ridge_cv", "cpa_lite", "nir", "dmdgrn"]
-UNSUPPORTED_RESPONSE_MODELS: Dict[str, str] = {
-    "cpa_lite": "A_est is a latent-space projection (Decoder @ Encoder), not a steady-state Jacobian",
-}
+
+
+class ResponseModel(NamedTuple):
+    """A model whose A_est is turned into a response predictor R = sign * pinv(A_est) (X_pred = R @ u)."""
+    key: str
+    label: str            # shown in the UI "Compare Model" dropdown
+    sign: float           # given the FIT_INPUT_SIGN above; A_est conventions differ per algorithm
+    unsupported: str = ""  # reason A_est cannot be used as a steady-state Jacobian
+
+
+# DMD-GRN solves A X = -U; NIR/Ridge are fit on -U; S2G/G2S/Vote on +U. CellBox is listed with +1 but
+# learns near-zero weights at the default training budget, so its sign is not meaningful.
+RESPONSE_MODELS: List[ResponseModel] = [
+    ResponseModel("vote", "Voting Ensemble (Consensus)", 1.0),
+    ResponseModel("cellbox", "CellBox Neural ODE", 1.0),
+    ResponseModel("s2g", "S2G (Forward AIC)", 1.0),
+    ResponseModel("g2s", "G2S (Backward AIC)", 1.0),
+    ResponseModel("ridge_cv", "Kaggle RidgeCV (L2)", 1.0),
+    ResponseModel("cpa_lite", "CPA-Lite (Latent)", 1.0,
+                  unsupported="A_est is a latent-space projection (Decoder @ Encoder), not a steady-state Jacobian"),
+    ResponseModel("nir", "NIR (Gardner SVD)", 1.0),
+    ResponseModel("dmdgrn", "DMD-GRN (Koopman)", -1.0),
+]
+RESPONSE_SIGN: Dict[str, float] = {m.key: m.sign for m in RESPONSE_MODELS}
+
+# Every algorithm in the summary table, in display order, with its paradigm label.
+ALGORITHMS: List[Tuple[str, str]] = [
+    ("vote", "Mechanistic Dynamical GRN (Consensus Voting)"),
+    ("cellbox", "Mechanistic Dynamical GRN (Neural ODE)"),
+    ("s2g", "Mechanistic Dynamical GRN (Forward AIC)"),
+    ("g2s", "Mechanistic Dynamical GRN (Backward AIC)"),
+    ("dmdgrn", "Mechanistic Dynamical GRN (Koopman Dynamics)"),
+    ("ridge_cv", "L2 Tikhonov Regularized Inverse"),
+    ("cpa_lite", "Latent Perturbation Space (CPA)"),
+    ("genie3", "Tree Ensemble & Random Forest"),
+    ("netdeconv", "Network Eigen-Deconvolution"),
+    ("nir", "Linear SVD / NIR (Gardner 2003)"),
+    ("fast", "FAST Truncated SVD (Thesis)"),
+    ("causalgrn", "Causal DAG & Interventional Do-Calculus"),
+    ("sfinn", "Symmetric Neighborhood Neural Net"),
+    ("deeprig", "Graph Autoencoder (GAE + GCN)"),
+    ("notears", "Continuous Constrained Acyclic DAG"),
+    ("arachne", "Information-Theoretic & DPI"),
+    ("atlasshift", "Empirical Cross-Atlas Transfer (VCC 2026)"),
+    ("by_chance", "Null Baseline (Uniform Chance)"),
+]
 
 
 def validate_vcc_params(num_genes: int, k_av: float, rewire_fraction: float) -> None:
@@ -305,7 +340,7 @@ def run_vcc_comparative_benchmark(
     T_true = target_exp.true_matrix
 
     # 4. Fit AtlasShift with the 3 source atlases
-    atlasshift = AtlasShift(weights=[2.0, 1.0, 1.0], de_threshold=0.15)
+    atlasshift = AtlasShift(de_threshold=0.15)
     for s_name, exp_s in source_experiments:
         atlasshift.add_source(s_name, exp_s.X, exp_s.U, weight=1.0)
     res_atlas = atlasshift.fit(X_tgt, U_tgt)
@@ -325,43 +360,13 @@ def run_vcc_comparative_benchmark(
         full_fits[name] = res
         eval_dict[name] = evaluate_inference(T_true, res.adjacency_pred)
 
-    # Paradigm classifications
-    paradigms = {
-        "vote": "Mechanistic Dynamical GRN (Consensus Voting)",
-        "s2g": "Mechanistic Dynamical GRN (Forward AIC)",
-        "g2s": "Mechanistic Dynamical GRN (Backward AIC)",
-        "cellbox": "Mechanistic Dynamical GRN (Neural ODE)",
-        "dmdgrn": "Mechanistic Dynamical GRN (Koopman Dynamics)",
-        "genie3": "Tree Ensemble & Random Forest",
-        "ridge_cv": "L2 Tikhonov Regularized Inverse",
-        "cpa_lite": "Latent Perturbation Space (CPA)",
-        "netdeconv": "Network Eigen-Deconvolution",
-        "nir": "Linear SVD / NIR (Gardner 2003)",
-        "fast": "FAST Truncated SVD (Thesis)",
-        "arachne": "Information-Theoretic & DPI",
-        "causalgrn": "Causal DAG & Interventional Do-Calculus",
-        "deeprig": "Graph Autoencoder (GAE + GCN)",
-        "sfinn": "Symmetric Neighborhood Neural Net",
-        "notears": "Continuous Constrained Acyclic DAG",
-        "atlasshift": "Empirical Cross-Atlas Transfer (VCC 2026)",
-        "by_chance": "Null Baseline (Uniform Chance)",
-    }
-
-    # Summary table formatted for display
+    # Summary table formatted for display (rows follow the ALGORITHMS order)
     summary_table = []
-    # Rank ordering: Vote, AtlasShift, then mechanistic, then ML
-    order = [
-        "vote", "cellbox", "s2g", "g2s", "dmdgrn", "ridge_cv", "cpa_lite",
-        "genie3", "netdeconv", "nir", "fast", "causalgrn", "sfinn",
-        "deeprig", "notears", "arachne", "atlasshift", "by_chance"
-    ]
-    for k in order:
-        if k not in eval_dict:
-            continue
-        m = eval_dict[k]
+    for key, paradigm in ALGORITHMS:
+        m = eval_dict[key]
         summary_table.append({
-            "algorithm": k.upper(),
-            "paradigm": paradigms.get(k, "Reverse-Engineering"),
+            "algorithm": key.upper(),
+            "paradigm": paradigm,
             "coverage_pct": round(m.coverage_pct, 1),
             "false_positives_pct": round(m.false_positives_pct, 1),
             "power_pct": round(m.inferred_connections_pct, 1),
@@ -383,21 +388,22 @@ def run_vcc_comparative_benchmark(
     U_train[:, unseen_indices] = 0.0
 
     response_ops: Dict[str, np.ndarray] = {}
-    unavailable_models: Dict[str, str] = dict(UNSUPPORTED_RESPONSE_MODELS)
+    unavailable: Dict[str, str] = {}
     held_out_runners = _build_runners(k_est)
-    for name in RESPONSE_MODEL_ORDER:
-        if name in unavailable_models:
+    for model in RESPONSE_MODELS:
+        if model.unsupported:
+            unavailable[model.key] = model.unsupported
             continue
         try:
-            res = held_out_runners[name].fit(X_train, FIT_INPUT_SIGN.get(name, 1.0) * U_train)
+            res = held_out_runners[model.key].fit(X_train, FIT_INPUT_SIGN.get(model.key, 1.0) * U_train)
         except Exception as exc:  # one failing model must not take down the whole benchmark
-            unavailable_models[name] = f"fit failed on held-out data: {exc}"
+            unavailable[model.key] = f"fit failed on held-out data: {exc}"
             continue
-        op, reason = _response_operator(res.A_est, RESPONSE_SIGN[name])
+        op, reason = _response_operator(res.A_est, model.sign)
         if op is None:
-            unavailable_models[name] = reason
+            unavailable[model.key] = reason
         else:
-            response_ops[name] = op
+            response_ops[model.key] = op
 
     target_profiles = []
     sim_seen_vote, sim_seen_atlas = [], []
@@ -537,7 +543,10 @@ def run_vcc_comparative_benchmark(
             "sources": source_names,
             "seen_targets": n_targets - n_unseen,
             "unseen_ood_targets": n_unseen,
-            "unavailable_models": unavailable_models,
+            "response_models": [
+                {"key": m.key, "label": m.label, "available": m.key in response_ops, "reason": unavailable.get(m.key, "")}
+                for m in RESPONSE_MODELS
+            ],
         },
         "summary_table": summary_table,
         "in_distribution": {

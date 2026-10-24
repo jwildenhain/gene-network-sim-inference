@@ -544,6 +544,11 @@ docker run -d --name grn-sim-phpiorn -p 8085:8080 -v $(pwd)/data:/app/data grn-s
 
 Then open **http://localhost:8085** in your browser.
 
+> **File ownership:** the container runs as root, so files it writes into the mounted `data/` folder (the SQLite archive and
+> `data/benchmarks/raw/*`) are owned by root on the host. A server started from a normal shell can still read them and
+> replace the benchmark exports, but to keep everything owned by you, start the container as your own user:
+> `docker run -d --user "$(id -u):$(id -g)" ...` (the image only needs write access to `/app/data`).
+
 ---
 
 ## 🚀 Local Python Installation & CLI
@@ -556,8 +561,19 @@ pip install -e ".[dev]"
 
 ### Launch the Web Server Directly
 ```bash
-python3 -m grn_sim.web.server --host 0.0.0.0 --port 8085
+python3 -m grn_sim.web.server --port 8085                    # http://127.0.0.1:8085 (this machine only)
+python3 -m grn_sim.web.server --host 0.0.0.0 --port 8085     # reachable from the network (the API has no authentication)
 ```
+The server binds `127.0.0.1` by default (override with `--host` or `$HOST`; the Docker image sets `HOST=0.0.0.0`).
+Browser requests from other origins are rejected with HTTP 403; set `GRN_CORS_ORIGIN=https://your.app` to allow one.
+
+### Network graph views
+Every network graph in the studio (Step 3 ground truth, Step 6 9-state graph, the Real-World Benchmarks known network and
+9-state reconstruction, and the Previous Simulations archive) has the same **Choose your view** bar:
+**Force Canvas**, **Hierarchical** and **Spring**; Step 3 also has **Graph file** (the Graphviz DOT text).
+**Hierarchical** has a **Layout: Layered | Grid** switch: *Layered* puts regulators above their targets (Graphviz when
+`dot` is installed, otherwise a built-in layered layout), *Grid* is a compact grid. The choice is shared by all graphs and
+remembered in the browser. Runs archived by older versions get the Grid version (and arrow heads) when they are loaded.
 
 ### Run Verification Test Suite
 ```bash

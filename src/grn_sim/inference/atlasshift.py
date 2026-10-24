@@ -22,7 +22,6 @@ class AtlasShift(BaseInferenceAlgorithm):
 
     def __init__(
         self,
-        weights: Optional[List[float]] = None,
         amplitude: float = 1.0,
         clip: float = 4.0,
         space: str = "log2fc",
@@ -30,7 +29,6 @@ class AtlasShift(BaseInferenceAlgorithm):
         k_top_edges: Optional[int] = None,
     ):
         super().__init__(name="atlasshift")
-        self.weights = weights
         self.amplitude = amplitude
         self.clip = clip
         self.space = space

@@ -137,24 +137,31 @@
     }
 
     /* Top Header & phpIoRN Navigation Bar */
+    /* Two stacked rows: [title ........ light/dark button] then [tabs 1-5, full width] */
     .topbar {
       background: var(--topbar-bg);
       border-bottom: 1px solid var(--border);
-      padding: 12px 24px;
+      padding: 10px 24px 12px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 14px;
+      flex-direction: column;
+      gap: 10px;
       position: sticky;
       top: 0;
       z-index: 50;
+    }
+
+    .topbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
     }
 
     .brand {
       display: flex;
       align-items: center;
       gap: 12px;
+      min-width: 0;
     }
 
     .brand-badge {
@@ -179,13 +186,6 @@
       color: var(--text-muted);
     }
 
-    .topbar-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
     .nav-tabs {
       display: flex;
       gap: 6px;
@@ -193,6 +193,7 @@
       padding: 4px;
       border-radius: 10px;
       border: 1px solid var(--border);
+      overflow-x: auto;
     }
 
     .nav-tab {
@@ -207,7 +208,17 @@
       transition: all 0.15s ease;
       display: flex;
       align-items: center;
+      justify-content: center;
+      text-align: center;
       gap: 6px;
+      flex: 1 1 0;     /* the five tabs share the full row evenly... */
+      min-width: 130px; /* ...and the row scrolls instead of crushing them on narrow screens */
+    }
+
+    /* Phones: a two-row sticky header would cover most of the screen, so let it scroll away */
+    @media (max-width: 700px) {
+      .topbar { position: static; padding: 10px 14px 12px; }
+      .brand-title p { display: none; }
     }
 
     .nav-tab:hover {
@@ -221,8 +232,10 @@
       box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
     }
 
-    /* Top-Right Theme Toggle Button */
+    /* Top-Right Theme Toggle Button (right end of the title row) */
     .theme-toggle-btn {
+      flex-shrink: 0;
+      white-space: nowrap;
       background: var(--bg-card);
       color: var(--text-main);
       border: 1px solid var(--border);
@@ -436,6 +449,16 @@
       gap: 16px;
     }
 
+    select { max-width: 100%; }
+
+    /* grid / flex children default to min-width:auto and would stretch their track (and the page) to fit wide content */
+    .workspace-grid > *,
+    .two-col-grid > *,
+    .three-col-grid > *,
+    .right-column > * {
+      min-width: 0;
+    }
+
     /* Panel / Card Styling */
     .panel {
       background: var(--bg-panel);
@@ -485,6 +508,12 @@
       background: rgba(245, 158, 11, 0.15);
       color: var(--accent-amber);
       border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .badge-purple {
+      background: rgba(139, 92, 246, 0.15);
+      color: #8b5cf6;
+      border-color: rgba(139, 92, 246, 0.35);
     }
 
     /* Form Controls */
@@ -716,6 +745,29 @@
       background: var(--bg-stage);
     }
 
+    /* "Choose your view" bar shared by every network panel */
+    .graph-view-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .graph-view-bar .gvb-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
+    .graph-view-bar .hier-layout-toggle {
+      align-items: center;
+      gap: 3px;
+      margin-left: 8px;
+      padding-left: 8px;
+      border-left: 1px solid var(--border);
+    }
+
     /* Adapt Graphviz SVG & stage background, node fill, and text in Light Mode */
     :root[data-theme="light"] .graph-stage,
     :root[data-theme="light"] .graph-stage canvas,
@@ -781,7 +833,7 @@
     /* 9-State Edge Legend (statsgraph_to_dot.m) */
     .legend-9state {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 6px;
       margin-top: 10px;
       padding: 8px 10px;
@@ -912,38 +964,42 @@
       padding: 12px 16px;
       box-shadow: 0 2px 10px rgba(16, 185, 129, 0.12);
     }
+
+    /* Narrower windows: stack the sidebar above the results, then the side-by-side panels */
+    @media (max-width: 1100px) {
+      .workspace-grid { grid-template-columns: 1fr; }
+      .three-col-grid { grid-template-columns: 1fr 1fr; }
+      .stat-grid { grid-template-columns: repeat(4, 1fr); }
+      /* inline column counts on the pill rows are overridden so the pills wrap instead of squeezing */
+      .settings-pill-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)) !important; }
+    }
+
+    @media (max-width: 900px) {
+      .vcc-split { grid-template-columns: 1fr !important; }
+      .vcc-split > * { min-width: 0; }
+    }
+
+    @media (max-width: 820px) {
+      .two-col-grid, .three-col-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
 
   <!-- Top Navigation Bar (Modernized phpIoRN global_conf.inc.php) -->
   <header class="topbar">
-    <div class="brand">
-      <div class="brand-badge">phpIoRN / GRN-Sim</div>
-      <div class="brand-title">
-        <h1>In Silico Gene Network Perturbation Simulator &amp; Inference Engine</h1>
-        <p>Wildenhain &amp; Crampin (2006) <em>IEE Proc. Systems Biology</em> 153(4):247–256 &bull; Honours Thesis (2004)</p>
+    <div class="topbar-row">
+      <div class="brand">
+        <div class="brand-badge">phpIoRN / GRN-Sim</div>
+        <div class="brand-title">
+          <h1>In Silico Gene Network Perturbation Simulator &amp; Inference Engine</h1>
+          <p>Wildenhain &amp; Crampin (2006) <em>IEE Proc. Systems Biology</em> 153(4):247–256 &bull; Honours Thesis (2004)</p>
+        </div>
       </div>
-    </div>
-
-    <div class="topbar-right">
-      <nav class="nav-tabs" role="tablist">
-        <button class="nav-tab active" data-tab="tab-wizard" onclick="switchMainTab('tab-wizard')">
-          <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
-        </button>
-        <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
-          <span>2. Real-World Benchmarks (SOS, DREAM4, Perturb-seq)</span>
-        </button>
-        <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
-          <span>3. Previous Simulations Archive (showpre.php)</span>
-        </button>
-        <button class="nav-tab" data-tab="tab-vcc" onclick="switchMainTab('tab-vcc')">
-          <span>4. Virtual Cell Challenge &amp; AtlasShift</span>
-        </button>
-        <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
-          <span>5. Overall Statistics</span>
-        </button>
-      </nav>
 
       <!-- Top-Right Light/Dark Mode Toggle Button -->
       <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="toggleColorScheme()" title="Toggle Light / Dark Mode">
@@ -951,6 +1007,24 @@
         <span id="theme-toggle-label">Light Mode</span>
       </button>
     </div>
+
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-tab="tab-wizard" onclick="switchMainTab('tab-wizard')">
+        <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
+        <span>2. Real-World Benchmarks (SOS, DREAM4, Perturb-seq)</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
+        <span>3. Previous Simulations Archive (showpre.php)</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-vcc" onclick="switchMainTab('tab-vcc')">
+        <span>4. Virtual Cell Challenge &amp; AtlasShift</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
+        <span>5. Overall Statistics</span>
+      </button>
+    </nav>
   </header>
 
   <main class="main-container">
@@ -1232,12 +1306,7 @@
                   </div>
                   <div id="gt-panel-subtitle-text" style="font-size:11px;color:var(--text-muted);">Click any node ($G_i$) or edge ($G_j \to G_i$) to inspect ODE Hill parameters</div>
                 </div>
-                <div style="display:flex;gap:4px;">
-                  <button class="btn btn-secondary btn-sm active" id="btn-gt-canvas" onclick="setGtView('canvas')">Force Canvas</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-gt-dot" onclick="setGtView('dot')">Hierarchical (dot)</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-gt-neato" onclick="setGtView('neato')">Spring (neato)</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-gt-source" onclick="setGtView('source')">DOT</button>
-                </div>
+                <div class="graph-view-bar" id="gt-view-bar"></div>
               </div>
 
               <div class="graph-stage" id="gt-stage">
@@ -1292,9 +1361,7 @@
                     <option value="sfinn">SFINN (Neighborhood NN)</option>
                     <option value="notears">NOTEARS (Acyclic DAG)</option>
                   </select>
-                  <button class="btn btn-secondary btn-sm active" id="btn-inf-canvas" onclick="setInfView('canvas')">Canvas</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-inf-dot" onclick="setInfView('dot')">dot SVG</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-inf-neato" onclick="setInfView('neato')">neato SVG</button>
+                  <div class="graph-view-bar" id="inf-view-bar"></div>
                 </div>
               </div>
 
@@ -1446,6 +1513,7 @@
     <!-- ========================================================================= -->
     <section id="tab-sos" class="tab-pane">
       <div class="panel" style="margin-bottom:16px;">
+        <div id="benchmark-load-error" role="alert" style="display:none;margin-bottom:10px;padding:8px 12px;border:1px solid var(--accent-red);border-radius:8px;font-size:12px;font-weight:600;color:var(--accent-red);"></div>
         <!-- Tab 2 Animated Loading Bar -->
         <div id="benchmark-loading-bar-container" class="benchmark-loading-bar-container" style="display:none;">
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
@@ -1636,7 +1704,11 @@
             <div class="panel-title" id="sos-true-title">Known SOS Regulatory Network (Ground Truth)</div>
             <span class="badge" id="sos-true-badge">43 Directed Edges</span>
           </div>
-          <div class="graph-stage" id="sos-true-stage" style="height:340px;"></div>
+          <div class="graph-view-bar" id="sos-true-views" style="margin-bottom:6px;"></div>
+          <div class="graph-stage" id="sos-true-stage" style="height:340px;">
+            <canvas id="sos-true-canvas" width="580" height="340" style="display:none;width:100%;height:100%;"></canvas>
+            <div id="sos-true-svg" style="width:100%;height:100%;overflow:auto;padding:8px;"></div>
+          </div>
         </div>
 
         <!-- Benchmark 9-State Reconstructed Graph -->
@@ -1645,7 +1717,11 @@
             <div class="panel-title">9-State Differential Reconstruction (<span id="sos-diff-title">VOTING</span>)</div>
             <span class="badge badge-emerald">9-State Differential Graph</span>
           </div>
-          <div class="graph-stage" id="sos-diff-stage" style="height:340px;"></div>
+          <div class="graph-view-bar" id="sos-diff-views" style="margin-bottom:6px;"></div>
+          <div class="graph-stage" id="sos-diff-stage" style="height:340px;">
+            <canvas id="sos-diff-canvas" width="580" height="340" style="display:none;width:100%;height:100%;"></canvas>
+            <div id="sos-diff-svg" style="width:100%;height:100%;overflow:auto;padding:8px;"></div>
+          </div>
         </div>
       </div>
 
@@ -1731,7 +1807,7 @@
             <div class="panel-title" id="sos-bench-tbl-title">Benchmark Method Comparison &amp; 4&times;4 Confusion Matrix</div>
             <span class="badge badge-amber" id="sos-bench-tbl-badge">Potential Interactions</span>
           </div>
-          <table class="data-table" id="tbl-sos-benchmark" style="margin-bottom:12px;">
+          <div style="overflow-x:auto;"><table class="data-table" id="tbl-sos-benchmark" style="margin-bottom:12px;">
             <thead>
               <tr>
                 <th>Method</th>
@@ -1746,12 +1822,12 @@
               </tr>
             </thead>
             <tbody></tbody>
-          </table>
+          </table></div>
 
           <div style="font-size:11.5px;font-weight:700;color:var(--text-main);margin:8px 0 6px;">
             Selected Algorithm 4&times;4 Misclassification Matrix (<span id="sos-cmat-name">VOTING</span>):
           </div>
-          <table class="data-table" id="tbl-sos-cmat">
+          <div style="overflow-x:auto;"><table class="data-table" id="tbl-sos-cmat">
             <thead>
               <tr>
                 <th>Observed \ Predicted</th>
@@ -1762,7 +1838,7 @@
               </tr>
             </thead>
             <tbody></tbody>
-          </table>
+          </table></div>
         </div>
       </div>
     </section>
@@ -2303,10 +2379,14 @@
         <div class="two-col-grid" style="margin-bottom:16px;">
           <div class="panel" style="padding:12px;">
             <div class="panel-header" style="margin-bottom:8px;">
-              <div class="panel-title">Archived Ground-Truth Network (Hierarchical dot SVG)</div>
+              <div class="panel-title">Archived Ground-Truth Network</div>
               <span class="badge" id="hist-gt-edges-badge">-- Edges</span>
             </div>
-            <div class="graph-stage" id="hist-gt-svg-stage" style="height:310px;"></div>
+            <div class="graph-view-bar" id="hist-gt-views" style="margin-bottom:6px;"></div>
+            <div class="graph-stage" id="hist-gt-svg-stage" style="height:310px;">
+              <canvas id="hist-gt-canvas" width="580" height="310" style="display:none;width:100%;height:100%;"></canvas>
+              <div id="hist-gt-svg" style="width:100%;height:100%;overflow:auto;padding:8px;"></div>
+            </div>
           </div>
 
           <div class="panel" style="padding:12px;">
@@ -2314,7 +2394,11 @@
               <div class="panel-title">Archived 9-State Differential Reconstruction (<span id="hist-diff-alg-badge">VOTE</span>)</div>
               <span class="badge badge-emerald">statsgraph_to_dot.m</span>
             </div>
-            <div class="graph-stage" id="hist-diff-svg-stage" style="height:310px;"></div>
+            <div class="graph-view-bar" id="hist-diff-views" style="margin-bottom:6px;"></div>
+            <div class="graph-stage" id="hist-diff-svg-stage" style="height:310px;">
+              <canvas id="hist-diff-canvas" width="580" height="310" style="display:none;width:100%;height:100%;"></canvas>
+              <div id="hist-diff-svg" style="width:100%;height:100%;overflow:auto;padding:8px;"></div>
+            </div>
           </div>
         </div>
 
@@ -2436,7 +2520,7 @@
               <div class="panel-title">All Algorithms Performance on This Run (Click Row to Switch)</div>
               <span class="badge">get_results.php</span>
             </div>
-            <table class="data-table" id="tbl-hist-alg-comparison">
+            <div style="overflow-x:auto;"><table class="data-table" id="tbl-hist-alg-comparison">
               <thead>
                 <tr>
                   <th>Algorithm</th>
@@ -2449,7 +2533,7 @@
                 </tr>
               </thead>
               <tbody></tbody>
-            </table>
+            </table></div>
           </div>
 
           <div class="panel" style="padding:12px;">
@@ -2457,7 +2541,7 @@
               <div class="panel-title">4&times;4 Misclassification Matrix ($TMP_CMAT — <span id="hist-cmat-alg">VOTE</span>)</div>
               <span class="badge badge-amber">stats_obs_pred.m</span>
             </div>
-            <table class="data-table" id="tbl-hist-cmat">
+            <div style="overflow-x:auto;"><table class="data-table" id="tbl-hist-cmat">
               <thead>
                 <tr>
                   <th>Observed \ Predicted</th>
@@ -2468,7 +2552,7 @@
                 </tr>
               </thead>
               <tbody></tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       </div>
@@ -2497,7 +2581,7 @@
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:6px;">
               <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;">Cell Context:</label>
-              <select id="vcc-cell-line" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(true)">
+              <select id="vcc-cell-line" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(false)">
                 <option value="0.05">K562-like (Low Rewire 5%)</option>
                 <option value="0.15" selected>HCT116-like (Std Rewire 15%)</option>
                 <option value="0.30">Jurkat-like (Rewired 30%)</option>
@@ -2527,6 +2611,7 @@
             <a class="btn btn-secondary btn-sm" id="btn-vcc-dl-h5ad" href="/api/export/perturb_seq_h5ad?cells_per_condition=400" download style="border-color:#8b5cf6;color:#8b5cf6;padding:6px 12px;font-weight:700;" title="Download 400 cells/condition single-cell Perturb-seq AnnData file (.h5ad)">
               &#128190; Export Perturb-seq .h5ad
             </a>
+            <div id="vcc-load-error" role="alert" style="display:none;flex-basis:100%;font-size:11.5px;font-weight:600;color:var(--accent-red);"></div>
           </div>
         </div>
       </div>
@@ -2601,7 +2686,7 @@
       </div>
 
       <!-- Main Comparison Grid: Table on Left, Rewire Decay on Right -->
-      <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="vcc-split" style="display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-bottom:14px;">
         <!-- Left: Comparative Edge Recovery Table -->
         <div class="panel" style="padding:14px;">
           <div class="panel-header">
@@ -2611,7 +2696,7 @@
             </div>
             <span class="badge badge-emerald">Table 1</span>
           </div>
-          <table class="data-table" id="tbl-vcc-summary">
+          <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcc-summary">
             <thead>
               <tr>
                 <th>Algorithm</th>
@@ -2623,7 +2708,7 @@
               </tr>
             </thead>
             <tbody></tbody>
-          </table>
+          </table></div>
         </div>
 
         <!-- Right: Rewiring Sensitivity Canvas Chart -->
@@ -2661,13 +2746,6 @@
             <label style="font-size:11.5px;font-weight:700;color:var(--text-main);margin-left:8px;">Compare Model:</label>
             <select id="vcc-model-select" style="width:auto;padding:4px 8px;font-size:12px;font-weight:700;" onchange="renderVccTargetProfile()">
               <option value="vote" selected>Voting Ensemble (Consensus)</option>
-              <option value="cellbox">CellBox Neural ODE</option>
-              <option value="s2g">S2G (Forward AIC)</option>
-              <option value="g2s">G2S (Backward AIC)</option>
-              <option value="ridge_cv">Kaggle RidgeCV (L2)</option>
-              <option value="cpa_lite">CPA-Lite (Latent)</option>
-              <option value="nir">NIR (Gardner SVD)</option>
-              <option value="dmdgrn">DMD-GRN (Koopman)</option>
             </select>
           </div>
         </div>
@@ -2703,13 +2781,13 @@
       </div>
 
       <!-- Section 4: Dual Perturbations & Single-Cell Virtual Sequencer -->
-      <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="vcc-split" style="display:grid;grid-template-columns:1.15fr 1fr;gap:12px;margin-bottom:14px;">
         <!-- Left: Combinatorial Double-Perturbation & Synthetic Lethality Screen -->
         <div class="panel" style="padding:14px;">
           <div class="panel-header">
             <div>
-              <div class="panel-title">Combinatorial Perturbations &amp; Epistasis Matrix ($G_i \times G_j$)</div>
-              <div style="font-size:11px;color:var(--text-muted);">Simulated double perturbations: deviation from multiplicative (log-additive) single effects, $\epsilon_{ij} = \|L^{\text{dual}} - (L_i + L_j)\|$ with $L = \log_2(x / x_{\text{basal}})$</div>
+              <div class="panel-title">Combinatorial Perturbations &amp; Epistasis Matrix (G<sub>i</sub> × G<sub>j</sub>)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Simulated double perturbations: deviation from multiplicative (log-additive) single effects, ε<sub>ij</sub> = ‖L<sub>ij</sub> − (L<sub>i</sub> + L<sub>j</sub>)‖ with L = log<sub>2</sub>(x / x<sub>basal</sub>)</div>
             </div>
             <span class="badge badge-purple">Double-KO Screen</span>
           </div>
@@ -2889,6 +2967,7 @@
     });
 
     function rerenderAllCanvasesForTheme() {
+      refreshGraphPanels('canvas');
       if (APP_STATE.sim) {
         drawGroundTruthCanvas();
         inspectNode(APP_STATE.selectedNodeIdx || 0, false);
@@ -2921,9 +3000,7 @@
       if (APP_STATE.overallStatsData) {
         renderOverallStats(APP_STATE.overallStatsData);
       }
-      if (APP_STATE.vccData && APP_STATE.vccData.rewire_decay) {
-        drawVccRewiringChart(APP_STATE.vccData.rewire_decay);
-      }
+      drawVccCharts(APP_STATE.vccData);
     }
 
     // ============================================================================
@@ -3853,12 +3930,6 @@
       document.getElementById('gt-summary-badge').textContent =
         `${sim.num_genes} Genes • ${sim.total_edges} Edges (+${sim.activations} / -${sim.inhibitions})`;
 
-      document.getElementById('gt-svg-dot').innerHTML = sim.svg_hierarchical || '';
-      document.getElementById('gt-svg-neato').innerHTML = sim.svg_spring || '';
-      attachSvgNodeInteractivity('gt-svg-dot', (geneName, idx) => inspectNode(idx, true));
-      attachSvgNodeInteractivity('gt-svg-neato', (geneName, idx) => inspectNode(idx, true));
-      document.getElementById('gt-dot-source').textContent = sim.dot_hierarchical || '';
-
       const nodeSel = document.getElementById('quick-node-select');
       const pertSel = document.getElementById('select-pert-gene');
       nodeSel.innerHTML = '';
@@ -3876,7 +3947,7 @@
       });
 
       computeNodePositions(sim.num_genes);
-      drawGroundTruthCanvas();
+      renderGraphPanel('gt');
       inspectNode(0, false);
       const btnLine = document.getElementById('btn-pert-plot-line');
       const btnBar = document.getElementById('btn-pert-plot-bar');
@@ -3887,40 +3958,311 @@
       drawExpressionHeatmap(sim.X, sim.gene_names);
     }
 
-    function setGtView(view) {
-      APP_STATE.gtView = view;
-      ['canvas', 'dot', 'neato', 'source'].forEach(v => {
-        document.getElementById(`btn-gt-${v}`).classList.toggle('active', v === view);
-      });
-      document.getElementById('canvas-gt-network').style.display = view === 'canvas' ? 'block' : 'none';
-      document.getElementById('gt-svg-dot').style.display = view === 'dot' ? 'block' : 'none';
-      document.getElementById('gt-svg-neato').style.display = view === 'neato' ? 'block' : 'none';
-      document.getElementById('gt-dot-source').style.display = view === 'source' ? 'block' : 'none';
+    // ============================================================================
+    // SHARED GRAPH VIEW CHOOSER
+    // Every network panel offers the same views: Force Canvas, Hierarchical (Layered | Grid), Spring.
+    // ============================================================================
+    const HIER_LAYOUT_KEY = 'grn.hierLayout';
+    const GRAPH_VIEW_INFO = {
+      canvas: { label: 'Force Canvas', tip: 'Interactive canvas: click a node to inspect it' },
+      hier: { label: 'Hierarchical', tip: 'Regulators above their targets - pick the Layered or the compact Grid arrangement' },
+      spring: { label: 'Spring', tip: 'Spring layout: nodes spread out evenly, ignoring edge direction' },
+      source: { label: 'Graph file', tip: 'Show the Graphviz (DOT) text file that describes this graph' },
+    };
+    const GRAPH_PANELS = {};
+
+    function currentHierLayout() {
+      if (!APP_STATE.hierLayout) {
+        try { APP_STATE.hierLayout = localStorage.getItem(HIER_LAYOUT_KEY) === 'grid' ? 'grid' : 'layered'; }
+        catch (e) { APP_STATE.hierLayout = 'layered'; }
+      }
+      return APP_STATE.hierLayout;
     }
 
-    function setInfView(view) {
-      APP_STATE.infView = view;
-      ['canvas', 'dot', 'neato'].forEach(v => {
-        document.getElementById(`btn-inf-${v}`).classList.toggle('active', v === view);
-      });
-      document.getElementById('canvas-inf-network').style.display = view === 'canvas' ? 'block' : 'none';
-      document.getElementById('inf-svg-dot').style.display = view === 'dot' ? 'block' : 'none';
-      document.getElementById('inf-svg-neato').style.display = view === 'neato' ? 'block' : 'none';
+    // The chosen version of a hierarchical SVG; falls back to the layered one when no grid version exists.
+    function pickHierSvg(layeredSvg, gridSvg) {
+      return (currentHierLayout() === 'grid' && gridSvg) ? gridSvg : (layeredSvg || '');
     }
 
-    function computeNodePositions(N, width = 580, height = 350) {
+    function syncHierLayoutToggle() {
+      const layout = currentHierLayout();
+      document.querySelectorAll('.hier-layout-toggle button').forEach(b => b.classList.toggle('active', b.dataset.layout === layout));
+    }
+
+    function circularPositions(N, width = 580, height = 350) {
       const cx = width / 2;
       const cy = height / 2;
       const rx = Math.min(width, height) * 0.41;
       const ry = Math.min(width, height) * 0.36;
-      APP_STATE.nodePositions = [];
+      const positions = [];
       for (let i = 0; i < N; i++) {
         const angle = (2 * Math.PI * i) / N - Math.PI / 2;
-        APP_STATE.nodePositions.push({
-          x: cx + rx * Math.cos(angle),
-          y: cy + ry * Math.sin(angle),
+        positions.push({ x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) });
+      }
+      return positions;
+    }
+
+    // Draws a graph ({nodes:[{label}], links:[{source_idx,target_idx,sign | color,style,arrowhead}]}) on a canvas.
+    function drawGraphOnCanvas(canvas, graph, { positions = null, selectedIdx = -1, nodeStroke = null } = {}) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const tc = getThemeColors();
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, W, H);
+
+      const nodes = (graph && graph.nodes) || [];
+      const links = (graph && graph.links) || [];
+      const pos = positions || circularPositions(nodes.length, W, H);
+
+      links.forEach(l => {
+        const p1 = pos[l.source_idx];
+        const p2 = pos[l.target_idx];
+        if (!p1 || !p2) return;
+        drawDirectedEdge(
+          ctx, p1.x, p1.y, p2.x, p2.y,
+          l.color || (l.sign > 0 ? '#10b981' : '#ef4444'),
+          l.style || 'solid',
+          l.arrowhead || (l.sign > 0 ? 'normal' : 'tee'),
+          l.source_idx === l.target_idx
+        );
+      });
+
+      nodes.forEach((n, idx) => {
+        const p = pos[idx];
+        if (!p) return;
+        const isSel = idx === selectedIdx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+        ctx.fillStyle = isSel ? tc.nodeSelFill : tc.nodeFill;
+        ctx.fill();
+        ctx.lineWidth = isSel ? 3 : 2;
+        ctx.strokeStyle = isSel ? tc.nodeSelStroke : (nodeStroke || tc.nodeStroke);
+        ctx.stroke();
+        ctx.fillStyle = tc.textMain;
+        ctx.font = 'bold 11.5px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.label, p.x, p.y);
+        ctx.restore();
+      });
+      return pos;
+    }
+
+    /*
+     * registerGraphPanel({
+     *   id, barId, stageId, views: ['canvas','hier','spring','source'], defaultView,
+     *   hosts:   { canvas, hier, spring, source }  element ids (hier and spring may share one host),
+     *   buttonIds: optional { view: buttonId },
+     *   data():  { graph, hier, hierGrid, spring, source } for the panel's current network, or null,
+     *   drawCanvas(canvasEl, graph): optional custom canvas painter,
+     *   onNodeClick(geneName, idx), selectedIdx(), afterRender()
+     * })
+     */
+    function registerGraphPanel(cfg) {
+      const panel = Object.assign({ view: cfg.defaultView, positions: null, graph: null }, cfg);
+      GRAPH_PANELS[cfg.id] = panel;
+      buildGraphViewBar(cfg.id);
+      syncGraphBar(cfg.id);
+
+      const canvas = document.getElementById(cfg.hosts.canvas);
+      if (canvas && cfg.genericCanvasClick) {
+        canvas.style.cursor = cfg.onNodeClick ? 'pointer' : 'default';
+        canvas.addEventListener('click', (ev) => {
+          if (!panel.positions || !panel.graph || !cfg.onNodeClick) return;
+          const rect = canvas.getBoundingClientRect();
+          const mx = (ev.clientX - rect.left) * (canvas.width / rect.width);
+          const my = (ev.clientY - rect.top) * (canvas.height / rect.height);
+          const hit = panel.positions.findIndex(pt => Math.hypot(mx - pt.x, my - pt.y) <= 22);
+          if (hit >= 0) cfg.onNodeClick(panel.graph.nodes[hit].label, hit);
         });
       }
+    }
+
+    function buildGraphViewBar(id) {
+      const p = GRAPH_PANELS[id];
+      const bar = document.getElementById(p.barId);
+      if (!bar) return;
+      const buttons = p.views.map(v => {
+        const btnId = (p.buttonIds && p.buttonIds[v]) || `btn-${id}-${v}`;
+        const info = GRAPH_VIEW_INFO[v];
+        return `<button type="button" class="btn btn-secondary btn-sm" id="${btnId}" data-view="${v}" title="${info.tip}" onclick="setGraphView('${id}', '${v}')">${info.label}</button>`;
+      }).join('');
+      const layoutToggle = p.views.includes('hier') ? `
+        <span class="hier-layout-toggle" id="${id}-layout-toggle" style="display:none;" title="Arrangement of the hierarchical view">
+          <span class="gvb-label">Layout:</span>
+          <button type="button" class="btn btn-secondary btn-sm" data-layout="layered" onclick="setHierLayout('layered')" title="Regulators on top, targets in the rows below (Graphviz dot style)">Layered</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-layout="grid" onclick="setHierLayout('grid')" title="Compact grid, independent of edge direction">Grid</button>
+        </span>` : '';
+      bar.classList.add('graph-view-bar');
+      bar.innerHTML = `<span class="gvb-label">Choose your view:</span>${buttons}${layoutToggle}`;
+    }
+
+    // highlights the active view button and shows the Layout toggle only for the hierarchical view
+    function syncGraphBar(id) {
+      const p = GRAPH_PANELS[id];
+      const bar = document.getElementById(p.barId);
+      if (!bar) return;
+      bar.querySelectorAll('button[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === p.view));
+      const toggle = bar.querySelector('.hier-layout-toggle');
+      if (toggle) toggle.style.display = p.view === 'hier' ? 'inline-flex' : 'none';
+      syncHierLayoutToggle();
+    }
+
+    function setGraphView(id, view) {
+      const p = GRAPH_PANELS[id];
+      if (!p || !p.views.includes(view)) return;
+      p.view = view;
+      renderGraphPanel(id);
+    }
+
+    function renderGraphPanel(id) {
+      const p = GRAPH_PANELS[id];
+      if (!p) return;
+      const data = p.data() || {};
+
+      syncGraphBar(id);
+
+      // only the host of the current view is shown; SVG hosts of the other views are emptied so nothing is duplicated
+      const shown = p.hosts[p.view];
+      new Set(Object.values(p.hosts)).forEach(hostId => {
+        const el = document.getElementById(hostId);
+        if (!el) return;
+        el.style.display = hostId === shown ? 'block' : 'none';
+        if (hostId !== shown && hostId !== p.hosts.canvas && hostId !== p.hosts.source) el.innerHTML = '';
+      });
+      const host = document.getElementById(shown);
+      if (!host) return;
+
+      if (p.view === 'canvas') {
+        p.graph = data.graph || null;
+        if (p.drawCanvas) {
+          p.drawCanvas(host, data.graph);
+        } else if (data.graph) {
+          p.positions = drawGraphOnCanvas(host, data.graph, { selectedIdx: p.selectedIdx ? p.selectedIdx() : -1 });
+        } else {
+          drawGraphOnCanvas(host, { nodes: [], links: [] });
+        }
+      } else if (p.view === 'source') {
+        host.textContent = data.source || '';
+      } else {
+        host.innerHTML = p.view === 'hier' ? pickHierSvg(data.hier, data.hierGrid) : (data.spring || '');
+        if (p.onNodeClick) attachSvgNodeInteractivity(shown, p.onNodeClick);
+      }
+      if (p.afterRender) p.afterRender();
+    }
+
+    // re-render panels (optionally only those showing a given view), e.g. after a theme or selection change
+    function refreshGraphPanels(view = null, ids = Object.keys(GRAPH_PANELS)) {
+      ids.forEach(id => { if (GRAPH_PANELS[id] && (view === null || GRAPH_PANELS[id].view === view)) renderGraphPanel(id); });
+    }
+
+    function setHierLayout(layout) {
+      APP_STATE.hierLayout = layout === 'grid' ? 'grid' : 'layered';
+      try { localStorage.setItem(HIER_LAYOUT_KEY, APP_STATE.hierLayout); } catch (e) { /* preference just isn't remembered */ }
+      syncHierLayoutToggle();
+      refreshGraphPanels('hier');
+    }
+
+    // names used by the earlier buttons
+    function setGtView(view) { setGraphView('gt', { dot: 'hier', neato: 'spring' }[view] || view); }
+    function setInfView(view) { setGraphView('inf', { dot: 'hier', neato: 'spring' }[view] || view); }
+
+    function geneIndexOf(names, gene) { return gene && names ? names.indexOf(gene) : -1; }
+
+    registerGraphPanel({
+      id: 'gt', barId: 'gt-view-bar', stageId: 'gt-stage',
+      views: ['canvas', 'hier', 'spring', 'source'], defaultView: 'canvas',
+      buttonIds: { canvas: 'btn-gt-canvas', hier: 'btn-gt-dot', spring: 'btn-gt-neato', source: 'btn-gt-source' },
+      hosts: { canvas: 'canvas-gt-network', hier: 'gt-svg-dot', spring: 'gt-svg-neato', source: 'gt-dot-source' },
+      data: () => APP_STATE.sim && {
+        graph: APP_STATE.sim.graph, hier: APP_STATE.sim.svg_hierarchical, hierGrid: APP_STATE.sim.svg_hierarchical_grid,
+        spring: APP_STATE.sim.svg_spring, source: APP_STATE.sim.dot_hierarchical,
+      },
+      drawCanvas: () => drawGroundTruthCanvas(),
+      onNodeClick: (geneName, idx) => inspectNode(idx, true),
+    });
+
+    registerGraphPanel({
+      id: 'inf', barId: 'inf-view-bar', stageId: 'inf-stage',
+      views: ['canvas', 'hier', 'spring'], defaultView: 'canvas',
+      buttonIds: { canvas: 'btn-inf-canvas', hier: 'btn-inf-dot', spring: 'btn-inf-neato' },
+      hosts: { canvas: 'canvas-inf-network', hier: 'inf-svg-dot', spring: 'inf-svg-neato' },
+      data: () => {
+        const inf = APP_STATE.inferred;
+        const alg = APP_STATE.activeAlg;
+        if (!inf || !alg) return null;
+        return {
+          graph: inf.comparison_graphs && inf.comparison_graphs[alg],
+          hier: inf.svgs_dot && inf.svgs_dot[alg], hierGrid: inf.svgs_dot_grid && inf.svgs_dot_grid[alg],
+          spring: inf.svgs_neato && inf.svgs_neato[alg],
+        };
+      },
+      drawCanvas: (canvas, graph) => draw9StateComparisonCanvas(graph),
+      onNodeClick: (geneName, idx) => inspectNode(idx, true),
+    });
+
+    registerGraphPanel({
+      id: 'sos_true', barId: 'sos-true-views', stageId: 'sos-true-stage',
+      views: ['canvas', 'hier', 'spring'], defaultView: 'hier', genericCanvasClick: true,
+      hosts: { canvas: 'sos-true-canvas', hier: 'sos-true-svg', spring: 'sos-true-svg' },
+      data: () => APP_STATE.sosData && {
+        graph: APP_STATE.sosData.true_graph, hier: APP_STATE.sosData.svg_true_dot,
+        hierGrid: APP_STATE.sosData.svg_true_dot_grid, spring: APP_STATE.sosData.svg_true_neato,
+      },
+      selectedIdx: () => geneIndexOf(APP_STATE.sosData && APP_STATE.sosData.gene_names, APP_STATE.activeSosGene),
+      onNodeClick: (geneName) => selectSosGene(geneName, true),
+      afterRender: () => { if (APP_STATE.activeSosGene) highlightSvgActiveNode('sos-true-stage', APP_STATE.activeSosGene); },
+    });
+
+    registerGraphPanel({
+      id: 'sos_diff', barId: 'sos-diff-views', stageId: 'sos-diff-stage',
+      views: ['canvas', 'hier', 'spring'], defaultView: 'hier', genericCanvasClick: true,
+      hosts: { canvas: 'sos-diff-canvas', hier: 'sos-diff-svg', spring: 'sos-diff-svg' },
+      data: () => {
+        const d = APP_STATE.sosData;
+        const alg = APP_STATE.sosAlg;
+        if (!d || !alg) return null;
+        return {
+          graph: d.comparison_graphs && d.comparison_graphs[alg],
+          hier: d.svgs_dot && d.svgs_dot[alg], hierGrid: d.svgs_dot_grid && d.svgs_dot_grid[alg],
+          spring: d.svgs_neato && d.svgs_neato[alg],
+        };
+      },
+      selectedIdx: () => geneIndexOf(APP_STATE.sosData && APP_STATE.sosData.gene_names, APP_STATE.activeSosGene),
+      onNodeClick: (geneName) => selectSosGene(geneName, true),
+      afterRender: () => { if (APP_STATE.activeSosGene) highlightSvgActiveNode('sos-diff-stage', APP_STATE.activeSosGene); },
+    });
+
+    registerGraphPanel({
+      id: 'hist_gt', barId: 'hist-gt-views', stageId: 'hist-gt-svg-stage',
+      views: ['canvas', 'hier', 'spring'], defaultView: 'hier',
+      hosts: { canvas: 'hist-gt-canvas', hier: 'hist-gt-svg', spring: 'hist-gt-svg' },
+      data: () => APP_STATE.archiveDetail && {
+        graph: APP_STATE.archiveDetail.graph, hier: APP_STATE.archiveDetail.svg_hierarchical,
+        hierGrid: APP_STATE.archiveDetail.svg_hierarchical_grid, spring: APP_STATE.archiveDetail.svg_spring,
+      },
+    });
+
+    registerGraphPanel({
+      id: 'hist_diff', barId: 'hist-diff-views', stageId: 'hist-diff-svg-stage',
+      views: ['canvas', 'hier', 'spring'], defaultView: 'hier',
+      hosts: { canvas: 'hist-diff-canvas', hier: 'hist-diff-svg', spring: 'hist-diff-svg' },
+      data: () => {
+        const inf = APP_STATE.archiveDetail && APP_STATE.archiveDetail.inferred;
+        const alg = APP_STATE.archiveActiveAlg;
+        if (!inf || !alg) return null;
+        return {
+          graph: inf.comparison_graphs && inf.comparison_graphs[alg],
+          hier: inf.svgs_dot && inf.svgs_dot[alg], hierGrid: inf.svgs_dot_grid && inf.svgs_dot_grid[alg],
+          spring: inf.svgs_neato && inf.svgs_neato[alg],
+        };
+      },
+    });
+
+    function computeNodePositions(N, width = 580, height = 350) {
+      APP_STATE.nodePositions = circularPositions(N, width, height);
     }
 
     function drawDirectedEdge(ctx, x1, y1, x2, y2, color, style, arrowhead, isSelfLoop) {
@@ -3984,46 +4326,9 @@
     function drawGroundTruthCanvas() {
       const sim = APP_STATE.sim;
       if (!sim || !sim.graph) return;
-      const canvas = document.getElementById('canvas-gt-network');
-      const ctx = canvas.getContext('2d');
-      const W = canvas.width;
-      const H = canvas.height;
-      const tc = getThemeColors();
-      ctx.fillStyle = tc.stageBg;
-      ctx.fillRect(0, 0, W, H);
-
-      const pos = APP_STATE.nodePositions;
-      const links = sim.graph.links || [];
-      const nodes = sim.graph.nodes || [];
-
-      links.forEach(l => {
-        const p1 = pos[l.source_idx];
-        const p2 = pos[l.target_idx];
-        if (!p1 || !p2) return;
-        const color = l.sign > 0 ? '#10b981' : '#ef4444';
-        const head = l.sign > 0 ? 'normal' : 'tee';
-        drawDirectedEdge(ctx, p1.x, p1.y, p2.x, p2.y, color, 'solid', head, l.source_idx === l.target_idx);
-      });
-
-      nodes.forEach((n, idx) => {
-        const p = pos[idx];
-        if (!p) return;
-        const isSel = idx === APP_STATE.selectedNodeIdx;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-        ctx.fillStyle = isSel ? tc.nodeSelFill : tc.nodeFill;
-        ctx.fill();
-        ctx.lineWidth = isSel ? 3 : 2;
-        ctx.strokeStyle = isSel ? tc.nodeSelStroke : tc.nodeStroke;
-        ctx.stroke();
-
-        ctx.fillStyle = tc.textMain;
-        ctx.font = 'bold 11.5px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(n.label, p.x, p.y);
-        ctx.restore();
+      drawGraphOnCanvas(document.getElementById('canvas-gt-network'), sim.graph, {
+        positions: APP_STATE.nodePositions,
+        selectedIdx: APP_STATE.selectedNodeIdx,
       });
     }
 
@@ -4565,11 +4870,7 @@
 
       renderConfusionMatrixTable('#tbl-cmat tbody', inf.confusion_matrix ? inf.confusion_matrix[alg] : null);
 
-      document.getElementById('inf-svg-dot').innerHTML = (inf.svgs_dot && inf.svgs_dot[alg]) || '';
-      document.getElementById('inf-svg-neato').innerHTML = (inf.svgs_neato && inf.svgs_neato[alg]) || '';
-      attachSvgNodeInteractivity('inf-svg-dot', (geneName, idx) => inspectNode(idx, true));
-      attachSvgNodeInteractivity('inf-svg-neato', (geneName, idx) => inspectNode(idx, true));
-      draw9StateComparisonCanvas(inf.comparison_graphs ? inf.comparison_graphs[alg] : null);
+      renderGraphPanel('inf');
     }
 
     function renderConfusionMatrixTable(selector, cmat) {
@@ -4613,49 +4914,7 @@
     function draw9StateComparisonCanvas(compGraph) {
       const canvas = document.getElementById('canvas-inf-network');
       if (!canvas || !compGraph) return;
-      const ctx = canvas.getContext('2d');
-      const W = canvas.width;
-      const H = canvas.height;
-      const tc = getThemeColors();
-      ctx.fillStyle = tc.stageBg;
-      ctx.fillRect(0, 0, W, H);
-
-      const pos = APP_STATE.nodePositions;
-      const links = compGraph.links || [];
-      const nodes = compGraph.nodes || [];
-
-      links.forEach(l => {
-        const p1 = pos[l.source_idx];
-        const p2 = pos[l.target_idx];
-        if (!p1 || !p2) return;
-        drawDirectedEdge(
-          ctx, p1.x, p1.y, p2.x, p2.y,
-          l.color || '#10b981',
-          l.style || 'solid',
-          l.arrowhead || 'normal',
-          l.source_idx === l.target_idx
-        );
-      });
-
-      nodes.forEach((n, idx) => {
-        const p = pos[idx];
-        if (!p) return;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-        ctx.fillStyle = tc.nodeFill;
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#6366f1';
-        ctx.stroke();
-
-        ctx.fillStyle = tc.textMain;
-        ctx.font = 'bold 11.5px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(n.label, p.x, p.y);
-        ctx.restore();
-      });
+      drawGraphOnCanvas(canvas, compGraph, { positions: APP_STATE.nodePositions, nodeStroke: '#6366f1' });
     }
 
     function drawAicProfile(aic) {
@@ -4686,16 +4945,16 @@
         datasetButtons.forEach(b => b.disabled = true);
         document.getElementById('bench-dataset-provenance-card')?.style.setProperty('opacity', '0.6');
 
-        APP_STATE.activeBenchmark = datasetId;
         const res = await fetch(`/api/benchmark/dataset?id=${encodeURIComponent(datasetId)}`);
-        const data = await res.json();
-        if (data.status !== 'success') {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.status !== 'success') {
+          // keep showing the previous dataset (and its active pill) and say why the switch did not happen
           console.error('Failed to load benchmark dataset:', data);
-          if (loadingText) {
-            loadingText.innerHTML = `<span style="color:var(--accent-pink);">❌ Error loading ${datasetId}: ${data.error || 'Server error'}</span>`;
-          }
+          showBenchmarkError(`Could not load "${datasetId}": ${data.error || `server error (HTTP ${res.status})`}. Still showing ${APP_STATE.activeBenchmark || 'the previous dataset'}.`);
           return;
         }
+        showBenchmarkError('');
+        APP_STATE.activeBenchmark = datasetId;
         APP_STATE.sosData = data;
 
         // Update active class on dataset selector pills
@@ -4772,8 +5031,7 @@
           }).join('');
         }
 
-        document.getElementById('sos-true-stage').innerHTML = data.svg_true_dot || '';
-        attachSvgNodeInteractivity('sos-true-stage', (geneName) => selectSosGene(geneName, true));
+        renderGraphPanel('sos_true');
 
         const tbody = document.querySelector('#tbl-sos-benchmark tbody');
         tbody.innerHTML = '';
@@ -4818,6 +5076,7 @@
         }
       } catch (e) {
         console.error('Benchmark Studio error:', e);
+        showBenchmarkError(`Could not load "${datasetId}": ${e.message || e}`);
       } finally {
         if (loadingBar) loadingBar.style.display = 'none';
         datasetButtons.forEach(b => b.disabled = false);
@@ -4827,6 +5086,13 @@
 
     function switchBenchmarkDataset(datasetId) {
       loadSosFullStudio(datasetId);
+    }
+
+    function showBenchmarkError(message) {
+      const el = document.getElementById('benchmark-load-error');
+      if (!el) return;
+      el.textContent = message ? `❌ ${message}` : '';
+      el.style.display = message ? 'block' : 'none';
     }
 
     async function loadBenchmarkIntoStudio(loadingMode = 'wrangled_direct') {
@@ -4854,8 +5120,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dataset_id: datasetId, loading_mode: loadingMode }),
         });
-        const data = await res.json();
-        if (data.status === 'success') {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.status !== 'success') {
+          showBenchmarkError(`Could not load "${datasetId}" into the Studio: ${data.error || `server error (HTTP ${res.status})`}`);
+        } else {
+          showBenchmarkError('');
           APP_STATE.sim = data;
           APP_STATE.inferred = data.inferred || {};
           applySettingsToForm(data.settings, data);
@@ -4871,6 +5140,7 @@
         }
       } catch (err) {
         console.error('Error loading benchmark dataset to studio:', err);
+        showBenchmarkError(`Could not load "${datasetId}" into the Studio: ${err.message || err}`);
       } finally {
         if (loadingBar) loadingBar.style.display = 'none';
         if (activeBtn) {
@@ -4929,11 +5199,8 @@
       if (!data) return;
       document.getElementById('sos-diff-title').textContent = alg.toUpperCase();
       document.getElementById('sos-cmat-name').textContent = alg.toUpperCase();
-      document.getElementById('sos-diff-stage').innerHTML = (data.svgs_dot && data.svgs_dot[alg]) || '';
-      attachSvgNodeInteractivity('sos-diff-stage', (geneName) => selectSosGene(geneName, true));
-      if (APP_STATE.activeSosGene) {
-        highlightSvgActiveNode('sos-diff-stage', APP_STATE.activeSosGene);
-      }
+      APP_STATE.sosAlg = alg;
+      renderGraphPanel('sos_diff');
       renderConfusionMatrixTable('#tbl-sos-cmat tbody', data.confusion_matrices ? data.confusion_matrices[alg] : null);
     }
 
@@ -5173,6 +5440,7 @@
       // Highlight active node in both SVGs
       highlightSvgActiveNode('sos-true-stage', geneName);
       highlightSvgActiveNode('sos-diff-stage', geneName);
+      refreshGraphPanels('canvas', ['sos_true', 'sos_diff']);  // the canvas views show the selection too
 
       // Render Trajectory and Expression State Charts
       renderSosGeneDynamicsInspector(gProfile);
@@ -7154,7 +7422,7 @@
 
       document.getElementById('hist-gt-edges-badge').textContent =
         `${data.total_edges} Edges (+${data.activations} / -${data.inhibitions})`;
-      document.getElementById('hist-gt-svg-stage').innerHTML = data.svg_hierarchical || '';
+      renderGraphPanel('hist_gt');
 
       // Determine best algorithm for this run
       const metrics = inf.metrics || {};
@@ -7229,7 +7497,7 @@
       document.getElementById('hst-fnr').textContent = `${st.false_negative_rate ?? '--'}%`;
       document.getElementById('hst-err').textContent = `${st.total_errors ?? '--'}`;
 
-      document.getElementById('hist-diff-svg-stage').innerHTML = (inf.svgs_dot && inf.svgs_dot[alg]) || '';
+      renderGraphPanel('hist_diff');
       renderConfusionMatrixTable('#tbl-hist-cmat tbody', inf.confusion_matrix ? inf.confusion_matrix[alg] : null);
     }
 
@@ -7765,33 +8033,50 @@
     // ============================================================================
     // TAB 4: VIRTUAL CELL CHALLENGE 2026 & IN SILICO SIMULATION ENGINE
     // ============================================================================
+    let vccRequestSeq = 0;
+    let vccAbortController = null;
+
+    function setVccBusy(busy) {
+      const btn = document.getElementById('btn-run-vcc');
+      if (!btn) return;
+      btn.disabled = busy;
+      btn.innerHTML = busy ? '<span class="spinner-inline"></span> Simulating...' : '&#9654; Re-Simulate Virtual Cell';
+    }
+
+    function showVccError(message) {
+      const el = document.getElementById('vcc-load-error');
+      if (!el) return;
+      el.textContent = message ? `Virtual cell simulation failed: ${message}` : '';
+      el.style.display = message ? 'block' : 'none';
+    }
+
     function loadVccBenchmarkData(refresh = false) {
       const n = document.getElementById('vcc-num-genes')?.value || 12;
       const kav = document.getElementById('vcc-kav')?.value || 1.8;
       const rewireFrac = document.getElementById('vcc-cell-line')?.value || 0.15;
-      const btn = document.getElementById('btn-run-vcc');
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-inline"></span> Simulating...';
-      }
 
-      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}&rewire_fraction=${rewireFrac}`)
-        .then(r => r.json())
-        .then(data => {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '&#9654; Re-Simulate Virtual Cell';
-          }
-          if (data.status !== 'success') return;
+      // Only the newest request may update the page: abort the previous one and ignore stragglers.
+      if (vccAbortController) vccAbortController.abort();
+      const controller = vccAbortController = new AbortController();
+      const seq = ++vccRequestSeq;
+      setVccBusy(true);
+
+      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}&rewire_fraction=${rewireFrac}`, { signal: controller.signal })
+        .then(r => r.json().catch(() => ({})).then(data => ({ ok: r.ok, status: r.status, data })))
+        .then(({ ok, status, data }) => {
+          if (seq !== vccRequestSeq) return;
+          if (!ok || data.status !== 'success') throw new Error(data.error || `HTTP ${status}`);
           APP_STATE.vccData = data;
+          showVccError('');
           renderVccBenchmarkUI(data);
         })
         .catch(err => {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '&#9654; Re-Simulate Virtual Cell';
-          }
+          if (err.name === 'AbortError' || seq !== vccRequestSeq) return;
           console.error("VCC benchmark load error:", err);
+          showVccError(err.message || String(err));
+        })
+        .finally(() => {
+          if (seq === vccRequestSeq) setVccBusy(false);
         });
     }
 
@@ -7856,12 +8141,7 @@
         if (elA) elA.textContent = `r = ${ood.atlasshift.pearson_r.toFixed(3)}`;
       }
 
-      // 3. Rewiring Decay Chart (Comparing 4 Models)
-      if (data.rewire_decay) {
-        drawVccRewiringChart(data.rewire_decay);
-      }
-
-      // 4. Populate Target Gene Dropdown & Render Profile Comparator
+      // 3. Populate Target Gene Dropdown & model options for the Profile Comparator
       const targetSelect = document.getElementById('vcc-target-select');
       if (targetSelect && data.target_profiles) {
         const currentVal = targetSelect.value;
@@ -7874,13 +8154,11 @@
         } else {
           targetSelect.value = '0';
         }
-        syncVccModelOptions((data.parameters && data.parameters.unavailable_models) || {});
-        renderVccTargetProfile();
+        syncVccModelOptions((data.parameters && data.parameters.response_models) || []);
       }
 
-      // 5. Render Combinatorial Epistasis Screen
+      // 4. Top synergistic pairs list
       if (data.combinatorial_screen) {
-        drawVccEpistasisHeatmap('canvas-vcc-epistasis', data.combinatorial_screen.epistasis_matrix, data.combinatorial_screen.gene_names);
         const listEl = document.getElementById('vcc-top-synergy-list');
         if (listEl && data.combinatorial_screen.top_synergy_pairs) {
           listEl.innerHTML = data.combinatorial_screen.top_synergy_pairs.slice(0, 7).map(pair => `
@@ -7892,9 +8170,8 @@
         }
       }
 
-      // 6. Render Virtual Single-Cell Sequencer PCA
+      // 5. Virtual Single-Cell Sequencer labels
       if (data.single_cell_pca) {
-        drawVccSingleCellPca('canvas-vcc-pca', data.single_cell_pca);
         const badgeEl = document.getElementById('vcc-pca-cells-badge');
         if (badgeEl) badgeEl.textContent = `${data.single_cell_pca.num_cells} Single Cells`;
         const varExpEl = document.getElementById('vcc-pca-var-exp');
@@ -7902,24 +8179,40 @@
           varExpEl.textContent = `PCA Variance Explained: PC1: ${data.single_cell_pca.variance_explained[0]}% • PC2: ${data.single_cell_pca.variance_explained[1]}%`;
         }
       }
+
+      drawVccCharts(data);
     }
 
-    // Disables comparator models whose fit produced no usable response operator (see unavailable_models)
-    // and moves the selection to the first model that did.
-    function syncVccModelOptions(unavailable) {
-      const sel = document.getElementById('vcc-model-select');
-      if (!sel) return;
-      Array.from(sel.options).forEach(opt => {
-        if (!opt.dataset.label) opt.dataset.label = opt.text;
-        const reason = unavailable[opt.value];
-        opt.disabled = !!reason;
-        opt.title = reason || '';
-        opt.text = reason ? `${opt.dataset.label} (n/a)` : opt.dataset.label;
-      });
-      if (sel.selectedOptions.length && sel.selectedOptions[0].disabled) {
-        const firstOk = Array.from(sel.options).find(o => !o.disabled);
-        if (firstOk) sel.value = firstOk.value;
+    // Paints every VCC canvas from the payload; also called when the light/dark theme changes,
+    // because the canvases bake the theme colors in at draw time.
+    function drawVccCharts(data) {
+      if (!data) return;
+      if (data.rewire_decay) drawVccRewiringChart(data.rewire_decay);
+      if (data.target_profiles) renderVccTargetProfile();
+      if (data.combinatorial_screen) {
+        drawVccEpistasisHeatmap('canvas-vcc-epistasis', data.combinatorial_screen.epistasis_matrix, data.combinatorial_screen.gene_names);
       }
+      if (data.single_cell_pca) drawVccSingleCellPca('canvas-vcc-pca', data.single_cell_pca);
+    }
+
+    // Rebuilds the "Compare Model" options from parameters.response_models. Models whose fit produced
+    // no usable response operator are listed as disabled "(n/a)" with the reason as tooltip, and the
+    // selection moves to the first available model if its current choice cannot be shown.
+    function syncVccModelOptions(models) {
+      const sel = document.getElementById('vcc-model-select');
+      if (!sel || !models.length) return;
+      const previous = sel.value;
+      sel.innerHTML = '';
+      models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.key;
+        opt.textContent = m.available ? m.label : `${m.label} (n/a)`;
+        opt.disabled = !m.available;
+        opt.title = m.reason || '';
+        sel.appendChild(opt);
+      });
+      const keep = models.find(m => m.key === previous && m.available) || models.find(m => m.available);
+      if (keep) sel.value = keep.key;
     }
 
     function renderVccTargetProfile() {

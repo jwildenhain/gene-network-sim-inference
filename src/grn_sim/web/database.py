@@ -224,7 +224,9 @@ def load_all_history_from_db(db_path: Optional[str] = None) -> List[Dict[str, An
                     entry["response_type"] = r_type or "responsive"
                 if r_stats_json and r_stats_json != "{}":
                     entry["response_dynamics"] = json.loads(r_stats_json)
-                entry["f1_score"] = entry.get("f1_score") or _compute_entry_f1(entry)
+                # `is None`, not falsiness: a stored F1 of 0.0 (nothing recovered) must stay 0.0
+                if entry.get("f1_score") is None:
+                    entry["f1_score"] = _compute_entry_f1(entry)
                 entries.append(entry)
             except Exception:
                 continue
