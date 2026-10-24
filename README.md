@@ -60,7 +60,7 @@ Replication of the 9-gene *E. coli* SOS DNA Repair Pathway (Gardner et al., *Sci
 | ![E. coli SOS Pathway](docs/screenshots/06_ecoli_sos_pathway.png) | ![Thesis and Paper Figures Gallery](docs/screenshots/07_thesis_paper_figures_gallery.png) | ![SQLite Simulation Archive Inspector](docs/screenshots/08_sqlite_archive_detail.png) |
 
 ### 4. Virtual Cell Challenge 2026 & AtlasShift Studio (Tabs 1 & 4)
-Direct comparative benchmarking between Mechanistic Causal GRN modeling (`phpIoRN`) and Cross-Atlas Empirical Transfer (`AtlasShift`, Kaipeng Meng, Arc Institute VCC 2026 Leaderboard #82). Features in-distribution vs. out-of-distribution (OOD) perturbation generalization analysis, cell line edge rewiring sensitivity curves ($\rho \in [0\%, 50\%]$), and single-cell `.h5ad` AnnData export (400 cells/condition):
+Direct comparative benchmarking between Mechanistic Causal GRN modeling (`phpIoRN`) and Cross-Atlas Empirical Transfer (`AtlasShift`, Kaipeng Meng, Arc Institute VCC 2026 Leaderboard #82). Features seen vs. genuinely held-out perturbation analysis (the response models are refit without the held-out experiments), cell line edge rewiring sensitivity curves ($\rho \in [0\%, 50\%]$), a true double-perturbation epistasis screen, a virtual single-cell sequencer (2D PCA), and single-cell `.h5ad` AnnData export (400 cells/condition):
 
 | Tab 1: Studio with AtlasShift | Tab 4: VCC Benchmark (Dark Theme) | Tab 4: VCC Benchmark (Light Theme) |
 | :---: | :---: | :---: |
@@ -496,39 +496,58 @@ Tested in [`tests/test_atlasshift_and_perturbseq.py`](tests/test_atlasshift_and_
 - `test_create_and_export_anndata`: Validates AnnData creation, layer preservation, and HDF5 `.h5ad` export.
 - `test_profile_similarity`: Verifies metric computation (Pearson $r$, Cosine Sim, RMSE).
 - `test_run_vcc_benchmark`: Validates end-to-end multi-context comparative benchmark pipeline.
+- [`tests/test_vcc_benchmark_fixes.py`](tests/test_vcc_benchmark_fixes.py): per-algorithm response signs, unavailable models are reported instead of substituted, the held-out refit never sees the unseen experiments, rewired edges keep their kinetics, the epistasis screen matches an independent double-perturbation simulation, input validation and the bounded cache.
 
-##### Benchmark Results: Multi-Context Scale-Free Network ($N=16$, $k_{\text{av}}=1.8$, 3 Source Atlases)
+##### Benchmark Results: Multi-Context Scale-Free Network ($N=16$, $k_{\text{av}}=1.8$, 3 Source Atlases, 15% target rewiring, seed 2026)
+
+Reproduce with `run_vcc_comparative_benchmark(num_genes=16, k_av=1.8, seed=2026)` (the web tab runs all 18 algorithms; the rows below are the original comparison set).
 
 ###### 1. Causal Interaction Topology Recovery
-Evaluates how well each algorithm recovers the physical, directed, signed regulatory graph edges ($\mathbf{A}_{ij} \in \{+1, -1\}$):
+Evaluates how well each algorithm recovers the physical, directed, signed regulatory graph edges ($\mathbf{A}_{ij} \in \{+1, -1\}$) of the rewired target network. Every algorithm is fit on the complete target experiment set:
 
 | Algorithm | Paradigm | Coverage % | False Positives % | Power (Inferred Conn. %) | FDR % | Total Errors |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **VOTE (Ensemble)** | Mechanistic Dynamical GRN | **86.7%** | **4.7%** | 21.4% | **66.7%** | **34** |
-| **G2S (AIC)** | Mechanistic Dynamical GRN | 85.2% | 8.2% | 39.3% | 65.6% | 39 |
-| **NIR (Ridge)** | Mechanistic Dynamical GRN | 84.4% | 8.6% | 35.7% | 68.8% | 40 |
-| **S2G (MDL)** | Mechanistic Dynamical GRN | 81.6% | 11.3% | 35.7% | 74.4% | 47 |
-| **FAST (SVD)** | Mechanistic Dynamical GRN | 82.0% | 9.8% | 25.0% | 78.1% | 47 |
-| **ATLASSHIFT** | Empirical Transfer (VCC 2026) | 86.7% | 9.8% | **67.9%** | **56.8%** | 34 |
-| **BY_CHANCE** | Null Baseline | 79.7% | 10.9% | 14.3% | 87.5% | 54 |
+| **VOTE (Ensemble)** | Mechanistic Dynamical GRN | **88.7%** | **3.1%** | 25.0% | **53.3%** | **29** |
+| **NIR (Ridge)** | Mechanistic Dynamical GRN | 85.9% | 7.8% | 42.9% | 62.5% | 37 |
+| **G2S (AIC)** | Mechanistic Dynamical GRN | 84.4% | 8.6% | 35.7% | 68.8% | 40 |
+| **S2G (MDL)** | Mechanistic Dynamical GRN | 81.2% | 11.7% | 35.7% | 75.0% | 48 |
+| **FAST (SVD)** | Mechanistic Dynamical GRN | 82.0% | 9.8% | 25.0% | 78.1% | 46 |
+| **ATLASSHIFT** | Empirical Transfer (VCC 2026) | 86.3% | 11.3% | **78.6%** | 56.9% | 35 |
+| **BY_CHANCE** | Null Baseline | 78.1% | 11.7% | 7.1% | 93.8% | 57 |
 
-###### 2. Response Profile Prediction: In-Distribution vs. Out-of-Distribution (OOD)
-Evaluates expression profile prediction accuracy between target ground truth and model predictions:
+###### 2. Response Profile Prediction: Seen vs. Held-Out Perturbations
+Of the 16 perturbation targets, 12 are *seen* and the last 4 are *held out*. Each mechanistic model predicts the response to perturbing gene $j$ as $\hat{\mathbf{X}}_{:,j} = \pm\,\mathbf{A}_{\text{est}}^{+}\mathbf{u}_j$ (the sign depends on each algorithm's convention, see `RESPONSE_MODELS` in `vcc_benchmark.py`). For the held-out targets the models are **refit with those experiments masked** ($\mathbf{X}_{:,j}=\mathbf{U}_{:,j}=\mathbf{0}$, which removes them from the least-squares problems while keeping the square shape S2G/G2S need), so they are scored on perturbations they never observed. AtlasShift has no atlas observations for a held-out target and predicts $\Delta\mathbf{y}=\mathbf{0}$.
 
-| Generalization Setting | Metric | phpIoRN Mechanistic GRN (`VOTE` / `S2G`) | AtlasShift (Empirical Transfer) | Scientific Finding |
-| :--- | :--- | :---: | :---: | :--- |
-| **In-Distribution**<br>*(Target seen in source atlases)* | Pearson $r$<br>Cosine Sim<br>RMSE | $0.344$<br>$0.344$<br>$0.288$ | **$0.526$**<br>**$0.523$**<br>**$0.228$** | AtlasShift performs strongly when the exact perturbation vector has been pre-observed in reference cell atlases, averaging out measurement noise across cell lines. |
-| **Out-of-Distribution (OOD)**<br>*(Unseen perturbation target)* | Pearson $r$<br>Cosine Sim<br>RMSE | **$0.561$**<br>**$0.571$**<br>**$0.079$** | **$0.000$**<br>**$0.000$**<br>$0.099$ | **AtlasShift collapses to zero prior ($\Delta \mathbf{y} = \mathbf{0}$)** because empirical transfer has no reference data for unseen targets. In contrast, **phpIoRN predicts unseen targets accurately ($r = 0.561$)** by propagating forces through the reconstructed causal Jacobian graph ($\hat{\mathbf{X}} = \mathbf{A}_{\text{est}}^{-1} \mathbf{U}$). |
+| Setting | Metric | Mechanistic GRN (`VOTE`) | AtlasShift (Empirical Transfer) |
+| :--- | :--- | :---: | :---: |
+| **Seen** (training perturbations for the GRN; source-atlas mean for AtlasShift) | Pearson $r$<br>Cosine Sim<br>RMSE | $0.493$<br>$0.491$<br>$0.196$ | $0.493$<br>$0.490$<br>$0.272$ |
+| **Held out** (never observed) | Pearson $r$<br>Cosine Sim<br>RMSE | $0.000$<br>$0.000$<br>$0.316$ | $0.000$<br>$0.000$<br>$0.316$ |
+
+Mean Pearson $r$ per mechanistic model (`CPA-Lite` is not applicable: its $\mathbf{A}_{\text{est}}$ is a latent projection, not a Jacobian):
+
+| Model | `VOTE` | `G2S` | `S2G` | `RidgeCV` | `NIR` | `DMD-GRN` | `CellBox`* |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Seen targets | 0.493 | 0.450 | 0.339 | 0.392 | 0.369 | 0.149 | 0.013 |
+| Held-out targets | 0.000 | 0.000 | 0.000 | 0.143 | 0.024 | 0.160 | 0.103 |
+
+\*CellBox uses PyTorch when installed and is not seeded, so its numbers vary from run to run.
+
+*Key Takeaway*: with an honest hold-out, neither paradigm predicts a perturbation it has never observed from this sparse data. For the S2G/G2S/Vote family this is structural: in $\mathbf{A}\mathbf{X}=-\mathbf{U}$ the row of $\mathbf{A}$ belonging to a gene is identified only by the experiment that perturbs that gene, so a held-out gene has an all-zero row and its predicted response is exactly zero. Regularised models (`RidgeCV`, `DMD-GRN`) keep a small positive correlation. (An earlier version of this benchmark scored the mechanistic models on the perturbations they had been fit on and reported $r = 0.561$ for "unseen" targets; that figure is superseded.)
 
 ###### 3. Destination Context Rewiring Sensitivity Sweep
-As the target cell line wiring diverges from source atlases ($\rho = 0\% \to 50\%$ edge rewiring due to mutations or epigenetic shifts):
+Models fitted on the 15%-rewired target context are applied to contexts that diverge from the source atlases by $\rho = 0\% \to 50\%$ edge rewiring (new edges are moved together with their kinetic parameters):
 
 | Target Rewiring $\rho$ | 0% (Identical) | 10% Rewired | 20% Rewired | 35% Rewired | 50% Rewired |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **AtlasShift Pearson $r$** | **0.662** | 0.625 | 0.543 | 0.276 | 0.314 |
-| **Mechanistic GRN Pearson $r$** | 0.183 | 0.199 | 0.217 | 0.152 | 0.073 |
+| **AtlasShift Pearson $r$** | **0.662** | 0.654 | 0.467 | 0.256 | 0.322 |
+| **Mechanistic GRN (`VOTE`) Pearson $r$** | -0.072 | -0.074 | -0.070 | 0.029 | -0.021 |
+| **RidgeCV Pearson $r$** | 0.269 | 0.227 | 0.201 | 0.130 | 0.189 |
+| **CellBox* Pearson $r$** | -0.052 | -0.039 | -0.080 | -0.113 | -0.021 |
 
-*Key Takeaway*: When cell lines share identical transcriptional wiring ($\rho = 0\%$), AtlasShift is very effective at borrowing empirical shifts ($r = 0.662$). However, as context-specific rewiring occurs ($\rho \ge 35\%$), empirical transfer performance degrades by more than **50%**, demonstrating the fundamental limitation of cross-cell line delta transfer and the necessity of causal mechanistic network modeling for unseen biology.
+*Key Takeaway*: when cell lines share the same wiring ($\rho = 0\%$) AtlasShift borrows empirical shifts very effectively ($r = 0.662$) but loses more than half of that once rewiring reaches $\rho \ge 35\%$. In this setup a mechanistic Jacobian fitted on one context does not transfer to other contexts either (only regularised `RidgeCV` keeps a modest correlation), so the benchmark supports "empirical transfer degrades with rewiring", not "mechanistic models are better".
+
+###### 4. Double-Perturbation (Epistasis) Screen and Virtual Single-Cell Sequencer
+Every pair $G_i + G_j$ is simulated on the ground-truth network and scored by its deviation from the multiplicative null model, $\varepsilon_{ij} = \lVert L_{ij} - (L_i + L_j) \rVert_2$ with $L = \log_2(x/x_{\text{basal}})$, without measurement noise (a noise floor of about 0.18 would otherwise swamp the thresholds: $\varepsilon > 0.25$ buffering / epistatic shift, $> 0.45$ synergistic). For this run the strongest pairs are `Gene_07 × Gene_15` ($\varepsilon = 2.55$), `Gene_07 × Gene_09` ($2.11$) and `Gene_02 × Gene_15` ($0.72$). The virtual sequencer draws Poisson counts for 20 control and 15 cells for each of the first 8 perturbation conditions (140 cells) and projects them with PCA (PC1 65.4%, PC2 13.4% of the variance).
 
 ---
 
@@ -553,11 +572,56 @@ Then open **http://localhost:8085** in your browser.
 
 ## 🚀 Local Python Installation & CLI
 
+**Requirements:** Python 3.9 or newer and git (about 1 GB of disk for the repository and the Python packages).
+
 ```bash
 git clone https://github.com/jwildenhain/gene-network-sim-inference.git
 cd gene-network-sim-inference
-pip install -e ".[dev]"
+python3 -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"                                  # numpy, scipy, pandas, scikit-learn, anndata, matplotlib, pytest
+python3 -m grn_sim.web.server --port 8085                # then open http://127.0.0.1:8085
 ```
+(With [uv](https://docs.astral.sh/uv/): `uv sync --extra dev` installs exactly what `uv.lock` pins.)
+
+### Optional components
+None of these is required; the web studio works without them.
+
+| Component | What it adds | Install |
+|---|---|---|
+| **Graphviz** (`dot`, `neato`) | Graphviz-drawn graphs in the Hierarchical / Spring views. Without it the app draws the same views with its built-in layered layout, so there is nothing to configure. | `sudo apt install graphviz` · `brew install graphviz` · `choco install graphviz` |
+| **PyTorch** (CPU build is enough) | The neural versions of CellBox and CPA-Lite. Without it they fall back to NumPy/SciPy implementations (results differ slightly). | `pip install torch --index-url https://download.pytorch.org/whl/cpu` |
+| **Playwright + Chromium** | The browser UI tests (`tests/test_playwright_*.py`). | `pip install playwright && playwright install chromium` |
+
+### Data files
+Everything the web studio needs is **in the repository**, so `git clone` is all it takes: the benchmark datasets
+(`data/benchmarks/`), the MATLAB thesis archives (`data/matlab_benchmarks/`), the E. coli SOS microarray data and the raw
+exports of every benchmark. The SQLite archive of your own runs (`data/rgn_db.sqlite`) is created on first use; set
+`RGN_DB_PATH=/some/where.sqlite` to keep it elsewhere.
+
+`scripts/download_data.py` (standard library only) checks that data and can fetch the one optional large file:
+
+```bash
+python3 scripts/download_data.py                     # is the bundled data complete?
+python3 scripts/download_data.py --norman            # + raw Norman et al. 2019 Perturb-seq (160 MB download, 2.2 GB unpacked)
+python3 scripts/download_data.py --norman --build    # + rebuild data/benchmarks/norman_2019_real_*.json from it
+python3 scripts/download_data.py --all --dry-run     # show what would happen without changing anything
+```
+The raw Norman matrix comes from Harvard Dataverse (doi:10.7910/DVN/Q2ZV3E, the GEARS copy) and is only needed if you want to
+regenerate the two Norman benchmark files, which are already included. The script checks its SHA-256, refuses unsafe
+archives, never leaves partial downloads behind, and needs about 2.6 GB of free disk space.
+
+### Check your installation
+```bash
+python3 scripts/download_data.py                     # bundled data present
+pytest -q --ignore-glob="*playwright*"               # unit, simulation, inference and server tests (about a minute)
+pytest -q tests/test_playwright_full_app.py          # whole-application browser tests (needs Playwright)
+```
+
+### Troubleshooting
+- **Port already in use:** pick another with `--port 8090`.
+- **"Permission denied" on files in `data/`:** they were created by the Docker container as root. The server now copes with
+  this, but `sudo chown -R "$USER" data` makes them yours again (or run the container with `--user "$(id -u):$(id -g)"`).
+- **Graph arrows or layout differ from older screenshots:** older screenshots were drawn by Graphviz; install it (see above) to get those.
 
 ### Launch the Web Server Directly
 ```bash

@@ -148,9 +148,11 @@ Where:
   $$x^{\text{ss}} = \left[ x_1^{\text{ss}}, x_2^{\text{ss}}, \dots, x_N^{\text{ss}} \right]^T$$
 
 #### Interactive Visualizations:
-- **Force Canvas**: Interactive HTML5 physics simulation with draggable nodes and real-time spring relaxation.
-- **Hierarchical (`dot`)**: Native Graphviz directed acyclic graph layout emphasizing upstream-to-downstream regulatory hierarchy.
-- **Spring (`neato`)**: Force-directed Graphviz layout balancing edge lengths and node distribution.
+Every network graph offers the same **Choose your view** bar:
+- **Force Canvas**: interactive HTML5 canvas with the genes on a circle; click a gene to inspect it.
+- **Hierarchical**: regulators above their targets, with a **Layout: Layered | Grid** switch. *Layered* is drawn by Graphviz `dot` when it is installed and otherwise by the built-in layered layout (cycle removal, ranking, crossing reduction, routed edges); *Grid* is a compact grid that ignores edge direction. The choice is shared by all graphs and remembered in the browser.
+- **Spring**: Graphviz `neato` (or a circular layout without Graphviz).
+- **Graph file** (Step 3): the Graphviz DOT text that describes the graph.
 - **ODE Parameter Inspector**: Clicking any gene node ($G_i$) or regulatory edge ($G_j \to G_i$) displays an interactive popup with exact kinetic constants ($v_i, B_i, n, K$) and the basal trajectory curve.
 
 ---

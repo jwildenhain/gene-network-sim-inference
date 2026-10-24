@@ -673,22 +673,29 @@ Reverse-engineered from Kaipeng Meng's Arc Institute VCC 2026 solution (`kaipeng
 
 ### 11.5 Comparative Evaluation: Mechanistic GRN vs. Empirical Transfer
 
-Evaluated in `src/grn_sim/benchmarks/vcc_benchmark.py`:
+Evaluated in `src/grn_sim/benchmarks/vcc_benchmark.py` (`run_vcc_comparative_benchmark`). One scale-free base network is simulated as three source atlases (K562-, HCT116- and HEK293T-like, differing in basal rates) and a **target context** whose edges are rewired by `target_rewire_fraction`.
 
-1. **In-Distribution Generalization**:
-   When the target gene perturbation was observed across source reference atlases, AtlasShift borrows empirical shifts ($r \approx 0.526$, RMSE $0.228$) outperforming or matching mechanistic GRN ($r \approx 0.35 - 0.55$) by leveraging real empirical cross-cell line co-dependencies.
+1. **Edge recovery.** All 18 algorithms are fit on the complete target experiment set and scored against the rewired ground truth (`evaluate_inference`). Algorithms that expect $-\mathbf{U}$ (NIR, FAST, RidgeCV) receive it (`FIT_INPUT_SIGN`).
 
-2. **Out-of-Distribution (OOD) Generalization**:
-   When a perturbation target was unseen across all source atlases:
-   - **AtlasShift collapses to $r = 0.0$** (zero-prior collapse) because without empirical data, $\Delta \mathbf{y}_{\text{fused}} = \mathbf{0}$.
-   - **phpIoRN Mechanistic GRN predicts unseen targets ($r = 0.561$, RMSE $0.079$)** by inverting the reconstructed causal network Jacobian:
-     $$\hat{\mathbf{X}} = \mathbf{A}_{\text{est}}^{-1} \mathbf{U}$$
-     perturbation forces propagate along physical network cascades to downstream genes.
+2. **Response prediction with a genuine hold-out.** The last $\max(2, \lfloor 0.25N \rfloor)$ perturbation targets are *held out*. The response models are refit with those experiments **masked** ($\mathbf{X}_{:,j}=\mathbf{U}_{:,j}=\mathbf{0}$; masking instead of dropping keeps the data square, which S2G/G2S/Vote require, and adds nothing to the least-squares problems). Each model's response operator is
+   $$\mathbf{R} = s_m\,(\mathbf{A}_{\text{est}} + \lambda\mathbf{I})^{+}, \qquad \hat{\mathbf{X}}_{:,j} = \mathbf{R}\,\mathbf{u}_j,$$
+   with $\lambda = 0.05$ only when the diagonal of $\mathbf{A}_{\text{est}}$ is all zero. The sign $s_m$ differs per algorithm because their $\mathbf{A}_{\text{est}}$ follow different conventions: $+1$ for Vote, S2G, G2S, RidgeCV, NIR and CellBox, $-1$ for DMD-GRN (`RESPONSE_MODELS`). A model whose fit is unusable (all-zero or non-finite $\mathbf{A}_{\text{est}}$, a fit error, or CPA-Lite whose $\mathbf{A}_{\text{est}}$ is a latent projection) is reported in `parameters.response_models[].reason` and **never replaced by another model's predictions**. AtlasShift predicts the source-atlas mean for seen targets and $\mathbf{0}$ for held-out ones. Because a gene's row of $\mathbf{A}$ is identified only by the experiment that perturbs that gene, held-out predictions of the S2G/G2S/Vote family are exactly zero ($r = 0$); regularised models retain a small positive correlation. Reference numbers ($N=16$): Vote seen $r = 0.493$, held-out $r = 0.000$; AtlasShift seen $r = 0.493$, held-out $r = 0.000$.
 
-3. **Context Rewiring Sensitivity**:
-   As target cell line rewiring increases ($\rho = 0\% \to 50\%$ edge mutations/enhancer switching):
-   - AtlasShift correlation decays rapidly from $r = 0.662 \to 0.276$.
-   - Demonstrates that empirical transfer fails when cell lines undergo significant transcriptional network rewiring, necessitating mechanistic causal modeling.
+3. **Context rewiring sensitivity.** Rewiring moves an edge to another target **together with its kinetic parameters** (`_rewire_edges`; parameters of non-edges are zero, so a bare adjacency swap would create edges that regulate nothing). The operators fitted on the full target data are applied to contexts rewired by $\rho \in \{0, 10, 20, 35, 50\}\%$; mean Pearson $r$ over all targets is reported per model. AtlasShift decays from $r = 0.662$ to $0.256$-$0.322$ for $\rho \ge 35\%$; the Vote operator stays near zero ($|r| < 0.08$) and RidgeCV keeps $r = 0.13$-$0.27$.
+
+4. **Double-perturbation (epistasis) screen.** Each pair $G_i+G_j$ is simulated on the true network (perturbation $\mathbf{u}_i+\mathbf{u}_j$) without measurement noise, and
+   $$\varepsilon_{ij} = \left\lVert L^{(ij)} - \left(L^{(i)} + L^{(j)}\right) \right\rVert_2, \qquad L = \log_2\!\left(x_{\text{perturbed}}/x_{\text{basal}}\right)$$
+   measures deviation from the multiplicative null (independent perturbations multiply fold changes). Log ratios are used because $x/x_{\text{basal}}-1$ lets a lowly expressed gene dominate $\varepsilon$; noise is excluded because it alone puts a floor of about 0.18 under $\varepsilon$. Classes: $\varepsilon \le 0.25$ additive / independent, $0.25 < \varepsilon \le 0.45$ buffering / epistatic shift, $\varepsilon > 0.45$ synergistic / synthetic lethal. Cost: $N(N-1)/2$ ODE solves.
+
+5. **Virtual single-cell sequencer.** Poisson counts (rate $60\,x$, floor $0.2$) for 20 control cells and 15 cells for each of the first 8 perturbation conditions, using the perturbed steady state of the corresponding **column** of `perturbed_states`; 2D PCA of the count matrix.
+
+### 11.6 VCC Benchmark REST Contract
+
+`GET /api/benchmark/vcc_atlasshift?num_genes=12&k_av=1.8&seed=2026&rewire_fraction=0.15&refresh=0`
+- Parameters are validated (`validate_vcc_params`): `num_genes` an integer in $[4, 32]$, `k_av` in $(0, \min(5, N-1)]$, `rewire_fraction` in $[0, 1]$, all finite. Violations return **HTTP 400** with `{"status": "error", "error": "..."}`; unexpected failures return 500 with `{"error": "..."}`.
+- The payload is serialised with `allow_nan=False` before any header is sent, so a failure is a clean 500 and never a 200 with a broken body.
+- Results are cached per `(num_genes, k_av, seed, rewire_fraction)` (continuous values rounded to 2 decimals), at most 16 entries; concurrent identical requests share one computation; `refresh=1` recomputes.
+- Response fields: `summary_table` (18 rows, order of `ALGORITHMS`), `in_distribution` / `out_of_distribution`, `rewire_decay` (an empty series means that model has no usable fit), `target_profiles[]` (`y_true`, `y_atlas`, per-model `predictions` and `metrics`), `combinatorial_screen` (`epistasis_matrix`, `top_synergy_pairs`, `unsteady_pairs`), `single_cell_pca`, and `parameters.response_models[]` (`key`, `label`, `available`, `reason`), from which the UI builds its model dropdown.
 
 ---
 
@@ -732,5 +739,42 @@ Accessible via:
 - `GET /api/benchmark/dataset?id={dataset_id}`: Returns complete expressions $\mathbf{X}$, perturbations $\mathbf{U}$, true matrix $\mathbf{A}_{\text{true}}$, Graphviz DOT/SVG layouts, and 12-algorithm comparison metrics.
 - `POST /api/benchmark/load_to_studio`: Loads any benchmark dataset into the Tab 1 interactive simulation studio for real-time ODE inspection and parameter exploration.
 
+---
 
+## 13. Network Graph Views & Built-in Layered Layout
 
+### 13.1 One view chooser for every network graph
+Six graphs share the same **Choose your view** bar (`registerGraphPanel` in `static/index.html`): Step 3 ground truth, Step 6 9-state graph, Real-World Benchmarks (known network, 9-state reconstruction) and Previous Simulations (archived ground truth, archived 9-state graph).
+
+| Button | Content | Notes |
+| :--- | :--- | :--- |
+| **Force Canvas** | circular HTML5 canvas drawn from the graph JSON (`nodes`, `links`) | click selects a node; the selected node is highlighted |
+| **Hierarchical** | SVG with regulators above their targets | **Layout: Layered \| Grid** switch |
+| **Spring** | SVG (Graphviz `neato`, or a circular layout without Graphviz) | |
+| **Graph file** | the Graphviz DOT text | Step 3 only |
+
+The Layered/Grid choice is global, stored in `localStorage['grn.hierLayout']`, and applied to every hierarchical graph. Only the current view's SVG is kept in the page (never two copies), and view buttons keep their previous element ids (`btn-gt-dot`, `btn-inf-neato`, ...) for existing scripts.
+
+### 13.2 SVG production (`visualization/graph_export.py`)
+`render_graphviz_svg(dot, engine, matrix, gene_names, is_9state, layout="layered"|"grid")`:
+- `layered` with the Graphviz binary installed: `dot -Tsvg`. Without it: the built-in layered layout below.
+- `grid`: a compact staggered grid drawn by the built-in renderer (never Graphviz).
+- Built-in drawing: shafts run between node outlines, arrow heads are drawn explicitly (triangle `data-arrowhead="normal"` for activation, perpendicular bar `data-arrowhead="tee"` for inhibition; 9-state edges use their own style), reciprocal edges are offset side by side, self-loops sit beside the node (above it in the circular layout), and nodes use Graphviz markup (`<g class="node"><title>name</title>`) so the page's click and highlight code is identical for both renderers.
+
+### 13.3 Built-in layered layout (`visualization/layered_layout.py`)
+A Sugiyama-style pipeline: (1) cycle removal with the Eades-Lin-Smyth ordering heuristic, reversing the fewest feasible edges (for a graph with $m$ mutual pairs at least $m$ edges must point upward); (2) longest-path layering, then tightening so sources sit directly above their targets; (3) one dummy node per crossed layer for long edges; (4) barycentre crossing reduction (best of 24 sweeps); (5) iterative neighbour-averaging x-coordinates with minimum node separations; edges are routed through the dummy nodes and drawn as rounded polylines.
+
+### 13.4 Payload fields and archived runs
+Simulation payload: `svg_hierarchical`, `svg_hierarchical_grid`, `svg_spring`; inference payload: `svgs_dot[alg]`, `svgs_dot_grid[alg]`, `svgs_neato[alg]`, `comparison_graphs[alg]`; benchmark payload: `svg_true_dot`, `svg_true_dot_grid`, `svg_true_neato`, `true_graph` and the same per-algorithm maps. When an archived run is loaded, `_ensure_graph_views` adds the Grid versions it lacks and redraws SVGs that came from the first built-in renderer (no arrow heads); SVGs drawn by Graphviz are kept as stored.
+
+---
+
+## 14. Web Server Behaviour
+
+- **Binding / CLI:** `python -m grn_sim.web.server [PORT] [--port N] [--host H]`, falling back to `$PORT` / `$HOST`, default `127.0.0.1:8080`. The Docker image sets `HOST=0.0.0.0`.
+- **Cross-origin protection:** requests carrying a foreign `Origin` header are answered with 403 and have no effect; CORS headers are only sent for the single origin in `GRN_CORS_ORIGIN`.
+- **Shared state:** simulation, inference and archive loading hold one re-entrant lock; the history list is replaced atomically; the VCC computation is serialised.
+- **Request validation:** malformed POST bodies or `Content-Length` return 400; `cells_per_condition` for `.h5ad` export must be in $[1, 2000]$ (400 otherwise).
+- **Client disconnects** (navigating away, aborted fetches) are ignored silently instead of logging tracebacks.
+- **Benchmark exports** (`data/benchmarks/raw/*`) are written through a temporary file and renamed, so a file this user cannot overwrite (for example one exported earlier by the Docker container as root) no longer makes a dataset fail to load; if the folder itself is read-only the files go to a temp folder. Dataset load failures leave the previous dataset on screen and show an error banner.
+- **Database:** `RGN_DB_PATH` selects the SQLite archive; an unwritable location falls back to a temp file.

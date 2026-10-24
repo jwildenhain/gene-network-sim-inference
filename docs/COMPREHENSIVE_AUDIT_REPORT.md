@@ -1,5 +1,7 @@
 # 🔬 Comprehensive Application & Interface Audit: GRN-Sim & phpIoRN 2.0
 
+> **Update, October 2026.** This report is a snapshot of the first audit. Since then the Virtual Cell Challenge evaluation was corrected (genuinely held-out perturbations, per-algorithm response signs, noise-free epistasis, rewiring that keeps kinetics; see README section 4.2 and SPECIFICATION section 11.5), every network graph got one shared view chooser with Layered/Grid layouts (SPECIFICATION section 13), and the page layout now fits the window from 600 px up. The current automated suite is `pytest tests --ignore-glob="*playwright*"` (about 280 tests) plus the browser tests `tests/test_playwright_full_app.py`, `test_playwright_graph_views.py`, `test_playwright_header_layout.py` and `test_playwright_vcc_ui.py`. The Tab 4 figures below predate the correction and are superseded.
+
 ## Executive Summary & Audit Verdict
 
 A rigorous, end-to-end verification and analysis of the entire **GRN-Sim & phpIoRN 2.0** application was conducted to examine whether the platform executes exactly what it states in its academic specifications, mathematical formulations, and interface documentation.
@@ -48,7 +50,7 @@ The primary studio workspace implements the full 6-step reverse-engineering pipe
   - Selecting *E. coli SOS Experimental Data* dynamically updates the `#sim-mode-info` card, sets gene count to 9, disables synthetic topology sliders, and automatically loads the real microarray data.
   - Selecting *Norman 2019 Real CRISPRa Perturb-seq* sets gene count to 16, locks sliders, sets the engine to `perturb_seq_counts`, and loads authentic proportional shifts.
 - **Visualizers**:
-  - **Ground Truth Stage**: Provides Force-Directed Canvas, Graphviz Hierarchical (`dot`), Graphviz Spring (`neato`), and raw DOT source code.
+  - **Ground Truth Stage**: One **Choose your view** bar (Force Canvas, Hierarchical with a Layered | Grid switch, Spring, Graph file); the same bar is used by every network graph in the app.
   - **ODE Parameter Inspector**: Inline preview and dialog modal displaying $v_i, B_i, n_A, K_A$ and basal trajectory relaxation.
   - **Perturbation Time-Courses & Profiles**: Dynamic multi-line plot showing transient relaxation of all genes under perturbation of any selected gene, with an interactive segmented toggle (`[ 📈 Line Plot ] [ 📊 Bar Plot ]`) to view continuous trajectories or discrete empirical expression shifts ($\Delta X$).
   - **Expression Heatmap ($X$)**: Matrix display with emerald for upregulation and red for downregulation.
@@ -101,9 +103,9 @@ Replicates the persistent simulation database from `phpIoRN`:
 
 ### Tab 4: Virtual Cell Challenge 2026 & AtlasShift Studio
 Integrates modern single-cell perturbation benchmarking against the Virtual Cell Challenge 2026:
-- **Mechanistic vs. Empirical Paradigm Comparison**:
-  - **In-Distribution Perturbations (Seen Targets)**: Both Mechanistic GRN ($r = 0.567$) and AtlasShift ($r = 0.524$) accurately predict response shifts.
-  - **Out-of-Distribution (OOD Unseen Knockdowns)**: Mechanistic GRNs maintain robust predictive power ($r = 0.719$), whereas AtlasShift suffers catastrophic failure ($r = 0.000$) due to zero-atlas empirical priors.
+- **Mechanistic vs. Empirical Paradigm Comparison** (corrected evaluation, $N=16$):
+  - **Seen perturbations**: mechanistic `VOTE` and `AtlasShift` both reach $r = 0.493$ (RMSE $0.196$ vs $0.272$).
+  - **Held-out perturbations** (the response models are refit without those experiments): both give $r = 0.000$; regularised `RidgeCV` / `DMD-GRN` keep $r \approx 0.14$-$0.16$. The earlier claim that mechanistic GRNs predict unseen knockdowns ($r = 0.719$) came from scoring models on the perturbations they were fit on and is withdrawn.
 - **Cell Context Rewiring Sensitivity Sweep**:
   - Plots mean Pearson $r$ as destination cell line regulatory wiring diverges ($\rho \in [0\%, 50\%]$), illustrating the biological limits of cross-atlas transfer.
 - **Single-Cell AnnData Export**:
@@ -166,4 +168,4 @@ All automated test suites were executed with zero failures:
 2. **6-Step Wizard Interaction Test** (`tests/test_playwright_wizard_steps.py`): **PASS** across all step selections, halo spotlights, and focus modes.
 3. **Clickable Nodes & Trajectories Test** (`tests/test_playwright_node_click_trajectories.py`): **PASS** across real bacterial and human single-cell circuits.
 4. **Table Column Sorting Test** (`tests/test_playwright_table_sorting.py`): **PASS** across all 6 tables.
-5. **Unit Test Suite** (`tests/`): **PASS** (20/20 tests passing in 6.99s).
+5. **Unit Test Suite** (`tests/`): **PASS** (original audit: 20/20 tests; see the update note at the top for the current suite).
