@@ -54,7 +54,7 @@ from grn_sim.benchmarks.provenance import (
     estimate_biophysical_parameters,
 )
 from grn_sim.evaluation.metrics import compute_aupr
-from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark
+from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark, validate_vcc_params
 from grn_sim.simulator.perturb_seq import (
     simulate_perturb_seq_counts,
     create_perturb_seq_anndata,
@@ -120,6 +120,8 @@ SIMULATION_RUN_STORE: Dict[str, Dict[str, Any]] = {}
 
 # Cache for computed benchmark figures
 BENCHMARK_CACHE: Dict[str, Any] = {}
+# The VCC payload is keyed by user-supplied parameters, so only the most recent entries are kept
+VCC_CACHE_LIMIT = 16
 
 
 def _downsample_trajectory(traj: Optional[np.ndarray], max_points: int = 60) -> List[List[float]]:
@@ -1564,14 +1566,19 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
     return payload
 
 
-def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False) -> Dict[str, Any]:
+def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False, rewire_fraction: float = 0.15) -> Dict[str, Any]:
     """Computes or retrieves cached Virtual Cell Challenge 2026 vs Mechanistic GRN comparative benchmark."""
-    cache_key = f"vcc_{num_genes}_{k_av}_{seed}"
+    validate_vcc_params(num_genes, k_av, rewire_fraction)
+    # Quantise the continuous parameters so near-identical requests share one cache entry
+    k_av, rewire_fraction = round(k_av, 2), round(rewire_fraction, 2)
+    cache_key = f"vcc_{num_genes}_{k_av}_{seed}_{rewire_fraction}"
     if not refresh and cache_key in BENCHMARK_CACHE:
         return BENCHMARK_CACHE[cache_key]
 
-    payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed)
+    payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction)
     BENCHMARK_CACHE[cache_key] = payload
+    for stale_key in [k for k in list(BENCHMARK_CACHE) if k.startswith("vcc_")][:-VCC_CACHE_LIMIT]:
+        BENCHMARK_CACHE.pop(stale_key, None)
     return payload
 
 
@@ -1950,9 +1957,17 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 k_av = float(query.get("k_av", [1.8])[0])
                 sd = int(query.get("seed", [2026])[0])
                 rf = query.get("refresh", ["0"])[0] in ("1", "true")
-                payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf)
+                rewire_frac = float(query.get("rewire_fraction", [0.15])[0])
+                validate_vcc_params(n_g, k_av, rewire_frac)
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}).encode("utf-8"))
+                return
+            try:
+                payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf, rewire_fraction=rewire_frac)
                 self._set_headers(200)
-                self.wfile.write(json.dumps(payload).encode("utf-8"))
+                # allow_nan=False: a bare NaN is not valid JSON and would break response.json() in the browser
+                self.wfile.write(json.dumps(payload, allow_nan=False).encode("utf-8"))
             except Exception as e:
                 import traceback
                 traceback.print_exc()

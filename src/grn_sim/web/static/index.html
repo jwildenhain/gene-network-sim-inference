@@ -2496,6 +2496,15 @@
 
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;">Cell Context:</label>
+              <select id="vcc-cell-line" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(true)">
+                <option value="0.05">K562-like (Low Rewire 5%)</option>
+                <option value="0.15" selected>HCT116-like (Std Rewire 15%)</option>
+                <option value="0.30">Jurkat-like (Rewired 30%)</option>
+                <option value="0.45">Cancer Divergent (45%)</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
               <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;">Genes:</label>
               <select id="vcc-num-genes" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;">
                 <option value="8">8 Genes</option>
@@ -2513,7 +2522,7 @@
               </select>
             </div>
             <button class="btn btn-primary btn-sm" id="btn-run-vcc" onclick="loadVccBenchmarkData(true)" style="padding:6px 14px;font-weight:700;">
-              &#9654; Re-run Benchmark
+              &#9654; Re-Simulate Virtual Cell
             </button>
             <a class="btn btn-secondary btn-sm" id="btn-vcc-dl-h5ad" href="/api/export/perturb_seq_h5ad?cells_per_condition=400" download style="border-color:#8b5cf6;color:#8b5cf6;padding:6px 12px;font-weight:700;" title="Download 400 cells/condition single-cell Perturb-seq AnnData file (.h5ad)">
               &#128190; Export Perturb-seq .h5ad
@@ -2629,6 +2638,107 @@
           <canvas id="canvas-vcc-rewire" width="560" height="260" style="width:100%;height:260px;background:var(--stage-bg);border-radius:6px;"></canvas>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">
             <strong>Interpretation:</strong> As the destination cell context rewires regulatory edges, AtlasShift's empirical transfer accuracy degrades because it assumes conserved responses. In contrast, Mechanistic GRNs identify network rewiring directly from local perturbation data.
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Interactive In Silico In Vivo Perturbation Simulator & Profile Comparison -->
+      <div class="panel" style="margin-bottom:14px;padding:14px;">
+        <div class="panel-header" style="flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="panel-title" style="display:flex;align-items:center;gap:8px;">
+              <span>🎯 In Silico In Vivo Perturbation Simulator &amp; Response Comparator</span>
+              <span class="badge" id="vcc-target-ood-badge">--</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">
+              Simulate knocking down / activating any target gene in the rewired destination cell context and evaluate response prediction accuracy against Ground Truth.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label style="font-size:11.5px;font-weight:700;color:var(--text-main);">Target Gene:</label>
+            <select id="vcc-target-select" style="width:auto;padding:4px 8px;font-size:12px;font-weight:700;" onchange="renderVccTargetProfile()"></select>
+
+            <label style="font-size:11.5px;font-weight:700;color:var(--text-main);margin-left:8px;">Compare Model:</label>
+            <select id="vcc-model-select" style="width:auto;padding:4px 8px;font-size:12px;font-weight:700;" onchange="renderVccTargetProfile()">
+              <option value="vote" selected>Voting Ensemble (Consensus)</option>
+              <option value="cellbox">CellBox Neural ODE</option>
+              <option value="s2g">S2G (Forward AIC)</option>
+              <option value="g2s">G2S (Backward AIC)</option>
+              <option value="ridge_cv">Kaggle RidgeCV (L2)</option>
+              <option value="cpa_lite">CPA-Lite (Latent)</option>
+              <option value="nir">NIR (Gardner SVD)</option>
+              <option value="dmdgrn">DMD-GRN (Koopman)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Target Metrics Ribbon -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;margin-bottom:12px;background:var(--stage-bg);padding:10px;border-radius:6px;">
+          <div>
+            <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Selected Model Pearson r</span>
+            <div style="font-size:18px;font-weight:800;color:var(--accent-blue);" id="vcc-target-model-r">--</div>
+          </div>
+          <div>
+            <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">AtlasShift Pearson r</span>
+            <div style="font-size:18px;font-weight:800;color:#8b5cf6;" id="vcc-target-atlas-r">--</div>
+          </div>
+          <div>
+            <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Model Cosine Sim</span>
+            <div style="font-size:18px;font-weight:800;color:#10b981;" id="vcc-target-model-cos">--</div>
+          </div>
+          <div>
+            <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">AtlasShift Cosine Sim</span>
+            <div style="font-size:18px;font-weight:800;color:#f59e0b;" id="vcc-target-atlas-cos">--</div>
+          </div>
+        </div>
+
+        <!-- Profile Comparison Canvas -->
+        <div style="position:relative;width:100%;height:270px;">
+          <canvas id="canvas-vcc-target-profile" width="1120" height="270" style="width:100%;height:270px;background:var(--stage-bg);border-radius:6px;"></canvas>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:11px;color:var(--text-muted);">
+          <span>📊 <b>Legend:</b> <span style="color:#10b981;font-weight:700;">■ Ground Truth Shift (&Delta;X)</span> &bull; <span style="color:#0284c7;font-weight:700;" id="vcc-legend-model-lbl">■ Selected Model Prediction</span> &bull; <span style="color:#8b5cf6;font-weight:700;">■ AtlasShift Cross-Atlas Transfer</span></span>
+          <span>Evaluates single-cell response preservation across all genes</span>
+        </div>
+      </div>
+
+      <!-- Section 4: Dual Perturbations & Single-Cell Virtual Sequencer -->
+      <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:12px;margin-bottom:14px;">
+        <!-- Left: Combinatorial Double-Perturbation & Synthetic Lethality Screen -->
+        <div class="panel" style="padding:14px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Combinatorial Perturbations &amp; Epistasis Matrix ($G_i \times G_j$)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Simulated double perturbations: deviation from multiplicative (log-additive) single effects, $\epsilon_{ij} = \|L^{\text{dual}} - (L_i + L_j)\|$ with $L = \log_2(x / x_{\text{basal}})$</div>
+            </div>
+            <span class="badge badge-purple">Double-KO Screen</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 150px;gap:10px;align-items:center;">
+            <div style="height:270px;position:relative;">
+              <canvas id="canvas-vcc-epistasis" width="380" height="270" style="width:100%;height:270px;background:var(--stage-bg);border-radius:6px;cursor:pointer;"></canvas>
+            </div>
+            <div style="font-size:11px;max-height:270px;overflow-y:auto;padding-right:4px;">
+              <div style="font-weight:700;color:var(--text-main);margin-bottom:4px;">Top Synergistic Pairs:</div>
+              <div id="vcc-top-synergy-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Virtual Single-Cell Sequencer (2D PCA Cluster Embeddings) -->
+        <div class="panel" style="padding:14px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Virtual Single-Cell Sequencer (Perturb-seq PCA Projection)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Simulated single-cell Poisson counts clustered by perturbation condition</div>
+            </div>
+            <span class="badge badge-emerald" id="vcc-pca-cells-badge">-- Cells</span>
+          </div>
+          <div style="height:270px;position:relative;">
+            <canvas id="canvas-vcc-pca" width="540" height="270" style="width:100%;height:270px;background:var(--stage-bg);border-radius:6px;"></canvas>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:11px;color:var(--text-muted);">
+            <span id="vcc-pca-var-exp">PCA Variance Explained: PC1: --% &bull; PC2: --%</span>
+            <span style="color:var(--accent-blue);font-weight:600;">Each dot = 1 simulated single cell</span>
           </div>
         </div>
       </div>
@@ -7653,24 +7763,34 @@
     }
 
     // ============================================================================
-    // TAB 5: VIRTUAL CELL CHALLENGE 2026 & ATLASSHIFT BENCHMARK
+    // TAB 4: VIRTUAL CELL CHALLENGE 2026 & IN SILICO SIMULATION ENGINE
     // ============================================================================
     function loadVccBenchmarkData(refresh = false) {
       const n = document.getElementById('vcc-num-genes')?.value || 12;
       const kav = document.getElementById('vcc-kav')?.value || 1.8;
+      const rewireFrac = document.getElementById('vcc-cell-line')?.value || 0.15;
       const btn = document.getElementById('btn-run-vcc');
-      if (btn) btn.disabled = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-inline"></span> Simulating...';
+      }
 
-      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}`)
+      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}&rewire_fraction=${rewireFrac}`)
         .then(r => r.json())
         .then(data => {
-          if (btn) btn.disabled = false;
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '&#9654; Re-Simulate Virtual Cell';
+          }
           if (data.status !== 'success') return;
           APP_STATE.vccData = data;
           renderVccBenchmarkUI(data);
         })
         .catch(err => {
-          if (btn) btn.disabled = false;
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '&#9654; Re-Simulate Virtual Cell';
+          }
           console.error("VCC benchmark load error:", err);
         });
     }
@@ -7678,21 +7798,29 @@
     function renderVccBenchmarkUI(data) {
       if (!data) return;
 
-      // 1. Table
+      // 1. All 18 Algorithms Table
       const tbody = document.querySelector('#tbl-vcc-summary tbody');
       if (tbody && data.summary_table) {
         tbody.innerHTML = '';
-        data.summary_table.forEach(row => {
+        data.summary_table.forEach((row, idx) => {
           const isAtlas = row.algorithm === 'ATLASSHIFT';
           const isVote = row.algorithm === 'VOTE';
+          const isCellbox = row.algorithm === 'CELLBOX';
           const tr = document.createElement('tr');
           if (isAtlas) tr.style.background = 'rgba(139, 92, 246, 0.08)';
           else if (isVote) tr.style.background = 'rgba(2, 132, 199, 0.08)';
+          else if (isCellbox) tr.style.background = 'rgba(236, 72, 153, 0.08)';
 
-          const badgeColor = isAtlas ? '#8b5cf6' : (row.paradigm.includes('Mechanistic') ? 'var(--accent-blue)' : 'var(--text-muted)');
+          let badgeColor = 'var(--text-muted)';
+          if (isAtlas) badgeColor = '#8b5cf6';
+          else if (isVote) badgeColor = '#0284c7';
+          else if (isCellbox) badgeColor = '#ec4899';
+          else if (row.paradigm.includes('Mechanistic')) badgeColor = 'var(--accent-blue)';
+          else if (row.paradigm.includes('Causal')) badgeColor = '#10b981';
+
           tr.innerHTML = `
             <td><strong style="color:${badgeColor};">${row.algorithm}</strong></td>
-            <td><span style="font-size:11px;color:var(--text-muted);">${row.paradigm}</span></td>
+            <td><span class="badge" style="font-size:10.5px;">${row.paradigm}</span></td>
             <td><strong>${row.coverage_pct}%</strong></td>
             <td><span style="color:${row.fdr_pct > 60 ? 'var(--accent-pink)' : 'var(--text-main)'};">${row.fdr_pct}%</span></td>
             <td><span style="color:#10b981;font-weight:700;">${row.power_pct}%</span></td>
@@ -7728,19 +7856,323 @@
         if (elA) elA.textContent = `r = ${ood.atlasshift.pearson_r.toFixed(3)}`;
       }
 
-      // 3. Rewiring Decay Chart
+      // 3. Rewiring Decay Chart (Comparing 4 Models)
       if (data.rewire_decay) {
         drawVccRewiringChart(data.rewire_decay);
       }
+
+      // 4. Populate Target Gene Dropdown & Render Profile Comparator
+      const targetSelect = document.getElementById('vcc-target-select');
+      if (targetSelect && data.target_profiles) {
+        const currentVal = targetSelect.value;
+        targetSelect.innerHTML = data.target_profiles.map((p, idx) => {
+          const tag = p.is_ood ? ' [OOD Unseen]' : ' [Seen]';
+          return `<option value="${idx}">Perturb ${p.target_gene}${tag}</option>`;
+        }).join('');
+        if (currentVal && parseInt(currentVal) < data.target_profiles.length) {
+          targetSelect.value = currentVal;
+        } else {
+          targetSelect.value = '0';
+        }
+        syncVccModelOptions((data.parameters && data.parameters.unavailable_models) || {});
+        renderVccTargetProfile();
+      }
+
+      // 5. Render Combinatorial Epistasis Screen
+      if (data.combinatorial_screen) {
+        drawVccEpistasisHeatmap('canvas-vcc-epistasis', data.combinatorial_screen.epistasis_matrix, data.combinatorial_screen.gene_names);
+        const listEl = document.getElementById('vcc-top-synergy-list');
+        if (listEl && data.combinatorial_screen.top_synergy_pairs) {
+          listEl.innerHTML = data.combinatorial_screen.top_synergy_pairs.slice(0, 7).map(pair => `
+            <div style="background:var(--stage-bg);padding:3px 6px;border-radius:4px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:700;color:var(--accent-blue);font-size:10.5px;">${pair.pair}</span>
+              <span class="badge badge-purple" style="font-size:9.5px;padding:1px 4px;">ε=${pair.epistasis_score}</span>
+            </div>
+          `).join('');
+        }
+      }
+
+      // 6. Render Virtual Single-Cell Sequencer PCA
+      if (data.single_cell_pca) {
+        drawVccSingleCellPca('canvas-vcc-pca', data.single_cell_pca);
+        const badgeEl = document.getElementById('vcc-pca-cells-badge');
+        if (badgeEl) badgeEl.textContent = `${data.single_cell_pca.num_cells} Single Cells`;
+        const varExpEl = document.getElementById('vcc-pca-var-exp');
+        if (varExpEl && data.single_cell_pca.variance_explained) {
+          varExpEl.textContent = `PCA Variance Explained: PC1: ${data.single_cell_pca.variance_explained[0]}% • PC2: ${data.single_cell_pca.variance_explained[1]}%`;
+        }
+      }
+    }
+
+    // Disables comparator models whose fit produced no usable response operator (see unavailable_models)
+    // and moves the selection to the first model that did.
+    function syncVccModelOptions(unavailable) {
+      const sel = document.getElementById('vcc-model-select');
+      if (!sel) return;
+      Array.from(sel.options).forEach(opt => {
+        if (!opt.dataset.label) opt.dataset.label = opt.text;
+        const reason = unavailable[opt.value];
+        opt.disabled = !!reason;
+        opt.title = reason || '';
+        opt.text = reason ? `${opt.dataset.label} (n/a)` : opt.dataset.label;
+      });
+      if (sel.selectedOptions.length && sel.selectedOptions[0].disabled) {
+        const firstOk = Array.from(sel.options).find(o => !o.disabled);
+        if (firstOk) sel.value = firstOk.value;
+      }
+    }
+
+    function renderVccTargetProfile() {
+      const data = APP_STATE.vccData;
+      if (!data || !data.target_profiles) return;
+
+      const targetIdx = parseInt(document.getElementById('vcc-target-select')?.value || 0);
+      const modelKey = document.getElementById('vcc-model-select')?.value || 'vote';
+      const profile = data.target_profiles[targetIdx] || data.target_profiles[0];
+      if (!profile) return;
+
+      // Update OOD Badge
+      const oodBadge = document.getElementById('vcc-target-ood-badge');
+      if (oodBadge) {
+        if (profile.is_ood) {
+          oodBadge.textContent = '⚠️ Unseen Out-of-Distribution (0 Atlas Observations)';
+          oodBadge.className = 'badge badge-amber';
+        } else {
+          oodBadge.textContent = '⚡ In-Distribution (Observed in Multi-Tissue Atlases)';
+          oodBadge.className = 'badge badge-emerald';
+        }
+      }
+
+      // Update Metrics Ribbon
+      const modelMetrics = (profile.metrics && profile.metrics[modelKey]) || { pearson_r: 0, cosine_sim: 0, rmse: 0 };
+      const atlasMetrics = (profile.metrics && profile.metrics.atlasshift) || { pearson_r: 0, cosine_sim: 0, rmse: 0 };
+
+      const hasModel = !!(profile.predictions && profile.predictions[modelKey]);
+      const mR = document.getElementById('vcc-target-model-r');
+      if (mR) mR.textContent = hasModel ? `r = ${Number(modelMetrics.pearson_r || 0).toFixed(3)}` : 'n/a';
+      const mCos = document.getElementById('vcc-target-model-cos');
+      if (mCos) mCos.textContent = hasModel ? `Cos = ${Number(modelMetrics.cosine_sim || 0).toFixed(3)}` : 'n/a';
+
+      const aR = document.getElementById('vcc-target-atlas-r');
+      if (aR) aR.textContent = `r = ${Number(atlasMetrics.pearson_r || 0).toFixed(3)}`;
+      const aCos = document.getElementById('vcc-target-atlas-cos');
+      if (aCos) aCos.textContent = `Cos = ${Number(atlasMetrics.cosine_sim || 0).toFixed(3)}`;
+
+      const modelSelect = document.getElementById('vcc-model-select');
+      const modelLabel = modelSelect ? modelSelect.options[modelSelect.selectedIndex].text : modelKey.toUpperCase();
+      const legendModelLbl = document.getElementById('vcc-legend-model-lbl');
+      if (legendModelLbl) legendModelLbl.textContent = `■ ${modelLabel}`;
+
+      const geneNames = (data.parameters && data.parameters.gene_names) || [];
+      drawVccTargetBarChart('canvas-vcc-target-profile', profile, modelKey, geneNames);
+    }
+
+    function drawVccTargetBarChart(canvasId, profile, modelKey, geneNames) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas || !profile) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const tc = getThemeColors();
+
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, w, h);
+
+      const yTrue = profile.y_true || [];
+      const yAtlas = profile.y_atlas || [];
+      const yModel = (profile.predictions && profile.predictions[modelKey]) || [];
+      const N = yTrue.length;
+      if (N === 0) return;
+
+      const pad = { t: 30, b: 40, l: 45, r: 20 };
+      const plotW = w - pad.l - pad.r;
+      const plotH = h - pad.t - pad.b;
+
+      // Find global min and max for scaling
+      let maxVal = 0.1;
+      for (let i = 0; i < N; i++) {
+        maxVal = Math.max(maxVal, Math.abs(yTrue[i] || 0), Math.abs(yModel[i] || 0), Math.abs(yAtlas[i] || 0));
+      }
+      maxVal = Math.ceil(maxVal * 1.25 * 10) / 10;
+
+      const zeroY = pad.t + plotH / 2;
+
+      // Draw zero line
+      ctx.strokeStyle = tc.grid;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, zeroY);
+      ctx.lineTo(w - pad.r, zeroY);
+      ctx.stroke();
+
+      // Axis labels
+      ctx.fillStyle = tc.textMuted;
+      ctx.font = '9.5px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`+${maxVal.toFixed(1)}`, pad.l - 6, pad.t + 10);
+      ctx.fillText('0.0', pad.l - 6, zeroY + 3);
+      ctx.fillText(`-${maxVal.toFixed(1)}`, pad.l - 6, pad.t + plotH);
+
+      const groupW = plotW / N;
+      const barW = Math.max(3, (groupW - 6) / 3);
+
+      for (let i = 0; i < N; i++) {
+        const gx = pad.l + i * groupW + 3;
+        const isPertTarget = (i === profile.target_idx);
+
+        // Highlight target gene zone
+        if (isPertTarget) {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+          ctx.fillRect(gx - 2, pad.t, groupW, plotH);
+        }
+
+        const vTrue = yTrue[i] || 0;
+        const vModel = yModel[i] || 0;
+        const vAtlas = yAtlas[i] || 0;
+
+        // Bar 1: Ground Truth (Emerald)
+        const hTrue = (Math.abs(vTrue) / maxVal) * (plotH / 2);
+        ctx.fillStyle = '#10b981';
+        if (vTrue >= 0) ctx.fillRect(gx, zeroY - hTrue, barW, hTrue);
+        else ctx.fillRect(gx, zeroY, barW, hTrue);
+
+        // Bar 2: Selected Model (Blue)
+        const hModel = (Math.abs(vModel) / maxVal) * (plotH / 2);
+        ctx.fillStyle = '#0284c7';
+        if (vModel >= 0) ctx.fillRect(gx + barW + 1, zeroY - hModel, barW, hModel);
+        else ctx.fillRect(gx + barW + 1, zeroY, barW, hModel);
+
+        // Bar 3: AtlasShift (Purple)
+        const hAtlas = (Math.abs(vAtlas) / maxVal) * (plotH / 2);
+        ctx.fillStyle = '#8b5cf6';
+        if (vAtlas >= 0) ctx.fillRect(gx + (barW + 1) * 2, zeroY - hAtlas, barW, hAtlas);
+        else ctx.fillRect(gx + (barW + 1) * 2, zeroY, barW, hAtlas);
+
+        // Gene label
+        const lbl = (geneNames && geneNames[i]) ? geneNames[i].replace('Gene_', 'G') : `G${i + 1}`;
+        ctx.fillStyle = isPertTarget ? tc.accentBlue : tc.textMuted;
+        ctx.font = isPertTarget ? 'bold 10px Inter, sans-serif' : '9px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(lbl, gx + groupW / 2 - 2, pad.t + plotH + 16);
+      }
+    }
+
+    function drawVccEpistasisHeatmap(canvasId, matrix, geneNames) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas || !matrix || !matrix.length) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const tc = getThemeColors();
+
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, w, h);
+
+      const N = matrix.length;
+      const pad = { t: 24, b: 24, l: 30, r: 10 };
+      const size = Math.min(w - pad.l - pad.r, h - pad.t - pad.b);
+      const cell = size / N;
+
+      let maxScore = 0.1;
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          if (i !== j) maxScore = Math.max(maxScore, matrix[i][j]);
+        }
+      }
+
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          const val = matrix[i][j];
+          const x = pad.l + j * cell;
+          const y = pad.t + i * cell;
+
+          if (i === j) {
+            ctx.fillStyle = 'rgba(100, 116, 139, 0.15)';
+          } else {
+            const frac = Math.min(1.0, val / maxScore);
+            if (frac < 0.3) {
+              ctx.fillStyle = `rgba(2, 132, 199, ${0.1 + frac * 0.5})`;
+            } else if (frac < 0.65) {
+              ctx.fillStyle = `rgba(139, 92, 246, ${0.3 + frac * 0.6})`;
+            } else {
+              ctx.fillStyle = `rgba(236, 72, 153, ${0.5 + frac * 0.5})`;
+            }
+          }
+          ctx.fillRect(x, y, cell - 1, cell - 1);
+        }
+        const lbl = (geneNames && geneNames[i]) ? geneNames[i].replace('Gene_', 'G') : `G${i+1}`;
+        ctx.fillStyle = tc.textMuted;
+        ctx.font = '8.5px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(lbl, pad.l - 4, pad.t + i * cell + cell * 0.7);
+      }
+
+      ctx.fillStyle = tc.textMain;
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Dual Perturbation Non-linear Deviation (ε)', pad.l, 14);
+    }
+
+    function drawVccSingleCellPca(canvasId, pcaData) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas || !pcaData || !pcaData.cells) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const tc = getThemeColors();
+
+      ctx.fillStyle = tc.stageBg;
+      ctx.fillRect(0, 0, w, h);
+
+      const cells = pcaData.cells;
+      const pad = { t: 25, b: 25, l: 30, r: 20 };
+      const plotW = w - pad.l - pad.r;
+      const plotH = h - pad.t - pad.b;
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      cells.forEach(c => {
+        minX = Math.min(minX, c.x);
+        maxX = Math.max(maxX, c.x);
+        minY = Math.min(minY, c.y);
+        maxY = Math.max(maxY, c.y);
+      });
+      const spanX = Math.max(1.0, maxX - minX);
+      const spanY = Math.max(1.0, maxY - minY);
+
+      const zeroX = pad.l + ((0 - minX) / spanX) * plotW;
+      const zeroY = pad.t + ((maxY - 0) / spanY) * plotH;
+      ctx.strokeStyle = tc.grid;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, zeroY); ctx.lineTo(w - pad.r, zeroY);
+      ctx.moveTo(zeroX, pad.t); ctx.lineTo(zeroX, h - pad.b);
+      ctx.stroke();
+
+      cells.forEach(c => {
+        const cx = pad.l + ((c.x - minX) / spanX) * plotW;
+        const cy = pad.t + ((maxY - c.y) / spanY) * plotH;
+
+        ctx.fillStyle = c.color || '#0284c7';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = tc.textMain;
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Single-Cell Expression Manifold (2D PCA Embeddings)', pad.l, 15);
     }
 
     function drawVccRewiringChart(rewire) {
       if (!rewire) return;
       const xLabels = rewire.rewire_rates.map(r => `${r}% rewire`);
       const series = [
-        { label: 'AtlasShift (Empirical Transfer)', data: rewire.atlasshift_r, color: '#8b5cf6' },
-        { label: 'Mechanistic GRN (phpIoRN)', data: rewire.mechanistic_r, color: '#0284c7' },
-      ];
+        { label: 'AtlasShift (Empirical Transfer)', data: rewire.atlasshift_r, color: '#8b5cf6', width: 2.5 },
+        { label: 'Mechanistic GRN (Voting)', data: rewire.mechanistic_r, color: '#0284c7', width: 2.5 },
+        { label: 'CellBox Neural ODE', data: rewire.cellbox_r || [], color: '#ec4899', width: 1.8, dash: [4, 2] },
+        { label: 'RidgeCV Regularized', data: rewire.ridge_r || [], color: '#06b6d4', width: 1.8, dash: [2, 2] },
+      ].filter(sr => sr.data.length === xLabels.length);  // models without a usable fit have no series
       drawMultiLineChart('canvas-vcc-rewire', xLabels, series, 'Pearson r', 0.0, 1.0);
     }
 
