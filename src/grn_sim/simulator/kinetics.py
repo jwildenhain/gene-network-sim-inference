@@ -16,6 +16,7 @@ def evaluate_derivatives(
     x: np.ndarray,
     network: GeneNetwork,
     perturbation: Optional[np.ndarray] = None,
+    production_scale: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """
     Computes dx/dt for all genes in the network given current concentrations x.
@@ -23,7 +24,10 @@ def evaluate_derivatives(
     Args:
         x: (n,) array of mRNA concentrations.
         network: GeneNetwork containing topology and kinetic parameters.
-        perturbation: (n,) external perturbation vector u (added to transcription factor activities).
+        perturbation: (n,) external perturbation vector u, added to the effective concentration of the gene as a
+            regulator (an activity boost: the gene's own transcript is not touched directly).
+        production_scale: (n,) multiplier of every gene's production rate (CRISPRi-style knockdown: ``1 - efficiency``
+            for the repressed gene, 1 elsewhere). ``None`` leaves the rates unchanged.
 
     Returns:
         (n,) array of derivatives dx/dt.
@@ -63,5 +67,7 @@ def evaluate_derivatives(
         prod_terms[k] = term
 
     # dx/dt = v_k * prod_terms - B_k * x_k
-    dx_dt = prod_terms * params.v - params.B * x
-    return dx_dt
+    production = prod_terms * params.v
+    if production_scale is not None:
+        production = production * production_scale
+    return production - params.B * x

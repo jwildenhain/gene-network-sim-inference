@@ -908,6 +908,7 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
             sim_payload["response_type"] = stored["state"].get("response_type", "responsive")
         if "response_dynamics" not in sim_payload:
             sim_payload["response_dynamics"] = stored["state"].get("response_dynamics", {})
+        sim_payload.setdefault("status", "success")
         return sim_payload
 
     db_record = load_run_from_db(run_id)
@@ -921,6 +922,7 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
     _ensure_graph_views(sim_payload)
 
     # Ensure response_dynamics reflects true trajectory convergence
+    resp_type, resp_dyn = None, None
     if sim_payload.get("X"):
         try:
             X_arr = np.array(sim_payload["X"], dtype=float)
@@ -934,8 +936,19 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         except Exception:
             pass
 
-    sim_payload["response_type"] = resp_type or "responsive"
-    sim_payload["response_dynamics"] = resp_dyn or {}
+    # The archive table and its filters show the label stored with the run, so the detail view reports the same one.
+    # When the stored trajectories would classify differently (older sweeps judged steady state from the solver
+    # diagnostics, not from the trajectories), say so instead of silently contradicting the table.
+    stored_type = db_record.get("response_type")
+    if stored_type and resp_type and stored_type != resp_type:
+        sim_payload["classification_note"] = (
+            f"Stored as '{stored_type}', but the stored trajectories alone would classify as '{resp_type}' "
+            f"(tail fluctuation {(resp_dyn or {}).get('max_tail_fluctuation', 0.0):.3g})."
+        )
+    sim_payload["response_type"] = stored_type or resp_type or "responsive"
+    sim_payload["response_dynamics"] = {**(resp_dyn or {}), **(db_record.get("response_dynamics") or {})}
+    # Runs stored by the parameter sweeps carry no status; the page ignores a load response unless it says "success"
+    sim_payload.setdefault("status", "success")
 
     adj_arr = np.array(sim_payload.get("true_matrix", []), dtype=int)
     CURRENT_STATE.update({
@@ -1684,17 +1697,17 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
     return payload
 
 
-def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False, rewire_fraction: float = 0.15) -> Dict[str, Any]:
+def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False, rewire_fraction: float = 0.15, perturbation: str = "input") -> Dict[str, Any]:
     """Computes or retrieves cached Virtual Cell Challenge 2026 vs Mechanistic GRN comparative benchmark."""
-    validate_vcc_params(num_genes, k_av, rewire_fraction)
+    validate_vcc_params(num_genes, k_av, rewire_fraction, perturbation)
     # Quantise the continuous parameters so near-identical requests share one cache entry
     k_av, rewire_fraction = round(k_av, 2), round(rewire_fraction, 2)
-    cache_key = f"vcc_{num_genes}_{k_av}_{seed}_{rewire_fraction}"
+    cache_key = f"vcc_{num_genes}_{k_av}_{seed}_{rewire_fraction}_{perturbation}"
     with _VCC_LOCK:
         if not refresh and cache_key in BENCHMARK_CACHE:
             return BENCHMARK_CACHE[cache_key]
 
-        payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction)
+        payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction, perturbation_mode=perturbation)
         BENCHMARK_CACHE[cache_key] = payload
         for stale_key in [k for k in list(BENCHMARK_CACHE) if k.startswith("vcc_")][:-VCC_CACHE_LIMIT]:
             BENCHMARK_CACHE.pop(stale_key, None)
@@ -2110,13 +2123,14 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 sd = int(query.get("seed", [2026])[0])
                 rf = query.get("refresh", ["0"])[0] in ("1", "true")
                 rewire_frac = float(query.get("rewire_fraction", [0.15])[0])
-                validate_vcc_params(n_g, k_av, rewire_frac)
+                perturbation = query.get("perturbation", ["input"])[0]
+                validate_vcc_params(n_g, k_av, rewire_frac, perturbation)
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}).encode("utf-8"))
                 return
             try:
-                payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf, rewire_fraction=rewire_frac)
+                payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf, rewire_fraction=rewire_frac, perturbation=perturbation)
                 # allow_nan=False: a bare NaN is not valid JSON and would break response.json() in the browser.
                 # Serialise before sending headers so a failure becomes a clean 500, not a 200 with a broken body.
                 body = json.dumps(payload, allow_nan=False).encode("utf-8")
@@ -2270,6 +2284,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                     sim_payload = dict(stored["sim_payload"])
                     sim_payload["inferred"] = stored["inferred_payload"]
                     _ensure_graph_views(sim_payload)
+                sim_payload.setdefault("status", "success")
                 self._set_headers(200)
                 self.wfile.write(json.dumps(sim_payload).encode("utf-8"))
             else:

@@ -4,7 +4,7 @@ Playwright End-to-End Test for Reordered Top Navigation:
   1. Simulation & Inference Studio (tab-wizard)
   2. Real-World Benchmarks (tab-sos)
   3. Previous Simulations Archive (tab-history)
-  4. Virtual Cell Challenge & AtlasShift (tab-vcc)
+  4. Virtual Cell Challenge (tab-vcc)
   5. Thesis & Paper Figures Gallery (tab-figures)
 - Verifies navigation switching for all 5 tabs.
 - Captures screenshot of reordered navigation header.
@@ -13,22 +13,21 @@ Playwright End-to-End Test for Reordered Top Navigation:
 from pathlib import Path
 import shutil
 import pytest
-from playwright.sync_api import sync_playwright
 
-BASE_URL = "http://localhost:8085"
+pytest.importorskip("playwright.sync_api")
+
 ARTIFACT_DIR = Path("/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed")
 DOCS_SCREENSHOTS = Path(__file__).resolve().parent.parent / "docs" / "screenshots"
 DOCS_SCREENSHOTS.mkdir(parents=True, exist_ok=True)
 
 
-def test_top_navigation_reorder():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+def test_top_navigation_reorder(browser, app_url):
+    if True:  # (body kept at its original indentation; the browser and server come from the shared fixtures)
         context = browser.new_context(viewport={"width": 1600, "height": 1000})
         page = context.new_page()
 
         print("1. Opening phpIoRN web application...")
-        page.goto(BASE_URL, wait_until="networkidle", timeout=30000)
+        page.goto(app_url, wait_until="networkidle", timeout=30000)
         page.wait_for_timeout(1000)
 
         # -------------------------------------------------------------
@@ -38,7 +37,7 @@ def test_top_navigation_reorder():
             ("tab-wizard", "1. Simulation & Inference Studio"),
             ("tab-sos", "2. Real-World Benchmarks"),
             ("tab-history", "3. Previous Simulations Archive"),
-            ("tab-vcc", "4. Virtual Cell Challenge & AtlasShift"),
+            ("tab-vcc", "4. Virtual Cell Challenge"),
             ("tab-figures", "5. Overall Statistics"),
         ]
 
@@ -54,6 +53,9 @@ def test_top_navigation_reorder():
             print(f"Tab {i}: data-tab='{actual_data_tab}', text='{actual_text}'")
             assert actual_data_tab == expected_id, (
                 f"Tab at position {i} should be {expected_id}, found {actual_data_tab}"
+            )
+            assert "AtlasShift" not in actual_text and "DREAM4" not in actual_text and "SOS" not in actual_text, (
+                f"tab titles are short: found '{actual_text}'"
             )
             assert expected_prefix in actual_text, (
                 f"Tab at position {i} should contain '{expected_prefix}', found '{actual_text}'"
@@ -82,10 +84,9 @@ def test_top_navigation_reorder():
         page.screenshot(path=str(nav_screenshot_path), full_page=False)
         print(f"Saved reordered navigation screenshot: {nav_screenshot_path}")
 
-        # Also copy to artifacts dir
-        artifact_path = ARTIFACT_DIR / "41_top_navigation_reordered.png"
-        shutil.copy(nav_screenshot_path, artifact_path)
-        print(f"Copied to artifact dir: {artifact_path}")
+        # Also copy to the artifacts dir when it exists on this machine
+        if ARTIFACT_DIR.exists():
+            shutil.copy(nav_screenshot_path, ARTIFACT_DIR / "41_top_navigation_reordered.png")
 
         # Capture a tight crop of the top nav header
         header_el = page.locator("header")
@@ -103,11 +104,8 @@ def test_top_navigation_reorder():
                     clip={"x": 0, "y": crop_y, "width": 1600, "height": crop_h}
                 )
                 print(f"Saved header crop: {header_crop_path}")
-                shutil.copy(header_crop_path, ARTIFACT_DIR / "42_top_navigation_bar_crop.png")
+                if ARTIFACT_DIR.exists():
+                    shutil.copy(header_crop_path, ARTIFACT_DIR / "42_top_navigation_bar_crop.png")
 
-        browser.close()
+        context.close()
         print("All reordered navigation tests passed successfully!")
-
-
-if __name__ == "__main__":
-    test_top_navigation_reorder()

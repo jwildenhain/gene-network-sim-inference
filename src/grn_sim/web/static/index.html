@@ -1013,13 +1013,13 @@
         <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
       </button>
       <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
-        <span>2. Real-World Benchmarks (SOS, DREAM4, Perturb-seq)</span>
+        <span>2. Real-World Benchmarks</span>
       </button>
       <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
         <span>3. Previous Simulations Archive (showpre.php)</span>
       </button>
       <button class="nav-tab" data-tab="tab-vcc" onclick="switchMainTab('tab-vcc')">
-        <span>4. Virtual Cell Challenge &amp; AtlasShift</span>
+        <span>4. Virtual Cell Challenge</span>
       </button>
       <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
         <span>5. Overall Statistics</span>
@@ -2605,6 +2605,13 @@
                 <option value="2.2">2.2</option>
               </select>
             </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;" for="vcc-perturbation">Perturbation:</label>
+              <select id="vcc-perturbation" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(false)" title="How the simulator perturbs a gene">
+                <option value="input" selected>Activation (+1 regulator input)</option>
+                <option value="knockdown">CRISPRi knockdown (&minus;80% production)</option>
+              </select>
+            </div>
             <button class="btn btn-primary btn-sm" id="btn-run-vcc" onclick="loadVccBenchmarkData(true)" style="padding:6px 14px;font-weight:700;">
               &#9654; Re-Simulate Virtual Cell
             </button>
@@ -2627,7 +2634,7 @@
           <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">
             Target perturbed in source atlases (K562, HCT116, HEK293T).
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--stage-bg);padding:10px;border-radius:6px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;background:var(--stage-bg);padding:10px;border-radius:6px;">
             <div>
               <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Mechanistic (Vote)</div>
               <div style="font-size:16px;font-weight:800;color:var(--accent-blue);" id="vcc-seen-mech-r">--</div>
@@ -2637,6 +2644,11 @@
               <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">AtlasShift (Empirical)</div>
               <div style="font-size:16px;font-weight:800;color:#8b5cf6;" id="vcc-seen-atlas-r">--</div>
               <div style="font-size:10px;color:var(--text-muted);" id="vcc-seen-atlas-rmse">RMSE: --</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Hill search</div>
+              <div style="font-size:16px;font-weight:800;color:#10b981;" id="vcc-seen-hill-r">--</div>
+              <div style="font-size:10px;color:var(--text-muted);" id="vcc-seen-hill-off">Off-target r: --</div>
             </div>
           </div>
         </div>
@@ -2650,7 +2662,7 @@
           <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">
             Unseen perturbation target in destination context (0 atlas observations).
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--stage-bg);padding:10px;border-radius:6px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;background:var(--stage-bg);padding:10px;border-radius:6px;">
             <div>
               <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Mechanistic (Vote)</div>
               <div style="font-size:16px;font-weight:800;color:var(--accent-blue);" id="vcc-ood-mech-r">--</div>
@@ -2660,6 +2672,11 @@
               <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">AtlasShift (Empirical)</div>
               <div style="font-size:16px;font-weight:800;color:#ef4444;" id="vcc-ood-atlas-r">0.000</div>
               <div style="font-size:10px;color:#ef4444;">No Prior &rarr; &Delta; = 0</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Hill search</div>
+              <div style="font-size:16px;font-weight:800;color:#10b981;" id="vcc-ood-hill-r">--</div>
+              <div style="font-size:10px;color:var(--text-muted);" id="vcc-ood-hill-off">Off-target r: --</div>
             </div>
           </div>
         </div>
@@ -2727,6 +2744,33 @@
         </div>
       </div>
 
+      <!-- Table 2: seen vs held-out prediction for every algorithm and both response methods -->
+      <div class="panel" style="margin-bottom:14px;padding:14px;">
+        <div class="panel-header" style="flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="panel-title">Held-Out Perturbation Prediction: Every Algorithm, Two Response Methods</div>
+            <div style="font-size:11px;color:var(--text-muted);">
+              Each model is refit without the held-out experiments. <b>Linear Jacobian</b> = pinv(A); <b>Hill refit</b> = the algorithm's regulators, Hill kinetics refit on the seen experiments, steady-state response.
+            </div>
+          </div>
+          <span class="badge badge-emerald">Table 2</span>
+        </div>
+        <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcc-response">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Model</th>
+              <th>Seen r</th>
+              <th>Held-out r</th>
+              <th>Held-out r (off-target)</th>
+              <th>Off-target vs null</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table></div>
+        <div id="vcc-response-note" style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.45;"></div>
+      </div>
+
       <!-- Section 3: Interactive In Silico In Vivo Perturbation Simulator & Profile Comparison -->
       <div class="panel" style="margin-bottom:14px;padding:14px;">
         <div class="panel-header" style="flex-wrap:wrap;gap:10px;">
@@ -2743,7 +2787,13 @@
             <label style="font-size:11.5px;font-weight:700;color:var(--text-main);">Target Gene:</label>
             <select id="vcc-target-select" style="width:auto;padding:4px 8px;font-size:12px;font-weight:700;" onchange="renderVccTargetProfile()"></select>
 
-            <label style="font-size:11.5px;font-weight:700;color:var(--text-main);margin-left:8px;">Compare Model:</label>
+            <label style="font-size:11.5px;font-weight:700;color:var(--text-main);margin-left:8px;" for="vcc-method-select">Response Method:</label>
+            <select id="vcc-method-select" style="width:auto;padding:4px 8px;font-size:12px;font-weight:700;" onchange="onVccMethodChange()">
+              <option value="hill" selected>Hill refit (structure &rarr; kinetics)</option>
+              <option value="linear">Linear Jacobian (pinv A)</option>
+            </select>
+
+            <label style="font-size:11.5px;font-weight:700;color:var(--text-main);margin-left:8px;" for="vcc-model-select">Compare Model:</label>
             <select id="vcc-model-select" style="width:auto;padding:4px 8px;font-size:12px;font-weight:700;" onchange="renderVccTargetProfile()">
               <option value="vote" selected>Voting Ensemble (Consensus)</option>
             </select>
@@ -3747,6 +3797,7 @@
         'tbl-sos-benchmark',
         'tbl-hist-alg-comparison',
         'tbl-vcc-summary',
+        'tbl-vcc-response',
         'tbl-fig2-4gene'
       ];
       sortableIds.forEach(id => makeTableSortable(id));
@@ -7575,6 +7626,16 @@
         text.innerHTML = `<strong>Oscillations Detected</strong>: Persistent limit cycle oscillations or non-steady trajectory detected (amplitude range = ${maxAmp}%). Perturbing <strong>${targetGene}</strong> prevents steady-state convergence due to negative feedback loops.`;
         stats.textContent = `Condition #${pertIdx + 1} (${targetGene}) Non-Steady • Limit Cycle ~`;
       }
+
+      // The archive table shows the stored label; say so when the stored trajectories alone would classify differently.
+      let noteEl = document.getElementById('hist-diag-note');
+      if (!noteEl) {
+        noteEl = document.createElement('div');
+        noteEl.id = 'hist-diag-note';
+        noteEl.style.cssText = 'font-size:11px;color:var(--accent-amber);margin-top:4px;';
+        stats.parentNode.insertBefore(noteEl, stats.nextSibling);
+      }
+      noteEl.textContent = data.classification_note ? `⚠ ${data.classification_note}` : '';
     }
 
     function drawCustomTimeCourseOnCanvas(canvasId, data, pertIdx, title) {
@@ -8054,6 +8115,7 @@
       const n = document.getElementById('vcc-num-genes')?.value || 12;
       const kav = document.getElementById('vcc-kav')?.value || 1.8;
       const rewireFrac = document.getElementById('vcc-cell-line')?.value || 0.15;
+      const perturbation = document.getElementById('vcc-perturbation')?.value || 'input';
 
       // Only the newest request may update the page: abort the previous one and ignore stragglers.
       if (vccAbortController) vccAbortController.abort();
@@ -8061,7 +8123,7 @@
       const seq = ++vccRequestSeq;
       setVccBusy(true);
 
-      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}&rewire_fraction=${rewireFrac}`, { signal: controller.signal })
+      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}&rewire_fraction=${rewireFrac}&perturbation=${perturbation}`, { signal: controller.signal })
         .then(r => r.json().catch(() => ({})).then(data => ({ ok: r.ok, status: r.status, data })))
         .then(({ ok, status, data }) => {
           if (seq !== vccRequestSeq) return;
@@ -8141,6 +8203,16 @@
         if (elA) elA.textContent = `r = ${ood.atlasshift.pearson_r.toFixed(3)}`;
       }
 
+      // Hill search (model-matched structure search + Hill refit) in both cards
+      [['seen', seen], ['ood', ood]].forEach(([tag, block]) => {
+        const hill = block && block.hill_search;
+        const r = document.getElementById(`vcc-${tag}-hill-r`);
+        const off = document.getElementById(`vcc-${tag}-hill-off`);
+        if (r) r.textContent = hill ? `r = ${hill.pearson_r.toFixed(3)}` : '--';
+        if (off) off.textContent = hill ? `Off-target r: ${hill.offtarget_r.toFixed(3)}` : 'Off-target r: --';
+      });
+      renderVccResponseTable(data);
+
       // 3. Populate Target Gene Dropdown & model options for the Profile Comparator
       const targetSelect = document.getElementById('vcc-target-select');
       if (targetSelect && data.target_profiles) {
@@ -8154,7 +8226,7 @@
         } else {
           targetSelect.value = '0';
         }
-        syncVccModelOptions((data.parameters && data.parameters.response_models) || []);
+        syncVccModelOptions(currentVccModels(data));
       }
 
       // 4. Top synergistic pairs list
@@ -8193,6 +8265,77 @@
         drawVccEpistasisHeatmap('canvas-vcc-epistasis', data.combinatorial_screen.epistasis_matrix, data.combinatorial_screen.gene_names);
       }
       if (data.single_cell_pca) drawVccSingleCellPca('canvas-vcc-pca', data.single_cell_pca);
+    }
+
+    function fmtR(v) {
+      return (v === null || v === undefined || Number.isNaN(Number(v))) ? '--' : Number(v).toFixed(3);
+    }
+
+    // A model only counts as "above null" when its own off-target r is clearly positive: on a single network the null
+    // itself is noisy (it can be -0.2), and a model that predicts nothing (r = 0) would otherwise look better than it.
+    function vccVerdict(offTargetR, minusNull) {
+      if (offTargetR <= 0.1) return { color: 'var(--text-muted)', verdict: 'no skill' };
+      if (minusNull > 0.1) return { color: '#10b981', verdict: 'above null' };
+      if (minusNull < -0.1) return { color: 'var(--accent-pink)', verdict: 'below null' };
+      return { color: 'var(--text-muted)', verdict: '≈ null' };
+    }
+
+    // Table 2: one row per (method, model). The off-target column leaves the perturbed gene out of the correlation,
+    // and "vs null" is the difference to the mean-profile baseline, so a model that merely knows which gene was hit
+    // (or that predicts a typical profile) is not mistaken for a regulatory model.
+    function renderVccResponseTable(data) {
+      const tbody = document.querySelector('#tbl-vcc-response tbody');
+      if (!tbody || !data.response_table) return;
+      const methodLabel = { linear: 'Linear Jacobian', hill: 'Hill refit', reference: 'Reference' };
+      tbody.innerHTML = '';
+      data.response_table.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.dataset.method = row.method;
+        tr.dataset.model = row.key;
+        if (row.kind === 'reference') tr.style.background = 'rgba(139, 92, 246, 0.07)';
+        else if (row.kind === 'search') tr.style.background = 'rgba(16, 185, 129, 0.08)';
+        if (!row.available) {
+          tr.title = row.reason || 'not available';
+          tr.innerHTML = `<td>${methodLabel[row.method] || row.method}</td><td>${row.label}</td>
+            <td colspan="4" style="color:var(--text-muted);font-style:italic;">n/a${row.reason ? ' — ' + row.reason : ''}</td>`;
+        } else {
+          const d = row.held_out_offtarget_minus_null;
+          const { color, verdict } = vccVerdict(row.held_out.offtarget_r, d);
+          tr.innerHTML = `
+            <td>${methodLabel[row.method] || row.method}</td>
+            <td><strong>${row.label}</strong></td>
+            <td>${fmtR(row.seen.pearson_r)}</td>
+            <td>${fmtR(row.held_out.pearson_r)}</td>
+            <td><strong>${fmtR(row.held_out.offtarget_r)}</strong></td>
+            <td><span style="color:${color};font-weight:700;">${d > 0 ? '+' : ''}${fmtR(d)}</span> <span style="font-size:10px;color:var(--text-muted);">${verdict}</span></td>`;
+        }
+        tbody.appendChild(tr);
+      });
+      makeTableSortable('tbl-vcc-response');
+
+      const note = document.getElementById('vcc-response-note');
+      if (note) {
+        const p = data.parameters || {};
+        const modeText = p.perturbation_mode === 'knockdown'
+          ? `<b>CRISPRi knockdown:</b> the targeted gene's own transcript falls by about ${Math.round((p.knockdown_efficiency || 0.8) * 100)}%, which is most of every profile. `
+            + `r over all genes therefore mostly rewards knowing <i>which</i> gene was hit (the "Target-gene prior" row needs no model at all), so compare models on the off-target column.`
+          : `<b>Activation:</b> +1 is added to the perturbed gene's regulator input; its own transcript barely changes, so r is dominated by the downstream response.`;
+        note.innerHTML = `${modeText}<br>One simulated network with ${p.unseen_ood_targets} held-out genes: differences under about 0.1 are within noise `
+          + `(see <code>docs/HOLDOUT_RESEARCH.md</code> for the 24-network paired study); "no skill" = off-target r of 0.1 or less. Linear Jacobian rows are exactly 0 for held-out genes because their row of A is never identified.`;
+      }
+    }
+
+    function currentVccModels(data) {
+      const method = document.getElementById('vcc-method-select')?.value || 'hill';
+      const params = (data && data.parameters) || {};
+      return (method === 'linear' ? params.response_models : params.hill_models) || [];
+    }
+
+    function onVccMethodChange() {
+      const data = APP_STATE.vccData;
+      if (!data) return;
+      syncVccModelOptions(currentVccModels(data));
+      renderVccTargetProfile();
     }
 
     // Rebuilds the "Compare Model" options from parameters.response_models. Models whose fit produced
@@ -8237,12 +8380,18 @@
       }
 
       // Update Metrics Ribbon
-      const modelMetrics = (profile.metrics && profile.metrics[modelKey]) || { pearson_r: 0, cosine_sim: 0, rmse: 0 };
+      const method = document.getElementById('vcc-method-select')?.value || 'hill';
+      const predictions = (method === 'linear' ? profile.predictions : profile.hill_predictions) || {};
+      const metricsByModel = (method === 'linear' ? profile.metrics : profile.hill_metrics) || {};
+      const modelMetrics = metricsByModel[modelKey] || { pearson_r: 0, cosine_sim: 0, rmse: 0 };
       const atlasMetrics = (profile.metrics && profile.metrics.atlasshift) || { pearson_r: 0, cosine_sim: 0, rmse: 0 };
 
-      const hasModel = !!(profile.predictions && profile.predictions[modelKey]);
+      const hasModel = !!predictions[modelKey];
       const mR = document.getElementById('vcc-target-model-r');
-      if (mR) mR.textContent = hasModel ? `r = ${Number(modelMetrics.pearson_r || 0).toFixed(3)}` : 'n/a';
+      if (mR) {
+        mR.textContent = hasModel ? `r = ${Number(modelMetrics.pearson_r || 0).toFixed(3)}` : 'n/a';
+        mR.title = hasModel && modelMetrics.offtarget_r !== undefined ? `Pearson r without the perturbed gene itself: ${Number(modelMetrics.offtarget_r).toFixed(3)}` : '';
+      }
       const mCos = document.getElementById('vcc-target-model-cos');
       if (mCos) mCos.textContent = hasModel ? `Cos = ${Number(modelMetrics.cosine_sim || 0).toFixed(3)}` : 'n/a';
 
@@ -8257,10 +8406,10 @@
       if (legendModelLbl) legendModelLbl.textContent = `■ ${modelLabel}`;
 
       const geneNames = (data.parameters && data.parameters.gene_names) || [];
-      drawVccTargetBarChart('canvas-vcc-target-profile', profile, modelKey, geneNames);
+      drawVccTargetBarChart('canvas-vcc-target-profile', profile, modelKey, geneNames, predictions);
     }
 
-    function drawVccTargetBarChart(canvasId, profile, modelKey, geneNames) {
+    function drawVccTargetBarChart(canvasId, profile, modelKey, geneNames, predictions) {
       const canvas = document.getElementById(canvasId);
       if (!canvas || !profile) return;
       const ctx = canvas.getContext('2d');
@@ -8273,7 +8422,7 @@
 
       const yTrue = profile.y_true || [];
       const yAtlas = profile.y_atlas || [];
-      const yModel = (profile.predictions && profile.predictions[modelKey]) || [];
+      const yModel = ((predictions || profile.predictions || {})[modelKey]) || [];
       const N = yTrue.length;
       if (N === 0) return;
 
@@ -8465,6 +8614,7 @@
         { label: 'Mechanistic GRN (Voting)', data: rewire.mechanistic_r, color: '#0284c7', width: 2.5 },
         { label: 'CellBox Neural ODE', data: rewire.cellbox_r || [], color: '#ec4899', width: 1.8, dash: [4, 2] },
         { label: 'RidgeCV Regularized', data: rewire.ridge_r || [], color: '#06b6d4', width: 1.8, dash: [2, 2] },
+        { label: 'Hill refit (Voting structure)', data: rewire.hill_r || [], color: '#10b981', width: 2.2 },
       ].filter(sr => sr.data.length === xLabels.length);  // models without a usable fit have no series
       drawMultiLineChart('canvas-vcc-rewire', xLabels, series, 'Pearson r', 0.0, 1.0);
     }

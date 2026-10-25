@@ -63,6 +63,13 @@ def run_playwright_e2e_new_simulation_and_db_test():
         # Mode: In Silico, Topology: Hierarchical Modular Network, n=14 genes, k_av=2.1, ratio=0.55, noise=0.03, seed=777
         page.select_option("#sim-mode", "insilico")
         page.select_option("#sim-topology", "hierarchical")
+        # Changing the mode starts an automatic simulation with the previous settings. Wait until it has finished,
+        # otherwise the response matcher below can pick up its response instead of the one for the click.
+        page.wait_for_function(
+            "() => { const b = document.getElementById('btn-run-all'); return !b.disabled && b.textContent.trim() === 'Simulate & Re-Engineer Network'; }",
+            timeout=30000,
+        )
+        page.wait_for_timeout(300)
         page.evaluate(
             """() => {
                 const setSlider = (id, lblId, val, fmt) => {
@@ -122,14 +129,11 @@ def run_playwright_e2e_new_simulation_and_db_test():
         print(f"[Playwright E2E] Archive SQLite badge: {db_badge_text}")
         assert "SQLite rgn_db" in db_badge_text
 
-        # Verify the newly simulated run (new_run_id) is the first row in #tbl-history
-        first_row_run_id = page.locator("#tbl-history tbody tr").first.locator("code").inner_text().strip()
-        print(f"[Playwright E2E] Top row in #tbl-history: {first_row_run_id}")
-        assert first_row_run_id == new_run_id, f"Expected {new_run_id} at top of archive table, got {first_row_run_id}"
-
-        # Click on the newly created row in #tbl-history to open its detailed view in Tab 4
-        page.locator("#tbl-history tbody tr").first.click()
-        page.wait_for_timeout(500)
+        # The archive lists only the best 15 runs of each dynamics set, so a fresh run does not necessarily have a
+        # row; open it through the page's own loader (what the "View Details" button calls).
+        page.evaluate("runId => selectArchiveRun(runId, false)", new_run_id)
+        page.wait_for_function("id => document.getElementById('hist-detail-runid').textContent.trim() === id", arg=new_run_id, timeout=15000)
+        page.wait_for_timeout(300)
 
         detail_run_id = page.locator("#hist-detail-runid").inner_text().strip()
         detail_topo = page.locator("#hist-detail-topo").inner_text().strip()
@@ -184,6 +188,8 @@ def run_playwright_e2e_new_simulation_and_db_test():
     check_db_path = DB_PATH
     import subprocess
     try:
+        if ":8085" not in APP_URL:
+            raise RuntimeError(f"{APP_URL} is not the docker container (port 8085); reading DB_PATH directly")
         res = subprocess.run(
             ["docker", "cp", "grn-sim-phpiorn:/app/data/rgn_db.sqlite", "/tmp/rgn_db_e2e.sqlite"],
             capture_output=True,
@@ -215,8 +221,9 @@ def run_playwright_e2e_new_simulation_and_db_test():
             (new_run_id,),
         )
         alg_rows = cur.fetchall()
-        assert len(alg_rows) in (6, 12), (
-            f"Expected 6 or 12 algorithm rows in SQLite `alg` table for {new_run_id}, got {len(alg_rows)}"
+        expected_algs = len(sim_json["inferred"]["metrics"])  # the studio's default selection has grown over time
+        assert expected_algs >= 6 and len(alg_rows) == expected_algs, (
+            f"Expected {expected_algs} algorithm rows in SQLite `alg` table for {new_run_id}, got {len(alg_rows)}"
         )
         print(f"[Playwright E2E] Verified SQLite `alg` rows ({len(alg_rows)} algorithms): {alg_rows}")
     finally:

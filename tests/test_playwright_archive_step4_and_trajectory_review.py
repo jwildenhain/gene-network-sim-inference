@@ -50,8 +50,8 @@ def test_archive_step4_toggle_and_trajectory_review():
         # Check toggle buttons (Side-by-side Dual and 3x3 Bar Grid)
         assert page.is_visible("#btn-hist-pert-mode-dual")
         assert page.is_visible("#btn-hist-pert-mode-bar")
-        assert not page.is_visible("#btn-hist-pert-mode-timecourse")
-        assert not page.is_visible("#btn-hist-pert-mode-matrix")
+        assert page.is_visible("#btn-hist-pert-mode-timecourse"), "the Time-Course Focus mode is part of the toggle"
+        assert page.is_visible("#btn-hist-pert-mode-matrix"), "the Matrix Focus mode is part of the toggle"
 
         # By default, dual should be active
         assert "active" in (page.get_attribute("#btn-hist-pert-mode-dual", "class") or "")
@@ -87,6 +87,16 @@ def test_archive_step4_toggle_and_trajectory_review():
         assert "active" in page.get_attribute("#btn-hist-pert-mode-bar", "class")
         assert page.is_visible("#canvas-hist-pert-grid") or page.is_visible("#canvas-hist-pert")
 
+        # The two focus modes maximise a single plot
+        for mode, label in (("timecourse", "Time-Course Focus"), ("matrix", "Expression Matrix (X) Focus")):
+            page.click(f"#btn-hist-pert-mode-{mode}")
+            page.wait_for_timeout(400)
+            assert "active" in page.get_attribute(f"#btn-hist-pert-mode-{mode}", "class")
+            assert "active" not in page.get_attribute("#btn-hist-pert-mode-bar", "class")
+            assert page.is_visible("#hist-step4-single-container")
+            assert not page.is_visible("#hist-step4-dual-container")
+            assert label in page.inner_text("#hist-pert-mode-label")
+
         # -------------------------------------------------------------
         # TEST 4: FLAT DYNAMICS RUN
         # -------------------------------------------------------------
@@ -116,9 +126,16 @@ def test_archive_step4_toggle_and_trajectory_review():
         page.click("#tbl-history tbody tr:first-child button:first-child")
         page.wait_for_timeout(1000)
 
+        # Archived sweep runs are listed by their stored category; the detail banner reports the same one and adds a
+        # note when the stored trajectories alone would classify the run differently.
+        osc_row = page.locator("#tbl-history tbody tr:first-child")
+        assert "Oscillating" in osc_row.inner_text()
+        osc_run_id = osc_row.locator("code").inner_text().strip() if osc_row.locator("code").count() else osc_row.locator("td").nth(1).inner_text().strip()
+        assert osc_run_id in page.inner_text("#hist-detail-runid"), "the clicked oscillating run is the one shown in the inspector"
         diag_text_osc = page.inner_text("#hist-trajectory-diagnosis-banner")
         print(f"Oscillating Diagnosis: {diag_text_osc}")
         assert "Oscillat" in diag_text_osc
+        assert "Clear Level Changes" not in diag_text_osc, "the banner agrees with the archive table"
 
         page.screenshot(path=str(ARTIFACT_DIR / "tab4_step4_timecourse_oscillating.png"))
         page.screenshot(path=str(DOCS_SCREENSHOTS / "33_tab4_step4_timecourse_oscillating.png"))

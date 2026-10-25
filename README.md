@@ -496,6 +496,7 @@ Tested in [`tests/test_atlasshift_and_perturbseq.py`](tests/test_atlasshift_and_
 - `test_create_and_export_anndata`: Validates AnnData creation, layer preservation, and HDF5 `.h5ad` export.
 - `test_profile_similarity`: Verifies metric computation (Pearson $r$, Cosine Sim, RMSE).
 - `test_run_vcc_benchmark`: Validates end-to-end multi-context comparative benchmark pipeline.
+- [`tests/test_hill_response.py`](tests/test_hill_response.py), [`tests/test_knockdown_mode.py`](tests/test_knockdown_mode.py), [`tests/test_holdout_study_script.py`](tests/test_holdout_study_script.py): the Hill refit (held-out columns never used for fitting, oracle vs null), the CRISPRi knockdown generator, the off-target score and the reproducible paired study.
 - [`tests/test_vcc_benchmark_fixes.py`](tests/test_vcc_benchmark_fixes.py): per-algorithm response signs, unavailable models are reported instead of substituted, the held-out refit never sees the unseen experiments, rewired edges keep their kinetics, the epistasis screen matches an independent double-perturbation simulation, input validation and the bounded cache.
 
 ##### Benchmark Results: Multi-Context Scale-Free Network ($N=16$, $k_{\text{av}}=1.8$, 3 Source Atlases, 15% target rewiring, seed 2026)
@@ -533,6 +534,24 @@ Mean Pearson $r$ per mechanistic model (`CPA-Lite` is not applicable: its $\math
 \*CellBox uses PyTorch when installed and is not seeded, so its numbers vary from run to run.
 
 *Key Takeaway*: with an honest hold-out, neither paradigm predicts a perturbation it has never observed from this sparse data. For the S2G/G2S/Vote family this is structural: in $\mathbf{A}\mathbf{X}=-\mathbf{U}$ the row of $\mathbf{A}$ belonging to a gene is identified only by the experiment that perturbs that gene, so a held-out gene has an all-zero row and its predicted response is exactly zero. Regularised models (`RidgeCV`, `DMD-GRN`) keep a small positive correlation. (An earlier version of this benchmark scored the mechanistic models on the perturbations they had been fit on and reported $r = 0.561$ for "unseen" targets; that figure is superseded.)
+
+###### 2b. Why held-out is 0, and what helps (Hill refit, knockdown generator)
+The exact zero is a property of the *linear Jacobian* predictor, not of held-out prediction in general. The tab therefore scores **two response methods for every algorithm**, both refit without the held-out experiments:
+
+* **Linear Jacobian** — $\hat{\mathbf{X}}_{:,j} = \pm\mathbf{A}_{\text{est}}^{+}\mathbf{u}_j$ (above): exactly 0 for a held-out gene.
+* **Hill refit** — keep the algorithm's top-2 regulators per target (orientation and signs chosen on the *training* data), refit Hill kinetics $x_k = c_k\prod_l h(x_l + u_l; K_l, m_l)$ on the seen experiments only, and solve for the steady state ([`hill_response.py`](src/grn_sim/benchmarks/hill_response.py)). Reference rows: a **mean-profile null** (no structure), the **true structure** (oracle upper bound) and a **Hill forward search** that selects regulators with the same model class.
+
+Because one simulated network with 4 held-out genes is very noisy (the null alone ranges from 0 to 0.4 between networks), the conclusions rest on a **paired study over 24 random networks** (`python scripts/holdout_study.py`, $N=16$, 4 held out, 1% noise; held-out Pearson $r$, difference to the null $\pm$ s.e.):
+
+| Predictor | Activation data (all genes) | CRISPRi knockdown data (all genes) | CRISPRi knockdown, **off-target genes only** |
+| :--- | :---: | :---: | :---: |
+| Mean-profile null | +0.015 | +0.006 | +0.047 |
+| Target-gene prior (design only, no model) | -- | **+0.790** | 0.000 |
+| True structure + Hill (oracle) | **+0.475** (+0.459 $\pm$ 0.065) | +0.905 | **+0.330** (+0.283 $\pm$ 0.070) |
+| Hill forward search | +0.167 (+0.151 $\pm$ 0.072, 17/24 wins) | +0.724 | +0.160 (+0.113 $\pm$ 0.069, 16/24 wins) |
+| G2S / NIR / Vote structure + Hill | +0.054 / +0.047 / +0.041 | +0.682 / +0.680 / +0.679 | +0.039 / +0.073 / +0.035 (within 0.03 of the null) |
+
+*Takeaways*: (1) with the **true** structure the response to an unseen perturbation *is* predictable ($r \approx 0.48$ at 1% noise, $0.89$ without noise); (2) the structures **inferred by the existing algorithms are the bottleneck** — across all 17 algorithms the Hill refit is not distinguishable from one that uses a *random* structure (`by_chance`, +0.074 $\pm$ 0.052 over the null); only NOTEARS is nominally above the null (+0.106 $\pm$ 0.044, one of 17 comparisons); (3) searching regulators with the same model class that is refit (Hill forward selection) is the only approach that beats the null clearly, but it recovers only about half of the true edges; (4) the simulator's default perturbation adds $+1$ to the regulator input, so the perturbed gene's *own* transcript barely changes, unlike CRISPRi. With the new **CRISPRi knockdown** generator (`perturbation=knockdown`: the gene's production is cut by 80%) the target's own drop is ~77% of every profile, so **all-gene $r$ is inflated**: a baseline that knows only *which* gene was hit scores $r = 0.79$, higher than every algorithm. Judge knockdown results on the **off-target** column. Details, negative results and caveats: [`docs/HOLDOUT_RESEARCH.md`](docs/HOLDOUT_RESEARCH.md).
 
 ###### 3. Destination Context Rewiring Sensitivity Sweep
 Models fitted on the 15%-rewired target context are applied to contexts that diverge from the source atlases by $\rho = 0\% \to 50\%$ edge rewiring (new edges are moved together with their kinetic parameters):

@@ -190,6 +190,58 @@ def test_loading_a_legacy_run_from_the_database_adds_the_new_versions(archived_r
     server.SIMULATION_RUN_STORE.pop("legacy-run-1", None)
 
 
+def test_archived_runs_stored_without_a_status_or_response_matrix_still_load_as_successes(archived_run):
+    """Sweep-generated archive rows carry no "status"; the page ignores a load response unless it says success."""
+    from grn_sim.web import database
+    sim, inferred = archived_run
+    sweep_like = legacy_copy(sim, inferred)
+    sweep_inferred = sweep_like.pop("inferred")
+    sweep_like.pop("status", None)
+    database.save_simulation_to_db(
+        "sweep-like-run-1", sweep_like, sweep_inferred, history_entry={"run_id": "sweep-like-run-1", "timestamp": "2020-01-02"}
+    )
+    server.SIMULATION_RUN_STORE.pop("sweep-like-run-1", None)
+    loaded = server._load_archived_run("sweep-like-run-1")
+    assert loaded["status"] == "success"
+
+    no_matrix = dict(sweep_like)
+    no_matrix.pop("X", None)
+    database.save_simulation_to_db(
+        "sweep-like-run-2", no_matrix, sweep_inferred, history_entry={"run_id": "sweep-like-run-2", "timestamp": "2020-01-03"}
+    )
+    server.SIMULATION_RUN_STORE.pop("sweep-like-run-2", None)
+    loaded = server._load_archived_run("sweep-like-run-2")
+    assert loaded["status"] == "success" and loaded["response_type"] == "responsive" and isinstance(loaded["response_dynamics"], dict)
+    for run_id in ("sweep-like-run-1", "sweep-like-run-2"):
+        server.SIMULATION_RUN_STORE.pop(run_id, None)
+
+
+def test_archived_runs_report_the_stored_classification_and_flag_a_disagreement(archived_run):
+    """The archive table shows the stored label; the detail view must not contradict it silently."""
+    from grn_sim.web import database
+    sim, inferred = archived_run
+    assert sim["response_type"] != "oscillating", "the fixture run converges, so its trajectories alone say so"
+
+    stored = legacy_copy(sim, inferred)
+    stored_inferred = stored.pop("inferred")
+    stored["response_type"] = "oscillating"           # what an older sweep stored for the same data
+    stored["response_dynamics"] = {**(stored.get("response_dynamics") or {}), "response_type": "oscillating"}
+    database.save_simulation_to_db("stored-osc-1", stored, stored_inferred, history_entry={"run_id": "stored-osc-1", "timestamp": "2020-02-01"})
+    server.SIMULATION_RUN_STORE.pop("stored-osc-1", None)
+    loaded = server._load_archived_run("stored-osc-1")
+    assert loaded["response_type"] == "oscillating"
+    assert "Stored as 'oscillating'" in loaded["classification_note"] and loaded["response_dynamics"]["max_tail_fluctuation"] >= 0
+
+    agree = legacy_copy(sim, inferred)
+    agree_inferred = agree.pop("inferred")
+    database.save_simulation_to_db("stored-agree-1", agree, agree_inferred, history_entry={"run_id": "stored-agree-1", "timestamp": "2020-02-02"})
+    server.SIMULATION_RUN_STORE.pop("stored-agree-1", None)
+    loaded = server._load_archived_run("stored-agree-1")
+    assert loaded["response_type"] == sim["response_type"] and "classification_note" not in loaded
+    for run_id in ("stored-osc-1", "stored-agree-1"):
+        server.SIMULATION_RUN_STORE.pop(run_id, None)
+
+
 # --- real-world benchmark payload -----------------------------------------------------------------------
 
 def test_benchmark_payload_carries_every_view(no_graphviz):

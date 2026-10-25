@@ -65,6 +65,7 @@ class ODESolver:
         network: GeneNetwork,
         x0: Optional[np.ndarray] = None,
         perturbation: Optional[np.ndarray] = None,
+        production_scale: Optional[np.ndarray] = None,
     ) -> Tuple[np.ndarray, bool, np.ndarray, SteadyStateDiagnostics]:
         """
         Integrates system and returns full SteadyStateDiagnostics matching
@@ -85,7 +86,10 @@ class ODESolver:
         is_steady = False
         zero_conc = False
         efnorm_thrs = self.efnorm_threshold
-        is_perturbation = perturbation is not None and np.any(perturbation != 0)
+        is_perturbation = bool(
+            (perturbation is not None and np.any(perturbation != 0))
+            or (production_scale is not None and np.any(production_scale != 1.0))
+        )
 
         efnorm_prev = -1.0
         efnorm_curr = 1.0
@@ -94,7 +98,7 @@ class ODESolver:
 
         for step in range(1, effective_max_steps + 1):
             steps_taken = step
-            dxdt = evaluate_derivatives(x_curr, network, perturbation)
+            dxdt = evaluate_derivatives(x_curr, network, perturbation, production_scale)
             x_next = x_curr + self.dt * dxdt
 
             x_next = np.maximum(x_next, self.min_concentration)
@@ -133,7 +137,7 @@ class ODESolver:
         tail = traj_arr[:, -tail_len:]
         tail_ptp = float(np.max(np.ptp(tail, axis=1))) if tail.size > 0 else 0.0
 
-        dxdt_end = evaluate_derivatives(x_curr, network, perturbation)
+        dxdt_end = evaluate_derivatives(x_curr, network, perturbation, production_scale)
         max_dxdt = float(np.max(np.abs(dxdt_end)))
 
         # A simulation is oscillating if and only if it does NOT reach steady state,

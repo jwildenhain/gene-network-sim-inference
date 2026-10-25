@@ -1,8 +1,20 @@
 """Shared fixtures for the browser tests: the real web handler on a free port, and headless Chromium."""
 
+import atexit
+import os
+import shutil
+import tempfile
 import threading
 
 import pytest
+
+# In-process tests must never write to the real simulation archive (data/rgn_db.sqlite): every simulation the web
+# handler runs is archived, so a test session used to add dozens of runs to it. Set before any test module is
+# imported (the server may archive a default run at start-up); export RGN_DB_PATH yourself to choose another file.
+if "RGN_DB_PATH" not in os.environ:
+    _archive_dir = tempfile.mkdtemp(prefix="grn-sim-test-archive-")
+    os.environ["RGN_DB_PATH"] = os.path.join(_archive_dir, "tests.sqlite")
+    atexit.register(shutil.rmtree, _archive_dir, True)
 
 
 @pytest.fixture(scope="module")

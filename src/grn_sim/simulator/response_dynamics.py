@@ -195,4 +195,5 @@ def classify_perturbation_response(
         "per_pert_stats": per_pert_stats,
         "is_steady": is_steady,
         "is_oscillating": is_oscillating,
+        "max_tail_fluctuation": round(max_tail_fluct, 6),
     }

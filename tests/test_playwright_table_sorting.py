@@ -82,8 +82,14 @@ def test_table_sorting():
         assert "no-sort" in (downloads_th.get_attribute("class") or "")
         assert "no-sort" in (actions_th.get_attribute("class") or "")
 
+        def col_of(header_text):
+            """Index of an archive column, looked up by its header so added or reordered columns do not break the test."""
+            th = page.locator("#tbl-history thead th", has_text=header_text)
+            return th.evaluate("el => Array.from(el.parentElement.children).indexOf(el)")
+
         # A. Sort by Total Errors ASCENDING
         total_err_th = page.locator("#tbl-history thead th", has_text="Total Errors")
+        err_col = col_of("Total Errors")
         total_err_th.click()
         page.wait_for_timeout(300)
 
@@ -98,7 +104,7 @@ def test_table_sorting():
 
         err_vals_asc = []
         for i in range(row_count):
-            txt = rows.nth(i).locator("td").nth(13).inner_text().strip()
+            txt = rows.nth(i).locator("td").nth(err_col).inner_text().strip()
             err_vals_asc.append(float(txt))
 
         print(f"Total Errors (ASC): {err_vals_asc}")
@@ -114,7 +120,7 @@ def test_table_sorting():
 
         err_vals_desc = []
         for i in range(row_count):
-            txt = rows.nth(i).locator("td").nth(13).inner_text().strip()
+            txt = rows.nth(i).locator("td").nth(err_col).inner_text().strip()
             err_vals_desc.append(float(txt))
 
         print(f"Total Errors (DESC): {err_vals_desc}")
@@ -124,6 +130,7 @@ def test_table_sorting():
         power_th = page.locator("#tbl-history thead th", has_text="Power (%)")
         power_th.click()
         page.wait_for_timeout(300)
+        power_col = col_of("Power (%)")
 
         # Previous header must lose active class
         assert "sort-asc" not in (total_err_th.get_attribute("class") or "")
@@ -132,33 +139,34 @@ def test_table_sorting():
 
         power_vals_asc = []
         for i in range(row_count):
-            raw = rows.nth(i).locator("td").nth(11).inner_text().strip()
+            raw = rows.nth(i).locator("td").nth(power_col).inner_text().strip()
             power_vals_asc.append(parse_clean_number(raw))
 
         print(f"Power % (ASC): {power_vals_asc}")
         assert power_vals_asc == sorted(power_vals_asc), f"Power % not sorted ascending: {power_vals_asc}"
 
-        # D. Sort by ID (#) ASCENDING
-        id_th = headers.nth(0)
+        # D. Sort by the number of genes ASCENDING (the first column is now the rank within a dynamics set)
+        id_th = page.locator("#tbl-history thead th", has_text="Genes (N)")
+        id_col = col_of("Genes (N)")
         id_th.click()
         page.wait_for_timeout(300)
 
         id_vals_asc = []
         for i in range(row_count):
-            raw = rows.nth(i).locator("td").nth(0).inner_text().strip()
+            raw = rows.nth(i).locator("td").nth(id_col).inner_text().strip()
             id_vals_asc.append(parse_clean_number(raw))
 
         print(f"ID (ASC): {id_vals_asc}")
         assert id_vals_asc == sorted(id_vals_asc), f"IDs not sorted ascending: {id_vals_asc}"
 
         # E. Sort by Dynamics Category
-        cat_th = page.locator("#tbl-history thead th", has_text="Dynamics Category")
+        cat_th = page.locator("#tbl-history thead th", has_text="Dynamics Set")
         cat_th.click()
         page.wait_for_timeout(300)
 
         cat_vals_asc = []
         for i in range(row_count):
-            raw = rows.nth(i).locator("td").nth(3).inner_text().strip()
+            raw = rows.nth(i).locator("td").nth(col_of("Dynamics Set")).inner_text().strip()
             clean = re.sub(r"^[\s\W_]+", "", raw).strip().lower()
             cat_vals_asc.append(clean)
 
@@ -178,7 +186,7 @@ def test_table_sorting():
         page.wait_for_timeout(200)
 
         first_row = rows.nth(0)
-        first_run_id = first_row.locator("td").nth(1).inner_text().strip()
+        first_run_id = first_row.locator("td").nth(col_of("Run ID")).inner_text().strip()
         print(f"Clicking first sorted row: {first_run_id}")
         first_row.click()
         page.wait_for_timeout(500)

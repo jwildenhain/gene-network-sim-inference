@@ -45,7 +45,25 @@ class PerturbationSimulator:
         perturbation_noise: float = 0.0,
         biological_variability: float = 0.0,
         solver: Optional[ODESolver] = None,
+        perturbation_mode: str = "input",
+        knockdown_efficiency: float = 0.8,
+        efficiency_spread: float = 0.0,
     ):
+        """
+        ``perturbation_mode``:
+          - ``"input"`` (default, the thesis/MATLAB convention): ``perturbation_factor`` is added to the effective
+            regulator concentration of the perturbed gene. U[j, j] = +perturbation_factor.
+          - ``"knockdown"`` (CRISPRi-style): the perturbed gene's production rate is multiplied by ``1 - e_j``, so its
+            own transcript falls by roughly ``e_j`` and its targets react through their regulation functions.
+            ``e_j = clip(knockdown_efficiency + efficiency_spread * N(0, 1), 0.05, 0.99)``; U[j, j] = -e_j.
+        """
+        if perturbation_mode not in ("input", "knockdown"):
+            raise ValueError(f"perturbation_mode must be 'input' or 'knockdown', got {perturbation_mode!r}")
+        if not 0.0 < knockdown_efficiency < 1.0:
+            raise ValueError(f"knockdown_efficiency must be in (0, 1), got {knockdown_efficiency!r}")
+        self.perturbation_mode = perturbation_mode
+        self.knockdown_efficiency = knockdown_efficiency
+        self.efficiency_spread = efficiency_spread
         self.perturbation_factor = perturbation_factor
         self.measurement_noise = measurement_noise
         self.perturbation_noise = perturbation_noise
@@ -98,23 +116,31 @@ class PerturbationSimulator:
         # 2. Perturb each gene sequentially
         for j in range(n):
             u_vec = np.zeros(n, dtype=float)
-            # Sample perturbation magnitude with noise
-            p_val = self.perturbation_factor
-            if self.perturbation_noise > 0.0:
-                p_noisy = apply_measurement_noise(np.array([p_val]), self.perturbation_noise, rng)[0]
-                u_vec[j] = p_noisy
-                error_pert[j, j] = abs(p_val - p_noisy) ** 2
+            scale = None
+            if self.perturbation_mode == "knockdown":
+                efficiency = float(np.clip(self.knockdown_efficiency + self.efficiency_spread * rng.standard_normal(), 0.05, 0.99))
+                scale = np.ones(n, dtype=float)
+                scale[j] = 1.0 - efficiency
+                U[j, j] = -efficiency
+                error_pert[j, j] = abs(self.knockdown_efficiency - efficiency) ** 2
             else:
-                u_vec[j] = p_val
-                error_pert[j, j] = 0.0
+                # Sample perturbation magnitude with noise
+                p_val = self.perturbation_factor
+                if self.perturbation_noise > 0.0:
+                    p_noisy = apply_measurement_noise(np.array([p_val]), self.perturbation_noise, rng)[0]
+                    u_vec[j] = p_noisy
+                    error_pert[j, j] = abs(p_val - p_noisy) ** 2
+                else:
+                    u_vec[j] = p_val
+                    error_pert[j, j] = 0.0
+                U[j, j] = u_vec[j]
 
-            U[j, j] = u_vec[j]
-
-            # Solve system from reference steady state under perturbation u_vec
+            # Solve system from reference steady state under the perturbation
             x_pert, p_steady, p_traj, p_diag = self.solver.solve_with_diagnostics(
                 sim_net,
                 x0=x_ss.copy(),
                 perturbation=u_vec,
+                production_scale=scale,
             )
             pert_trajectories.append(p_traj)
             pert_diags.append({
