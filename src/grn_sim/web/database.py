@@ -8,22 +8,27 @@ Mirrors the original MySQL `rgn_db` schema (`dumpdb.sql`, `runsim.php`, `showpre
 import json
 import os
 import sqlite3
+import tempfile
 from typing import Dict, Any, List, Optional
 
-
-DEFAULT_DB_PATH = os.environ.get(
-    "RGN_DB_PATH",
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "data", "rgn_db.sqlite"),
-)
+from grn_sim.paths import archive_db_path
 
 
 def get_db_path() -> str:
-    """Returns the active SQLite database file path and ensures its parent directory exists."""
-    db_path = os.environ.get("RGN_DB_PATH", DEFAULT_DB_PATH)
+    """
+    The active SQLite archive path (``$RGN_DB_PATH`` or ``<user data>/rgn_db.sqlite``, see ``grn_sim.paths``), with
+    its folder created. When that location cannot be written (a read-only install, a folder owned by another user)
+    a per-machine temp file is used instead.
+    """
+    db_path = str(archive_db_path())
     parent = os.path.dirname(os.path.abspath(db_path))
-    os.makedirs(parent, exist_ok=True)
-    if (os.path.exists(db_path) and not os.access(db_path, os.W_OK)) or not os.access(parent, os.W_OK):
-        return "/tmp/rgn_db_test.sqlite"
+    try:
+        os.makedirs(parent, exist_ok=True)
+        writable = os.access(parent, os.W_OK) and (not os.path.exists(db_path) or os.access(db_path, os.W_OK))
+    except OSError:
+        writable = False
+    if not writable:
+        return os.path.join(tempfile.gettempdir(), "grn_sim_archive.sqlite")
     return db_path
 
 
@@ -370,7 +375,7 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, A
             })
 
         cat_runs: Dict[str, List[Dict[str, Any]]] = {c: [] for c in categories}
-        for simid, nz, nt, av_k, noise, ss, osc, r_type, r_stats_json, sim_j in nw_rows:
+        for simid, nz, _nt, av_k, noise, ss, osc, r_type, r_stats_json, _sim_j in nw_rows:
             c = r_type if r_type in categories else ("oscillating" if osc or not ss else "responsive")
             stats = json.loads(r_stats_json) if r_stats_json and r_stats_json != "{}" else {}
             cat_runs[c].append({
@@ -408,7 +413,7 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, A
                         all_algs.setdefault(a["algid"], []).append(a)
 
                 best_alg = "N/A"
-                lowest_err = 999999
+                lowest_err = float("inf")
                 for a_id, a_list in all_algs.items():
                     avg_err = round(float(np.mean([x["total_errors"] for x in a_list])), 1)
                     avg_f1 = round(float(np.mean([x["f1_score"] for x in a_list])), 3)
@@ -431,7 +436,7 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, A
                         best_alg = a_id
 
                 c_dict["top_algorithm"] = best_alg.upper()
-                c_dict["top_algorithm_errors"] = lowest_err if lowest_err != 999999 else 0
+                c_dict["top_algorithm_errors"] = lowest_err if best_alg != "N/A" else 0  # never Infinity: it is not valid JSON
     finally:
         conn.close()
 

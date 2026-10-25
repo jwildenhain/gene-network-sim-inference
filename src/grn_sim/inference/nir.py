@@ -5,7 +5,7 @@ and ridge regression.
 """
 
 import time
-from typing import Optional, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
@@ -169,7 +169,7 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         adaptive = bool(kwargs.get("adaptive_k", self.adaptive_k))
 
         A_est = np.zeros((N, N), dtype=float)
-        diagnostics = {"sse": [], "r2": []}
+        diagnostics: Dict[str, List[float]] = {"sse": [], "r2": []}
 
         for i in range(N):
             indices, coeffs, sse, nopert = self._fit_single_row(i, X_f, U_f, K, D, adaptive_k=adaptive)

@@ -4,7 +4,7 @@ Base class and data contracts for gene regulatory network inference algorithms.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import numpy as np
 
 

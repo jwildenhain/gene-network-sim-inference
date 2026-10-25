@@ -9,7 +9,7 @@ Captures the underlying ODE kinetic parameters corresponding to create_network.m
 - n_k: Hill coefficients for activation
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 import numpy as np
 

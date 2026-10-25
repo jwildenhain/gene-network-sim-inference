@@ -14,21 +14,20 @@ Verifies:
 5. Capturing high-resolution Light Mode screenshots to the conversation artifact directory.
 """
 
+import pytest
 import json
 import os
 import sqlite3
 import urllib.request
 
 
-APP_URL = os.environ.get("GRN_SIM_URL", "http://localhost:8085")
-ARTIFACT_DIR = os.environ.get(
-    "ARTIFACT_DIR",
-    "/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed",
-)
-DB_PATH = os.environ.get(
-    "DB_PATH",
-    "/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/data/rgn_db.sqlite",
-)
+from _live import APP_URL
+
+from grn_sim.paths import archive_db_path
+from _live import ARTIFACT_DIR
+
+pytestmark = pytest.mark.live_server
+DB_PATH = os.environ.get("DB_PATH") or str(archive_db_path())
 
 
 def run_playwright_e2e_new_simulation_and_db_test():
@@ -156,7 +155,7 @@ def run_playwright_e2e_new_simulation_and_db_test():
         # Check summary cards container
         summary_cards = page.locator("#archive-summary-container .summary-type-card")
         assert summary_cards.count() == 3, f"Expected 3 summary cards, found {summary_cards.count()}"
-        print(f"[Playwright E2E] Verified 3 summary cards for Responsive, Flat, and Oscillating categories")
+        print("[Playwright E2E] Verified 3 summary cards for Responsive, Flat, and Oscillating categories")
 
         # Check Algorithm Comparative Table and open it
         page.click("#btn-toggle-alg-breakdown")
@@ -234,7 +233,7 @@ def run_playwright_e2e_new_simulation_and_db_test():
 
 def test_playwright_e2e_new_simulation_and_db():
     try:
-        with urllib.request.urlopen(f"{APP_URL}/api/status", timeout=2) as resp:
+        with urllib.request.urlopen(f"{APP_URL}/api/status", timeout=2):
             pass
     except Exception:
         import pytest

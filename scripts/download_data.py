@@ -5,7 +5,7 @@ Check, and if needed fetch, the data files of GRN-Sim. Standard library only, so
 Everything the web studio needs is committed to the repository: a plain `git clone` brings the benchmark
 datasets, the MATLAB thesis archives and the Norman/Replogle/DREAM4/SOS exports. The one thing that is not
 included is the raw Norman et al. 2019 Perturb-seq matrix (about 160 MB to download, 2.2 GB unpacked). It is
-only needed to *rebuild* data/benchmarks/norman_2019_real_16tf.json and ..._105gene.json, which are already bundled.
+only needed to *rebuild* src/grn_sim/data/benchmarks/norman_2019_real_16tf.json and ..._105gene.json, which are already bundled.
 
     python scripts/download_data.py                    # check that the bundled data is complete
     python scripts/download_data.py --norman           # also download + unpack the raw Norman 2019 data
@@ -35,11 +35,11 @@ NORMAN_NEEDS_GB = 2.6  # zip + unpacked matrix
 
 # (what it is, glob relative to the project root, minimum number of files, required?)
 BUNDLED = [
-    ("Norman 2019 benchmark (16 TF)", "data/benchmarks/norman_2019_real_16tf.json", 1, True),
-    ("Norman 2019 benchmark (105 genes)", "data/benchmarks/norman_2019_real_105gene.json", 1, True),
-    ("MATLAB thesis archives", "data/matlab_benchmarks/*.mat", 6, True),
-    ("MATLAB overall-statistics archive", "data/matlab_benchmarks/overallstats/*.mat", 20, True),
-    ("E. coli SOS microarray data", "data/SOSdata.txt", 1, True),
+    ("Norman 2019 benchmark (16 TF)", "src/grn_sim/data/benchmarks/norman_2019_real_16tf.json", 1, True),
+    ("Norman 2019 benchmark (105 genes)", "src/grn_sim/data/benchmarks/norman_2019_real_105gene.json", 1, True),
+    ("MATLAB thesis archives", "src/grn_sim/data/matlab_benchmarks/*.mat", 6, True),
+    ("MATLAB overall-statistics archive", "src/grn_sim/data/matlab_benchmarks/overallstats/*.mat", 20, True),
+    ("E. coli SOS microarray data", "src/grn_sim/data/SOSdata.txt", 1, True),
     ("Raw benchmark exports", "data/benchmarks/raw/*", 1, False),  # regenerated on demand
 ]
 
@@ -163,7 +163,7 @@ def fetch_norman(
 
 
 def build_norman(root: Path = ROOT, dry_run: bool = False, will_download: bool = False) -> bool:
-    """Rebuilds data/benchmarks/norman_2019_real_*.json from the raw matrix (needs the package installed).
+    """Rebuilds the bundled norman_2019_real_*.json benchmarks from the raw matrix (needs the package installed).
 
     ``will_download``: the raw matrix is fetched by the same invocation, so in a dry run its absence is expected."""
     if not (root / NORMAN_H5AD).exists():

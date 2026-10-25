@@ -33,23 +33,20 @@ Audits every tab, module, dataset, and algorithm:
    - Single-cell AnnData (.h5ad) export.
 """
 
+import pytest
 import json
 import os
-import time
 from playwright.sync_api import sync_playwright
 
-APP_URL = os.environ.get("GRN_SIM_URL", "http://localhost:8085")
-ARTIFACT_DIR = os.environ.get(
-    "ARTIFACT_DIR",
-    "/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed",
-)
+from _live import APP_URL
+from _live import ARTIFACT_DIR
 
-
+pytestmark = pytest.mark.live_server
 def run_full_application_audit():
     os.makedirs(ARTIFACT_DIR, exist_ok=True)
-    print(f"============================================================")
+    print("============================================================")
     print(f"🚀 STARTING FULL APPLICATION AUDIT: {APP_URL}")
-    print(f"============================================================")
+    print("============================================================")
 
     audit_results = {
         "tab1_studio": {},
@@ -155,7 +152,7 @@ def run_full_application_audit():
         sos_num = page.locator("#sim-num-genes").input_value()
         assert sos_num == "9", f"SOS mode must have 9 genes, got {sos_num}"
         assert page.locator("#sim-num-genes").is_disabled(), "Gene count must be locked for SOS mode"
-        print(f"  [OK] Real E. coli SOS circuit loaded into Studio (9 genes, locked sliders).")
+        print("  [OK] Real E. coli SOS circuit loaded into Studio (9 genes, locked sliders).")
         audit_results["tab1_studio"]["sos_real_mode"] = "SUCCESS"
 
         # 2.7 Test Step 1 Real Dataset Mode Switching: Norman 2019 CRISPRa
@@ -167,7 +164,7 @@ def run_full_application_audit():
         norman_num = page.locator("#sim-num-genes").input_value()
         assert norman_num == "16", f"Norman mode must have 16 genes, got {norman_num}"
         assert page.locator("#sim-num-genes").is_disabled(), "Gene count must be locked for Norman mode"
-        print(f"  [OK] Real Norman 2019 CRISPRa circuit loaded into Studio (16 genes, locked sliders).")
+        print("  [OK] Real Norman 2019 CRISPRa circuit loaded into Studio (16 genes, locked sliders).")
         audit_results["tab1_studio"]["norman_real_mode"] = "SUCCESS"
 
         shot_tab1_path = os.path.join(ARTIFACT_DIR, "audit_01_tab1_studio_verified.png")

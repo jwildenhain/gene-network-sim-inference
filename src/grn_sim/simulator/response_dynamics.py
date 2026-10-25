@@ -6,7 +6,7 @@ Categorizes gene network perturbation experiments into:
 3. 'oscillating': Dynamical limit cycle, persistent oscillation, or non-convergent trajectory (steady state not reached).
 """
 
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 import numpy as np
 
 
@@ -41,7 +41,7 @@ def classify_perturbation_response(
         Structured dictionary containing category key, labels, amplitudes, and per-gene/pert statistics.
     """
     diag = steady_state_diagnostics or {}
-    
+
     # Check trajectory tail dynamics if trajectories are supplied
     traj_converged = None
     max_tail_fluct = 0.0

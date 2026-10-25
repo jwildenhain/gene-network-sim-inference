@@ -3826,7 +3826,7 @@
         loadSosFullStudio();
         loadThesisFigures();
         loadHistoryTable();
-        loadVccBenchmarkData();
+        // The Virtual Cell Challenge benchmark takes seconds to compute: switchMainTab() loads it when its tab is first opened.
         initAllSortableTables();
       } catch (err) {
         console.error('Initialization error:', err);

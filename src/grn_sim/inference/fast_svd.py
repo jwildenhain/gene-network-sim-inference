@@ -102,6 +102,7 @@ class FastSVD(BaseInferenceAlgorithm):
                     bic = M * np.log(max(sse, 1e-12) / M) + kk * np.log(M)
                     if best is None or bic < best[0]:
                         best = (bic, cols, a_try)
+                assert best is not None  # K >= 1, so the loop ran
                 sel_cols = best[1]
                 A_est[i, sel_cols] = best[2]
                 continue

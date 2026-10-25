@@ -5,7 +5,7 @@ Open Problems in Single-Cell Perturbations competition.
 """
 
 import time
-from typing import Dict, Any, Optional
+from typing import Optional
 import numpy as np
 from sklearn.linear_model import RidgeCV
 
@@ -105,6 +105,7 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
                     bic = M * np.log(max(sse, 1e-12) / M) + kk * np.log(M)
                     if best is None or bic < best[0]:
                         best = (bic, cols)
+                assert best is not None  # K >= 1, so the loop ran
                 keep = np.zeros(len(reg_idx), dtype=bool)
                 keep[best[1]] = True
                 coefs = np.where(keep, coefs, 0.0)

@@ -5,16 +5,13 @@ Tests for Benchmark Dataset Provenance, Raw TSV/ZIP Downloads, and Biophysical P
 import io
 import json
 import zipfile
-import pytest
 import numpy as np
 
 from grn_sim.benchmarks.provenance import (
     get_benchmark_provenance,
     export_benchmark_raw_files,
     estimate_biophysical_parameters,
-    BENCHMARK_PROVENANCE,
 )
-from grn_sim.benchmarks.benchmark_datasets import list_benchmark_datasets, load_benchmark_dataset
 from grn_sim.web.server import _build_raw_benchmark_download, _execute_simulation
 
 
@@ -67,7 +64,6 @@ def test_estimate_biophysical_parameters():
     for ds_id in DATASETS:
         fit = estimate_biophysical_parameters(ds_id)
         assert "params" in fit
-        params = fit["params"]
         num_genes = len(fit["gene_names"])
 
         assert len(fit["basal_v"]) == num_genes

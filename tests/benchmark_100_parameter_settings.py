@@ -20,18 +20,17 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from grn_sim.paths import archive_db_path  # noqa: E402
+
 from grn_sim.core.network import GeneNetwork
 from grn_sim.core.topology import NetworkTopology, TopologyType
 from grn_sim.simulator.experiment import PerturbationSimulator
 from grn_sim.simulator.ode_solver import ODESolver
-from grn_sim.simulator.kinetics import evaluate_derivatives
 from grn_sim.simulator.response_dynamics import classify_perturbation_response
 from grn_sim.web.server import (
     _extract_kinetics_and_trajectories,
     export_graphviz_dot,
     render_graphviz_svg,
-    export_graph_json,
-    format_matrix_tsv,
 )
 from grn_sim.web.database import save_simulation_to_db, init_db
 
@@ -55,9 +54,10 @@ def run_100_parameter_sweep():
         k_av = float(rng.uniform(1.2, 4.2))
         act_ratio = float(rng.uniform(0.1, 0.85))
         pert_factor = float(rng.choice([0.005, 0.02, 0.1, 0.5, 1.5, 2.0, 3.5]))
-        hill_n = float(rng.choice([1.5, 2.0, 3.0, 4.5, 6.0]))
-        deg_B = float(rng.choice([0.3, 0.75, 1.0, 2.5]))
-        
+        # drawn and not used: keeps the random stream (and so every later setting) identical to the original sweep
+        _hill_n = float(rng.choice([1.5, 2.0, 3.0, 4.5, 6.0]))
+        _deg_b = float(rng.choice([0.3, 0.75, 1.0, 2.5]))
+
         # Target specific dynamical regimes across the sweep
         regime_target = "random"
         if idx % 3 == 0:
@@ -102,7 +102,7 @@ def run_100_parameter_sweep():
         try:
             exp = sim.run(net, seed=idx)
             p_trajs = exp.perturbation_trajectories or []
-            
+
             # Direct dynamical trajectory evaluation
             converged = True
             max_tail_ptp = 0.0
@@ -403,14 +403,14 @@ def reclassify_sqlite_database(db_path: Path):
     conn.commit()
     conn.close()
 
-    print(f"Database reclassification complete:")
+    print("Database reclassification complete:")
     print(f"  • Total runs processed: {len(rows)}")
     print(f"  • Total reclassified runs: {reclassified_count}")
     print(f"  • New distribution: {dict(new_counts)}")
 
 
 if __name__ == "__main__":
-    db_file = ROOT / "data" / "rgn_db.sqlite"
+    db_file = archive_db_path()
     run_100_parameter_sweep()
     create_and_store_representative_runs(db_file)
     reclassify_sqlite_database(db_file)

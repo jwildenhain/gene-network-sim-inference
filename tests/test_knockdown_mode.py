@@ -64,7 +64,8 @@ def test_unit_production_scale_changes_nothing():
     net = network(8)
     x = np.linspace(0.5, 2.0, 8)
     assert np.allclose(evaluate_derivatives(x, net), evaluate_derivatives(x, net, production_scale=np.ones(8)))
-    scale = np.ones(8); scale[2] = 0.2
+    scale = np.ones(8)
+    scale[2] = 0.2
     d0, d1 = evaluate_derivatives(x, net), evaluate_derivatives(x, net, production_scale=scale)
     assert not np.isclose(d0[2], d1[2]) and np.allclose(np.delete(d0, 2), np.delete(d1, 2))
 
@@ -76,7 +77,8 @@ def test_hill_model_in_knockdown_mode_reproduces_training_and_predicts_held_out_
     for seed in (1, 2, 3):
         net = network(12, seed)
         exp = PerturbationSimulator(1.0, 0.0, perturbation_mode="knockdown").run(net, seed=seed)
-        held = [9, 10, 11]; seen = list(range(9))
+        held = [9, 10, 11]
+        seen = list(range(9))
         x_abs = (exp.X + 1.0) * exp.reference_steady_state[:, None]
         model = HillResponseModel(exp.true_matrix.astype(int), x_abs[:, seen], exp.U[:, seen], exp.reference_steady_state, mode="knockdown")
         R = model.response_matrix(exp.U)

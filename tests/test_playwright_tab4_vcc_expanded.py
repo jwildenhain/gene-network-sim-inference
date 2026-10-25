@@ -1,11 +1,12 @@
 """Playwright end-to-end verification for the expanded Tab 4 Virtual Cell Simulation Engine."""
 
+import pytest
 import os
-import sys
-import time
 from playwright.sync_api import sync_playwright
 
-ARTIFACT_DIR = "/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed"
+from _live import APP_URL, ARTIFACT_DIR
+
+pytestmark = pytest.mark.live_server
 SCREENSHOT_PATH = os.path.join(ARTIFACT_DIR, "vcc_expanded_simulation_engine.png")
 DETAIL_SCREENSHOT_PATH = os.path.join(ARTIFACT_DIR, "vcc_perturbation_and_epistasis_detail.png")
 
@@ -20,8 +21,8 @@ def test_tab4_vcc_expanded():
         console_errors = []
         page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
 
-        print("Navigating to http://localhost:8085 ...")
-        page.goto("http://localhost:8085", wait_until="networkidle")
+        print(f"Navigating to {APP_URL} ...")
+        page.goto(APP_URL, wait_until="networkidle")
 
         # Click on Tab 4 (Virtual Cell Challenge & Simulation Engine)
         tab4_btn = page.locator('button[data-tab="tab-vcc"]')
@@ -52,8 +53,8 @@ def test_tab4_vcc_expanded():
 
         # Verify algorithm names in table
         table_text = page.locator("#tbl-vcc-summary").inner_text()
-        core_algos = ["VOTE", "CELLBOX", "S2G", "G2S", 
-                      "RIDGE_CV", "CPA_LITE", "NETDECONV", "NIR", "FAST", "ARACHNE", 
+        core_algos = ["VOTE", "CELLBOX", "S2G", "G2S",
+                      "RIDGE_CV", "CPA_LITE", "NETDECONV", "NIR", "FAST", "ARACHNE",
                       "CAUSALGRN", "DMDGRN", "DEEPRIG", "SFINN", "NOTEARS", "ATLASSHIFT", "BY_CHANCE"]
         for algo in core_algos:
             assert algo in table_text, f"Algorithm '{algo}' missing from VCC summary table!"

@@ -7,17 +7,9 @@ Replicates the Bachelor Honours Thesis experiments:
 3. Autonomous Multi-Agent Simulation & Inference Workflow
 """
 
-import sys
-from pathlib import Path
-
-# Add src to pythonpath
-src_dir = str(Path(__file__).resolve().parent / "src")
-if src_dir not in sys.path:
-    sys.path.insert(0, src_dir)
-
+# Run from a clone with `pip install -e .`, or against an installed release: `python examples/demo.py`.
 from grn_sim.cli import cmd_sos_benchmark, cmd_multi_agent
-from grn_sim.benchmarks.synthetic_sweep import run_topology_comparison, run_noise_sweep
-from grn_sim.agents.multi_agent_system import CoordinatorAgent
+from grn_sim.benchmarks.synthetic_sweep import run_noise_sweep
 
 
 def main():

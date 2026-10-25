@@ -10,18 +10,18 @@ Covers:
 """
 
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional
 import json
 import os
 import tempfile
 import numpy as np
 import scipy.linalg
 
-from grn_sim.core.network import KineticParameters, GeneNetwork
-from grn_sim.core.topology import NetworkTopology, TopologyType
+from grn_sim.core.network import KineticParameters
+from grn_sim.paths import exports_dir
 
 
-RAW_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "benchmarks" / "raw"
+RAW_DIR = exports_dir()
 
 
 def _writable_export_dir(preferred: Path) -> Path:

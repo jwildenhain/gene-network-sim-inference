@@ -27,7 +27,7 @@ import sys
 import time
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -57,6 +57,43 @@ def make_experiment(mode: str, genes: int, seed: int, noise: float, efficiency: 
     return sim.run(net, seed=seed + 999)
 
 
+def _correlations(R: np.ndarray, exp, held) -> Tuple[float, float]:
+    """Mean Pearson r over the held-out perturbations: all genes, and without the perturbed gene itself."""
+    every = np.mean([pearson(R[:, j], exp.X[:, j]) for j in held])
+    off_target = np.mean([pearson(np.delete(R[:, j], j), np.delete(exp.X[:, j], j)) for j in held])
+    return float(every), float(off_target)
+
+
+def evaluate_network(mode: str, exp, held: List[int], algorithms) -> Tuple[Dict[str, Tuple[float, float]], Tuple[float, float]]:
+    """Scores every predictor on one simulated experiment; returns ({predictor: (r, off-target r)}, (precision, recall))."""
+    genes = exp.X.shape[0]
+    seen = [j for j in range(genes) if j not in held]
+    x_abs = (exp.X + 1.0) * exp.reference_steady_state[:, None]
+    x_seen, u_seen, x_ctrl = x_abs[:, seen], exp.U[:, seen], exp.reference_steady_state
+
+    def hill(signed: np.ndarray) -> np.ndarray:
+        return HillResponseModel(signed, x_seen, u_seen, x_ctrl, mode=mode).response_matrix(exp.U)
+
+    scores = {"null": _correlations(mean_profile_baseline(exp.X, seen), exp, held)}
+    if mode == "knockdown":
+        scores["self_only"] = _correlations(np.diag(np.diag(exp.U)), exp, held)
+    scores["oracle"] = _correlations(hill(exp.true_matrix.astype(int)), exp, held)
+    searched = hill_forward_selection(x_seen, u_seen, x_ctrl, mode=mode)
+    scores["hill_search"] = _correlations(hill(searched), exp, held)
+    hits = int(((searched != 0) & (exp.true_matrix != 0)).sum())
+    structure = (hits / max(1, int((searched != 0).sum())), hits / max(1, int((exp.true_matrix != 0).sum())))
+
+    # The algorithms are fitted with the held-out experiments masked (X = U = 0), exactly as in the VCC benchmark.
+    X_train, U_train = exp.X.copy(), exp.U.copy()
+    X_train[:, held] = 0.0
+    U_train[:, held] = 0.0
+    for name in algorithms:
+        res = vcc._build_runners(2)[name].fit(X_train, vcc.FIT_INPUT_SIGN.get(name, 1.0) * U_train)
+        signed, _ = infer_signed_structure(res.A_est, res.adjacency_pred, X_train, U_train, q=vcc.HILL_STRUCTURE_Q)
+        scores[name] = _correlations(hill(signed), exp, held)
+    return scores, structure
+
+
 def run_study(
     mode: str = "input",
     genes: int = 16,
@@ -70,42 +107,16 @@ def run_study(
 
     ``structure`` is the edge precision / recall of the hill_search regulators against the true network."""
     warnings.filterwarnings("ignore")
-    names = ["null"] + (["self_only"] if mode == "knockdown" else []) + ["oracle", "hill_search"] + list(algorithms)
-    out = {"all": {k: [] for k in names}, "off_target": {k: [] for k in names}, "structure": {"precision": [], "recall": []}}
+    out: Dict[str, Dict[str, List[float]]] = {"all": {}, "off_target": {}, "structure": {"precision": [], "recall": []}}
     held = list(range(genes - held_out, genes))
-    seen = [j for j in range(genes) if j not in held]
 
     for seed in range(1, networks + 1):
-        exp = make_experiment(mode, genes, seed, noise)
-        x_abs = (exp.X + 1.0) * exp.reference_steady_state[:, None]
-        x_seen, u_seen, x_ctrl = x_abs[:, seen], exp.U[:, seen], exp.reference_steady_state
-
-        def record(name: str, R: np.ndarray) -> None:
-            out["all"][name].append(float(np.mean([pearson(R[:, j], exp.X[:, j]) for j in held])))
-            out["off_target"][name].append(float(np.mean([
-                pearson(np.delete(R[:, j], j), np.delete(exp.X[:, j], j)) for j in held
-            ])))
-
-        def hill(signed: np.ndarray) -> np.ndarray:
-            return HillResponseModel(signed, x_seen, u_seen, x_ctrl, mode=mode).response_matrix(exp.U)
-
-        record("null", mean_profile_baseline(exp.X, seen))
-        if mode == "knockdown":
-            record("self_only", np.diag(np.diag(exp.U)))
-        record("oracle", hill(exp.true_matrix.astype(int)))
-        searched = hill_forward_selection(x_seen, u_seen, x_ctrl, mode=mode)
-        record("hill_search", hill(searched))
-        hits = int(((searched != 0) & (exp.true_matrix != 0)).sum())
-        out["structure"]["precision"].append(hits / max(1, int((searched != 0).sum())))
-        out["structure"]["recall"].append(hits / max(1, int((exp.true_matrix != 0).sum())))
-
-        X_train, U_train = exp.X.copy(), exp.U.copy()
-        X_train[:, held] = 0.0
-        U_train[:, held] = 0.0
-        for name in algorithms:
-            res = vcc._build_runners(2)[name].fit(X_train, vcc.FIT_INPUT_SIGN.get(name, 1.0) * U_train)
-            signed, _ = infer_signed_structure(res.A_est, res.adjacency_pred, X_train, U_train, q=vcc.HILL_STRUCTURE_Q)
-            record(name, hill(signed))
+        scores, (precision, recall) = evaluate_network(mode, make_experiment(mode, genes, seed, noise), held, algorithms)
+        for name, (every, off_target) in scores.items():
+            out["all"].setdefault(name, []).append(every)
+            out["off_target"].setdefault(name, []).append(off_target)
+        out["structure"]["precision"].append(precision)
+        out["structure"]["recall"].append(recall)
         if progress:
             print(f"  network {seed}/{networks}", file=sys.stderr, flush=True)
     return out

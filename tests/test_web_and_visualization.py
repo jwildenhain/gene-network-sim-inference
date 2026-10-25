@@ -21,9 +21,6 @@ from grn_sim.web.server import (
     _load_archived_run,
     SIMULATION_RUN_STORE,
 )
-from grn_sim.core.topology import TopologyType
-from grn_sim.core.network import GeneNetwork
-from grn_sim.simulator.experiment import PerturbationSimulator
 
 
 def test_graphviz_dot_export():
@@ -86,7 +83,7 @@ def test_comparison_graph_json():
         [1,  0]
     ])
     comp = export_comparison_graph_json(true_adj, pred_adj, ["G1", "G2"])
-    statuses = [l["status"] for l in comp["links"]]
+    statuses = [link["status"] for link in comp["links"]]
     assert "TP_CORRECT" in statuses
     assert "TP_SIGN_ERR" in statuses
     assert "FP" in statuses

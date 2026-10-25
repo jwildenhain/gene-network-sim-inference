@@ -8,15 +8,13 @@ Contains:
 5. 'replogle_2022_p53': Replogle et al. (Cell 2022) 12-gene p53/cell cycle circuit in K562 vs. RPE1.
 """
 
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List
 import numpy as np
 
+from grn_sim.paths import resolve_data_file
 from grn_sim.benchmarks.sos_pathway import load_sos_dataset, SOS_GROUND_TRUTH, GENE_NAMES as SOS_GENES
-from grn_sim.simulator.perturb_seq import create_perturb_seq_anndata, export_perturb_seq_h5ad
 
 
-BENCHMARK_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "benchmarks"
 
 
 # =========================================================================
@@ -97,7 +95,7 @@ REPLOGLE_12_GROUND_TRUTH = np.array([
 def list_benchmark_datasets() -> List[Dict[str, Any]]:
     """Returns metadata catalog for all available benchmark datasets in phpIoRN."""
     from grn_sim.benchmarks.provenance import BENCHMARK_PROVENANCE
-    base_catalog = [
+    base_catalog: List[Dict[str, Any]] = [
         {
             "id": "ecoli_sos",
             "name": "E. coli SOS DNA Repair (Gardner et al., Science 2003)",
@@ -218,7 +216,7 @@ def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:
         }
 
     elif did in ("norman_2019_real_16tf", "norman_real_16tf", "norman_real"):
-        json_path = BENCHMARK_DIR / "norman_2019_real_16tf.json"
+        json_path = resolve_data_file("benchmarks", "norman_2019_real_16tf.json")
         if not json_path.exists():
             from grn_sim.benchmarks.build_real_norman import build_real_norman_datasets
             build_real_norman_datasets()
@@ -238,7 +236,7 @@ def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:
         }
 
     elif did in ("norman_2019_real_105gene", "norman_real_105"):
-        json_path = BENCHMARK_DIR / "norman_2019_real_105gene.json"
+        json_path = resolve_data_file("benchmarks", "norman_2019_real_105gene.json")
         if not json_path.exists():
             from grn_sim.benchmarks.build_real_norman import build_real_norman_datasets
             build_real_norman_datasets()

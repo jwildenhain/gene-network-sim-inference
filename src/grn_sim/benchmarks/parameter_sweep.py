@@ -29,19 +29,12 @@ Persists all runs into SQLite (rgn_db.sqlite) and outputs overall_statistics_swe
 
 import datetime
 import json
-import os
-import sys
 import time
-from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import numpy as np
 
-# Ensure src in sys.path
-SRC_DIR = Path(__file__).resolve().parent.parent.parent
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
 from grn_sim.core.network import GeneNetwork
+from grn_sim.paths import user_data_dir
 from grn_sim.core.topology import TopologyType
 from grn_sim.simulator.experiment import PerturbationSimulator
 from grn_sim.simulator.response_dynamics import classify_perturbation_response
@@ -96,7 +89,7 @@ ALGO_METADATA = {
 }
 
 
-def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[str, Any]:
+def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True) -> Dict[str, Any]:
     """Runs a complete 12-algorithm multi-axis benchmark across Random, Scale-Free, and Hierarchical topologies."""
     t_start = time.time()
     db_file = db_path or get_db_path()
@@ -118,9 +111,9 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
     all_algorithms = list(ALGO_METADATA.keys())
 
     # Containers for aggregated curves across algorithms
-    size_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
-    conn_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
-    noise_sweep_data = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
+    size_sweep_data: Dict[str, Dict[str, List[float]]] = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
+    conn_sweep_data: Dict[str, Dict[str, List[float]]] = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
+    noise_sweep_data: Dict[str, Dict[str, List[float]]] = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
 
     # Per-architecture breakdown containers
     arch_metrics: Dict[str, Dict[str, List[Dict[str, float]]]] = {
@@ -519,7 +512,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
     # -------------------------------------------------------------------------
     # 5. OVERALL ALGORITHM LEADERBOARD (ALL 12 ALGORITHMS)
     # -------------------------------------------------------------------------
-    leaderboard = []
+    leaderboard: List[Dict[str, Any]] = []
     for alg, m_list in all_evaluated_metrics.items():
         if not m_list:
             continue
@@ -557,7 +550,7 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
     # -------------------------------------------------------------------------
     # 6. ARCHITECTURE COMPARATIVE BREAKDOWN SUMMARY
     # -------------------------------------------------------------------------
-    architecture_summary = {}
+    architecture_summary: Dict[str, Dict[str, Any]] = {}
     for t_name, _, t_label in topology_defs:
         m_by_alg = arch_metrics[t_name]
         alg_breakdown = {}
@@ -653,7 +646,8 @@ def run_systematic_sweep(db_path: str = None, save_to_db: bool = True) -> Dict[s
     }
 
     # Save to disk as cached JSON payload
-    out_json_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "overall_statistics_sweep.json"
+    out_json_path = user_data_dir() / "overall_statistics_sweep.json"
+    out_json_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_json_path, "w", encoding="utf-8") as f:
         json.dump(overall_stats, f, indent=2)
 

@@ -7,7 +7,6 @@ Verifies:
 4. Server simulation presets for each of the 3 dynamics categories.
 """
 
-import json
 import os
 import tempfile
 import numpy as np
@@ -218,3 +217,24 @@ def test_database_persistence_and_summary_by_type():
     finally:
         if os.path.exists(db_path):
             os.remove(db_path)
+
+
+def test_summary_of_runs_without_algorithm_results_is_valid_json(tmp_path):
+    """A category whose runs have no algorithm results must not report an infinite error count (Infinity is not
+    valid JSON, and the archive page then fails to load at all)."""
+    import json
+
+    db_path = str(tmp_path / "summary.sqlite")
+    sim = {
+        "num_genes": 2, "topology": "random", "k_average": 1.0, "act_ratio": 0.5, "noise": 0.01, "seed": 3,
+        "X": [[0.5, 0.1], [0.1, 0.6]], "U": [[1.0, 0.0], [0.0, 1.0]], "true_matrix": [[0, 1], [1, 0]],
+        "steady_state_diagnostics": {"is_valid_steady_state": True, "oscillating_detected": False},
+    }
+    entry = {"id": 1, "run_id": "no-algs-01", "timestamp": "2026-10-25 10:00:00", "num_genes": 2, "topology": "random",
+             "k_av": 1.0, "act_ratio": 0.5, "noise": 0.01, "seed": 3, "response_type": "responsive"}
+    save_simulation_to_db("no-algs-01", sim, {"metrics": {}}, entry, db_path=db_path)
+
+    summary = get_summary_statistics_by_type(db_path)
+    json.dumps(summary, allow_nan=False)  # raises on Infinity / NaN
+    responsive = summary["categories"]["responsive"]
+    assert responsive["count"] == 1 and responsive["top_algorithm"] == "N/A" and responsive["top_algorithm_errors"] == 0

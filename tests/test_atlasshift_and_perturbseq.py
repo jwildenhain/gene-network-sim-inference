@@ -6,7 +6,6 @@ and Virtual Cell Challenge 2026 comparative benchmark.
 from pathlib import Path
 import tempfile
 import numpy as np
-import pytest
 
 from grn_sim.inference.atlasshift import AtlasShift
 from grn_sim.simulator.perturb_seq import (

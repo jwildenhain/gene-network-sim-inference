@@ -16,18 +16,14 @@ Verifies:
 7. Saves high-resolution screenshots to the conversation artifact directory.
 """
 
-import json
+import pytest
 import os
-import re
 from playwright.sync_api import sync_playwright
 
-APP_URL = os.environ.get("GRN_SIM_URL", "http://localhost:8085")
-ARTIFACT_DIR = os.environ.get(
-    "ARTIFACT_DIR",
-    "/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed",
-)
+from _live import APP_URL
+from _live import ARTIFACT_DIR
 
-
+pytestmark = pytest.mark.live_server
 def test_clickable_nodes_and_trajectories():
     os.makedirs(ARTIFACT_DIR, exist_ok=True)
     print(f"[Playwright] Connecting to GRN-Sim studio at {APP_URL}")

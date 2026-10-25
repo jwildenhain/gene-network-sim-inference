@@ -211,7 +211,7 @@ def test_algorithm_selector_switches_step_6(page):
 
 def test_perturbation_plot_modes_and_gene_selector(page):
     go(page, "tab-wizard")
-    for mode, button in (("bar", "#btn-pert-plot-bar"), ("line", "#btn-pert-plot-line")):
+    for _mode, button in (("bar", "#btn-pert-plot-bar"), ("line", "#btn-pert-plot-line")):
         page.click(button)
         assert page.locator(button).evaluate("e => e.classList.contains('active')")
     page.select_option("#select-pert-gene", "3")

@@ -5,10 +5,11 @@ and thesis Chapter 4 (Table 4.1).
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Optional, Tuple
 import numpy as np
 import scipy.io
 
+from grn_sim.paths import resolve_data_file
 from grn_sim.inference.s2g import SimpleToGeneral
 from grn_sim.inference.g2s import GeneralToSpecific
 from grn_sim.inference.nir import NIRAlgorithm
@@ -47,12 +48,7 @@ def load_sos_dataset(data_path: Optional[str] = None) -> Tuple[np.ndarray, np.nd
         sU: (9, 9) perturbation error matrix.
     """
     if data_path is None:
-        # Default project path
-        base_dir = Path(__file__).resolve().parent.parent.parent.parent / "data"
-        mat_path = base_dir / "results_gapa_20021209_and_mmc_dbl.mat"
-        if not mat_path.exists():
-            # Backup path on zpool
-            mat_path = Path("/mnt/zfspool/Backups/Jan/512GB_usb_backup_ugreen/Jan Wildenhain/614txci/EigDaten/Projects/BHonsThesis/matlab/farina/results_gapa_20021209_and_mmc_dbl.mat")
+        mat_path = resolve_data_file("results_gapa_20021209_and_mmc_dbl.mat")
     else:
         mat_path = Path(data_path)
 

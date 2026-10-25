@@ -87,11 +87,11 @@ def test_matlab_equivalence_sos_table_4_1():
 
 def test_matlab_equivalence_60_gene_archive():
     """Verify bit-for-bit match against stored 60-gene MATLAB run random_nz60_run5_iot2_sig0.mat."""
-    from pathlib import Path
     import scipy.io as sio
     from grn_sim.evaluation.metrics import evaluate_inference
+    from grn_sim.paths import bundled_path
 
-    mat_path = Path(__file__).resolve().parents[1] / "data" / "matlab_benchmarks" / "random_nz60_run5_iot2_sig0.mat"
+    mat_path = bundled_path("matlab_benchmarks", "random_nz60_run5_iot2_sig0.mat")
     m = sio.loadmat(str(mat_path), squeeze_me=True, struct_as_record=False)
     rnd = m["random"]
     X = np.real(rnd.steady_state_measurement).astype(float)

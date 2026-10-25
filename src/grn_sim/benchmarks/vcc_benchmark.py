@@ -13,7 +13,6 @@ Provides:
 6. Multi-Context Rewiring Sensitivity Decay Curve
 """
 
-from pathlib import Path
 from typing import Dict, Any, List, NamedTuple, Optional, Tuple
 import numpy as np
 from sklearn.decomposition import PCA
@@ -628,7 +627,7 @@ def run_vcc_comparative_benchmark(
     # 7. Combinatorial Epistasis & Synthetic Lethality Screen (Gi x Gj)
     # Every pair is simulated on the true network; eps_ij is the deviation from additive single effects.
     epistasis_matrix, unsteady_pairs = _dual_perturbation_screen(sim, target_exp)
-    synergy_pairs = []
+    synergy_pairs: List[Dict[str, Any]] = []
 
     for i in range(num_genes):
         for j in range(i + 1, num_genes):

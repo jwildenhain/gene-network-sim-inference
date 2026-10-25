@@ -5,7 +5,7 @@ and Hierarchical Modular topologies with signed regulatory edges (+1: activation
 """
 
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional
 import numpy as np
 
 

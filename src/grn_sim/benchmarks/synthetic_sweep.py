@@ -4,18 +4,17 @@ Replicates the topology, noise, and connectivity sweeps from Chapter 4 of the th
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Sequence
 import numpy as np
 
 from grn_sim.core.topology import TopologyType
 from grn_sim.core.network import GeneNetwork
-from grn_sim.simulator.experiment import PerturbationSimulator, SimulationExperiment
+from grn_sim.simulator.experiment import PerturbationSimulator
 from grn_sim.inference.s2g import SimpleToGeneral
 from grn_sim.inference.g2s import GeneralToSpecific
 from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
-from grn_sim.inference.by_chance import ByChance
 from grn_sim.evaluation.metrics import evaluate_inference, BenchmarkMetrics
 
 
@@ -28,7 +27,7 @@ class SweepResult:
 
 
 def run_topology_comparison(
-    network_sizes: List[int] = [10, 20],
+    network_sizes: Sequence[int] = (10, 20),
     k_av: float = 1.0,
     repeats: int = 3,
     seed: int = 42,
@@ -60,7 +59,7 @@ def run_topology_comparison(
         for n in network_sizes:
             coverage_sums = {name: 0.0 for name in algos}
 
-            for rep in range(repeats):
+            for _rep in range(repeats):
                 net = GeneNetwork.create(
                     n=n,
                     k_av=k_av,
@@ -84,7 +83,7 @@ def run_topology_comparison(
 
 def run_noise_sweep(
     network_size: int = 10,
-    noise_levels: List[float] = [0.0, 0.02, 0.05, 0.10],
+    noise_levels: Sequence[float] = (0.0, 0.02, 0.05, 0.10),
     k_av: float = 1.5,
     repeats: int = 3,
     seed: int = 123,
@@ -110,7 +109,7 @@ def run_noise_sweep(
         )
         cov_sums = {name: 0.0 for name in algos}
 
-        for rep in range(repeats):
+        for _rep in range(repeats):
             net = GeneNetwork.create(
                 n=network_size,
                 k_av=k_av,

@@ -51,11 +51,13 @@ def test_top_q_support_keeps_the_best_regulators_per_target_and_no_self_edges():
 def test_linear_refit_recovers_known_coefficients_and_ignores_masked_columns():
     rng = np.random.default_rng(0)
     n, m = 4, 30
-    F_true = np.zeros((n, n)); F_true[1, 0], F_true[2, 1] = 0.6, -0.4
+    F_true = np.zeros((n, n))
+    F_true[1, 0], F_true[2, 1] = 0.6, -0.4
     Z = rng.normal(size=(n, m))
     X = F_true @ Z
     U = Z - X                                    # so that X + U = Z
-    X[:, -5:] = 0.0; U[:, -5:] = 0.0             # masked experiments
+    X[:, -5:] = 0.0
+    U[:, -5:] = 0.0             # masked experiments
     support = (F_true != 0).T.astype(int)         # support[l, k]
     assert np.allclose(linear_refit(support, X, U, ridge=1e-9), F_true, atol=1e-4)
 
@@ -112,7 +114,8 @@ def test_held_out_perturbations_are_predicted_from_the_other_experiments_with_th
     scores = []
     for seed in (1, 2, 3):
         exp = experiment(n=16, seed=seed)
-        held = [12, 13, 14, 15]; seen = [j for j in range(16) if j not in held]
+        held = [12, 13, 14, 15]
+        seen = [j for j in range(16) if j not in held]
         x_abs = (exp.X + 1.0) * exp.reference_steady_state[:, None]
         model = HillResponseModel(exp.true_matrix.astype(int), x_abs[:, seen], exp.U[:, seen], exp.reference_steady_state)
         scores.append(held_out_score(model, exp, held))
@@ -121,10 +124,12 @@ def test_held_out_perturbations_are_predicted_from_the_other_experiments_with_th
 
 def test_held_out_columns_are_never_used_for_fitting():
     exp = experiment(n=12, seed=4)
-    held = [10, 11]; seen = list(range(10))
+    held = [10, 11]
+    seen = list(range(10))
     x_abs = (exp.X + 1.0) * exp.reference_steady_state[:, None]
     base = HillResponseModel(exp.true_matrix.astype(int), x_abs[:, seen], exp.U[:, seen], exp.reference_steady_state)
-    tampered = x_abs.copy(); tampered[:, held] = 123.0                   # garbage in the held-out experiments
+    tampered = x_abs.copy()
+    tampered[:, held] = 123.0                   # garbage in the held-out experiments
     other = HillResponseModel(exp.true_matrix.astype(int), tampered[:, seen], exp.U[:, seen], exp.reference_steady_state)
     assert np.allclose(base.response_matrix(exp.U), other.response_matrix(exp.U))
 
@@ -142,17 +147,18 @@ def paired_held_out_scores(seeds, n=16, k_held=4, noise=0.01):
     out = {"null": [], "oracle": [], "search": [], "g2s": []}
     for seed in seeds:
         exp = rewired_experiment(n, seed, noise)
-        held = list(range(n - k_held, n)); seen = [j for j in range(n) if j not in held]
+        held = list(range(n - k_held, n))
+        seen = [j for j in range(n) if j not in held]
         x_abs = (exp.X + 1.0) * exp.reference_steady_state[:, None]
         x_seen, u_seen, x_ctrl = x_abs[:, seen], exp.U[:, seen], exp.reference_steady_state
 
-        def score(R):
-            return float(np.mean([pearson(R[:, j], exp.X[:, j]) for j in held]))
-
-        out["null"].append(score(mean_profile_baseline(exp.X, seen)))
+        null_R = mean_profile_baseline(exp.X, seen)
+        out["null"].append(float(np.mean([pearson(null_R[:, j], exp.X[:, j]) for j in held])))
         out["oracle"].append(held_out_score(HillResponseModel(exp.true_matrix.astype(int), x_seen, u_seen, x_ctrl), exp, held))
         out["search"].append(held_out_score(HillResponseModel(hill_forward_selection(x_seen, u_seen, x_ctrl), x_seen, u_seen, x_ctrl), exp, held))
-        Xt, Ut = exp.X.copy(), exp.U.copy(); Xt[:, held] = 0; Ut[:, held] = 0
+        Xt, Ut = exp.X.copy(), exp.U.copy()
+        Xt[:, held] = 0
+        Ut[:, held] = 0
         res = vcc._build_runners(2)["g2s"].fit(Xt, Ut)
         signed, _ = infer_signed_structure(res.A_est, res.adjacency_pred, Xt, Ut, q=2)
         out["g2s"].append(held_out_score(HillResponseModel(signed, x_seen, u_seen, x_ctrl), exp, held))
