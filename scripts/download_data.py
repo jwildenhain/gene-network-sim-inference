@@ -162,9 +162,14 @@ def fetch_norman(
     return True
 
 
-def build_norman(root: Path = ROOT, dry_run: bool = False) -> bool:
-    """Rebuilds data/benchmarks/norman_2019_real_*.json from the raw matrix (needs the package installed)."""
+def build_norman(root: Path = ROOT, dry_run: bool = False, will_download: bool = False) -> bool:
+    """Rebuilds data/benchmarks/norman_2019_real_*.json from the raw matrix (needs the package installed).
+
+    ``will_download``: the raw matrix is fetched by the same invocation, so in a dry run its absence is expected."""
     if not (root / NORMAN_H5AD).exists():
+        if dry_run and will_download:
+            print("[build] would rebuild the Norman benchmark JSONs once the raw matrix has been downloaded")
+            return True
         print("[build] the raw Norman matrix is missing - run with --norman first")
         return False
     if dry_run:
@@ -207,7 +212,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if want_norman:
         ok &= fetch_norman(url=args.url, force=args.force, dry_run=args.dry_run, strict=args.strict, keep_zip=not args.clean)
     if want_build and ok:
-        ok &= build_norman(dry_run=args.dry_run)
+        ok &= build_norman(dry_run=args.dry_run, will_download=want_norman)
     if not (want_norman or want_build):
         print("The bundled data is all the web studio needs. Use --norman only to rebuild the Norman benchmarks.")
     return 0 if (all_ok and ok) else 1

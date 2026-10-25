@@ -160,6 +160,14 @@ def test_build_needs_the_raw_matrix_first(tmp_path, capsys):
     assert "--norman first" in capsys.readouterr().out
 
 
+def test_dry_run_of_a_build_that_follows_a_download_does_not_need_the_raw_matrix_yet(tmp_path, capsys):
+    """`--all --dry-run` on a fresh checkout: the matrix is missing only because the dry run did not download it."""
+    assert dd.build_norman(root=tmp_path, dry_run=True, will_download=True)
+    assert "would rebuild" in capsys.readouterr().out
+    assert not dd.build_norman(root=tmp_path, dry_run=True), "a build without a download still needs the raw matrix"
+    assert "--norman first" in capsys.readouterr().out
+
+
 def test_dry_run_of_everything_is_safe_on_this_machine(capsys):
     assert dd.main(["--all", "--dry-run"]) == 0
     assert "norman" in capsys.readouterr().out.lower()

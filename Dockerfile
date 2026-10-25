@@ -15,6 +15,7 @@ WORKDIR /app
 COPY pyproject.toml README.md SPECIFICATION.md ./
 COPY data/ ./data/
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 COPY tests/ ./tests/
 
 # Install Python package and test suite dependencies
