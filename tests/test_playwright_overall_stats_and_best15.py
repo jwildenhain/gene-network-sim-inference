@@ -13,15 +13,15 @@ Playwright End-to-End Test for:
    - Step 4 Side-by-Side Continuous ODE Relaxation & Expression Matrix (X) + 3×3 Shift Bar Grid toggle.
 """
 
-from pathlib import Path
 import shutil
 import pytest
 from playwright.sync_api import sync_playwright
 
-BASE_URL = "http://localhost:8085"
-ARTIFACT_DIR = Path("/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed")
-DOCS_SCREENSHOTS = Path(__file__).resolve().parent.parent / "docs" / "screenshots"
-DOCS_SCREENSHOTS.mkdir(parents=True, exist_ok=True)
+from _live import APP_URL as BASE_URL
+from _live import ARTIFACT_DIR
+
+pytestmark = pytest.mark.live_server
+from _live import DOCS_SCREENSHOTS
 
 
 def test_overall_stats_and_best15_restricted_archive():

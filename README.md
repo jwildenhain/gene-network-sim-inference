@@ -395,7 +395,7 @@ When loading a real-world benchmark into Tab 1, users can choose between two dis
     - **Flat / Insensitive**: **7 runs** (5.4%)
     - **Persistent Oscillations / Limit Cycles**: **3 runs** (2.3%)
 * **Thesis & Paper Figures Gallery (Dual Engine, Tab 5)**:
-  Tab 5 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
+  Tab 5 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `src/grn_sim/data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
 
 ### 5. Single-Cell Perturb-seq Generation & Arc Institute Virtual Cell Challenge (VCC 2026)
 
@@ -589,18 +589,45 @@ Then open **http://localhost:8085** in your browser.
 
 ---
 
-## 🚀 Local Python Installation & CLI
+## 🚀 Installation, Python API & CLI
 
-**Requirements:** Python 3.9 or newer and git (about 1 GB of disk for the repository and the Python packages).
+**Requirements:** Python 3.9 or newer. The wheel is about 2 MB and carries the web studio and the bundled datasets.
 
+```bash
+# as a library + command line + web studio, no clone needed
+pip install "git+https://github.com/jwildenhain/gene-network-sim-inference.git"
+grn-sim web --port 8085            # the studio at http://127.0.0.1:8085   (also: python -m grn_sim.web.server 8085)
+grn-sim sos-benchmark              # replicate the 9-gene E. coli SOS benchmark (thesis Table 4.1)
+```
+Extras: `pip install "grn-sim[torch]"` adds the PyTorch backend of CellBox / CPA-Lite, `"grn-sim[browser]"` Playwright for the
+browser tests, `"grn-sim[dev]"` pytest, ruff, mypy, build and twine.
+
+**From a clone** (to work on the code or the tests):
 ```bash
 git clone https://github.com/jwildenhain/gene-network-sim-inference.git
 cd gene-network-sim-inference
 python3 -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"                                  # numpy, scipy, pandas, scikit-learn, anndata, matplotlib, pytest
-python3 -m grn_sim.web.server --port 8085                # then open http://127.0.0.1:8085
+pip install -e ".[dev]"
 ```
-(With [uv](https://docs.astral.sh/uv/): `uv sync --extra dev` installs exactly what `uv.lock` pins.)
+(With [uv](https://docs.astral.sh/uv/): `uv sync --extra dev` installs exactly what `uv.lock` pins.) Contributor guide:
+[`CONTRIBUTING.md`](CONTRIBUTING.md); code map: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+### Python quickstart
+```python
+from grn_sim import GeneNetwork, PerturbationSimulator, SimpleToGeneral, TopologyType, evaluate_inference
+
+# a random 12-gene scale-free network, perturbed one gene at a time (1% measurement noise)
+net = GeneNetwork.create(n=12, k_av=1.8, net_type=TopologyType.POWER_LAW, seed=1)
+experiment = PerturbationSimulator(perturbation_factor=2.0, measurement_noise=0.01).run(net, seed=1)
+
+# reverse-engineer the network from the 12 x 12 responses X and perturbations U, then compare with the truth
+result = SimpleToGeneral().fit(experiment.X, experiment.U)
+metrics = evaluate_inference(experiment.true_matrix, result.adjacency_pred)
+print(f"{result.total_predicted_edges} edges predicted: coverage {metrics.coverage_pct:.0f}%, "
+      f"FDR {metrics.fp_per_inferred_pct:.0f}%, F1 {metrics.f1_score:.2f}")     # 30 edges predicted: coverage 78%, FDR 70%, F1 0.37
+```
+The other 17 algorithms (`NIRAlgorithm`, `FastSVD`, `VotingEnsemble`, `CellBoxNeuralODE`, `GENIE3Algorithm`, ...) are in
+`grn_sim.inference` and share the same `fit(X, U)` interface.
 
 ### Optional components
 None of these is required; the web studio works without them.
@@ -611,18 +638,23 @@ None of these is required; the web studio works without them.
 | **PyTorch** (CPU build is enough) | The neural versions of CellBox and CPA-Lite. Without it they fall back to NumPy/SciPy implementations (results differ slightly). | `pip install torch --index-url https://download.pytorch.org/whl/cpu` |
 | **Playwright + Chromium** | The browser UI tests (`tests/test_playwright_*.py`). | `pip install playwright && playwright install chromium` |
 
-### Data files
-Everything the web studio needs is **in the repository**, so `git clone` is all it takes: the benchmark datasets
-(`data/benchmarks/`), the MATLAB thesis archives (`data/matlab_benchmarks/`), the E. coli SOS microarray data and the raw
-exports of every benchmark. The SQLite archive of your own runs (`data/rgn_db.sqlite`) is created on first use; set
-`RGN_DB_PATH=/some/where.sqlite` to keep it elsewhere.
+### Data files and where things are written
+The read-only datasets are **inside the package** (`src/grn_sim/data/`, about 2.5 MB): the benchmark datasets, the MATLAB
+thesis archives, the E. coli SOS microarray data and the precomputed overall statistics. Everything the studio *writes*
+goes to a user data folder:
 
-`scripts/download_data.py` (standard library only) checks that data and can fetch the one optional large file:
+| What | Location (first that applies) |
+|---|---|
+| user data folder | `$GRN_SIM_HOME` · `<clone>/data` when running from a clone · `~/.local/share/grn-sim` (macOS `~/Library/Application Support/grn-sim`, Windows `%LOCALAPPDATA%\grn-sim`) |
+| simulation archive (SQLite) | `$RGN_DB_PATH` · `<user data>/rgn_db.sqlite`, created on first use |
+| raw benchmark exports, downloads | `<user data>/benchmarks/raw/`, `<user data>/downloads/` |
+
+`scripts/download_data.py` (standard library only, in a clone) checks the bundled data and can fetch the one optional large file:
 
 ```bash
 python3 scripts/download_data.py                     # is the bundled data complete?
 python3 scripts/download_data.py --norman            # + raw Norman et al. 2019 Perturb-seq (160 MB download, 2.2 GB unpacked)
-python3 scripts/download_data.py --norman --build    # + rebuild data/benchmarks/norman_2019_real_*.json from it
+python3 scripts/download_data.py --norman --build    # + rebuild the Norman benchmark JSONs from it
 python3 scripts/download_data.py --all --dry-run     # show what would happen without changing anything
 ```
 The raw Norman matrix comes from Harvard Dataverse (doi:10.7910/DVN/Q2ZV3E, the GEARS copy) and is only needed if you want to
@@ -631,9 +663,9 @@ archives, never leaves partial downloads behind, and needs about 2.6 GB of free 
 
 ### Check your installation
 ```bash
-python3 scripts/download_data.py                     # bundled data present
-pytest -q --ignore-glob="*playwright*"               # unit, simulation, inference and server tests (about a minute)
-pytest -q tests/test_playwright_full_app.py          # whole-application browser tests (needs Playwright)
+python3 scripts/download_data.py                     # bundled data present (clone)
+pytest                                               # everything that needs no external service (minutes); browser tests skip without Chromium
+ruff check . && mypy                                 # lint and types
 ```
 
 ### Troubleshooting
@@ -660,15 +692,11 @@ remembered in the browser. Runs archived by older versions get the Grid version 
 
 ### Run Verification Test Suite
 ```bash
-# Run all unit, ODE, topology, MATLAB-equivalence, and AtlasShift/Perturb-seq tests
-pytest -v
-
-# Run full Playwright E2E browser + SQLite persistence test against live server
-pytest tests/test_playwright_e2e.py -v -s
-
-# Run comprehensive Playwright full audit suite across all 5 tabs and real datasets
-pytest tests/test_playwright_full_audit.py -v -s
+pytest                                  # unit, ODE, topology, MATLAB-equivalence, AtlasShift / Perturb-seq, server and in-process browser tests
+pytest tests/test_playwright_full_app.py      # the whole studio in a headless browser (pip install -e ".[browser]" && playwright install chromium)
+pytest -m live_server                   # tests that drive an already running studio (GRN_SIM_URL, default http://localhost:8085)
 ```
+Tests never touch your own simulation archive: they use a temporary one (see `tests/conftest.py`).
 
 ---
 
@@ -676,60 +704,29 @@ pytest tests/test_playwright_full_audit.py -v -s
 
 ```text
 gene-network-sim-inference/
-├── Dockerfile                # Container image with Python 3.11 + Graphviz + SQLite + AnnData
-├── LICENSE                   # MIT License
-├── README.md                 # Complete documentation, screenshots & citation
-├── SPECIFICATION.md          # Mathematical & algorithmic reverse-engineering spec
-├── pyproject.toml            # Package configuration (PEP 517/518, anndata, pandas, h5py)
-├── demo.py                   # Interactive CLI demo script
-├── docs/
-│   ├── COMPREHENSIVE_AUDIT_REPORT.md # Full audit analysis, test results & benchmark tables
-│   ├── REAL_WORLD_BENCHMARK_PROVENANCE_AND_USAGE.md # Benchmark provenance, raw downloads & dual modes
-│   ├── WORKFLOW_STEPS_PIPELINE.md    # 6-step wizard specification & math derivations
-│   └── screenshots/          # Verified Docker & Playwright UI screenshots (25+ views)
-├── data/
-│   ├── results_gapa_20021209_and_mmc_dbl.mat  # Gardner 2003 E. coli SOS dataset
-│   ├── SOSdata.txt           # Tabular SOS expression & perturbation data
-│   ├── rgn_db.sqlite         # Persistent SQLite simulation archive (nw & alg tables)
-│   ├── benchmarks/raw/       # Standalone TSV & JSON bundles for SOS, DREAM4, Norman, Replogle
-│   └── matlab_benchmarks/    # 31 Authentic 2004 MATLAB benchmark .mat archives:
-│       ├── DIAG_random_nz60_iot2_std0_mean.mat
-│       ├── DIAG_sf_nz60_iot2_std0_mean.mat
-│       ├── DIAG_h_nz60_iot2_std0_mean.mat
-│       ├── DIAG_noise_nz48_iot0_std0_mean.mat
-│       ├── random_nz60_run5_iot2_sig0.mat
-│       └── overallstats/     # 25 archives across k_av in [1, 1.5, 2, 3, 5] & sigma in [0..0.01]
-├── src/
-│   └── grn_sim/
-│       ├── core/             # Network models & topology generators (ER, BA, Hierarchical)
-│       ├── simulator/        # Hill kinetics, ODE solver, Perturb-seq single-cell .h5ad simulator
-│       ├── inference/        # S2G, G2S, NIR, FAST, ByChance, Voting Ensemble, AtlasShift
-│       ├── evaluation/       # Confusion matrix, ROC, Signed PPV, Coverage (Table 4.1)
-│       ├── benchmarks/       # SOS pathway replication, provenance catalog & sweeps
-│       │   ├── benchmark_datasets.py # Registry for SOS, DREAM4, Norman, Replogle
-│       │   ├── provenance.py # Detailed biological provenance, parameter estimation & TSV export
-│       │   └── ...
-│       ├── agents/           # Multi-agent autonomous SDLC orchestration
-│       ├── web/              # phpIoRN 2.0 HTTP server, SQLite DB, Graphviz SVG & Tab 1-5 UI
-│       └── cli.py            # CLI entry point
-└── tests/
-    ├── test_inference.py     # Inference algorithms & 100% MATLAB equivalence tests
-    ├── test_metrics.py       # Table 4.1 & stats_obs_pred.m evaluation metrics tests
-    ├── test_simulator.py     # ODE solver, Hill kinetics, oscillation & noise tests
-    ├── test_sos_benchmark.py # E. coli SOS pathway benchmark replication tests
-    ├── test_benchmark_provenance_and_downloads.py # Provenance catalog, TSV/ZIP raw downloads & dual modes
-    ├── test_topology.py      # Random, Scale-Free, and Hierarchical graph tests
-    ├── test_web_and_visualization.py # Web server, Graphviz DOT & API tests
-    ├── test_atlasshift_and_perturbseq.py # AtlasShift & AnnData .h5ad generator tests
-    ├── test_playwright_e2e.py # Full Playwright browser + SQLite E2E test
-    ├── test_playwright_full_audit.py # Comprehensive 5-tab audit & export stream test
-    ├── test_playwright_wizard_steps.py # 6-step interactive spotlight & focus mode test
-    ├── test_playwright_node_click_trajectories.py # Real dataset node click dynamics test
-    ├── test_playwright_table_sorting.py # Multi-table column sorting verification test
-    ├── test_playwright_tab2_benchmarks.py # Tab 2 provenance cards, downloads & dual load test
-    └── test_playwright_benchmark_loading_and_ux_distinction.py # Benchmark loading bar, locked controls & UX labels test
+├── pyproject.toml            # package metadata, extras, pytest / ruff / mypy configuration
+├── Dockerfile, docker-compose.yml, .dockerignore
+├── .github/workflows/ci.yml  # lint, types, tests on Python 3.9-3.12, browser tests, wheel build + clean-install check
+├── README.md, SPECIFICATION.md, CONTRIBUTING.md, CHANGELOG.md, LICENSE
+├── examples/demo.py          # thesis experiments end to end (SOS benchmark, scale-free network, multi-agent loop)
+├── scripts/                  # download_data.py, holdout_study.py, corpus / screenshot / before-after tools
+├── docs/                     # ARCHITECTURE.md, HOLDOUT_RESEARCH.md, audit report, workflow and provenance notes, screenshots/
+├── data/                     # created at run time (clone mode): rgn_db.sqlite, downloads/, benchmarks/raw/ exports
+├── src/grn_sim/
+│   ├── paths.py              # bundled data vs. user data, archive location (GRN_SIM_HOME, RGN_DB_PATH)
+│   ├── core/                 # GeneNetwork and topology generators (random, scale-free, hierarchical)
+│   ├── simulator/            # Hill kinetics, ODE solver, perturbation experiments, Perturb-seq .h5ad generator
+│   ├── inference/            # 18 algorithms: S2G, G2S, NIR, FAST, Vote, CellBox, GENIE3, NOTEARS, AtlasShift, ...
+│   ├── evaluation/           # confusion matrices, coverage / FDR / power, signed PPV (thesis Table 4.1)
+│   ├── benchmarks/           # SOS replication, dataset registry + provenance, VCC benchmark, held-out prediction, sweeps
+│   ├── visualization/        # DOT / SVG / JSON export and the built-in layered layout
+│   ├── agents/               # multi-agent simulate -> infer -> evaluate loop
+│   ├── web/                  # HTTP server, SQLite archive, static/index.html (the whole studio)
+│   ├── data/                 # read-only datasets shipped in the wheel (about 2.5 MB)
+│   └── cli.py                # `grn-sim` command: sos-benchmark, multi-agent, web
+└── tests/                    # unit / simulation / inference / server tests, in-process browser tests (test_playwright_*),
+                              # and `live_server` tests that drive a running studio
 ```
-
 
 ---
 

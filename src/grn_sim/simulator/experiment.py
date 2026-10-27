@@ -10,7 +10,7 @@ Simulates high-throughput gene perturbation assays matching run_perturb_model_12
 """
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 import numpy as np
 
 from grn_sim.core.network import GeneNetwork

@@ -4,17 +4,18 @@ Bridges phpIoRN ODE steady-state perturbation dynamics with single-cell genomics
 generating realistic 400-cell Perturb-seq datasets matching Arc Institute Virtual Cell Challenge (VCC 2026).
 """
 
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple, Union
-import numpy as np
-import pandas as pd
+from __future__ import annotations
 
-try:
-    import anndata as ad
-    from scipy import sparse
-    HAS_ANNDATA = True
-except ImportError:
-    HAS_ANNDATA = False
+import importlib.util
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+import numpy as np
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+# anndata (and pandas, which it needs) take seconds to import: check for them here, import them where they are used.
+HAS_ANNDATA = importlib.util.find_spec("anndata") is not None
 
 
 def simulate_perturb_seq_counts(
@@ -95,6 +96,8 @@ def simulate_perturb_seq_counts(
             })
             cell_idx += 1
 
+    import pandas as pd
+
     obs_df = pd.DataFrame(obs_records)
     obs_df.index = obs_df["cell_barcode"].values
 
@@ -141,6 +144,9 @@ def create_perturb_seq_anndata(
             "perturbation_matrix": perturbation_matrix,
         }
 
+    import anndata as ad
+    from scipy import sparse
+
     X_data = sparse.csr_matrix(counts) if as_sparse else counts
     cpm_data = sparse.csr_matrix(cpm) if as_sparse else cpm
 
@@ -175,7 +181,7 @@ def export_perturb_seq_h5ad(
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if HAS_ANNDATA and isinstance(adata, ad.AnnData):
+    if HAS_ANNDATA and type(adata).__name__ == "AnnData":
         adata.write_h5ad(out_path, compression=compression)
     else:
         # Fallback to npz container if anndata is not installed

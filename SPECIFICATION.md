@@ -603,7 +603,7 @@ Matches stored MATLAB `pred_matrix` vectors bit-for-bit:
 - **NIR**: `pred_matrix_gardener[:, -1] = [15, 2, 99, 2, 22, 40, 10, 9, 3401]` (Exact match)
 
 #### C. 25-File `overallstats/` Grid
-Archives in `data/matlab_benchmarks/overallstats/` spanning $k_{\text{av}} \in \{1.0, 1.5, 2.0, 3.0, 5.0\}$ and $\sigma \in \{0.0, 0.001, 0.0025, 0.005, 0.01\}$ across network sizes $N \in \{10, 20, 30, 40, 50, 60, 70\}$. All metrics (`Power`, `FDR`, `TotErrors`, `Runtime`) are sanitized with `np.nan_to_num` and served through the interactive inspector in Tab 3.
+Archives in `src/grn_sim/data/matlab_benchmarks/overallstats/` spanning $k_{\text{av}} \in \{1.0, 1.5, 2.0, 3.0, 5.0\}$ and $\sigma \in \{0.0, 0.001, 0.0025, 0.005, 0.01\}$ across network sizes $N \in \{10, 20, 30, 40, 50, 60, 70\}$. All metrics (`Power`, `FDR`, `TotErrors`, `Runtime`) are sanitized with `np.nan_to_num` and served through the interactive inspector in Tab 3.
 
 ---
 

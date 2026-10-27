@@ -1,11 +1,11 @@
 import os
-import sys
+import tempfile
 import time
 from playwright.sync_api import sync_playwright
 
 APP_URL = os.environ.get("GRN_SIM_URL", "http://localhost:8085")
-ARTIFACT_DIR = "/home/jw/.gemini/antigravity/brain/5a2b35aa-cb40-4bb8-95c2-3b3179f4c03f"
-DOCS_IMG_DIR = "/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/docs/screenshots"
+ARTIFACT_DIR = os.environ.get("ARTIFACT_DIR") or os.path.join(tempfile.gettempdir(), "grn-sim-artifacts")
+DOCS_IMG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "screenshots")
 
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 os.makedirs(DOCS_IMG_DIR, exist_ok=True)

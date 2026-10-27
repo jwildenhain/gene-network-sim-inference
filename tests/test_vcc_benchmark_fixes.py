@@ -129,7 +129,10 @@ def test_epistasis_is_deviation_of_the_simulated_double_perturbation_from_log_ad
 
     assert np.allclose(eps, eps.T) and np.all(np.diag(eps) == 0) and unsteady == 0
     x_ss = exp.reference_steady_state
-    lfc = lambda u: np.log2(sim.solver.solve_with_diagnostics(exp.network, x0=x_ss.copy(), perturbation=u)[0] / x_ss)
+
+    def lfc(u):
+        return np.log2(sim.solver.solve_with_diagnostics(exp.network, x0=x_ss.copy(), perturbation=u)[0] / x_ss)
+
     i, j = 1, 4
     expected = np.linalg.norm(lfc(exp.U[:, i] + exp.U[:, j]) - (lfc(exp.U[:, i]) + lfc(exp.U[:, j])))
     assert eps[i, j] == pytest.approx(expected)

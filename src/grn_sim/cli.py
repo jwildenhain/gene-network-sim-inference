@@ -3,19 +3,8 @@ Command-line interface (CLI) for GRN-Sim.
 """
 
 import argparse
-import sys
 import json
-import numpy as np
 
-from grn_sim.core.topology import TopologyType
-from grn_sim.core.network import GeneNetwork
-from grn_sim.simulator.experiment import PerturbationSimulator
-from grn_sim.inference.s2g import SimpleToGeneral
-from grn_sim.inference.g2s import GeneralToSpecific
-from grn_sim.inference.nir import NIRAlgorithm
-from grn_sim.inference.fast_svd import FastSVD
-from grn_sim.inference.ensemble import VotingEnsemble
-from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.benchmarks.sos_pathway import run_sos_benchmark
 from grn_sim.agents.multi_agent_system import CoordinatorAgent
 
@@ -26,7 +15,7 @@ def format_table(headers, rows):
     for row in rows:
         for idx, val in enumerate(row):
             widths[idx] = max(widths[idx], len(str(val)))
-    
+
     sep = "+-" + "-+-".join(["-" * w for w in widths]) + "-+"
     lines = [sep]
     header_line = "| " + " | ".join([f"{h:<{widths[i]}}" for i, h in enumerate(headers)]) + " |"

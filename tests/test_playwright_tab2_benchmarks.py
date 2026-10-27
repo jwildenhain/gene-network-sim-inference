@@ -6,13 +6,14 @@ End-to-End Playwright Test for Tab 2 Real-World Benchmarks Studio:
 4. Dual loading distinction into Tab 1: Wrangled Direct Inference vs. Biophysical Parameter Estimation.
 """
 
-from pathlib import Path
 import pytest
 from playwright.sync_api import sync_playwright
 
-BASE_URL = "http://localhost:8085"
-ARTIFACT_DIR = Path("/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed")
-DOCS_SCREENSHOTS = Path(__file__).resolve().parent.parent / "docs" / "screenshots"
+from _live import APP_URL as BASE_URL
+from _live import ARTIFACT_DIR
+
+pytestmark = pytest.mark.live_server
+from _live import DOCS_SCREENSHOTS
 
 
 def test_tab2_benchmarks_provenance_and_downloads():

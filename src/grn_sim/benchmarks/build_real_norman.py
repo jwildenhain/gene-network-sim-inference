@@ -1,19 +1,21 @@
 """
 Extract and build real proportional gene expression datasets from Norman et al. 2019 Perturb-seq.
 Generates:
-1. data/benchmarks/norman_2019_real_16tf.json (16 core TF subcircuit)
-2. data/benchmarks/norman_2019_real_105gene.json (Full 105-gene square single-perturbation matrix)
+1. grn_sim/data/benchmarks/norman_2019_real_16tf.json (16 core TF subcircuit)
+2. grn_sim/data/benchmarks/norman_2019_real_105gene.json (Full 105-gene square single-perturbation matrix)
 """
 
 import json
-from pathlib import Path
 import anndata as ad
 import numpy as np
 
+from grn_sim.paths import bundled_path, downloads_dir, source_checkout_root, user_data_dir
+
 def build_real_norman_datasets():
-    base_dir = Path(__file__).resolve().parent.parent.parent.parent
-    h5ad_path = base_dir / "data" / "downloads" / "norman" / "perturb_processed.h5ad"
-    out_dir = base_dir / "data" / "benchmarks"
+    h5ad_path = downloads_dir() / "norman" / "perturb_processed.h5ad"
+    # In a source checkout the rebuilt files replace the bundled ones; otherwise they go to the user's data folder,
+    # which takes precedence over the bundled copy when the benchmarks are loaded.
+    out_dir = bundled_path("benchmarks") if source_checkout_root() else user_data_dir() / "benchmarks"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Loading {h5ad_path}...")
@@ -78,7 +80,7 @@ def build_real_norman_datasets():
     # - RUNX1T1 (ETO) acts as transcriptional repressor
     A_known_16 = np.zeros((16, 16), dtype=int)
     g_to_idx = {g: i for i, g in enumerate(core_16)}
-    
+
     # Positive activations (+1)
     activations = [
         ("KLF1", "CNN1"), ("KLF1", "FEV"),

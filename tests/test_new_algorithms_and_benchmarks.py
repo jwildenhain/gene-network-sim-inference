@@ -6,15 +6,6 @@ from grn_sim.inference.genie3 import GENIE3Algorithm
 from grn_sim.inference.network_deconv import NetworkDeconvolution
 from grn_sim.inference.ridge_cv import KaggleMultiOutputRidge
 from grn_sim.inference.cpa_lite import CPALite
-from grn_sim.inference import (
-    SimpleToGeneral,
-    GeneralToSpecific,
-    VotingEnsemble,
-    NIRAlgorithm,
-    FastSVD,
-    AtlasShift,
-    ByChance,
-)
 from grn_sim.simulator.model_engine import (
     SimulationModelingEngine,
     run_simulation_with_engine,
@@ -74,12 +65,25 @@ def test_ridge_cv_fit(synthetic_experiment):
 
 
 def test_cpa_lite_fit(synthetic_experiment):
+    """Whichever backend this environment has: PyTorch (reports a training loss) or the SVD fallback."""
     exp = synthetic_experiment
     model = CPALite(latent_dim=4, epochs=25)
     res = model.fit(exp.X, exp.U, seed=42)
     assert res.adjacency_pred.shape == exp.true_matrix.shape
     assert res.A_est is not None
-    assert "final_loss" in res.diagnostics
+    assert res.diagnostics["backend"] in ("pytorch", "svd_pca")
+    if res.diagnostics["backend"] == "pytorch":
+        assert "final_loss" in res.diagnostics
+
+
+def test_cpa_lite_works_without_pytorch(synthetic_experiment, monkeypatch):
+    """PyTorch is an optional extra, so the SVD fallback must give a complete result on its own."""
+    from grn_sim.inference import cpa_lite
+    monkeypatch.setattr(cpa_lite, "HAS_TORCH", False)
+    exp = synthetic_experiment
+    res = CPALite(latent_dim=4, epochs=25).fit(exp.X, exp.U, seed=42)
+    assert res.diagnostics == {"latent_dim": 4, "backend": "svd_pca"}
+    assert res.A_est.shape == exp.true_matrix.shape and np.all(np.isfinite(res.A_est))
 
 
 @pytest.mark.parametrize("engine", [
@@ -138,3 +142,33 @@ def test_benchmark_studio_pipeline_all_12_algorithms():
         assert "total_errors" in tbl[alg]
         assert alg in studio["svgs_dot"]
         assert studio["svgs_dot"][alg].startswith("<svg") or "<svg" in studio["svgs_dot"][alg]
+
+
+@pytest.mark.parametrize("module_name, class_name, kwargs, fallback_backend", [
+    ("cellbox", "CellBoxNeuralODE", {"epochs": 5}, "scipy"),
+    ("cpa_lite", "CPALite", {"latent_dim": 4, "epochs": 5}, "svd_pca"),
+])
+def test_an_installed_but_unimportable_pytorch_falls_back_like_a_missing_one(
+    module_name, class_name, kwargs, fallback_backend, synthetic_experiment, monkeypatch
+):
+    """PyTorch is imported when a model is fitted; a broken install must not take the algorithm down."""
+    import importlib
+    module = importlib.import_module(f"grn_sim.inference.{module_name}")
+    cls = getattr(module, class_name)
+
+    def broken(*args, **kwargs):
+        raise ImportError("torch is installed but cannot be imported")
+
+    monkeypatch.setattr(module, "HAS_TORCH", True)
+    monkeypatch.setattr(cls, "_fit_torch", broken)
+    res = cls(**kwargs).fit(synthetic_experiment.X, synthetic_experiment.U, seed=1)
+    assert res.diagnostics["backend"] == fallback_backend
+
+
+def test_importing_the_package_does_not_load_the_heavy_optional_libraries():
+    """`import grn_sim` loads neither PyTorch nor anndata (seconds of import time); they load when first used."""
+    import subprocess
+    import sys
+    code = "import sys, grn_sim; print(sorted(m for m in ('torch', 'anndata') if m in sys.modules))"
+    out = subprocess.run([sys.executable, "-W", "ignore", "-c", code], capture_output=True, text=True, check=True)
+    assert out.stdout.strip().splitlines()[-1] == "[]"

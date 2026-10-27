@@ -5,7 +5,7 @@ https://github.com/kaipengm2/Virtual-Cell-Challenge-2026 (Public Leaderboard #82
 """
 
 import time
-from typing import Dict, Any, List, Optional, Tuple, Union
+from typing import Dict, Any, List, Optional
 import numpy as np
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 

@@ -5,7 +5,7 @@ The winning algorithm of the DREAM4 and DREAM5 GRN Reconstruction Challenges
 """
 
 import time
-from typing import Dict, Any, Optional
+from typing import Optional
 import numpy as np
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 

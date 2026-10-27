@@ -5,18 +5,14 @@ Based on the compositional perturbation architecture by Fabian Theis's lab
 """
 
 import time
-from typing import Dict, Any, Optional
+import importlib.util
+from typing import Optional
 import numpy as np
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 
-try:
-    import torch
-    import torch.nn as nn
-    import torch.optim as optim
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
+# PyTorch is optional and slow to import: only check that it is installed here, import it when a model is fitted.
+HAS_TORCH = importlib.util.find_spec("torch") is not None
 
 
 class CPALite(BaseInferenceAlgorithm):
@@ -55,9 +51,11 @@ class CPALite(BaseInferenceAlgorithm):
         if K is not None:
             K = max(1, min(int(K), N - 1))
 
-        if HAS_TORCH:
+        try:
+            if not HAS_TORCH:
+                raise ImportError("PyTorch is not installed")
             A_est, diagnostics = self._fit_torch(X_mat, U_mat, d)
-        else:
+        except ImportError:  # not installed, or installed but not importable: use the SVD fallback
             A_est, diagnostics = self._fit_linear_pca(X_mat, U_mat, d)
 
         np.fill_diagonal(A_est, 0.0)
@@ -87,6 +85,10 @@ class CPALite(BaseInferenceAlgorithm):
         )
 
     def _fit_torch(self, X_mat: np.ndarray, U_mat: np.ndarray, d: int) -> tuple:
+        import torch
+        import torch.nn as nn
+        import torch.optim as optim
+
         N, M = X_mat.shape
         device = torch.device("cpu")
 
@@ -102,7 +104,7 @@ class CPALite(BaseInferenceAlgorithm):
         params = list(encoder.parameters()) + list(decoder.parameters()) + list(pert_proj.parameters())
         optimizer = optim.Adam(params, lr=self.lr, weight_decay=1e-4)
 
-        for ep in range(self.epochs):
+        for _ep in range(self.epochs):
             optimizer.zero_grad()
             z_basal = encoder(X_t)
             delta_z = pert_proj(U_t)

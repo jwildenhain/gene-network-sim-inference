@@ -5,7 +5,7 @@ new_stats.m, and stats_obs_pred.m.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 import numpy as np
 
 

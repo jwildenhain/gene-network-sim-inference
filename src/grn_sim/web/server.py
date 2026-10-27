@@ -25,8 +25,8 @@ from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 import numpy as np
 
-from grn_sim.core.topology import generate_topology, TopologyType, NetworkTopology
-from grn_sim.core.network import GeneNetwork, KineticParameters
+from grn_sim.core.topology import TopologyType, NetworkTopology
+from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.experiment import PerturbationSimulator, SimulationExperiment
 from grn_sim.inference.s2g import SimpleToGeneral
 from grn_sim.inference.g2s import GeneralToSpecific
@@ -57,18 +57,14 @@ from grn_sim.benchmarks.provenance import (
     estimate_biophysical_parameters,
 )
 from grn_sim.evaluation.metrics import compute_aupr
+from grn_sim.paths import resolve_data_dir, resolve_data_file
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark, validate_vcc_params
 from grn_sim.simulator.perturb_seq import (
-    simulate_perturb_seq_counts,
     create_perturb_seq_anndata,
     export_perturb_seq_h5ad,
-    HAS_ANNDATA,
 )
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.benchmarks.sos_pathway import (
-    GENE_NAMES as SOS_GENE_NAMES,
-    SOS_GROUND_TRUTH,
-    load_sos_dataset,
     run_sos_benchmark,
 )
 from grn_sim.visualization.graph_export import (
@@ -257,7 +253,7 @@ def _extract_kinetics_and_trajectories(
 
     for i in range(N):
         gname = gene_names[i]
-        in_regs = [
+        in_regs: List[Dict[str, Any]] = [
             {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[i, j])), "type": "activation" if adj[i, j] > 0 else "inhibition"}
             for j in range(N) if adj[i, j] != 0
         ]
@@ -275,18 +271,18 @@ def _extract_kinetics_and_trajectories(
 
         expr_conds = []
         n_c = min(N, X_mat.shape[1])
-        for p in range(n_c):
-            val = float(X_mat[i, p])
-            delta = val - b_val
-            pct = (delta / max(0.001, abs(b_val))) * 100.0
+        for cond in range(n_c):
+            expr_val = float(X_mat[i, cond])
+            expr_delta = expr_val - b_val
+            expr_pct = (expr_delta / max(0.001, abs(b_val))) * 100.0
             expr_conds.append({
-                "condition_idx": p,
-                "perturbed_gene": gene_names[p],
-                "expression": round(val, 4),
-                "delta": round(delta, 4),
-                "pct_change": round(pct, 1),
-                "is_self_perturbation": (p == i),
-                "is_regulator_perturbation": any(r["name"] == gene_names[p] for r in in_regs),
+                "condition_idx": cond,
+                "perturbed_gene": gene_names[cond],
+                "expression": round(expr_val, 4),
+                "delta": round(expr_delta, 4),
+                "pct_change": round(expr_pct, 1),
+                "is_self_perturbation": (cond == i),
+                "is_regulator_perturbation": any(r["name"] == gene_names[cond] for r in in_regs),
             })
 
         gene_profiles[gname] = {
@@ -322,7 +318,6 @@ def _compute_aic_profile(X: np.ndarray, U: np.ndarray, target_gene: int = 0) -> 
     across regulator subset sizes K = 0..N for a target gene (Thesis Figure 3.1).
     """
     N, P = X.shape
-    x_row = X[target_gene, :]
     u_row = U[target_gene, :]
     y = -u_row
 
@@ -392,10 +387,10 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
 
     is_bench = bool(dataset_id or mode.startswith("benchmark_") or mode == "sos")
     target_ds = dataset_id or ("ecoli_sos" if mode == "sos" else mode.replace("benchmark_", "")) if is_bench else None
-    prov_data = get_benchmark_provenance(target_ds) if is_bench else None
+    prov_data = get_benchmark_provenance(target_ds) if target_ds is not None else None
     fitted_params_info = None
 
-    if is_bench:
+    if target_ds is not None:
         ds_info = load_benchmark_dataset(target_ds)
         adj = ds_info["true_matrix"]
         num_genes = ds_info["num_genes"]
@@ -414,6 +409,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
 
         if loading_mode == "biophysical_fit":
             # Mode B: Fit ODE biophysical parameters (v, B, Ka, Ki, n=2) from real measurements
+            assert target_ds is not None  # benchmark modes always have a dataset id
             fit_res = estimate_biophysical_parameters(target_ds)
             network = GeneNetwork(topology=topo, params=fit_res["params"], rng=rng)
             sim_exp = run_simulation_with_engine(
@@ -901,7 +897,7 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         stored = SIMULATION_RUN_STORE[run_id]
         CURRENT_STATE.update(stored["state"])
         sim_payload = dict(stored["sim_payload"])
-        sim_payload["settings"] = dict(stored.get("settings", sim_payload.get("settings", {})))
+        sim_payload["settings"] = dict(stored.get("settings") or sim_payload.get("settings") or {})
         sim_payload["inferred"] = stored["inferred_payload"]
         _ensure_graph_views(sim_payload)
         if "response_type" not in sim_payload:
@@ -1283,7 +1279,7 @@ def _build_raw_benchmark_download(dataset_id: str, file_type: str = "json_bundle
     elif file_type == "zip_bundle":
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            for k, p in raw_files.items():
+            for _k, p in raw_files.items():
                 zf.write(p, arcname=p.name)
             readme_text = (
                 f"GRN-Sim & phpIoRN 2.0 - Raw Benchmark Dataset Package\n"
@@ -1317,7 +1313,7 @@ def _build_raw_benchmark_download(dataset_id: str, file_type: str = "json_bundle
 
 def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> Dict[str, Any]:
     """
-    Loads the authentic MATLAB .mat benchmark datasets from data/matlab_benchmarks/
+    Loads the authentic MATLAB .mat benchmark datasets bundled in grn_sim/data/matlab_benchmarks/
     (or computes a live Python multi-network sweep when source == 'python_live')
     reproducing the figures in:
     - Wildenhain (2004) BHons Thesis (Chapters 2, 3, 4 & Appendix)
@@ -1327,10 +1323,9 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
     if source == "matlab_mat" and cache_key in BENCHMARK_CACHE:
         return BENCHMARK_CACHE[cache_key]
 
-    from pathlib import Path
     import scipy.io as sio
 
-    base_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "matlab_benchmarks"
+    base_dir = resolve_data_dir("matlab_benchmarks")
 
     if source == "python_live":
         # Live Python multi-network sweep across topologies, network sizes, connectivity, and noise
@@ -1374,7 +1369,7 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
 
         # Live Connectivity Sweep (n=14)
         k_levels = [1.0, 1.5, 2.0, 3.0]
-        conn_res = {alg: {"power": [], "fdr": [], "signed_ppv": []} for alg in ("s2g", "g2s", "vote", "nir", "fast")}
+        conn_res: Dict[str, Dict[str, List[float]]] = {alg: {"power": [], "fdr": [], "signed_ppv": []} for alg in ("s2g", "g2s", "vote", "nir", "fast")}
         for kv in k_levels:
             net = GeneNetwork.create(n=14, k_av=kv, net_type=TopologyType.POWER_LAW, seed=int(kv * 100))
             exp = PerturbationSimulator(perturbation_factor=1.0).run(net, seed=int(kv * 100))
@@ -1441,7 +1436,7 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
             "overallstats_grid": base_mat_data.get("overallstats_grid", {}),
         }
 
-    # Default: Load authentic MATLAB .mat benchmark archives from data/matlab_benchmarks/
+    # Default: Load authentic MATLAB .mat benchmark archives bundled in grn_sim/data/matlab_benchmarks/
     def _load_diag(filename: str):
         p = base_dir / filename
         if not p.exists():
@@ -1453,7 +1448,6 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
     d_sf = _load_diag("DIAG_sf_nz60_iot2_std0_mean.mat")
     d_h = _load_diag("DIAG_h_nz60_iot2_std0_mean.mat")
     d_noise = _load_diag("DIAG_noise_nz48_iot0_std0_mean.mat")
-    d_biovar = _load_diag("DIAG_biovar_nz50_iot2_std0_mean.mat")
 
     # 1. Figure 2.2: Authentic MATLAB mRNA Expression Ratio Histogram from random_nz60_run5_iot2_sig0.mat
     r60_path = base_dir / "random_nz60_run5_iot2_sig0.mat"
@@ -1725,7 +1719,6 @@ def _parse_cells_per_condition(query: Dict[str, List[str]]) -> int:
 def _build_perturb_seq_h5ad_bytes(run_id: Optional[str] = None, cells_per_condition: int = 400) -> Tuple[bytes, str]:
     """Generates a single-cell Perturb-seq AnnData .h5ad binary file matching VCC 2026 (400 cells/condition)."""
     import tempfile
-    from pathlib import Path
 
     target_state = CURRENT_STATE
     if run_id and run_id in SIMULATION_RUN_STORE:
@@ -1841,7 +1834,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
     def setup(self) -> None:
         super().setup()
-        self.wfile = _TolerantWriter(self.wfile)
+        self.wfile = _TolerantWriter(self.wfile)  # type: ignore[assignment]  # duck-typed wrapper around the socket file
 
     def log_message(self, format: str, *args: Any) -> None:
         # Concise server logging
@@ -2102,7 +2095,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/benchmark/overall_stats":
             try:
-                stats_file = Path(__file__).resolve().parent.parent.parent.parent / "data" / "overall_statistics_sweep.json"
+                stats_file = resolve_data_file("overall_statistics_sweep.json")
                 if stats_file.exists():
                     with open(stats_file, "r", encoding="utf-8") as f:
                         payload = json.load(f)
@@ -2341,10 +2334,10 @@ def run_server(port: int = 8080, host: str = "127.0.0.1", open_browser: bool = F
     server_address = (host, port)
     httpd = ThreadedHTTPServer(server_address, GRNWebHandler)
     url = f"http://localhost:{port}"
-    print(f"============================================================")
-    print(f"  GRN-Sim / phpIoRN Web Engine (Wildenhain & Crampin 2006)")
+    print("============================================================")
+    print("  GRN-Sim / phpIoRN Web Engine (Wildenhain & Crampin 2006)")
     print(f"  Serving interactive UI and REST API at: {url}")
-    print(f"============================================================")
+    print("============================================================")
 
     if open_browser:
         import webbrowser

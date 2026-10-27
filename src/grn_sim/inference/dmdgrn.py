@@ -6,7 +6,7 @@ Enhanced with Controlled DMD (DMDc) data preparation and baseline perturbation r
 """
 
 import time
-from typing import Dict, Any, Optional
+from typing import Optional
 import numpy as np
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult

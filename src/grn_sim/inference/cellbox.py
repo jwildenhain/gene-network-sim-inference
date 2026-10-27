@@ -4,19 +4,14 @@ Based on the neural ordinary differential equation formulation by Chris Sander's
 (Cell Systems 2020, "Predicting cell dynamics through machine learning of interaction networks").
 """
 
+import importlib.util
 import time
-from typing import Dict, Any, Optional
 import numpy as np
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
-try:
-    import torch
-    import torch.nn as nn
-    import torch.optim as optim
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
+# PyTorch is optional and slow to import: only check that it is installed here, import it when a model is fitted.
+HAS_TORCH = importlib.util.find_spec("torch") is not None
 
 
 class CellBoxNeuralODE(BaseInferenceAlgorithm):
@@ -63,9 +58,11 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         thresh = float(kwargs.get("threshold", self.threshold))
         max_epochs = int(kwargs.get("epochs", self.epochs))
 
-        if HAS_TORCH:
+        try:
+            if not HAS_TORCH:
+                raise ImportError("PyTorch is not installed")
             A_est, diagnostics = self._fit_torch(X_mat, U_mat, l1, l2, max_epochs)
-        else:
+        except ImportError:  # not installed, or installed but not importable: use the SciPy optimiser
             A_est, diagnostics = self._fit_scipy(X_mat, U_mat, l1, l2)
 
         # Remove diagonal self-loops
@@ -98,6 +95,10 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         l2: float,
         epochs: int,
     ) -> tuple:
+        import torch
+        import torch.nn as nn
+        import torch.optim as optim
+
         N, M = X_mat.shape
         device = torch.device("cpu")
 
@@ -116,7 +117,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         best_loss = float("inf")
         best_W = np.zeros((N, N))
 
-        for ep in range(epochs):
+        for _ep in range(epochs):
             optimizer.zero_grad()
             alpha = torch.exp(log_alpha) + 1e-4
 

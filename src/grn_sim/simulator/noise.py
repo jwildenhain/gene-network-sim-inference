@@ -53,7 +53,6 @@ def apply_biological_variability(
         rng = network.rng
 
     p = network.params
-    n = network.n
 
     # Perturb basal rate and degradation constants
     v_noisy = apply_measurement_noise(p.v, bio_var_level, rng)

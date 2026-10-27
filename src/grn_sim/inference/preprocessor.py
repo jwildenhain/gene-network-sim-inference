@@ -7,7 +7,7 @@ static vs dynamic time-series, sample-size scaling, and biological variance).
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 import numpy as np
 
 

@@ -9,7 +9,7 @@ where:
 from typing import Optional
 import numpy as np
 
-from grn_sim.core.network import GeneNetwork, KineticParameters
+from grn_sim.core.network import GeneNetwork
 
 
 def evaluate_derivatives(

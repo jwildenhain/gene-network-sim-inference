@@ -8,7 +8,7 @@ from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.ode_solver import ODESolver
 from grn_sim.simulator.kinetics import evaluate_derivatives
 from grn_sim.simulator.experiment import PerturbationSimulator
-from grn_sim.simulator.noise import apply_measurement_noise, apply_biological_variability
+from grn_sim.simulator.noise import apply_measurement_noise
 
 
 def test_derivatives_shape():

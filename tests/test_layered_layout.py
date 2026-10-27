@@ -92,7 +92,7 @@ def test_random_dags_flow_downwards_without_overlaps(seed):
         assert path[0] == pos[s] and path[-1] == pos[d]
         assert all(a[1] < b[1] for a, b in zip(path, path[1:])), f"edge {s}->{d} must flow downwards one layer at a time"
     by_row = {}
-    for v, (x, y) in enumerate(pos):
+    for _v, (x, y) in enumerate(pos):
         by_row.setdefault(y, []).append(x)
     for xs in by_row.values():
         xs.sort()

@@ -23,7 +23,7 @@ Held-out columns are never used in any of these steps: the outgoing edges of a h
 the gene's activity varies in the *other* experiments.
 """
 
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from scipy.optimize import least_squares
@@ -65,9 +65,9 @@ def top_q_support(scores: np.ndarray, q: int) -> np.ndarray:
     np.fill_diagonal(work, -1.0)
     support = np.zeros((n, n), dtype=int)
     for k in range(n):
-        for l in np.argsort(-work[:, k])[:q]:
-            if work[l, k] > 0:
-                support[l, k] = 1
+        for reg in np.argsort(-work[:, k])[:q]:
+            if work[reg, k] > 0:
+                support[reg, k] = 1
     return support
 
 
@@ -98,13 +98,14 @@ def infer_signed_structure(A_est, adjacency_pred, X_train, U_train, q: int = 2) 
     scores = np.abs(np.nan_to_num(np.asarray(A_est, float)))
     if adjacency_pred is not None:
         scores = scores + 1e-6 * np.abs(np.asarray(adjacency_pred, float))
-    best = None
+    best: Optional[Tuple[float, np.ndarray, np.ndarray]] = None
     for candidate in (scores, scores.T):
         support = top_q_support(candidate, q)
         F = linear_refit(support, X_train, U_train)
         error = float(np.linalg.norm(X_train - F @ (X_train + U_train)))
         if best is None or error < best[0]:
             best = (error, support, F)
+    assert best is not None  # two candidates are always tried
     _, support, F = best
     return (np.sign(F.T) * support).astype(int), F
 
@@ -220,28 +221,29 @@ def hill_forward_selection(
         log_y = np.log(y)
         if np.std(log_y) < 1e-9:
             continue
-        corr = [abs(pearson(log_eff[l], log_y)) if l != k else -1.0 for l in range(n)]
-        candidates = [int(l) for l in np.argsort(corr)[::-1][:screen] if corr[l] > 0]
-        chosen, chosen_signs = [], []
+        corr = [abs(pearson(log_eff[reg], log_y)) if reg != k else -1.0 for reg in range(n)]
+        candidates = [int(reg) for reg in np.argsort(corr)[::-1][:screen] if corr[reg] > 0]
+        chosen: List[int] = []
+        chosen_signs: List[int] = []
         best_bic = T * np.log(max(np.sum((log_y - log_y.mean()) ** 2) / T, 1e-12))
         while len(chosen) < max_parents:
             step = None
-            for l in candidates:
-                if l in chosen:
+            for reg in candidates:
+                if reg in chosen:
                     continue
                 for sign in (1, -1):
                     P = len(chosen) + 1
-                    _, _, _, sse = _fit_target(y, eff[chosen + [l]], np.array(chosen_signs + [sign]))
+                    _, _, _, sse = _fit_target(y, eff[chosen + [reg]], np.array(chosen_signs + [sign]))
                     bic = T * np.log(max(sse / T, 1e-12)) + (1 + 2 * P) * np.log(T)
                     if step is None or bic < step[0]:
-                        step = (bic, l, sign)
+                        step = (bic, reg, sign)
             if step is None or step[0] > best_bic - min_gain:
                 break
             best_bic = step[0]
             chosen.append(step[1])
             chosen_signs.append(step[2])
-        for l, sign in zip(chosen, chosen_signs):
-            signed[l, k] = sign
+        for reg, sign in zip(chosen, chosen_signs):
+            signed[reg, k] = sign
     return signed
 
 

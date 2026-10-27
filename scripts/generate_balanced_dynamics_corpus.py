@@ -8,15 +8,11 @@ Creates and balances the simulation archive to ~30 datasets per dynamics categor
 Executes full reverse-engineering inference across all algorithms and writes to SQLite rgn_db.sqlite.
 """
 
-import sys
-import os
-import time
-import json
 import sqlite3
 import numpy as np
 
-# Add src to path
-sys.path.insert(0, "/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/src")
+# Needs the package: `pip install -e .` from the repository root.
+from grn_sim.paths import archive_db_path
 
 from grn_sim.core.topology import TopologyType
 from grn_sim.simulator.kinetics import GeneNetwork
@@ -31,9 +27,7 @@ from grn_sim.web.server import (
     _execute_inference,
     CURRENT_STATE,
     SIMULATION_RUN_STORE,
-    SIMULATION_HISTORY,
 )
-from grn_sim.web.database import save_simulation_to_db
 
 ALGORITHMS = ["s2g", "g2s", "vote", "nir", "fast", "by_chance", "ridge_cv", "genie3", "netdeconv", "cpa_lite", "atlasshift"]
 
@@ -185,7 +179,7 @@ def create_and_save_run(network, experiment, dynamics_preset, mode_name, topo_st
 
 def generate_flat_runs(target_count=30):
     print(f"=== Generating Flat Datasets (Target: {target_count}) ===")
-    conn = sqlite3.connect("/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/data/rgn_db.sqlite")
+    conn = sqlite3.connect(str(archive_db_path()))
     c = conn.cursor()
     c.execute("SELECT count(*) FROM nw WHERE response_type = 'flat' AND history_entry_json != '{}' AND history_entry_json != ''")
     current = c.fetchone()[0]
@@ -212,7 +206,7 @@ def generate_flat_runs(target_count=30):
 
 def generate_oscillating_runs(target_count=30):
     print(f"\n=== Generating Oscillating Datasets (Target: {target_count}) ===")
-    conn = sqlite3.connect("/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/data/rgn_db.sqlite")
+    conn = sqlite3.connect(str(archive_db_path()))
     c = conn.cursor()
     c.execute("SELECT count(*) FROM nw WHERE response_type = 'oscillating' AND history_entry_json != '{}' AND history_entry_json != ''")
     current = c.fetchone()[0]
@@ -233,7 +227,7 @@ def generate_oscillating_runs(target_count=30):
         network.topology.adjacency = np.zeros((n_genes, n_genes))
         for r in range(ring_len):
             network.topology.adjacency[r, (r + 1) % ring_len] = -1.0
-        
+
         # If extra genes, connect them downstream of the ring
         if extra_genes > 0:
             for eg in range(ring_len, n_genes):
@@ -254,20 +248,20 @@ def generate_oscillating_runs(target_count=30):
 
 def balance_responsive_runs(target_count=30):
     print(f"\n=== Balancing Responsive Datasets (Target: ~{target_count}) ===")
-    conn = sqlite3.connect("/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/data/rgn_db.sqlite")
+    conn = sqlite3.connect(str(archive_db_path()))
     c = conn.cursor()
     c.execute("SELECT count(*) FROM nw WHERE response_type = 'responsive' AND history_entry_json != '{}' AND history_entry_json != ''")
     current = c.fetchone()[0]
     print(f"Current valid responsive in DB: {current}")
-    
+
     # If more than 35, prune down to target_count to achieve clean 30-30-30 balance
     if current > target_count:
         excess = current - target_count
         print(f"Pruning {excess} excess responsive runs to maintain ~{target_count} per category...")
         c.execute("""
-            SELECT simid FROM nw 
+            SELECT simid FROM nw
             WHERE response_type = 'responsive' AND history_entry_json != '{}' AND history_entry_json != ''
-            ORDER BY rowid ASC 
+            ORDER BY rowid ASC
             LIMIT ?
         """, (excess,))
         prune_ids = [r[0] for r in c.fetchall()]
@@ -284,7 +278,7 @@ if __name__ == "__main__":
     balance_responsive_runs(30)
 
     # Print final counts
-    conn = sqlite3.connect("/home/jw/Documents/antigravity/peaceful-planck/gene_network_sim_inference/data/rgn_db.sqlite")
+    conn = sqlite3.connect(str(archive_db_path()))
     c = conn.cursor()
     c.execute("SELECT response_type, count(*) FROM nw WHERE history_entry_json != '{}' AND history_entry_json != '' GROUP BY response_type")
     print("\n=== Final Archive Balance in SQLite rgn_db ===")

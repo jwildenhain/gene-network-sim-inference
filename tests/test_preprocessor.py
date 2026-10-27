@@ -5,7 +5,7 @@ Unit tests for the GRN Data Preprocessor and algorithm adaptation layer.
 import numpy as np
 import pytest
 
-from grn_sim.inference.preprocessor import GRNDataPreprocessor, PreparedGRNData, default_preprocessor
+from grn_sim.inference.preprocessor import GRNDataPreprocessor, PreparedGRNData
 from grn_sim.inference import (
     AracneAlgorithm,
     CausalGRNAlgorithm,
@@ -17,7 +17,6 @@ from grn_sim.inference import (
 from grn_sim.core.network import GeneNetwork
 from grn_sim.core.topology import TopologyType
 from grn_sim.simulator.model_engine import SimulationModelingEngine, run_simulation_with_engine
-from grn_sim.evaluation.metrics import evaluate_inference
 
 
 @pytest.fixture

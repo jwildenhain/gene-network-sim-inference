@@ -1,5 +1,14 @@
-data/downloads/
+# The archive, raw downloads and exports are runtime data: mounted with -v ./data:/app/data, never baked into the image
+data/
+docs/screenshots/
+.git/
+.github/
+scratch/
+build/
+dist/
+*.egg-info/
 __pycache__/
 *.pyc
 .pytest_cache/
-.git/
+.ruff_cache/
+.mypy_cache/

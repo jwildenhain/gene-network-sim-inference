@@ -21,18 +21,15 @@ Verifies:
 7. Captures high-resolution visual evidence screenshots to the artifact directory.
 """
 
-import json
+import pytest
 import os
 import re
 from playwright.sync_api import sync_playwright
 
-APP_URL = os.environ.get("GRN_SIM_URL", "http://localhost:8085")
-ARTIFACT_DIR = os.environ.get(
-    "ARTIFACT_DIR",
-    "/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed",
-)
+from _live import APP_URL
+from _live import ARTIFACT_DIR
 
-
+pytestmark = pytest.mark.live_server
 def parse_clean_number(text):
     """Parse number from raw cell text like '#14', '91.2%', '3'."""
     s = text.strip()

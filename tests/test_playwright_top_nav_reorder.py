@@ -1,111 +1,50 @@
 """
-Playwright End-to-End Test for Reordered Top Navigation:
-- Verifies tab order:
-  1. Simulation & Inference Studio (tab-wizard)
-  2. Real-World Benchmarks (tab-sos)
-  3. Previous Simulations Archive (tab-history)
-  4. Virtual Cell Challenge (tab-vcc)
-  5. Thesis & Paper Figures Gallery (tab-figures)
-- Verifies navigation switching for all 5 tabs.
-- Captures screenshot of reordered navigation header.
+Browser test of the top navigation of the web studio (in-process server, see conftest.py):
+the five tabs in order with short titles, switching between them, and a screenshot of the header.
 """
 
-from pathlib import Path
-import shutil
 import pytest
 
 pytest.importorskip("playwright.sync_api")
 
-ARTIFACT_DIR = Path("/home/jw/.gemini/antigravity/brain/2034be68-5fcf-4315-bc81-67eeb7bf53ed")
-DOCS_SCREENSHOTS = Path(__file__).resolve().parent.parent / "docs" / "screenshots"
-DOCS_SCREENSHOTS.mkdir(parents=True, exist_ok=True)
+EXPECTED_TABS = [
+    ("tab-wizard", "1. Simulation & Inference Studio"),
+    ("tab-sos", "2. Real-World Benchmarks"),
+    ("tab-history", "3. Previous Simulations Archive"),
+    ("tab-vcc", "4. Virtual Cell Challenge"),
+    ("tab-figures", "5. Overall Statistics"),
+]
 
 
-def test_top_navigation_reorder(browser, app_url):
-    if True:  # (body kept at its original indentation; the browser and server come from the shared fixtures)
-        context = browser.new_context(viewport={"width": 1600, "height": 1000})
-        page = context.new_page()
+@pytest.fixture
+def page(browser, app_url):
+    context = browser.new_context(viewport={"width": 1600, "height": 1000})
+    page = context.new_page()
+    page.goto(app_url, wait_until="networkidle", timeout=30000)
+    yield page
+    context.close()
 
-        print("1. Opening phpIoRN web application...")
-        page.goto(app_url, wait_until="networkidle", timeout=30000)
-        page.wait_for_timeout(1000)
 
-        # -------------------------------------------------------------
-        # STEP 1: VERIFY TAB ORDER AND LABELS
-        # -------------------------------------------------------------
-        expected_tabs = [
-            ("tab-wizard", "1. Simulation & Inference Studio"),
-            ("tab-sos", "2. Real-World Benchmarks"),
-            ("tab-history", "3. Previous Simulations Archive"),
-            ("tab-vcc", "4. Virtual Cell Challenge"),
-            ("tab-figures", "5. Overall Statistics"),
-        ]
+def test_tabs_are_in_order_with_short_titles(page):
+    tabs = page.locator("nav.nav-tabs button.nav-tab")
+    assert tabs.count() == len(EXPECTED_TABS)
+    for i, (tab_id, title) in enumerate(EXPECTED_TABS):
+        tab = tabs.nth(i)
+        text = tab.inner_text().strip()
+        assert tab.get_attribute("data-tab") == tab_id
+        assert title in text
+        assert not any(word in text for word in ("AtlasShift", "DREAM4", "SOS")), f"title should be short: {text!r}"
 
-        tabs = page.locator("nav.nav-tabs button.nav-tab")
-        count = tabs.count()
-        print(f"Total nav tabs found: {count}")
-        assert count == 5, f"Expected 5 nav tabs, found {count}"
 
-        for i, (expected_id, expected_prefix) in enumerate(expected_tabs):
-            tab = tabs.nth(i)
-            actual_data_tab = tab.get_attribute("data-tab")
-            actual_text = tab.inner_text().strip()
-            print(f"Tab {i}: data-tab='{actual_data_tab}', text='{actual_text}'")
-            assert actual_data_tab == expected_id, (
-                f"Tab at position {i} should be {expected_id}, found {actual_data_tab}"
-            )
-            assert "AtlasShift" not in actual_text and "DREAM4" not in actual_text and "SOS" not in actual_text, (
-                f"tab titles are short: found '{actual_text}'"
-            )
-            assert expected_prefix in actual_text, (
-                f"Tab at position {i} should contain '{expected_prefix}', found '{actual_text}'"
-            )
+def test_every_tab_opens_its_section(page):
+    for tab_id, title in EXPECTED_TABS:
+        page.click(f"button[data-tab='{tab_id}']")
+        page.wait_for_selector(f"#{tab_id}", state="visible")
+        assert page.locator(f"button[data-tab='{tab_id}']").evaluate("el => el.classList.contains('active')"), title
 
-        # -------------------------------------------------------------
-        # STEP 2: TEST SWITCHING TO EACH TAB
-        # -------------------------------------------------------------
-        for expected_id, label in expected_tabs:
-            print(f"Testing click on {label} ({expected_id})...")
-            page.click(f"button[data-tab='{expected_id}']")
-            page.wait_for_timeout(500)
-            assert page.is_visible(f"#{expected_id}"), f"Section #{expected_id} must be visible after click"
-            assert page.locator(f"button[data-tab='{expected_id}']").evaluate("el => el.classList.contains('active')"), (
-                f"Button {expected_id} must have .active class"
-            )
 
-        # -------------------------------------------------------------
-        # STEP 3: CAPTURE HIGH-RES SCREENSHOT OF REORDERED NAV
-        # -------------------------------------------------------------
-        # Switch back to tab-wizard or tab-figures to show navigation in context
-        page.click("button[data-tab='tab-figures']")
-        page.wait_for_timeout(600)
-
-        nav_screenshot_path = DOCS_SCREENSHOTS / "41_top_navigation_reordered.png"
-        page.screenshot(path=str(nav_screenshot_path), full_page=False)
-        print(f"Saved reordered navigation screenshot: {nav_screenshot_path}")
-
-        # Also copy to the artifacts dir when it exists on this machine
-        if ARTIFACT_DIR.exists():
-            shutil.copy(nav_screenshot_path, ARTIFACT_DIR / "41_top_navigation_reordered.png")
-
-        # Capture a tight crop of the top nav header
-        header_el = page.locator("header")
-        nav_el = page.locator("nav.nav-tabs")
-        if nav_el.count() > 0:
-            header_crop_path = DOCS_SCREENSHOTS / "42_top_navigation_bar_crop.png"
-            # bounding box around header + nav
-            header_box = header_el.bounding_box()
-            nav_box = nav_el.bounding_box()
-            if header_box and nav_box:
-                crop_y = min(header_box["y"], nav_box["y"])
-                crop_h = (nav_box["y"] + nav_box["height"]) - crop_y + 20
-                page.screenshot(
-                    path=str(header_crop_path),
-                    clip={"x": 0, "y": crop_y, "width": 1600, "height": crop_h}
-                )
-                print(f"Saved header crop: {header_crop_path}")
-                if ARTIFACT_DIR.exists():
-                    shutil.copy(header_crop_path, ARTIFACT_DIR / "42_top_navigation_bar_crop.png")
-
-        context.close()
-        print("All reordered navigation tests passed successfully!")
+def test_header_screenshot_can_be_captured(page, tmp_path):
+    page.click("button[data-tab='tab-figures']")
+    shot = tmp_path / "top_navigation.png"
+    page.locator("header").screenshot(path=str(shot))
+    assert shot.stat().st_size > 1000

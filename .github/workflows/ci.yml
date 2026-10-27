@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends graphviz
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: mypy
+      # Unit, simulation, inference and server tests; the browser tests skip themselves without Chromium.
+      - run: pytest -q --ignore-glob="tests/test_playwright_*"
+
+  browser:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev,browser]"
+      - run: playwright install --with-deps chromium
+      # in-process server tests; those that need an already running studio are marked live_server and deselected
+      - run: pytest -q tests/test_playwright_*.py
+
+  package:
+    name: Wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      # The wheel must work on its own: install it away from the checkout and use the data it carries.
+      - run: |
+          python -m venv /tmp/check
+          /tmp/check/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/check/bin/grn-sim sos-benchmark | tail -3
+          /tmp/check/bin/python - <<'PY'
+          import grn_sim.paths as p
+          for parts in (("SOSdata.txt",), ("benchmarks", "norman_2019_real_16tf.json"), ("overall_statistics_sweep.json",)):
+              assert p.resolve_data_file(*parts).is_file(), parts
+          from importlib.resources import files
+          assert (files("grn_sim") / "web" / "static" / "index.html").is_file()
+          print("bundled data and web page found in the installed wheel")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*

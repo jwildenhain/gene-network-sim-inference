@@ -7,7 +7,7 @@ from grn_sim.core.topology import TopologyType
 from grn_sim.evaluation.metrics import compute_aupr, evaluate_inference
 from grn_sim.inference import (
     CellBoxNeuralODE, FastSVD, GeneralToSpecific, KaggleMultiOutputRidge,
-    NIRAlgorithm, SimpleToGeneral, VotingEnsemble,
+    NIRAlgorithm, VotingEnsemble,
 )
 from grn_sim.simulator.experiment import PerturbationSimulator
 

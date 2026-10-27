@@ -8,7 +8,7 @@ Provides specialized autonomous agents collaborating across the simulation and i
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 import numpy as np
 
@@ -21,7 +21,7 @@ from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
 from grn_sim.inference.by_chance import ByChance
-from grn_sim.evaluation.metrics import evaluate_inference, BenchmarkMetrics
+from grn_sim.evaluation.metrics import evaluate_inference
 
 
 @dataclass
