@@ -16,7 +16,7 @@ from typing import Optional, Tuple
 import numpy as np
 
 from grn_sim.core.network import GeneNetwork
-from grn_sim.simulator.kinetics import evaluate_derivatives
+from grn_sim.simulator.kinetics import KineticsKernel
 
 
 @dataclass
@@ -82,6 +82,7 @@ class ODESolver:
         else:
             x_curr = np.maximum(x0.copy(), self.min_concentration)
 
+        kernel = KineticsKernel(network, perturbation, production_scale)
         trajectory = [x_curr.copy()]
         is_steady = False
         zero_conc = False
@@ -98,7 +99,7 @@ class ODESolver:
 
         for step in range(1, effective_max_steps + 1):
             steps_taken = step
-            dxdt = evaluate_derivatives(x_curr, network, perturbation, production_scale)
+            dxdt = kernel.derivatives(x_curr)
             x_next = x_curr + self.dt * dxdt
 
             x_next = np.maximum(x_next, self.min_concentration)
@@ -137,7 +138,7 @@ class ODESolver:
         tail = traj_arr[:, -tail_len:]
         tail_ptp = float(np.max(np.ptp(tail, axis=1))) if tail.size > 0 else 0.0
 
-        dxdt_end = evaluate_derivatives(x_curr, network, perturbation, production_scale)
+        dxdt_end = kernel.derivatives(x_curr)
         max_dxdt = float(np.max(np.abs(dxdt_end)))
 
         # A simulation is oscillating if and only if it does NOT reach steady state,

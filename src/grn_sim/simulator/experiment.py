@@ -56,9 +56,10 @@ class PerturbationSimulator:
           - ``"knockdown"`` (CRISPRi-style): the perturbed gene's production rate is multiplied by ``1 - e_j``, so its
             own transcript falls by roughly ``e_j`` and its targets react through their regulation functions.
             ``e_j = clip(knockdown_efficiency + efficiency_spread * N(0, 1), 0.05, 0.99)``; U[j, j] = -e_j.
+          - ``"knockout"``: the perturbed gene's production rate is set to 0 (efficiency 1). U[j, j] = -1.
         """
-        if perturbation_mode not in ("input", "knockdown"):
-            raise ValueError(f"perturbation_mode must be 'input' or 'knockdown', got {perturbation_mode!r}")
+        if perturbation_mode not in ("input", "knockdown", "knockout"):
+            raise ValueError(f"perturbation_mode must be 'input', 'knockdown' or 'knockout', got {perturbation_mode!r}")
         if not 0.0 < knockdown_efficiency < 1.0:
             raise ValueError(f"knockdown_efficiency must be in (0, 1), got {knockdown_efficiency!r}")
         self.perturbation_mode = perturbation_mode
@@ -117,7 +118,11 @@ class PerturbationSimulator:
         for j in range(n):
             u_vec = np.zeros(n, dtype=float)
             scale = None
-            if self.perturbation_mode == "knockdown":
+            if self.perturbation_mode == "knockout":
+                scale = np.ones(n, dtype=float)
+                scale[j] = 0.0
+                U[j, j] = -1.0
+            elif self.perturbation_mode == "knockdown":
                 efficiency = float(np.clip(self.knockdown_efficiency + self.efficiency_spread * rng.standard_normal(), 0.05, 0.99))
                 scale = np.ones(n, dtype=float)
                 scale[j] = 1.0 - efficiency

@@ -26,6 +26,7 @@ def simulate_perturb_seq_counts(
     depth_dispersion: float = 0.35,
     biological_dispersion: float = 0.15,
     seed: int = 42,
+    condition_names: Optional[List[str]] = None,
 ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame, pd.DataFrame]:
     """
     Simulates single-cell integer count profiles from ODE steady-state expression levels.
@@ -33,7 +34,9 @@ def simulate_perturb_seq_counts(
     Args:
         gene_names: List of gene symbols (n_genes)
         mean_expression_matrix: (n_genes, n_conditions) array where col 0 is unperturbed control,
-                                and cols 1..n_conditions are single-gene perturbations.
+                                and cols 1..n_conditions are perturbations.
+        condition_names: names of the perturbation columns 1..n_conditions-1 (default: gene ``j - 1`` for column
+                         ``j``, the single-perturbation layout). Double perturbations are named ``"GENE_A+GENE_B"``.
         cells_per_condition: Number of single cells per condition (default 400, matching VCC 2026)
         mean_library_depth: Mean total UMI count per cell (default 20,000)
         depth_dispersion: Log-normal standard deviation of cell sequencing depth
@@ -48,7 +51,11 @@ def simulate_perturb_seq_counts(
     total_cells = n_conditions * cells_per_condition
 
     # 1. Condition labels
-    condition_names = ["control"] + [f"{gene_names[j-1]}" for j in range(1, n_conditions)]
+    if condition_names is None:
+        condition_names = [f"{gene_names[j-1]}" for j in range(1, n_conditions)]
+    if len(condition_names) != n_conditions - 1:
+        raise ValueError(f"condition_names has {len(condition_names)} entries for {n_conditions - 1} perturbation columns")
+    condition_names = ["control"] + list(condition_names)
 
     obs_records = []
     cell_idx = 0
@@ -58,7 +65,7 @@ def simulate_perturb_seq_counts(
     for cond_idx in range(n_conditions):
         cond_name = condition_names[cond_idx]
         is_ctrl = (cond_idx == 0)
-        pert_target = "non-targeting" if is_ctrl else gene_names[cond_idx - 1]
+        pert_target = "non-targeting" if is_ctrl else cond_name
 
         # Gene expression probability distribution for this condition
         base_expr = np.maximum(mean_expression_matrix[:, cond_idx], 1e-6)
@@ -91,6 +98,7 @@ def simulate_perturb_seq_counts(
                 "perturbation": pert_target,
                 "condition": cond_name,
                 "is_control": is_ctrl,
+                "n_perturbed_genes": 0 if is_ctrl else len(cond_name.split("+")),
                 "total_counts": int(cell_counts.sum()),
                 "detected_genes": int(np.sum(cell_counts > 0)),
             })
@@ -101,9 +109,10 @@ def simulate_perturb_seq_counts(
     obs_df = pd.DataFrame(obs_records)
     obs_df.index = obs_df["cell_barcode"].values
 
+    perturbed_genes = {g for name in condition_names[1:] for g in name.split("+")}
     var_df = pd.DataFrame({
         "gene_name": gene_names,
-        "is_perturbed_target": [g in condition_names[1:] for g in gene_names],
+        "is_perturbed_target": [g in perturbed_genes for g in gene_names],
         "mean_control_cpm": np.round(
             (mean_expression_matrix[:, 0] / mean_expression_matrix[:, 0].sum()) * 1e6, 2
         ),
@@ -122,9 +131,13 @@ def create_perturb_seq_anndata(
     mean_library_depth: int = 20000,
     seed: int = 42,
     as_sparse: bool = True,
+    condition_names: Optional[List[str]] = None,
+    ground_truth: Optional[dict] = None,
 ) -> Any:
     """
     Creates an AnnData (.h5ad compatible) single-cell dataset from simulation results.
+
+    ``ground_truth`` (e.g. :meth:`grn_sim.perturbseq.ConditionScreen.to_uns`) is stored under ``uns["ground_truth"]``.
     """
     counts, cpm, obs_df, var_df = simulate_perturb_seq_counts(
         gene_names=gene_names,
@@ -132,6 +145,7 @@ def create_perturb_seq_anndata(
         cells_per_condition=cells_per_condition,
         mean_library_depth=mean_library_depth,
         seed=seed,
+        condition_names=condition_names,
     )
 
     if not HAS_ANNDATA:
@@ -142,6 +156,7 @@ def create_perturb_seq_anndata(
             "var": var_df,
             "ground_truth_network": ground_truth_network,
             "perturbation_matrix": perturbation_matrix,
+            "ground_truth": ground_truth,
         }
 
     import anndata as ad
@@ -161,6 +176,9 @@ def create_perturb_seq_anndata(
         adata.uns["ground_truth_network"] = np.asarray(ground_truth_network, dtype=float)
     if perturbation_matrix is not None:
         adata.uns["perturbation_matrix"] = np.asarray(perturbation_matrix, dtype=float)
+
+    if ground_truth is not None:
+        adata.uns["ground_truth"] = dict(ground_truth)
 
     adata.uns["vcc_challenge"] = {
         "framework": "phpIoRN / GRN-Sim 2.0",

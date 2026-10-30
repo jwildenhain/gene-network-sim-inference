@@ -1157,6 +1157,7 @@
                 <option value="power_law" selected>Scale-Free Network (Power-Law)</option>
                 <option value="random">Random Network (Erdős–Rényi)</option>
                 <option value="hierarchical">Hierarchical Modular Network</option>
+                <option value="modular">Modular Preferential-Attachment (Perturb-seq calibrated)</option>
               </select>
             </div>
 
@@ -1184,8 +1185,12 @@
                 <span>Network Size (n genes)</span>
                 <span class="val" id="lbl-num-genes">12</span>
               </label>
-              <input type="range" id="sim-num-genes" min="6" max="30" step="1" value="12"
-                oninput="document.getElementById('lbl-num-genes').textContent=this.value" />
+              <input type="range" id="sim-num-genes" min="6" max="500" step="1" value="12"
+                oninput="document.getElementById('lbl-num-genes').textContent=this.value; updateLargeNetworkHint(this.value)" />
+              <div id="hint-large-network" style="display:none;font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.35;">
+                Large network (&gt; 60 genes): time courses and gene profiles load on demand, simulation takes up to a
+                minute, and slow algorithms (G2S, Vote, NIR, RidgeCV, CausalGRN) can take minutes each.
+              </div>
             </div>
 
             <div class="form-group">
@@ -3610,6 +3615,7 @@
       }
       document.getElementById('sim-num-genes').value = n;
       document.getElementById('lbl-num-genes').textContent = String(n);
+      updateLargeNetworkHint(n);
       document.getElementById('sim-kav').value = kav;
       document.getElementById('lbl-kav').textContent = String(kav);
       document.getElementById('sim-ratio').value = ratio;
@@ -4468,6 +4474,11 @@
           drawGeneTrajectoryCanvas('canvas-modal-traj', sim.gene_profiles[np.name]);
         } else {
           drawSeriesCanvas('canvas-modal-traj', series, `Unperturbed Basal ODE Trajectory: ${np.name} reaching Steady State`);
+          if (sim.trajectories_on_demand) {
+            loadGeneProfile(sim, np.name).then(profile => {
+              if (profile && inspectorDialog.open && APP_STATE.sim === sim) drawGeneTrajectoryCanvas('canvas-modal-traj', profile);
+            });
+          }
         }
         inspectorDialog.showModal();
       }
@@ -4759,6 +4770,38 @@
       }
     }
 
+    function updateLargeNetworkHint(n) {
+      const hint = document.getElementById('hint-large-network');
+      if (hint) hint.style.display = Number(n) > 60 ? 'block' : 'none';
+    }
+
+    // Large runs (> 60 genes) do not embed the N^2-sized trajectories and gene profiles; fetch them when needed.
+    async function fetchOnDemand(url) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function loadPerturbationTrajectory(sim, pertIdx) {
+      const data = await fetchOnDemand(`/api/trajectory?run_id=${encodeURIComponent(sim.run_id || '')}&perturbation=${pertIdx}`);
+      if (!data || !data.trajectory) return false;
+      if (!sim.perturbation_trajectories) sim.perturbation_trajectories = [];
+      sim.perturbation_trajectories[pertIdx] = data.trajectory;
+      return true;
+    }
+
+    async function loadGeneProfile(sim, geneName) {
+      const data = await fetchOnDemand(`/api/gene_profile?run_id=${encodeURIComponent(sim.run_id || '')}&gene=${encodeURIComponent(geneName)}`);
+      if (!data || !data.name) return null;
+      if (!sim.gene_profiles) sim.gene_profiles = {};
+      sim.gene_profiles[geneName] = data;
+      return data;
+    }
+
     function drawPerturbationTimeCourse(pertIdx) {
       const sim = APP_STATE.sim;
       if (!sim) return;
@@ -4769,6 +4812,16 @@
       }
 
       // Plot mode is 'line'
+      if (sim.trajectories_on_demand && !(sim.perturbation_trajectories && sim.perturbation_trajectories[pertIdx])) {
+        if (!sim._trajRequested) sim._trajRequested = {};
+        if (!sim._trajRequested[pertIdx]) {
+          sim._trajRequested[pertIdx] = true;
+          loadPerturbationTrajectory(sim, pertIdx).then(ok => {
+            if (ok && APP_STATE.sim === sim) drawPerturbationTimeCourse(pertIdx);
+          });
+          return;
+        }
+      }
       if (!sim.perturbation_trajectories || !sim.perturbation_trajectories.length || !sim.perturbation_trajectories[pertIdx]) {
         const canvas = document.getElementById('canvas-pert-traj');
         if (canvas) {

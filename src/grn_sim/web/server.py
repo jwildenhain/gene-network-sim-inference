@@ -21,7 +21,7 @@ import threading
 import time
 import urllib.parse
 import zipfile
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from pathlib import Path
 import numpy as np
 
@@ -59,6 +59,7 @@ from grn_sim.benchmarks.provenance import (
 from grn_sim.evaluation.metrics import compute_aupr
 from grn_sim.paths import resolve_data_dir, resolve_data_file
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark, validate_vcc_params
+from grn_sim.perturbseq import PERTURBATION_MODES as PERTURBSEQ_MODES, screen_to_anndata, simulate_conditions
 from grn_sim.simulator.perturb_seq import (
     create_perturb_seq_anndata,
     export_perturb_seq_h5ad,
@@ -173,6 +174,11 @@ VCC_CACHE_LIMIT = 16
 MAX_CELLS_PER_CONDITION = 2000
 
 
+# Above this many genes the N^2-sized trajectory/profile data are not embedded in /api/simulate (or the archive) but
+# served per perturbation / per gene from /api/trajectory and /api/gene_profile.
+LARGE_NETWORK_GENES = 60
+
+
 def _downsample_trajectory(traj: Optional[np.ndarray], max_points: int = 60) -> List[List[float]]:
     """Downsamples an (N, steps) ODE concentration trajectory to at most max_points columns."""
     if traj is None or traj.size == 0:
@@ -190,10 +196,15 @@ def _extract_kinetics_and_trajectories(
     network: GeneNetwork,
     experiment: SimulationExperiment,
     gene_names: List[str],
+    on_demand: bool = False,
 ) -> Dict[str, Any]:
     """
     Extracts node and edge kinetic parameters matching `web_getparam.m`, `get_param.php`,
     and Thesis Table 2.1 (`v`, `B`, `x_ss`, `n_A`/`n_I`, `K_A`/`K_I`).
+
+    ``on_demand`` (large networks): the per-perturbation trajectories and per-gene profiles, which grow with N^2
+    (~150 MB of JSON at 500 genes), are left out; the studio fetches them one at a time from
+    ``/api/trajectory`` and ``/api/gene_profile``.
     """
     adj = network.topology.adjacency
     N = adj.shape[0]
@@ -242,7 +253,7 @@ def _extract_kinetics_and_trajectories(
 
     basal_traj = _downsample_trajectory(experiment.basal_trajectory, max_points=60)
     pert_trajs = []
-    if experiment.perturbation_trajectories:
+    if experiment.perturbation_trajectories and not on_demand:
         for j in range(N):
             pert_trajs.append(_downsample_trajectory(experiment.perturbation_trajectories[j], max_points=50))
 
@@ -251,55 +262,12 @@ def _extract_kinetics_and_trajectories(
     time_pts = [round(float(t), 2) for t in np.linspace(0.0, 10.0, len(basal_traj[0]))] if len(basal_traj) > 0 else []
     X_mat = experiment.X if experiment.X is not None else np.zeros((N, N))
 
-    for i in range(N):
-        gname = gene_names[i]
-        in_regs: List[Dict[str, Any]] = [
-            {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[i, j])), "type": "activation" if adj[i, j] > 0 else "inhibition"}
-            for j in range(N) if adj[i, j] != 0
-        ]
-        out_targets = [
-            {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[j, i])), "type": "activation" if adj[j, i] > 0 else "inhibition"}
-            for j in range(N) if adj[j, i] != 0
-        ]
-        b_curve = basal_traj[i] if i < len(basal_traj) else []
-        s_curve = pert_trajs[i][i] if (i < len(pert_trajs) and i < len(pert_trajs[i])) else []
-        r_curves = {
-            r["name"]: pert_trajs[r["index"]][i]
-            for r in in_regs if r["index"] < len(pert_trajs) and i < len(pert_trajs[r["index"]])
-        }
-        b_val = float(x_ss[i]) if (x_ss is not None and i < len(x_ss)) else 1.0
-
-        expr_conds = []
-        n_c = min(N, X_mat.shape[1])
-        for cond in range(n_c):
-            expr_val = float(X_mat[i, cond])
-            expr_delta = expr_val - b_val
-            expr_pct = (expr_delta / max(0.001, abs(b_val))) * 100.0
-            expr_conds.append({
-                "condition_idx": cond,
-                "perturbed_gene": gene_names[cond],
-                "expression": round(expr_val, 4),
-                "delta": round(expr_delta, 4),
-                "pct_change": round(expr_pct, 1),
-                "is_self_perturbation": (cond == i),
-                "is_regulator_perturbation": any(r["name"] == gene_names[cond] for r in in_regs),
-            })
-
-        gene_profiles[gname] = {
-            "index": i,
-            "name": gname,
-            "in_regulators": in_regs,
-            "out_targets": out_targets,
-            "time_points": time_pts,
-            "basal_trajectory": b_curve,
-            "self_perturbation_trajectory": s_curve,
-            "regulator_trajectories": r_curves,
-            "expression_across_conditions": expr_conds,
-            "baseline_expression": round(b_val, 4),
-            "min_expression": round(float(np.min([e["expression"] for e in expr_conds])) if expr_conds else 0.0, 4),
-            "max_expression": round(float(np.max([e["expression"] for e in expr_conds])) if expr_conds else 1.0, 4),
-            "max_abs_delta": round(float(np.max(np.abs([e["delta"] for e in expr_conds]))) if expr_conds else 0.0, 4),
-        }
+    if not on_demand:
+        for i in range(N):
+            gene_profiles[gene_names[i]] = _gene_profile(
+                i, adj, gene_names, basal_traj, lambda j: pert_trajs[j] if j < len(pert_trajs) else None, x_ss, X_mat,
+                time_pts,
+            )
 
     return {
         "node_params": node_params,
@@ -309,7 +277,135 @@ def _extract_kinetics_and_trajectories(
         "perturbation_trajectories": pert_trajs,
         "gene_profiles": gene_profiles,
         "time_points": time_pts,
+        "trajectories_on_demand": bool(on_demand),
     }
+
+
+def _gene_profile(
+    i: int,
+    adj: np.ndarray,
+    gene_names: List[str],
+    basal_traj: List[List[float]],
+    pert_traj: Callable[[int], Optional[List[List[float]]]],
+    x_ss: Optional[np.ndarray],
+    X_mat: np.ndarray,
+    time_pts: List[float],
+) -> Dict[str, Any]:
+    """Dynamics profile of gene ``i``; ``pert_traj(j)`` returns the downsampled trajectory of perturbation ``j``."""
+    N = adj.shape[0]
+    gname = gene_names[i]
+    in_regs: List[Dict[str, Any]] = [
+        {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[i, j])), "type": "activation" if adj[i, j] > 0 else "inhibition"}
+        for j in range(N) if adj[i, j] != 0
+    ]
+    out_targets = [
+        {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[j, i])), "type": "activation" if adj[j, i] > 0 else "inhibition"}
+        for j in range(N) if adj[j, i] != 0
+    ]
+    b_curve = basal_traj[i] if i < len(basal_traj) else []
+    own = pert_traj(i)
+    s_curve = own[i] if (own is not None and i < len(own)) else []
+    r_curves = {}
+    for r in in_regs:
+        traj = pert_traj(r["index"])
+        if traj is not None and i < len(traj):
+            r_curves[r["name"]] = traj[i]
+    b_val = float(x_ss[i]) if (x_ss is not None and i < len(x_ss)) else 1.0
+
+    expr_conds = []
+    n_c = min(N, X_mat.shape[1])
+    for cond in range(n_c):
+        expr_val = float(X_mat[i, cond])
+        expr_delta = expr_val - b_val
+        expr_pct = (expr_delta / max(0.001, abs(b_val))) * 100.0
+        expr_conds.append({
+            "condition_idx": cond,
+            "perturbed_gene": gene_names[cond],
+            "expression": round(expr_val, 4),
+            "delta": round(expr_delta, 4),
+            "pct_change": round(expr_pct, 1),
+            "is_self_perturbation": (cond == i),
+            "is_regulator_perturbation": any(r["name"] == gene_names[cond] for r in in_regs),
+        })
+
+    return {
+        "index": i,
+        "name": gname,
+        "in_regulators": in_regs,
+        "out_targets": out_targets,
+        "time_points": time_pts,
+        "basal_trajectory": b_curve,
+        "self_perturbation_trajectory": s_curve,
+        "regulator_trajectories": r_curves,
+        "expression_across_conditions": expr_conds,
+        "baseline_expression": round(b_val, 4),
+        "min_expression": round(float(np.min([e["expression"] for e in expr_conds])) if expr_conds else 0.0, 4),
+        "max_expression": round(float(np.max([e["expression"] for e in expr_conds])) if expr_conds else 1.0, 4),
+        "max_abs_delta": round(float(np.max(np.abs([e["delta"] for e in expr_conds]))) if expr_conds else 0.0, 4),
+    }
+
+
+def _compact_trajectories(experiment: SimulationExperiment, max_points: int = 50) -> None:
+    """Keeps only the downsampled perturbation trajectories (float32) of a large run in memory (~50 MB at 500 genes
+    instead of several hundred MB of raw solver steps); they are all /api/trajectory ever serves."""
+    if not experiment.perturbation_trajectories:
+        return
+    compact = []
+    for traj in experiment.perturbation_trajectories:
+        arr = np.asarray(traj)
+        if arr.ndim == 2 and arr.shape[1] > max_points:
+            arr = arr[:, np.linspace(0, arr.shape[1] - 1, max_points, dtype=int)]
+        compact.append(arr.astype(np.float32))
+    experiment.perturbation_trajectories = compact
+
+
+def _run_state(run_id: Optional[str]) -> Dict[str, Any]:
+    if run_id and run_id in SIMULATION_RUN_STORE:
+        return SIMULATION_RUN_STORE[run_id]["state"]
+    return CURRENT_STATE
+
+
+def _trajectory_payload(run_id: Optional[str], perturbation: int) -> Dict[str, Any]:
+    """One perturbation's downsampled relaxation trajectory (N genes x <= 50 time points)."""
+    state = _run_state(run_id)
+    exp = state.get("experiment")
+    names = state.get("gene_names") or []
+    if exp is None or not exp.perturbation_trajectories:
+        raise LookupError("trajectories are only available for runs simulated in this server session")
+    if not 0 <= perturbation < len(exp.perturbation_trajectories):
+        raise ValueError(f"perturbation must be in [0, {len(exp.perturbation_trajectories) - 1}], got {perturbation}")
+    return {
+        "run_id": state.get("run_id"),
+        "perturbation": perturbation,
+        "perturbed_gene": names[perturbation] if perturbation < len(names) else None,
+        "trajectory": _downsample_trajectory(np.asarray(exp.perturbation_trajectories[perturbation], dtype=float), 50),
+    }
+
+
+def _gene_profile_payload(run_id: Optional[str], gene: str) -> Dict[str, Any]:
+    """The gene profile the small-network payload embeds, computed for one gene on request."""
+    state = _run_state(run_id)
+    exp = state.get("experiment")
+    names = list(state.get("gene_names") or [])
+    adj = state.get("true_matrix")
+    if exp is None or adj is None:
+        raise LookupError("gene profiles are only available for runs simulated in this server session")
+    if gene in names:
+        i = names.index(gene)
+    elif gene.isdigit() and int(gene) < len(names):
+        i = int(gene)
+    else:
+        raise ValueError(f"unknown gene {gene!r}")
+    basal = state.get("basal_trajectory") or []
+    time_pts = state.get("time_points") or []
+
+    def pert_traj(j: int) -> Optional[List[List[float]]]:
+        if not exp.perturbation_trajectories or j >= len(exp.perturbation_trajectories):
+            return None
+        return _downsample_trajectory(np.asarray(exp.perturbation_trajectories[j], dtype=float), 50)
+
+    X_mat = exp.X if exp.X is not None else np.zeros_like(adj, dtype=float)
+    return _gene_profile(i, np.asarray(adj), names, basal, pert_traj, exp.reference_steady_state, X_mat, time_pts)
 
 
 def _compute_aic_profile(X: np.ndarray, U: np.ndarray, target_gene: int = 0) -> Dict[str, Any]:
@@ -464,10 +560,16 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             net_type = TopologyType.RANDOM
         elif topo_str == "hierarchical":
             net_type = TopologyType.HIERARCHICAL
+        elif topo_str == "modular":
+            net_type = TopologyType.MODULAR
         else:
             net_type = TopologyType.POWER_LAW
 
         eff_subdiv = subdiv if (num_genes % max(1, subdiv) == 0) else (2 if num_genes % 2 == 0 else 1)
+        if net_type == TopologyType.MODULAR:
+            # Number of modules: explicit "subdiv", else ~1 module per 10 genes (2..8; Perturb-seq-calibrated
+            # networks have 5-10 modules).
+            eff_subdiv = int(params["subdiv"]) if "subdiv" in params else int(np.clip(num_genes // 10, 2, 8))
         network = GeneNetwork.create(
             n=num_genes,
             k_av=k_av,
@@ -499,7 +601,8 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         adj = network.topology.adjacency
         gene_names = [f"G{i+1}" for i in range(num_genes)]
 
-    kin = _extract_kinetics_and_trajectories(network, experiment, gene_names)
+    on_demand = num_genes > LARGE_NETWORK_GENES
+    kin = _extract_kinetics_and_trajectories(network, experiment, gene_names, on_demand=on_demand)
     ss_diag = experiment.steady_state_diagnostics or {
         "is_valid_steady_state": bool(experiment.is_valid_steady_state),
         "oscillating_detected": not bool(experiment.is_valid_steady_state),
@@ -509,6 +612,8 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         ss_diag,
         perturbation_trajectories=experiment.perturbation_trajectories,
     )
+    if on_demand:
+        _compact_trajectories(experiment)
     if dynamics_preset == "flat":
         resp_dyn["response_type"] = "flat"
         resp_dyn["label"] = "Flat Levels (No Visible Perturbation)"
@@ -587,6 +692,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "perturbation_trajectories": kin["perturbation_trajectories"],
         "gene_profiles": kin.get("gene_profiles", {}),
         "time_points": kin.get("time_points", []),
+        "trajectories_on_demand": on_demand,
         "steady_state_diagnostics": ss_diag,
         "dot_hierarchical": dot_hier,
         "dot_spring": dot_spring,
@@ -635,6 +741,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "perturbation_trajectories": kin["perturbation_trajectories"],
         "gene_profiles": kin.get("gene_profiles", {}),
         "time_points": kin.get("time_points", []),
+        "trajectories_on_demand": on_demand,
         "steady_state_diagnostics": ss_diag,
         "graph": graph_json,
         "dot": dot_spring,
@@ -1716,13 +1823,59 @@ def _parse_cells_per_condition(query: Dict[str, List[str]]) -> int:
     return cells
 
 
-def _build_perturb_seq_h5ad_bytes(run_id: Optional[str] = None, cells_per_condition: int = 400) -> Tuple[bytes, str]:
-    """Generates a single-cell Perturb-seq AnnData .h5ad binary file matching VCC 2026 (400 cells/condition)."""
-    import tempfile
+MAX_PERTURB_SEQ_PAIRS = 2000
 
+
+def _parse_perturb_seq_options(query: Dict[str, List[str]]) -> Tuple[str, int]:
+    """Reads ?perturbation= (knockdown [default], knockout, input) and ?pairs= (double perturbations, default 0)."""
+    mode = str(query.get("perturbation", ["knockdown"])[0]).strip().lower()
+    if mode not in PERTURBSEQ_MODES:
+        raise ValueError(f"perturbation must be one of {list(PERTURBSEQ_MODES)}, got {mode!r}")
+    pairs = int(query.get("pairs", [0])[0])
+    if not 0 <= pairs <= MAX_PERTURB_SEQ_PAIRS:
+        raise ValueError(f"pairs must be in [0, {MAX_PERTURB_SEQ_PAIRS}], got {pairs}")
+    return mode, pairs
+
+
+def _build_perturb_seq_h5ad_bytes(
+    run_id: Optional[str] = None,
+    cells_per_condition: int = 400,
+    perturbation_mode: str = "knockdown",
+    n_pairs: int = 0,
+) -> Tuple[bytes, str]:
+    """
+    Generates a single-cell Perturb-seq AnnData .h5ad file (default 400 cells/condition, VCC layout).
+
+    ``knockdown`` (default) and ``knockout`` re-simulate the run's network as a CRISPR screen (optionally with
+    ``n_pairs`` double perturbations) and store the ground truth (total effects, labels, epistasis) in ``uns``.
+    ``input`` exports the run's own perturbation experiment (the thesis convention) as before; runs without a
+    simulated network (archived arrays, real benchmark data) always use that path.
+    """
     target_state = CURRENT_STATE
     if run_id and run_id in SIMULATION_RUN_STORE:
         target_state = SIMULATION_RUN_STORE[run_id]["state"]
+
+    network = target_state.get("network")
+    if perturbation_mode != "input" and target_state.get("experiment") is None and network is None:
+        settings = dict(target_state.get("settings") or {"num_genes": 12, "topology": "power_law", "seed": 42})
+        _execute_simulation(settings)
+        target_state = CURRENT_STATE
+        network = target_state.get("network")
+
+    if perturbation_mode != "input" and isinstance(network, GeneNetwork):
+        gene_names = target_state.get("gene_names") or [f"Gene_{i+1:02d}" for i in range(network.n)]
+        screen = simulate_conditions(
+            network,
+            mode=perturbation_mode,
+            pairs=n_pairs or None,
+            gene_names=list(gene_names),
+            seed=target_state.get("seed", 42),
+        )
+        actual_run_id = target_state.get("run_id") or "vcc_perturb_seq"
+        adata = screen_to_anndata(screen, cells_per_condition=cells_per_condition, mean_library_depth=20000,
+                                  seed=target_state.get("seed", 42))
+        suffix = f"{perturbation_mode}{f'_{n_pairs}pairs' if n_pairs else ''}"
+        return _write_h5ad_bytes(adata, f"{actual_run_id}_perturb_seq_{suffix}_{cells_per_condition}cells")
 
     exp = target_state.get("experiment")
     gene_names = target_state.get("gene_names")
@@ -1761,17 +1914,27 @@ def _build_perturb_seq_h5ad_bytes(run_id: Optional[str] = None, cells_per_condit
         mean_library_depth=20000,
         seed=target_state.get("seed", 42),
     )
+    return _write_h5ad_bytes(adata, f"{actual_run_id}_perturb_seq_{cells_per_condition}cells")
+
+
+def _write_h5ad_bytes(adata: Any, stem: str) -> Tuple[bytes, str]:
+    """Serialises an AnnData (or the npz fallback) to bytes; returns (bytes, filename)."""
+    import tempfile
 
     with tempfile.NamedTemporaryFile(suffix=".h5ad", delete=False) as tf:
         temp_path = tf.name
 
-    filename = f"{actual_run_id}_perturb_seq_400cells.h5ad"
+    filename = f"{stem}.h5ad"
     try:
         saved_path = export_perturb_seq_h5ad(adata, temp_path)
         actual_path = saved_path if saved_path.exists() else Path(temp_path)
-        if not actual_path.exists() and Path(temp_path + ".npz").exists():
-            actual_path = Path(temp_path + ".npz")
-            filename = f"{actual_run_id}_perturb_seq_400cells.npz"
+        if not actual_path.exists():
+            # Without anndata the exporter writes an .npz container next to the requested path.
+            for candidate in (Path(temp_path).with_suffix(".npz"), Path(temp_path + ".npz")):
+                if candidate.exists():
+                    actual_path = candidate
+                    filename = f"{stem}.npz"
+                    break
         with open(actual_path, "rb") as f:
             data = f.read()
     finally:
@@ -2139,13 +2302,15 @@ class GRNWebHandler(BaseHTTPRequestHandler):
         elif path == "/api/export/perturb_seq_h5ad":
             try:
                 cells = _parse_cells_per_condition(query)
+                pmode, n_pairs = _parse_perturb_seq_options(query)
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                 return
             try:
                 req_run_id = query.get("run_id", [None])[0]
-                data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells)
+                data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
+                                                               perturbation_mode=pmode, n_pairs=n_pairs)
                 self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                 self.wfile.write(data)
             except Exception as e:
@@ -2190,6 +2355,25 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": f"Run {req_run_id} not found in archive"}).encode("utf-8"))
             return
 
+        elif path in ("/api/trajectory", "/api/gene_profile"):
+            req_run_id = query.get("run_id", [None])[0]
+            try:
+                if path == "/api/trajectory":
+                    payload = _trajectory_payload(req_run_id, int(query.get("perturbation", ["0"])[0]))
+                else:
+                    payload = _gene_profile_payload(req_run_id, str(query.get("gene", [""])[0]))
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            except LookupError as e:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            self._set_headers(200)
+            self.wfile.write(json.dumps(payload).encode("utf-8"))
+            return
+
         elif path == "/api/download":
             fmt = query.get("format", ["msmt"])[0]
             req_run_id = query.get("run_id", [None])[0]
@@ -2220,12 +2404,14 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             elif fmt == "h5ad":
                 try:
                     cells = _parse_cells_per_condition(query)
+                    pmode, n_pairs = _parse_perturb_seq_options(query)
                 except ValueError as e:
                     self._set_headers(400)
                     self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                     return
                 try:
-                    data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells)
+                    data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
+                                                                   perturbation_mode=pmode, n_pairs=n_pairs)
                     self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                     self.wfile.write(data)
                 except Exception as e:

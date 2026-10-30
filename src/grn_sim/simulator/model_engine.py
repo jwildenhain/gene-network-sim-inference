@@ -31,9 +31,14 @@ def run_simulation_with_engine(
     measurement_noise: float = 0.0,
     seed: Optional[int] = None,
     cells_per_condition: int = 400,
+    perturbation_mode: str = "input",
 ) -> SimulationExperiment:
     """
     Executes a high-throughput network perturbation experiment using the chosen modeling technique.
+
+    ``perturbation_mode`` (``input``, ``knockdown`` or ``knockout``) applies to the Hill engines
+    (``hill_nonlinear``, ``perturb_seq_counts``); the default ``input`` keeps the thesis convention the studio's
+    inference algorithms are built for.
     """
     eng = engine.lower().strip()
     if eng == "cellbox_neural_ode":
@@ -41,11 +46,13 @@ def run_simulation_with_engine(
     elif eng == "linear_jacobian":
         return _run_linear_jacobian(network, perturbation_factor, measurement_noise, seed)
     elif eng == "perturb_seq_counts":
-        return _run_perturb_seq_engine(network, perturbation_factor, measurement_noise, seed, cells_per_condition)
+        return _run_perturb_seq_engine(network, perturbation_factor, measurement_noise, seed, cells_per_condition,
+                                       perturbation_mode)
     else:  # default: hill_nonlinear
         sim = PerturbationSimulator(
             perturbation_factor=perturbation_factor,
             measurement_noise=measurement_noise,
+            perturbation_mode=perturbation_mode,
         )
         return sim.run(network, seed=seed)
 
@@ -221,6 +228,7 @@ def _run_perturb_seq_engine(
     measurement_noise: float = 0.0,
     seed: Optional[int] = None,
     cells_per_condition: int = 400,
+    perturbation_mode: str = "input",
 ) -> SimulationExperiment:
     """
     First solves non-linear Hill ODE steady-states, then simulates single-cell integer counts
@@ -232,6 +240,7 @@ def _run_perturb_seq_engine(
     sim = PerturbationSimulator(
         perturbation_factor=perturbation_factor,
         measurement_noise=measurement_noise,
+        perturbation_mode=perturbation_mode,
     )
     base_exp = sim.run(network, seed=seed)
 
@@ -263,6 +272,7 @@ def _run_perturb_seq_engine(
 
     diag = dict(base_exp.steady_state_diagnostics or {})
     diag["modeling_engine"] = "perturb_seq_counts"
+    diag["perturbation_mode"] = perturbation_mode
     diag["cells_per_condition"] = cells_per_condition
     diag["total_single_cells"] = len(obs_df)
 

@@ -1,11 +1,12 @@
 """
 Network topology generation module for gene regulatory networks.
-Supports Random (Erdos-Renyi), Scale-Free (Barabasi-Albert Power Law),
-and Hierarchical Modular topologies with signed regulatory edges (+1: activation, -1: inhibition).
+Supports Random (Erdos-Renyi), Scale-Free (Barabasi-Albert Power Law), Hierarchical Modular and Modular
+(module-structured preferential attachment, calibrated to genome-scale Perturb-seq) topologies with signed
+regulatory edges (+1: activation, -1: inhibition).
 """
 
 from enum import Enum
-from typing import Optional
+from typing import Callable, Optional
 import numpy as np
 
 
@@ -13,6 +14,7 @@ class TopologyType(str, Enum):
     RANDOM = "random"
     POWER_LAW = "power_law"
     HIERARCHICAL = "hierarchical"
+    MODULAR = "modular"
 
 
 class NetworkTopology:
@@ -83,6 +85,8 @@ def generate_topology(
     subdiv: int = 2,
     seed: Optional[int] = None,
     rng: Optional[np.random.Generator] = None,
+    p_within: float = 0.85,
+    attachment_offset: float = 0.5,
 ) -> NetworkTopology:
     """
     Generates a gene regulatory network topology matching netsim.m from the thesis.
@@ -90,10 +94,17 @@ def generate_topology(
     Args:
         n: Number of genes in the network.
         k_av: Target average number of interactions per gene.
-        net_type: Topology type ('random', 'power_law', or 'hierarchical').
+        net_type: Topology type ('random', 'power_law', 'hierarchical' or 'modular').
         ratio: Ratio threshold for positive (activating) vs negative (inhibiting) edges.
-        subdiv: Number of subdivisions for hierarchical networks (must divide n).
+        subdiv: Number of subdivisions for hierarchical networks (must divide n); number of modules for 'modular'.
         rng: Optional NumPy random generator for deterministic seeds.
+        p_within: 'modular' only: probability that a regulator is drawn from the target's own module.
+        attachment_offset: 'modular' only: preferential-attachment offset (smaller = heavier-tailed out-degree).
+
+    The netsim.m samplers for 'power_law' and 'hierarchical' accept an edge with probability ~(degree share)^2,
+    which stalls once n exceeds ~60 genes (at n = 500 they end with n edges instead of k_av * n). When a sampler
+    exhausts its attempts, the missing edges are drawn by the same degree-preferential rule directly
+    (:func:`_top_up_edges`). Networks that never stalled are unchanged, bit for bit.
 
     Returns:
         NetworkTopology instance.
@@ -131,12 +142,15 @@ def generate_topology(
     elif net_type == TopologyType.POWER_LAW:
         # Barabási-Albert preferential attachment procedure from netsim.m
         # Phase 1: each target node connects with probability proportional to degree
+        # dk holds integer-valued floats, so the running sum equals np.sum(dk) exactly.
+        sum_dk = float(np.sum(dk))
         for i in range(n):
             while True:
                 candidate = rng.integers(0, n)
-                prob = dk[candidate] / np.sum(dk)
+                prob = dk[candidate] / sum_dk
                 if rng.uniform(0.0, 1.0) < prob:
                     dk[candidate] += 1
+                    sum_dk += 1.0
                     T[candidate, i] = _sample_sign()
                     break
 
@@ -148,12 +162,14 @@ def generate_topology(
             attempts += 1
             src = rng.integers(0, n)
             dst = rng.integers(0, n)
-            sum_dk = np.sum(dk)
             if (dk[src] / sum_dk > rng.uniform(0.0, 1.0)) and (dk[dst] / sum_dk > rng.uniform(0.0, 1.0)):
                 dk[src] += 1
                 dk[dst] += 1
+                sum_dk += 2.0
                 T[src, dst] = _sample_sign()
                 added += 1
+        if added < target_edges:
+            _top_up_edges(T, dk, target_edges, rng, _sample_sign)
 
     elif net_type == TopologyType.HIERARCHICAL:
         # Modular hierarchical structure:
@@ -163,12 +179,14 @@ def generate_topology(
         dk_sub = np.ones(sub_size, dtype=float)
 
         # Build base sub-module using power law
+        sum_sub = float(np.sum(dk_sub))
         for i in range(sub_size):
             while True:
                 cand = rng.integers(0, sub_size)
-                prob = dk_sub[cand] / np.sum(dk_sub)
+                prob = dk_sub[cand] / sum_sub
                 if rng.uniform(0.0, 1.0) < prob:
                     dk_sub[cand] += 1
+                    sum_sub += 1.0
                     T[cand, i] = _sample_sign()
                     break
 
@@ -184,6 +202,7 @@ def generate_topology(
         # Add cross-module edges between different sub-modules
         added = sub_size * subdiv
         attempts = 0
+        sum_dk = float(np.sum(dk))
         while added < target_edges and attempts < 100000:
             attempts += 1
             mod1 = rng.integers(0, subdiv)
@@ -191,14 +210,104 @@ def generate_topology(
             if mod1 != mod2:
                 idx1 = rng.integers(0, sub_size) + (mod1 * sub_size)
                 idx2 = rng.integers(0, sub_size) + (mod2 * sub_size)
-                sum_dk = np.sum(dk)
                 if (dk[idx1] / sum_dk > rng.uniform(0.0, 1.0)) and (dk[idx2] / sum_dk > rng.uniform(0.0, 1.0)):
                     dk[idx1] += 1
                     dk[idx2] += 1
+                    sum_dk += 2.0
                     T[idx1, idx2] = _sample_sign()
                     added += 1
+        if added < target_edges and subdiv > 1:
+            module = np.arange(n) // sub_size
+            _top_up_edges(T, dk, target_edges, rng, _sample_sign, module=module)
+
+    elif net_type == TopologyType.MODULAR:
+        T = _modular_topology(n, k_av, max(1, subdiv), p_within, attachment_offset, rng, _sample_sign)
 
     else:
         raise ValueError(f"Unknown topology type: {net_type}")
 
     return NetworkTopology(adjacency=T, topology_type=net_type, k_av=k_av, ratio=ratio)
+
+
+def _top_up_edges(
+    T: np.ndarray,
+    dk: np.ndarray,
+    target_edges: int,
+    rng: np.random.Generator,
+    sample_sign: Callable[[], int],
+    module: Optional[np.ndarray] = None,
+) -> None:
+    """
+    Adds edges to ``T`` (in place) until it has ``target_edges`` distinct edges, drawing source and target
+    independently with probability proportional to their degree ``dk`` - the distribution the netsim.m rejection
+    sampler targets, without its (degree share)^2 acceptance rate. With ``module`` given (hierarchical networks),
+    only edges between different modules are added, as in netsim.m's cross-module phase.
+    """
+    n = T.shape[0]
+    max_edges = n * n if module is None else int(n * n - np.sum(np.bincount(module) ** 2))
+    target = min(int(target_edges), max_edges)
+    missing = target - int(np.count_nonzero(T))
+    guard = 0
+    while missing > 0 and guard < 1000:
+        guard += 1
+        p = dk / dk.sum()
+        batch = max(2 * missing, 16)
+        src = rng.choice(n, size=batch, p=p)
+        dst = rng.choice(n, size=batch, p=p)
+        for a, b in zip(src, dst):
+            if missing <= 0:
+                break
+            if T[a, b] != 0 or (module is not None and module[a] == module[b]):
+                continue
+            T[a, b] = sample_sign()
+            dk[a] += 1
+            dk[b] += 1
+            missing -= 1
+
+
+def _modular_topology(
+    n: int,
+    k_av: float,
+    n_modules: int,
+    p_within: float,
+    attachment_offset: float,
+    rng: np.random.Generator,
+    sample_sign: Callable[[], int],
+) -> np.ndarray:
+    """
+    Module-structured preferential attachment (after Aguirre et al., PLoS Comput Biol 2025, whose simulated
+    networks best matching genome-scale Perturb-seq have 2-4 regulators per gene, 5-10 modules and a few genes with
+    very many targets).
+
+    Every gene gets ``1 + Poisson(k_av - 1)`` regulators (mean in-degree ``k_av``, nobody unregulated). Each regulator
+    comes from the gene's own module with probability ``p_within`` (otherwise from another module) and, within the
+    chosen module, with probability proportional to ``out_degree + attachment_offset``: rich-get-richer out-degree,
+    a narrow in-degree. No self-loops and no duplicate edges.
+    """
+    if not 0.0 <= p_within <= 1.0:
+        raise ValueError(f"p_within must be in [0, 1], got {p_within}")
+    if attachment_offset <= 0.0:
+        raise ValueError(f"attachment_offset must be > 0, got {attachment_offset}")
+    T = np.zeros((n, n), dtype=int)
+    n_modules = min(n_modules, n)
+    module = rng.permutation(np.arange(n) % n_modules)
+    members = [np.flatnonzero(module == m) for m in range(n_modules)]
+    out_deg = np.zeros(n, dtype=float)
+    in_deg = 1 + rng.poisson(max(k_av - 1.0, 0.0), size=n)
+    for k in rng.permutation(n):
+        for _ in range(int(min(in_deg[k], n - 1))):
+            own = module[k]
+            if n_modules > 1 and rng.uniform() >= p_within:
+                pool = members[rng.choice([m for m in range(n_modules) if m != own])]
+            else:
+                pool = members[own]
+            cand = pool[(pool != k) & (T[pool, k] == 0)]
+            if cand.size == 0:
+                cand = np.flatnonzero((np.arange(n) != k) & (T[:, k] == 0))
+                if cand.size == 0:
+                    break
+            w = out_deg[cand] + attachment_offset
+            j = int(rng.choice(cand, p=w / w.sum()))
+            T[j, k] = sample_sign()
+            out_deg[j] += 1
+    return T
