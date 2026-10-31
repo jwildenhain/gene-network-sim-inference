@@ -40,6 +40,7 @@ from grn_sim.inference.deeprig import DeepRIGAlgorithm
 from grn_sim.inference.sfinn import SFINNAlgorithm
 from grn_sim.inference.notears import NOTEARSAlgorithm
 from grn_sim.evaluation.metrics import evaluate_inference
+from grn_sim.inference.orientation import HILL, orient_prediction
 from grn_sim.benchmarks.hill_response import (
     HillResponseModel,
     hill_forward_selection,
@@ -480,7 +481,9 @@ def run_vcc_comparative_benchmark(
         else:
             res = runner.fit(X_tgt, FIT_INPUT_SIGN.get(name, 1.0) * U_tgt)
         full_fits[name] = res
-        eval_dict[name] = evaluate_inference(T_true, res.adjacency_pred)
+        # scored against T[regulator, target]; algorithms differ in output orientation
+        fit_mode = str(res.diagnostics.get("perturbation_mode", "additive"))
+        eval_dict[name] = evaluate_inference(T_true, orient_prediction(name, res.adjacency_pred, HILL, perturbation_mode=fit_mode))
 
     # Summary table formatted for display (rows follow the ALGORITHMS order)
     summary_table = []

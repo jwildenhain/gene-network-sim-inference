@@ -46,10 +46,12 @@ from grn_sim.inference.dmdgrn import DMDGRNAlgorithm
 from grn_sim.inference.deeprig import DeepRIGAlgorithm
 from grn_sim.inference.sfinn import SFINNAlgorithm
 from grn_sim.inference.notears import NOTEARSAlgorithm
+from grn_sim.inference.orientation import ADDITIVE_PHYSICAL, HILL, orient_prediction
 from grn_sim.simulator.model_engine import run_simulation_with_engine
 from grn_sim.benchmarks.benchmark_datasets import (
     list_benchmark_datasets,
     load_benchmark_dataset,
+    benchmark_data_model,
     regulator_target_matrix,
     true_matrix_is_target_regulator,
 )
@@ -200,6 +202,27 @@ def _run_truth_target_regulator(run: Dict[str, Any]) -> bool:
     return _truth_is_target_regulator(
         run.get("mode") or settings.get("mode"), run.get("dataset_source") or settings.get("dataset_source")
     )
+
+
+def _inference_data_model(run: Dict[str, Any]) -> str:
+    """
+    The ``grn_sim.inference.orientation`` data model a run's algorithms were fitted to: the benchmark dataset's own
+    X and U (wrangled_direct), the linear / CellBox engines, or the Hill simulator (everything else, including
+    biophysical fits of a benchmark dataset).
+    """
+    settings = run.get("settings") or {}
+    mode = str(run.get("mode") or settings.get("mode") or "")
+    dataset = run.get("dataset_source") or settings.get("dataset_source")
+    if not dataset and mode == "sos":
+        dataset = "ecoli_sos"
+    elif not dataset and mode.startswith("benchmark_"):
+        dataset = mode[len("benchmark_"):]
+    loading_mode = run.get("loading_mode") or settings.get("loading_mode")
+    if dataset and loading_mode != "biophysical_fit":
+        return benchmark_data_model(str(dataset))
+    if settings.get("kinetics_engine") in ("linear_jacobian", "cellbox_neural_ode"):
+        return ADDITIVE_PHYSICAL
+    return HILL
 
 
 def _drawing_matrix(m: np.ndarray, target_regulator: bool) -> np.ndarray:
@@ -825,6 +848,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     true_matrix = CURRENT_STATE["true_matrix"]
     gene_names = CURRENT_STATE["gene_names"]
     truth_tr = _run_truth_target_regulator(CURRENT_STATE)
+    data_model = _inference_data_model(CURRENT_STATE)
 
     X = experiment.X
     U = experiment.U
@@ -879,7 +903,10 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
             U_input = U if (use_reg or is_sos or alg not in ("nir", "fast", "ridge_cv")) else (-U)
             res = alg_runners[alg].fit(X, U_input)
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
-            pred = res.adjacency_pred
+            # predictions in the orientation of true_matrix (algorithms differ, see grn_sim.inference.orientation)
+            fit_mode = str(res.diagnostics.get("perturbation_mode", "additive"))
+            pred = orient_prediction(alg, res.adjacency_pred, data_model, truth_tr, fit_mode)
+            A_est = orient_prediction(alg, res.A_est, data_model, truth_tr, fit_mode)
             pred_matrices[alg] = pred.tolist()
 
             m = evaluate_inference(true_matrix, pred)
@@ -898,7 +925,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
                 "f1_score": round(m.f1_score, 3),
                 "signed_ppv": round(m.signed_ppv, 3),
                 "signed_true_positives": m.signed_true_positives,
-                "aupr": round(compute_aupr(true_matrix, res.A_est), 3),
+                "aupr": round(compute_aupr(true_matrix, A_est), 3),
                 "perturbation_model": "regulator_input" if use_reg and alg in ("nir", "fast", "ridge_cv", "cellbox", "vote") else "additive",
                 "true_positives": m.true_positives,
                 "false_positives": m.false_positives,
@@ -935,6 +962,8 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "comparison_graph": comp_graphs.get(primary_alg, {}),
         "comparison_graphs": comp_graphs,
         "pred_matrices": pred_matrices,
+        "pred_orientation": "true_matrix",
+        "data_model": data_model,
         "dot": dots_dict.get(primary_alg, ""),
         "dots": dots_dict,
         "svgs_dot": svgs_dot_dict,
@@ -1242,6 +1271,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     # T is the network as T[regulator, target] for the simulation, graphs, node parameters and gene profiles.
     truth_tr = true_matrix_is_target_regulator(dataset_id)
     T = regulator_target_matrix(dataset_id, A_true)
+    data_model = benchmark_data_model(dataset_id)
 
     # Simulate ODE steady-state recovery trajectories for visualization
     rng = np.random.default_rng(2004)
@@ -1298,7 +1328,9 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     for alg_name, runner in algs.items():
         U_in = U if (is_sos or alg_name not in ("nir", "fast", "ridge_cv")) else (-U)
         res = runner.fit(X, U_in)
-        pred = res.adjacency_pred
+        # predictions in the orientation of A_true (algorithms differ, see grn_sim.inference.orientation)
+        pred = orient_prediction(alg_name, res.adjacency_pred, data_model, truth_tr)
+        A_est = orient_prediction(alg_name, res.A_est, data_model, truth_tr)
         m = evaluate_inference(A_true, pred)
         s9 = compute_new_stats_9state(A_true, pred)
         a_stats_arr = np.array(s9["a_stats"], dtype=int)
@@ -1315,7 +1347,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
             "f1_score": round(m.f1_score, 3),
             "signed_ppv": round(m.signed_ppv, 3),
             "signed_true_positives": m.signed_true_positives,
-            "aupr": round(compute_aupr(A_true, res.A_est), 3),
+            "aupr": round(compute_aupr(A_true, A_est), 3),
             "state_counts": s9["state_counts"],
         }
         tmp_statmat[alg_name] = s9["tmp_statmat"]

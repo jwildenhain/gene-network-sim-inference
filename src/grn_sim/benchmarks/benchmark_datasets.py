@@ -11,6 +11,8 @@ Contains:
 from typing import Dict, Any, List, Optional
 import numpy as np
 
+from grn_sim.inference.orientation import ADDITIVE_GARDNER, ADDITIVE_PHYSICAL
+
 from grn_sim.paths import resolve_data_file
 from grn_sim.benchmarks.sos_pathway import load_sos_dataset, SOS_GROUND_TRUTH, GENE_NAMES as SOS_GENES
 
@@ -167,9 +169,14 @@ def list_benchmark_datasets() -> List[Dict[str, Any]]:
 
 
 # Datasets whose ``true_matrix`` is stored as A[target, regulator] (MATLAB / Gardner et al. 2003), the
-# orientation their measured X, U and the additive (A X = -U) inference algorithms use. Every other dataset,
+# orientation their measured X, U and the additive (A X = -U) inference algorithms use: the E. coli SOS
+# ground truth and the real Norman 2019 sets (build_real_norman stores A_known[dst, src]). Every other dataset,
 # like the simulator (NetworkTopology), stores T[regulator, target].
-TARGET_REGULATOR_DATASETS = frozenset({"ecoli_sos"})
+TARGET_REGULATOR_DATASETS = frozenset({
+    "ecoli_sos",
+    "norman_2019_real_16tf", "norman_real_16tf", "norman_real",
+    "norman_2019_real_105gene", "norman_real_105",
+})
 
 
 def true_matrix_is_target_regulator(dataset_id: Optional[str]) -> bool:
@@ -181,6 +188,17 @@ def regulator_target_matrix(dataset_id: Optional[str], true_matrix: np.ndarray) 
     """``true_matrix`` of ``dataset_id`` in the simulator's T[regulator, target] orientation."""
     m = np.asarray(true_matrix)
     return m.T.copy() if true_matrix_is_target_regulator(dataset_id) else m
+
+
+# Synthetic datasets generated as B X = -U (the Gardner A X = -U sign); the measured datasets respond with the
+# sign of the perturbation (B X = +U).
+GARDNER_SIGN_DATASETS = frozenset({"dream4_10gene", "norman_2019_tf16", "replogle_2022_p53"})
+
+
+def benchmark_data_model(dataset_id: str) -> str:
+    """The ``grn_sim.inference.orientation`` data model of ``dataset_id``'s X and U."""
+    did = dataset_id.lower().strip()
+    return ADDITIVE_GARDNER if did in GARDNER_SIGN_DATASETS else ADDITIVE_PHYSICAL
 
 
 def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:
@@ -278,11 +296,12 @@ def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:
         np.fill_diagonal(adj_true, 0)
         rng = np.random.default_rng(2019)
 
-        # Simulate steady-state ratios with biological mutual antagonism
+        # Simulate steady-state ratios with biological mutual antagonism; same sign convention as DREAM4
+        # (B X = -U, the Gardner A X = -U form the additive algorithms expect)
         B = np.eye(N) * 1.2 - 0.5 * adj_true.T
         inv_B = np.linalg.pinv(B)
         U = np.eye(N) * 1.5
-        X = inv_B @ U + rng.normal(0, 0.03, (N, N))
+        X = -inv_B @ U + rng.normal(0, 0.03, (N, N))
 
         return {
             "id": "norman_2019_tf16",
@@ -302,10 +321,11 @@ def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:
         np.fill_diagonal(adj_true, 0)
         rng = np.random.default_rng(2022)
 
+        # Same sign convention as DREAM4 (B X = -U)
         B = np.eye(N) * 1.3 - 0.45 * adj_true.T
         inv_B = np.linalg.pinv(B)
         U = np.eye(N) * 2.0
-        X = inv_B @ U + rng.normal(0, 0.02, (N, N))
+        X = -inv_B @ U + rng.normal(0, 0.02, (N, N))
 
         return {
             "id": "replogle_2022_p53",

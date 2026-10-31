@@ -66,11 +66,12 @@ def _run_cellbox_neural_ode(
     """
     Integrates continuous neural ODE:
         dx_i / dt = tanh( sum_j W_ij * x_j + b_i + u_i ) - alpha_i * x_i
-    where W is scaled adjacency, b is basal activation, and alpha is self-degradation.
+    where W[i, j] is the scaled effect of regulator j on target i (the transposed adjacency, which is
+    T[regulator, target]), b is basal activation, and alpha is self-degradation.
     """
     rng = np.random.default_rng(seed)
     N = network.n
-    W = network.topology.adjacency.astype(float) * 0.8
+    W = network.topology.adjacency.T.astype(float) * 0.8
     # Enforce stable diagonal (no self-activation)
     np.fill_diagonal(W, 0.0)
 
@@ -164,8 +165,9 @@ def _run_linear_jacobian(
     """
     rng = np.random.default_rng(seed)
     N = network.n
-    # Scaled adjacency ensuring stability (spectral radius < 1)
-    adj = network.topology.adjacency.astype(float)
+    # Scaled adjacency ensuring stability (spectral radius < 1); A[i, j] is the effect of regulator j on
+    # target i, so it is the transpose of the T[regulator, target] adjacency
+    adj = network.topology.adjacency.T.astype(float)
     B = np.eye(N) * 1.5  # Degradation matrix
     max_eig = np.max(np.abs(np.linalg.eigvals(adj))) if np.any(adj) else 1.0
     A_scaled = (adj / max(1.0, max_eig * 1.2))
