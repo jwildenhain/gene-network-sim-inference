@@ -2,11 +2,12 @@
 
 import math
 import random
+import time
 
 import numpy as np
 import pytest
 
-from grn_sim.visualization.layered_layout import _GAP_DUMMY, _GAP_MIXED, _GAP_NODE, layered_layout
+from grn_sim.visualization.layered_layout import _GAP_DUMMY, _GAP_MIXED, _GAP_NODE, _crossings, layered_layout
 
 
 def row_of(positions):
@@ -161,3 +162,44 @@ def test_feedback_edges_stay_below_the_classic_bound(seed):
     edges = random_graph(rng, n, rng.choice([0.1, 0.25, 0.4]), acyclic=False)
     _, paths = layered_layout(n, edges)
     assert upward_edges(paths) <= len(edges) / 2 + n / 2
+
+
+def brute_force_crossings(upper, lower, links):
+    """Reference definition: a starts strictly left of b above and ends strictly right of it below."""
+    pos_u = {v: i for i, v in enumerate(upper)}
+    pos_l = {v: i for i, v in enumerate(lower)}
+    pairs = [(pos_u[u], pos_l[v]) for u, v in links]
+    return sum(1 for a in pairs for b in pairs if a[0] < b[0] and a[1] > b[1])
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_crossing_count_matches_brute_force(seed):
+    rng = random.Random(seed)
+    n_up, n_low = rng.randint(1, 12), rng.randint(1, 12)
+    upper = rng.sample(range(100), n_up)
+    lower = rng.sample(range(100, 200), n_low)
+    # few nodes and many links: lots of shared ends (ties) and repeated links
+    links = [(rng.choice(upper), rng.choice(lower)) for _ in range(rng.randint(0, 60))]
+    assert _crossings(upper, lower, links) == brute_force_crossings(upper, lower, links)
+
+
+def test_crossing_count_edge_cases():
+    assert _crossings([], [], []) == 0
+    assert _crossings([0], [1], [(0, 1)]) == 0
+    assert _crossings([0, 1], [2, 3], [(0, 3), (1, 2)]) == 1
+    assert _crossings([0, 1], [2, 3], [(0, 2), (1, 3)]) == 0
+    assert _crossings([0, 1], [2], [(0, 2), (1, 2)]) == 0, "a shared lower end is not a crossing"
+    assert _crossings([0], [1, 2], [(0, 2), (0, 1)]) == 0, "a shared upper end is not a crossing"
+    # complete bipartite K(3,3): every pair of disjoint links crosses once -> C(3,2)^2
+    assert _crossings([0, 1, 2], [3, 4, 5], [(u, v) for u in (0, 1, 2) for v in (3, 4, 5)]) == 9
+
+
+def test_crossing_count_is_fast_on_large_layers():
+    rng = random.Random(0)
+    upper, lower = list(range(500)), list(range(500, 1000))
+    links = [(rng.choice(upper), rng.choice(lower)) for _ in range(5000)]
+    start = time.perf_counter()
+    count = _crossings(upper, lower, links)
+    elapsed = time.perf_counter() - start
+    assert count > 0
+    assert elapsed < 0.5, f"5,000 links took {elapsed:.2f}s (the pairwise count took tens of seconds)"

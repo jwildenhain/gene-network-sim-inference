@@ -110,10 +110,33 @@ def _assign_layers(n: int, dag_edges: Sequence[Edge]) -> List[int]:
 
 
 def _crossings(upper: List[int], lower: List[int], links: Sequence[Edge]) -> int:
+    """
+    Number of pairs of ``links`` (upper node, lower node) that cross when the rows are ordered as given:
+    a starts left of b in the upper row and ends right of it in the lower row. Links sharing an end
+    node do not cross.
+
+    O(E log E): with the links sorted by (upper, lower) position, every crossing is an inversion of the
+    lower positions (links from the same upper node are sorted by lower position, so never inverted), and
+    a Fenwick tree over the lower row counts, for each link, the earlier links that end strictly right of it.
+    """
     pos_u = {v: i for i, v in enumerate(upper)}
     pos_l = {v: i for i, v in enumerate(lower)}
     pairs = sorted((pos_u[u], pos_l[v]) for u, v in links)
-    return sum(1 for a in range(len(pairs)) for b in range(a + 1, len(pairs)) if pairs[a][0] < pairs[b][0] and pairs[a][1] > pairs[b][1])
+    size = len(lower)
+    tree = [0] * (size + 1)  # tree[i] counts the links seen so far whose lower position is in (i - lowbit(i), i]
+    count = 0
+    for seen, (_, p) in enumerate(pairs):
+        i = p + 1  # links seen with lower position <= p
+        at_or_left = 0
+        while i > 0:
+            at_or_left += tree[i]
+            i &= i - 1
+        count += seen - at_or_left
+        i = p + 1
+        while i <= size:
+            tree[i] += 1
+            i += i & -i
+    return count
 
 
 def layered_layout(
@@ -158,11 +181,11 @@ def layered_layout(
         up[v].append(u)
 
     # ---- crossing reduction: barycentre sweeps, keep the best ordering -----------------------
+    # the links between two adjacent rows never change, only the order of the rows does
+    between: List[List[Edge]] = [[(u, v) for u in layers[k] for v in down[u]] for k in range(depth - 1)]
+
     def total_crossings() -> int:
-        return sum(
-            _crossings(layers[k], layers[k + 1], [(u, v) for u in layers[k] for v in down[u]])
-            for k in range(depth - 1)
-        )
+        return sum(_crossings(layers[k], layers[k + 1], between[k]) for k in range(depth - 1))
 
     best_layers, best_cost = [list(row) for row in layers], total_crossings()
     for sweep in range(24):
