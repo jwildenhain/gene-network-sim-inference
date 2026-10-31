@@ -3,6 +3,9 @@ Graph visualization, export, and formatting utilities for GRN-Sim.
 Directly reproduces the Graphviz DOT, spring layout, 9-state comparison graphs,
 and confusion matrices from phpIoRN (springgraph.pl, draw_dot.m, statsgraph_to_dot.m,
 new_stats.m, and php_and_stats.m).
+
+Like draw_dot.m, the drawing functions take matrices as A[target, regulator]: m[i, j] != 0 is drawn as the edge
+j -> i. The simulator's adjacency T (NetworkTopology) is T[regulator, target], so pass ``T.T``.
 """
 
 from typing import Dict, List, Any, Optional, Tuple

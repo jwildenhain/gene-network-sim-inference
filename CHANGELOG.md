@@ -34,6 +34,14 @@ versioning once it leaves 0.x.
 - Lint (ruff) and type (mypy) clean; unused imports, dead variables and mutable default arguments removed.
 
 ### Fixed
+- **Studio networks were shown with every edge reversed.** The simulator's adjacency is T[regulator, target], but the
+  node inspector (in/out degree, activators/inhibitors), edge parameters, gene profiles (server and the page's
+  `buildClientGeneProfile`) and the graph DOT/SVG/JSON read it row-wise as regulators. The Hill constants shown for an
+  edge were already those of the right edge; only its ends were swapped. The E. coli SOS ground truth stays in its
+  MATLAB A[target, regulator] form for scoring and is now simulated and drawn transposed
+  (`benchmark_datasets.regulator_target_matrix`); `estimate_biophysical_parameters` returns Hill constants indexed
+  [regulator, target] and set from the regulator's level. Runs archived before the fix are repaired when they are
+  opened (marker: `true_matrix_orientation`).
 - Archived sweep runs could not be opened (the page ignored a response without `"status": "success"`); a stored run
   without an expression matrix raised a `NameError`; archived runs report their stored classification and note when
   the trajectories would classify differently.

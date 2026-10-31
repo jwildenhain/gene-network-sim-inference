@@ -372,12 +372,13 @@ def estimate_biophysical_parameters(
     - Degradation rates B_i are set to standard turnover constant (1.0).
     - Basal synthesis rates v_i are calibrated to sustain baseline steady state: v_i = B_i * x_ctrl_i.
     - Hill half-saturation affinities K_ij are placed at the median expression of regulator j across conditions,
-      placing the sigmoidal switch in its maximum sensitivity regime.
+      placing the sigmoidal switch in its maximum sensitivity regime. Ka, Ki, n_k, n_i are indexed
+      [regulator, target] like the simulator's adjacency, whatever the dataset's ``true_matrix`` orientation.
     - Hill cooperativity exponents n_i, n_k are set to 2.0 (cooperative homodimer binding).
     - Interaction matrix A is regularized via Tikhonov ridge inversion:
       A_est = - U * X^T * (X * X^T + lambda * I)^(-1)
     """
-    from grn_sim.benchmarks.benchmark_datasets import load_benchmark_dataset
+    from grn_sim.benchmarks.benchmark_datasets import load_benchmark_dataset, regulator_target_matrix
 
     ds = load_benchmark_dataset(dataset_id)
     gene_names = ds["gene_names"]
@@ -400,23 +401,24 @@ def estimate_biophysical_parameters(
     # 3. Basal transcription rates v
     v = np.maximum(0.1, B * base_x)
 
-    # 4. Hill Half-saturation constants K_a and K_i
-    # For each regulator j, set threshold near its median dynamic level
+    # 4. Hill Half-saturation constants K_a and K_i, in the simulator's [regulator, target] orientation
+    # (KineticParameters / NetworkTopology). For each regulator j, set threshold near its median dynamic level
+    T = regulator_target_matrix(dataset_id, A_true)
     Ka = np.zeros((num_genes, num_genes), dtype=float)
     Ki = np.zeros((num_genes, num_genes), dtype=float)
     n_k = np.zeros((num_genes, num_genes), dtype=float)
     n_i = np.zeros((num_genes, num_genes), dtype=float)
 
     for j in range(num_genes):
-        col_median = float(np.median(np.abs(X[j, :]))) if X.shape[1] > 0 else 1.0
-        k_val = max(0.15, col_median + 0.1)
-        for i in range(num_genes):
-            if A_true[i, j] > 0:
-                Ka[i, j] = k_val
-                n_k[i, j] = 2.0
-            elif A_true[i, j] < 0:
-                Ki[i, j] = k_val
-                n_i[i, j] = 2.0
+        reg_median = float(np.median(np.abs(X[j, :]))) if X.shape[1] > 0 else 1.0
+        k_val = max(0.15, reg_median + 0.1)
+        for k in range(num_genes):
+            if T[j, k] > 0:
+                Ka[j, k] = k_val
+                n_k[j, k] = 2.0
+            elif T[j, k] < 0:
+                Ki[j, k] = k_val
+                n_i[j, k] = 2.0
 
     # 5. Regularized continuous Jacobian estimation
     XXt = X @ X.T

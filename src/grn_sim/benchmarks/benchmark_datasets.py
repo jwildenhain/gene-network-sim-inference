@@ -8,7 +8,7 @@ Contains:
 5. 'replogle_2022_p53': Replogle et al. (Cell 2022) 12-gene p53/cell cycle circuit in K562 vs. RPE1.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import numpy as np
 
 from grn_sim.paths import resolve_data_file
@@ -164,6 +164,23 @@ def list_benchmark_datasets() -> List[Dict[str, Any]]:
             item["has_raw_download"] = True
             item["loading_modes"] = ["wrangled_direct", "biophysical_fit"]
     return base_catalog
+
+
+# Datasets whose ``true_matrix`` is stored as A[target, regulator] (MATLAB / Gardner et al. 2003), the
+# orientation their measured X, U and the additive (A X = -U) inference algorithms use. Every other dataset,
+# like the simulator (NetworkTopology), stores T[regulator, target].
+TARGET_REGULATOR_DATASETS = frozenset({"ecoli_sos"})
+
+
+def true_matrix_is_target_regulator(dataset_id: Optional[str]) -> bool:
+    """True when ``dataset_id``'s ``true_matrix`` is A[target, regulator] rather than T[regulator, target]."""
+    return dataset_id is not None and dataset_id.lower().strip() in TARGET_REGULATOR_DATASETS
+
+
+def regulator_target_matrix(dataset_id: Optional[str], true_matrix: np.ndarray) -> np.ndarray:
+    """``true_matrix`` of ``dataset_id`` in the simulator's T[regulator, target] orientation."""
+    m = np.asarray(true_matrix)
+    return m.T.copy() if true_matrix_is_target_regulator(dataset_id) else m
 
 
 def load_benchmark_dataset(dataset_id: str) -> Dict[str, Any]:
