@@ -269,7 +269,7 @@ def _extract_kinetics_and_trajectories(
         }
         b_val = float(x_ss[i]) if (x_ss is not None and i < len(x_ss)) else 1.0
 
-        expr_conds = []
+        expr_conds: List[Dict[str, Any]] = []
         n_c = min(N, X_mat.shape[1])
         for cond in range(n_c):
             expr_val = float(X_mat[i, cond])
