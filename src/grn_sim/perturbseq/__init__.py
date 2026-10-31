@@ -4,6 +4,10 @@ Realistic Perturb-seq data generation on top of the GRN kinetics.
 Stage 1 (``conditions``): condition-level steady states for single and double knockdowns/knockouts, plus the ground
 truth a benchmark needs (total effects, edge elasticities, linear response, per-perturbation labels, epistasis).
 ``screen_to_anndata`` turns a screen into a single-cell AnnData with that ground truth in ``uns``.
+
+Stage 2 (``cells``): per-cell perturbation doses (guides, escapers, knockout alleles) and network-propagated
+cell-to-cell noise, with a fast linear-noise model (``"lna"``) or exact chemical-Langevin integration (``"sde"``);
+``population_to_anndata`` exports the cells.
 """
 
 from grn_sim.perturbseq.conditions import (
@@ -12,9 +16,16 @@ from grn_sim.perturbseq.conditions import (
     ConditionScreen,
     simulate_conditions,
 )
-from grn_sim.perturbseq.export import design_matrix, screen_to_anndata
+from grn_sim.perturbseq.cells import NOISE_MODELS, CellConfig, CellPopulation, population_to_counts, simulate_cells
+from grn_sim.perturbseq.export import design_matrix, population_to_anndata, screen_to_anndata
 
 __all__ = [
+    "NOISE_MODELS",
+    "CellConfig",
+    "CellPopulation",
+    "population_to_anndata",
+    "population_to_counts",
+    "simulate_cells",
     "LABELS",
     "PERTURBATION_MODES",
     "ConditionScreen",
