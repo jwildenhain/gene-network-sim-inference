@@ -46,10 +46,14 @@ from grn_sim.inference.dmdgrn import DMDGRNAlgorithm
 from grn_sim.inference.deeprig import DeepRIGAlgorithm
 from grn_sim.inference.sfinn import SFINNAlgorithm
 from grn_sim.inference.notears import NOTEARSAlgorithm
+from grn_sim.inference.orientation import ADDITIVE_PHYSICAL, HILL, orient_prediction
 from grn_sim.simulator.model_engine import run_simulation_with_engine
 from grn_sim.benchmarks.benchmark_datasets import (
     list_benchmark_datasets,
     load_benchmark_dataset,
+    benchmark_data_model,
+    regulator_target_matrix,
+    true_matrix_is_target_regulator,
 )
 from grn_sim.benchmarks.provenance import (
     get_benchmark_provenance,
@@ -186,6 +190,60 @@ MAX_CELLS_PER_CONDITION = 2000
 LARGE_NETWORK_GENES = 60
 
 
+# Orientation of the network matrices the studio handles:
+# - the simulator's adjacency T (NetworkTopology), node/edge parameters and gene profiles use T[regulator, target];
+# - a run's ``true_matrix`` (what inference is scored against) is T as well, except for the E. coli SOS ground
+#   truth, which keeps the MATLAB A[target, regulator] form of its measured data (``true_matrix_is_target_regulator``);
+# - the graph_export functions (draw_dot.m conventions) draw m[i, j] as the edge j -> i, i.e. take A[target, regulator].
+def _truth_is_target_regulator(mode: Optional[str], dataset_source: Optional[str]) -> bool:
+    """True when a run's ``true_matrix`` (and the predictions scored against it) are A[target, regulator]."""
+    return mode == "sos" or true_matrix_is_target_regulator(dataset_source)
+
+
+def _run_truth_target_regulator(run: Dict[str, Any]) -> bool:
+    """Orientation of the ``true_matrix`` of a run's state or payload (older archived runs carry no marker)."""
+    orientation = run.get("true_matrix_orientation")
+    if orientation:
+        return orientation == "target_regulator"
+    settings = run.get("settings") or {}
+    return _truth_is_target_regulator(
+        run.get("mode") or settings.get("mode"), run.get("dataset_source") or settings.get("dataset_source")
+    )
+
+
+def _inference_data_model(run: Dict[str, Any]) -> str:
+    """
+    The ``grn_sim.inference.orientation`` data model a run's algorithms were fitted to: the benchmark dataset's own
+    X and U (wrangled_direct), the linear / CellBox engines, or the Hill simulator (everything else, including
+    biophysical fits of a benchmark dataset).
+    """
+    settings = run.get("settings") or {}
+    mode = str(run.get("mode") or settings.get("mode") or "")
+    dataset = run.get("dataset_source") or settings.get("dataset_source")
+    if not dataset and mode == "sos":
+        dataset = "ecoli_sos"
+    elif not dataset and mode.startswith("benchmark_"):
+        dataset = mode[len("benchmark_"):]
+    loading_mode = run.get("loading_mode") or settings.get("loading_mode")
+    if dataset and loading_mode != "biophysical_fit":
+        return benchmark_data_model(str(dataset))
+    if settings.get("kinetics_engine") in ("linear_jacobian", "cellbox_neural_ode"):
+        return ADDITIVE_PHYSICAL
+    return HILL
+
+
+def _drawing_matrix(m: np.ndarray, target_regulator: bool) -> np.ndarray:
+    """``m`` in the A[target, regulator] orientation the graph_export functions draw."""
+    m = np.asarray(m)
+    return m if target_regulator else m.T
+
+
+def _regulatory_matrix(m: np.ndarray, target_regulator: bool) -> np.ndarray:
+    """``m`` in the simulator's T[regulator, target] orientation."""
+    m = np.asarray(m)
+    return m.T if target_regulator else m
+
+
 def _downsample_trajectory(traj: Optional[np.ndarray], max_points: int = 60) -> List[List[float]]:
     """Downsamples an (N, steps) ODE concentration trajectory to at most max_points columns."""
     if traj is None or traj.size == 0:
@@ -226,28 +284,29 @@ def _extract_kinetics_and_trajectories(
             "background_ss": round(float(x_ss[i]), 4),
             "basal_rate_v": round(float(p.v[i]), 4),
             "degradation_B": round(float(p.B[i]), 4),
-            "in_degree": int(np.sum(adj[i, :] != 0)),
-            "out_degree": int(np.sum(adj[:, i] != 0)),
-            "activators_in": [gene_names[j] for j in range(N) if adj[i, j] > 0],
-            "inhibitors_in": [gene_names[j] for j in range(N) if adj[i, j] < 0],
+            "in_degree": int(np.sum(adj[:, i] != 0)),
+            "out_degree": int(np.sum(adj[i, :] != 0)),
+            "activators_in": [gene_names[j] for j in range(N) if adj[j, i] > 0],
+            "inhibitors_in": [gene_names[j] for j in range(N) if adj[j, i] < 0],
         })
 
+    # adj[j, k] (and the Hill constants p.Ka[j, k], ...) belong to the edge regulator j -> target k
     edge_params = {}
     edge_list = []
-    for i in range(N):
-        for j in range(N):
-            val = int(adj[i, j])
+    for j in range(N):
+        for k in range(N):
+            val = int(adj[j, k])
             if val != 0:
                 is_act = val > 0
-                hill_n = float(p.n_k[i, j] if is_act else p.n_i[i, j])
-                half_k = float(p.Ka[i, j] if is_act else p.Ki[i, j])
-                key = f"{j}-{i}"
+                hill_n = float(p.n_k[j, k] if is_act else p.n_i[j, k])
+                half_k = float(p.Ka[j, k] if is_act else p.Ki[j, k])
+                key = f"{j}-{k}"
                 info = {
                     "key": key,
                     "source_idx": j,
-                    "target_idx": i,
+                    "target_idx": k,
                     "source": gene_names[j],
-                    "target": gene_names[i],
+                    "target": gene_names[k],
                     "sign": 1 if is_act else -1,
                     "action": "Activatory (+1)" if is_act else "Inhibitory (-1)",
                     "hill_coeff": round(hill_n, 4),
@@ -298,16 +357,19 @@ def _gene_profile(
     X_mat: np.ndarray,
     time_pts: List[float],
 ) -> Dict[str, Any]:
-    """Dynamics profile of gene ``i``; ``pert_traj(j)`` returns the downsampled trajectory of perturbation ``j``."""
+    """
+    Dynamics profile of gene ``i``; ``pert_traj(j)`` returns the downsampled trajectory of perturbation ``j``.
+    ``adj`` is in the simulator's orientation: ``adj[j, k]`` is the effect of regulator j on target k.
+    """
     N = adj.shape[0]
     gname = gene_names[i]
     in_regs: List[Dict[str, Any]] = [
-        {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[i, j])), "type": "activation" if adj[i, j] > 0 else "inhibition"}
-        for j in range(N) if adj[i, j] != 0
-    ]
-    out_targets = [
         {"index": j, "name": gene_names[j], "sign": int(np.sign(adj[j, i])), "type": "activation" if adj[j, i] > 0 else "inhibition"}
         for j in range(N) if adj[j, i] != 0
+    ]
+    out_targets = [
+        {"index": k, "name": gene_names[k], "sign": int(np.sign(adj[i, k])), "type": "activation" if adj[i, k] > 0 else "inhibition"}
+        for k in range(N) if adj[i, k] != 0
     ]
     b_curve = basal_traj[i] if i < len(basal_traj) else []
     own = pert_traj(i)
@@ -395,6 +457,8 @@ def _gene_profile_payload(run_id: Optional[str], gene: str) -> Dict[str, Any]:
     exp = state.get("experiment")
     names = list(state.get("gene_names") or [])
     adj = state.get("true_matrix")
+    if adj is not None:
+        adj = _regulatory_matrix(adj, _run_truth_target_regulator(state))
     if exp is None or adj is None:
         raise LookupError("gene profiles are only available for runs simulated in this server session")
     if gene in names:
@@ -504,7 +568,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
 
         rng = np.random.default_rng(seed)
         topo = NetworkTopology(
-            adjacency=adj,
+            adjacency=regulator_target_matrix(target_ds, adj),
             topology_type=TopologyType.HIERARCHICAL,
             k_av=float(np.sum(adj != 0) / max(1, num_genes)),
             ratio=float(np.sum(adj > 0) / max(1, np.sum(adj != 0))) if np.sum(adj != 0) > 0 else 0.5,
@@ -638,13 +702,18 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         ss_diag["is_valid_steady_state"] = False
         ss_diag["oscillating_detected"] = True
 
-    dot_hier = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
-    dot_spring = export_graphviz_dot(adj, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
-    svg_hier = render_graphviz_svg(dot_hier, engine="dot", matrix=adj, gene_names=gene_names)
-    svg_hier_grid = render_graphviz_svg(dot_hier, engine="dot", matrix=adj, gene_names=gene_names, layout="grid")
-    svg_spring = render_graphviz_svg(dot_spring, engine="neato", matrix=adj, gene_names=gene_names)
+    # adj (the true_matrix inference is scored against) is the SOS ground truth's A[target, regulator] in SOS mode;
+    # the network itself is always T[regulator, target].
+    truth_tr = _truth_is_target_regulator(mode, target_ds)
+    reg_adj = network.topology.adjacency
+    draw = _drawing_matrix(reg_adj, False)
+    dot_hier = export_graphviz_dot(draw, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
+    dot_spring = export_graphviz_dot(draw, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
+    svg_hier = render_graphviz_svg(dot_hier, engine="dot", matrix=draw, gene_names=gene_names)
+    svg_hier_grid = render_graphviz_svg(dot_hier, engine="dot", matrix=draw, gene_names=gene_names, layout="grid")
+    svg_spring = render_graphviz_svg(dot_spring, engine="neato", matrix=draw, gene_names=gene_names)
 
-    graph_json = export_graph_json(adj, gene_names)
+    graph_json = export_graph_json(draw, gene_names)
     msmt_text = format_matrix_tsv(experiment.X)
     pert_text = format_matrix_tsv(experiment.U)
 
@@ -686,6 +755,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "network": network,
         "experiment": experiment,
         "true_matrix": adj,
+        "true_matrix_orientation": "target_regulator" if truth_tr else "regulator_target",
         "gene_names": gene_names,
         "topology": topo_str,
         "k_av": round(float(np.sum(adj != 0) / num_genes), 2),
@@ -737,6 +807,9 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "activations": int(np.sum(adj > 0)),
         "inhibitions": int(np.sum(adj < 0)),
         "true_matrix": adj.tolist(),
+        "true_matrix_orientation": "target_regulator" if truth_tr else "regulator_target",
+        # the network as T[regulator, target] (gene profiles), when true_matrix is not already that
+        "regulatory_matrix": np.asarray(reg_adj).astype(int).tolist() if truth_tr else None,
         "X": np.round(experiment.X, 4).tolist(),
         "U": np.round(experiment.U, 4).tolist(),
         "x_steady_unperturbed": np.round(experiment.reference_steady_state, 4).tolist(),
@@ -781,6 +854,8 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     experiment = CURRENT_STATE["experiment"]
     true_matrix = CURRENT_STATE["true_matrix"]
     gene_names = CURRENT_STATE["gene_names"]
+    truth_tr = _run_truth_target_regulator(CURRENT_STATE)
+    data_model = _inference_data_model(CURRENT_STATE)
 
     X = experiment.X
     U = experiment.U
@@ -835,7 +910,10 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
             U_input = U if (use_reg or is_sos or alg not in ("nir", "fast", "ridge_cv")) else (-U)
             res = alg_runners[alg].fit(X, U_input)
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
-            pred = res.adjacency_pred
+            # predictions in the orientation of true_matrix (algorithms differ, see grn_sim.inference.orientation)
+            fit_mode = str(res.diagnostics.get("perturbation_mode", "additive"))
+            pred = orient_prediction(alg, res.adjacency_pred, data_model, truth_tr, fit_mode)
+            A_est = orient_prediction(alg, res.A_est, data_model, truth_tr, fit_mode)
             pred_matrices[alg] = pred.tolist()
 
             m = evaluate_inference(true_matrix, pred)
@@ -854,7 +932,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
                 "f1_score": round(m.f1_score, 3),
                 "signed_ppv": round(m.signed_ppv, 3),
                 "signed_true_positives": m.signed_true_positives,
-                "aupr": round(compute_aupr(true_matrix, res.A_est), 3),
+                "aupr": round(compute_aupr(true_matrix, A_est), 3),
                 "perturbation_model": "regulator_input" if use_reg and alg in ("nir", "fast", "ridge_cv", "cellbox", "vote") else "additive",
                 "true_positives": m.true_positives,
                 "false_positives": m.false_positives,
@@ -866,14 +944,17 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
             }
             tmp_statmat_dict[alg] = stats_9["tmp_statmat"]
             cmat_dict[alg] = compute_detailed_confusion_matrix(true_matrix, pred)
-            comp_graphs[alg] = export_comparison_graph_json(true_matrix, pred, gene_names)
+            comp_graphs[alg] = export_comparison_graph_json(
+                _drawing_matrix(true_matrix, truth_tr), _drawing_matrix(pred, truth_tr), gene_names
+            )
 
-            dot_9_hier = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"Diff_{alg}_dot", layout="dot")
-            dot_9_neato = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"Diff_{alg}_neato", layout="neato")
+            draw_stats = _drawing_matrix(a_stats_arr, truth_tr)
+            dot_9_hier = export_9state_graphviz_dot(draw_stats, gene_names, graph_name=f"Diff_{alg}_dot", layout="dot")
+            dot_9_neato = export_9state_graphviz_dot(draw_stats, gene_names, graph_name=f"Diff_{alg}_neato", layout="neato")
             dots_dict[alg] = dot_9_hier
-            svgs_dot_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
-            svgs_dot_grid_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True, layout="grid")
-            svgs_neato_dict[alg] = render_graphviz_svg(dot_9_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
+            svgs_dot_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True)
+            svgs_dot_grid_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True, layout="grid")
+            svgs_neato_dict[alg] = render_graphviz_svg(dot_9_neato, engine="neato", matrix=draw_stats, gene_names=gene_names, is_9state=True)
 
     aic_profile = _compute_aic_profile(X, U, target_gene=0)
     primary_alg = selected_algs[0] if selected_algs else "s2g"
@@ -888,6 +969,8 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "comparison_graph": comp_graphs.get(primary_alg, {}),
         "comparison_graphs": comp_graphs,
         "pred_matrices": pred_matrices,
+        "pred_orientation": "true_matrix",
+        "data_model": data_model,
         "dot": dots_dict.get(primary_alg, ""),
         "dots": dots_dict,
         "svgs_dot": svgs_dot_dict,
@@ -963,43 +1046,115 @@ def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Brings an archived run up to date with the current graph views, in place:
     - adds the compact "grid" version that runs archived earlier do not have,
-    - redraws hierarchical/spring SVGs that came from the first built-in renderer (no arrow heads).
-    SVGs that Graphviz drew are kept as stored.
+    - redraws hierarchical/spring SVGs that came from the first built-in renderer (no arrow heads),
+    - repairs runs archived before the studio read the network as T[regulator, target] (no
+      ``true_matrix_orientation`` marker): their graphs, node/edge parameters and gene profiles were drawn with
+      every edge reversed, so they are rebuilt from the stored matrices.
+    Other SVGs that Graphviz drew are kept as stored.
     """
     true_matrix = np.array(sim_payload.get("true_matrix") or [], dtype=int)
     names = sim_payload.get("gene_names") or []
     if true_matrix.ndim != 2 or not true_matrix.size or len(names) != true_matrix.shape[0]:
         return sim_payload
 
-    if _is_arrowless_fallback_svg(sim_payload.get("svg_hierarchical", "")) or not sim_payload.get("svg_hierarchical"):
-        dot = export_graphviz_dot(true_matrix, names, graph_name="GRN_archived_dot", layout="dot")
-        sim_payload["svg_hierarchical"] = render_graphviz_svg(dot, engine="dot", matrix=true_matrix, gene_names=names)
-    if _is_arrowless_fallback_svg(sim_payload.get("svg_spring", "")) or not sim_payload.get("svg_spring"):
-        dot = export_graphviz_dot(true_matrix, names, graph_name="GRN_archived_neato", layout="neato")
-        sim_payload["svg_spring"] = render_graphviz_svg(dot, engine="neato", matrix=true_matrix, gene_names=names)
-    if not sim_payload.get("svg_hierarchical_grid"):
-        dot = export_graphviz_dot(true_matrix, names, graph_name="GRN_archived_dot", layout="dot")
-        sim_payload["svg_hierarchical_grid"] = render_graphviz_svg(dot, engine="dot", matrix=true_matrix, gene_names=names, layout="grid")
+    truth_tr = _run_truth_target_regulator(sim_payload)
+    # Archived SOS runs simulated the target-major ground truth as is, which the old reading displayed correctly
+    reversed_views = not sim_payload.get("true_matrix_orientation") and not truth_tr
+    if reversed_views:
+        _repair_reversed_network_views(sim_payload, true_matrix, names)
+    sim_payload["true_matrix_orientation"] = "target_regulator" if truth_tr else "regulator_target"
+
+    draw = _drawing_matrix(true_matrix, truth_tr)
+    if reversed_views:
+        sim_payload["dot_hierarchical"] = export_graphviz_dot(draw, names, graph_name="GRN_archived_dot", layout="dot")
+        sim_payload["dot_spring"] = sim_payload["dot"] = export_graphviz_dot(draw, names, graph_name="GRN_archived_neato", layout="neato")
+        sim_payload["graph"] = export_graph_json(draw, names)
+    if reversed_views or _is_arrowless_fallback_svg(sim_payload.get("svg_hierarchical", "")) or not sim_payload.get("svg_hierarchical"):
+        dot = export_graphviz_dot(draw, names, graph_name="GRN_archived_dot", layout="dot")
+        sim_payload["svg_hierarchical"] = render_graphviz_svg(dot, engine="dot", matrix=draw, gene_names=names)
+    if reversed_views or _is_arrowless_fallback_svg(sim_payload.get("svg_spring", "")) or not sim_payload.get("svg_spring"):
+        dot = export_graphviz_dot(draw, names, graph_name="GRN_archived_neato", layout="neato")
+        sim_payload["svg_spring"] = render_graphviz_svg(dot, engine="neato", matrix=draw, gene_names=names)
+    if reversed_views or not sim_payload.get("svg_hierarchical_grid"):
+        dot = export_graphviz_dot(draw, names, graph_name="GRN_archived_dot", layout="dot")
+        sim_payload["svg_hierarchical_grid"] = render_graphviz_svg(dot, engine="dot", matrix=draw, gene_names=names, layout="grid")
 
     inferred = sim_payload.get("inferred") or {}
     svgs_dot = inferred.setdefault("svgs_dot", {}) if inferred else {}
     svgs_neato = inferred.setdefault("svgs_neato", {}) if inferred else {}
     svgs_grid = inferred.setdefault("svgs_dot_grid", {}) if inferred else {}
     for alg, pred in (inferred.get("pred_matrices") or {}).items():
-        stale_dot = alg not in svgs_dot or _is_arrowless_fallback_svg(svgs_dot.get(alg, ""))
-        stale_neato = alg not in svgs_neato or _is_arrowless_fallback_svg(svgs_neato.get(alg, ""))
+        stale_dot = reversed_views or alg not in svgs_dot or _is_arrowless_fallback_svg(svgs_dot.get(alg, ""))
+        stale_neato = reversed_views or alg not in svgs_neato or _is_arrowless_fallback_svg(svgs_neato.get(alg, ""))
         if not (stale_dot or stale_neato or alg not in svgs_grid):
             continue
-        a_stats = np.array(compute_new_stats_9state(true_matrix, np.array(pred, dtype=int))["a_stats"], dtype=int)
+        pred_arr = np.array(pred, dtype=int)
+        a_stats = _drawing_matrix(
+            np.array(compute_new_stats_9state(true_matrix, pred_arr)["a_stats"], dtype=int), truth_tr
+        )
         dot_h = export_9state_graphviz_dot(a_stats, names, graph_name=f"Diff_{alg}_dot", layout="dot")
         if stale_dot:
             svgs_dot[alg] = render_graphviz_svg(dot_h, engine="dot", matrix=a_stats, gene_names=names, is_9state=True)
         if stale_neato:
             dot_n = export_9state_graphviz_dot(a_stats, names, graph_name=f"Diff_{alg}_neato", layout="neato")
             svgs_neato[alg] = render_graphviz_svg(dot_n, engine="neato", matrix=a_stats, gene_names=names, is_9state=True)
-        if alg not in svgs_grid:
+        if reversed_views or alg not in svgs_grid:
             svgs_grid[alg] = render_graphviz_svg(dot_h, engine="dot", matrix=a_stats, gene_names=names, is_9state=True, layout="grid")
+        if reversed_views:
+            inferred.setdefault("dots", {})[alg] = dot_h
+            inferred.setdefault("comparison_graphs", {})[alg] = export_comparison_graph_json(
+                _drawing_matrix(true_matrix, truth_tr), _drawing_matrix(pred_arr, truth_tr), names
+            )
+    if reversed_views and inferred.get("primary_algorithm") in (inferred.get("comparison_graphs") or {}):
+        primary = inferred["primary_algorithm"]
+        inferred["comparison_graph"] = inferred["comparison_graphs"][primary]
+        inferred["dot"] = (inferred.get("dots") or {}).get(primary, inferred.get("dot", ""))
     return sim_payload
+
+
+def _repair_reversed_network_views(sim_payload: Dict[str, Any], adj: np.ndarray, names: List[str]) -> None:
+    """
+    Rewrites the node parameters, edge parameters and gene profiles of a run archived when the studio read
+    T[regulator, target] row-wise as regulators: every edge was reported target -> regulator. The Hill constants
+    stored with each edge were those of the right edge, so edges keep their parameters and swap their ends.
+    """
+    N = adj.shape[0]
+    for node in sim_payload.get("node_params") or []:
+        i = node.get("index")
+        if not isinstance(i, int) or not 0 <= i < N:
+            continue
+        node["in_degree"] = int(np.sum(adj[:, i] != 0))
+        node["out_degree"] = int(np.sum(adj[i, :] != 0))
+        node["activators_in"] = [names[j] for j in range(N) if adj[j, i] > 0]
+        node["inhibitors_in"] = [names[j] for j in range(N) if adj[j, i] < 0]
+
+    def flipped(info: Dict[str, Any]) -> Dict[str, Any]:
+        e = dict(info)
+        e["source_idx"], e["target_idx"] = info.get("target_idx"), info.get("source_idx")
+        e["source"], e["target"] = info.get("target"), info.get("source")
+        e["key"] = f"{e['source_idx']}-{e['target_idx']}"
+        return e
+
+    if sim_payload.get("edge_list"):
+        sim_payload["edge_list"] = [flipped(e) for e in sim_payload["edge_list"]]
+    if sim_payload.get("edge_params"):
+        edges = [flipped(e) for e in sim_payload["edge_params"].values()]
+        sim_payload["edge_params"] = {e["key"]: e for e in edges}
+
+    pert_trajs = sim_payload.get("perturbation_trajectories") or []
+    for prof in (sim_payload.get("gene_profiles") or {}).values():
+        i = prof.get("index")
+        if not isinstance(i, int) or not 0 <= i < N:
+            continue
+        prof["in_regulators"], prof["out_targets"] = prof.get("out_targets", []), prof.get("in_regulators", [])
+        reg_names = {r["name"] for r in prof["in_regulators"]}
+        prof["regulator_trajectories"] = {
+            r["name"]: pert_trajs[r["index"]][i]
+            for r in prof["in_regulators"]
+            if r["index"] < len(pert_trajs) and i < len(pert_trajs[r["index"]] or [])
+        }
+        for cond in prof.get("expression_across_conditions") or []:
+            cond["is_regulator_perturbation"] = cond.get("perturbed_gene") in reg_names
 
 
 @_state_locked
@@ -1067,6 +1222,8 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         "seed": sim_payload.get("seed", 42),
         "settings": settings,
         "true_matrix": adj_arr,
+        "true_matrix_orientation": sim_payload.get("true_matrix_orientation"),
+        "dataset_source": sim_payload.get("dataset_source") or settings.get("dataset_source"),
         "gene_names": sim_payload.get("gene_names", []),
         "topology": sim_payload.get("topology", "power_law"),
         "k_av": sim_payload.get("k_average", 1.8),
@@ -1117,11 +1274,16 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     gene_names = list(ds_info["gene_names"])
     name = ds_info["name"]
     N = len(gene_names)
+    # A_true (and the predictions scored against it) is A[target, regulator] for the SOS ground truth;
+    # T is the network as T[regulator, target] for the simulation, graphs, node parameters and gene profiles.
+    truth_tr = true_matrix_is_target_regulator(dataset_id)
+    T = regulator_target_matrix(dataset_id, A_true)
+    data_model = benchmark_data_model(dataset_id)
 
     # Simulate ODE steady-state recovery trajectories for visualization
     rng = np.random.default_rng(2004)
     topo = NetworkTopology(
-        adjacency=A_true,
+        adjacency=T,
         topology_type=TopologyType.HIERARCHICAL,
         k_av=float(np.sum(A_true != 0) / max(1, N)),
         ratio=float(np.sum(A_true > 0) / max(1, np.sum(A_true != 0))) if np.sum(A_true != 0) > 0 else 0.5,
@@ -1131,11 +1293,12 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     sim_exp = sim.run(sim_net, seed=2004)
     pert_trajs = [_downsample_trajectory(t, max_points=45) for t in (sim_exp.perturbation_trajectories or [])]
 
-    dot_true_hier = export_graphviz_dot(A_true, gene_names, graph_name=f"{dataset_id}_True_dot", layout="dot")
-    dot_true_neato = export_graphviz_dot(A_true, gene_names, graph_name=f"{dataset_id}_True_neato", layout="neato")
-    svg_true_hier = render_graphviz_svg(dot_true_hier, engine="dot", matrix=A_true, gene_names=gene_names)
-    svg_true_neato = render_graphviz_svg(dot_true_neato, engine="neato", matrix=A_true, gene_names=gene_names)
-    svg_true_grid = render_graphviz_svg(dot_true_hier, engine="dot", matrix=A_true, gene_names=gene_names, layout="grid")
+    draw_true = _drawing_matrix(A_true, truth_tr)
+    dot_true_hier = export_graphviz_dot(draw_true, gene_names, graph_name=f"{dataset_id}_True_dot", layout="dot")
+    dot_true_neato = export_graphviz_dot(draw_true, gene_names, graph_name=f"{dataset_id}_True_neato", layout="neato")
+    svg_true_hier = render_graphviz_svg(dot_true_hier, engine="dot", matrix=draw_true, gene_names=gene_names)
+    svg_true_neato = render_graphviz_svg(dot_true_neato, engine="neato", matrix=draw_true, gene_names=gene_names)
+    svg_true_grid = render_graphviz_svg(dot_true_hier, engine="dot", matrix=draw_true, gene_names=gene_names, layout="grid")
 
     is_sos = (dataset_id == "ecoli_sos")
     k_conn = 5 if is_sos else max(1, int(np.round(np.sum(A_true != 0) / N)))
@@ -1172,7 +1335,9 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     for alg_name, runner in algs.items():
         U_in = U if (is_sos or alg_name not in ("nir", "fast", "ridge_cv")) else (-U)
         res = runner.fit(X, U_in)
-        pred = res.adjacency_pred
+        # predictions in the orientation of A_true (algorithms differ, see grn_sim.inference.orientation)
+        pred = orient_prediction(alg_name, res.adjacency_pred, data_model, truth_tr)
+        A_est = orient_prediction(alg_name, res.A_est, data_model, truth_tr)
         m = evaluate_inference(A_true, pred)
         s9 = compute_new_stats_9state(A_true, pred)
         a_stats_arr = np.array(s9["a_stats"], dtype=int)
@@ -1189,13 +1354,16 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
             "f1_score": round(m.f1_score, 3),
             "signed_ppv": round(m.signed_ppv, 3),
             "signed_true_positives": m.signed_true_positives,
-            "aupr": round(compute_aupr(A_true, res.A_est), 3),
+            "aupr": round(compute_aupr(A_true, A_est), 3),
             "state_counts": s9["state_counts"],
         }
         tmp_statmat[alg_name] = s9["tmp_statmat"]
         cmats[alg_name] = compute_detailed_confusion_matrix(A_true, pred)
-        comp_graphs[alg_name] = export_comparison_graph_json(A_true, pred, gene_names)
+        comp_graphs[alg_name] = export_comparison_graph_json(
+            _drawing_matrix(A_true, truth_tr), _drawing_matrix(pred, truth_tr), gene_names
+        )
 
+        a_stats_arr = _drawing_matrix(a_stats_arr, truth_tr)
         d_dot = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_dot", layout="dot")
         d_neato = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_neato", layout="neato")
         svgs_dot[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
@@ -1218,19 +1386,19 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
             {
                 "index": j,
                 "name": gene_names[j],
-                "sign": int(np.sign(A_true[i, j])),
-                "type": "activation" if A_true[i, j] > 0 else "inhibition",
+                "sign": int(np.sign(T[j, i])),
+                "type": "activation" if T[j, i] > 0 else "inhibition",
             }
-            for j in range(N) if A_true[i, j] != 0
+            for j in range(N) if T[j, i] != 0
         ]
         out_targets = [
             {
-                "index": j,
-                "name": gene_names[j],
-                "sign": int(np.sign(A_true[j, i])),
-                "type": "activation" if A_true[j, i] > 0 else "inhibition",
+                "index": k,
+                "name": gene_names[k],
+                "sign": int(np.sign(T[i, k])),
+                "type": "activation" if T[i, k] > 0 else "inhibition",
             }
-            for j in range(N) if A_true[j, i] != 0
+            for k in range(N) if T[i, k] != 0
         ]
 
         basal_curve = [round(float(v), 4) for v in basal_traj_down[i]] if i < len(basal_traj_down) else []
@@ -1327,9 +1495,11 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         },
         "gene_names": gene_names,
         "true_matrix": A_true.tolist(),
+        "true_matrix_orientation": "target_regulator" if truth_tr else "regulator_target",
+        "regulatory_matrix": np.asarray(T).astype(int).tolist() if truth_tr else None,
         "X": np.round(X, 4).tolist(),
         "U": np.round(U, 4).tolist(),
-        "true_graph": export_graph_json(A_true, gene_names),
+        "true_graph": export_graph_json(draw_true, gene_names),
         "svg_true_dot": svg_true_hier,
         "svg_true_dot_grid": svg_true_grid,
         "svg_true_neato": svg_true_neato,
@@ -2128,7 +2298,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 "basal_trajectory": CURRENT_STATE["basal_trajectory"],
                 "perturbation_trajectories": CURRENT_STATE["perturbation_trajectories"],
                 "steady_state_diagnostics": CURRENT_STATE.get("steady_state_diagnostics", {}),
-                "graph": export_graph_json(adj, gene_names),
+                "graph": export_graph_json(_drawing_matrix(adj, _run_truth_target_regulator(CURRENT_STATE)), gene_names),
                 "dot_hierarchical": CURRENT_STATE.get("dot_hierarchical", ""),
                 "dot_spring": CURRENT_STATE.get("dot_spring", ""),
                 "svg_hierarchical": CURRENT_STATE.get("svg_hierarchical", ""),

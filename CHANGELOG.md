@@ -34,6 +34,31 @@ versioning once it leaves 0.x.
 - Lint (ruff) and type (mypy) clean; unused imports, dead variables and mutable default arguments removed.
 
 ### Fixed
+- **Studio networks were shown with every edge reversed.** The simulator's adjacency is T[regulator, target], but the
+  node inspector (in/out degree, activators/inhibitors), edge parameters, gene profiles (server and the page's
+  `buildClientGeneProfile`) and the graph DOT/SVG/JSON read it row-wise as regulators. The Hill constants shown for an
+  edge were already those of the right edge; only its ends were swapped. The E. coli SOS ground truth stays in its
+  MATLAB A[target, regulator] form for scoring and is now simulated and drawn transposed
+  (`benchmark_datasets.regulator_target_matrix`); `estimate_biophysical_parameters` returns Hill constants indexed
+  [regulator, target] and set from the regulator's level. Runs archived before the fix are repaired when they are
+  opened (marker: `true_matrix_orientation`).
+- **Some inference scores compared a prediction with the transposed network.** The algorithms do not share one output
+  orientation (`grn_sim.inference.orientation`, measured on networks with known topology): GENIE3, CausalGRN and
+  DeepRIG return A[target, regulator] by construction, and the Gardner-style algorithms (S2G, G2S, vote, NIR, FAST,
+  CellBox) do so on additive data. Predictions are now brought into the orientation of the ground truth before
+  scoring in the studio, the Real-World Benchmarks tab, the parameter sweep and the Virtual Cell Challenge edge
+  scores. Effect: on the DREAM4 / Norman (16 TF) / Replogle sets the Gardner algorithms were scored against the
+  transpose (DREAM4 G2S 0% -> 100% of edges found); on Hill-simulated runs CausalGRN and DeepRIG move from the
+  bottom of the leaderboard to the top four. The thesis algorithms on the E. coli SOS set are unchanged.
+  `scripts/rescore_archive_orientation.py` rescored the archived runs (marker: `pred_orientation`; AUPR is cleared
+  for transposed algorithms because runs do not store the continuous estimate), and
+  `grn_sim/data/overall_statistics_sweep.json` was regenerated.
+- The linear-Jacobian and CellBox neural-ODE engines simulated the transposed network (they read the adjacency as
+  A[target, regulator]); they now simulate T[regulator, target] like the Hill engine.
+- The real Norman 2019 ground truth (`norman_2019_real_16tf`, `norman_2019_real_105gene`) is stored as
+  A[target, regulator] like the SOS set and is now treated so (`TARGET_REGULATOR_DATASETS`).
+- The synthetic Norman (16 TF) and Replogle sets now follow DREAM4's sign convention (B X = -U), which the studio's
+  perturbation sign handling for the additive algorithms assumes.
 - Archived sweep runs could not be opened (the page ignored a response without `"status": "success"`); a stored run
   without an expression matrix raised a `NameError`; archived runs report their stored classification and note when
   the trajectories would classify differently.

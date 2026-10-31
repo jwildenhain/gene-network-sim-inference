@@ -5437,27 +5437,29 @@
       if (!data || !data.gene_names || idx < 0 || idx >= data.gene_names.length) return null;
       const gname = data.gene_names[idx];
       const N = data.gene_names.length;
-      const A = data.true_matrix || [];
+      // A[j][k] is the effect of regulator j on target k (the simulator's T[regulator, target]); the SOS ground
+      // truth's true_matrix is A[target, regulator], so those payloads also carry regulatory_matrix.
+      const A = data.regulatory_matrix || data.true_matrix || [];
       const X = data.X || [];
       const trajs = data.perturbation_trajectories || [];
 
       const inRegs = [];
       const outTargets = [];
       for (let j = 0; j < N; j++) {
-        if (A[idx] && A[idx][j] !== 0) {
-          inRegs.push({
-            index: j,
-            name: data.gene_names[j],
-            sign: Math.sign(A[idx][j]),
-            type: A[idx][j] > 0 ? 'activation' : 'inhibition'
-          });
-        }
         if (A[j] && A[j][idx] !== 0) {
-          outTargets.push({
+          inRegs.push({
             index: j,
             name: data.gene_names[j],
             sign: Math.sign(A[j][idx]),
             type: A[j][idx] > 0 ? 'activation' : 'inhibition'
+          });
+        }
+        if (A[idx] && A[idx][j] !== 0) {
+          outTargets.push({
+            index: j,
+            name: data.gene_names[j],
+            sign: Math.sign(A[idx][j]),
+            type: A[idx][j] > 0 ? 'activation' : 'inhibition'
           });
         }
       }

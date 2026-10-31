@@ -59,6 +59,7 @@ from grn_sim.inference import (
     NOTEARSAlgorithm,
 )
 from grn_sim.evaluation.metrics import evaluate_inference
+from grn_sim.inference.orientation import HILL, orient_prediction
 from grn_sim.visualization.graph_export import (
     compute_new_stats_9state,
     export_9state_graphviz_dot,
@@ -188,7 +189,8 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
             try:
                 U_in = -exp.U if alg_name in ("nir", "fast", "ridge") else exp.U
                 res = runner.fit(exp.X, U_in)
-                preds[alg_name] = res.adjacency_pred
+                # scored against T[regulator, target]; algorithms differ in output orientation
+                preds[alg_name] = orient_prediction(alg_name, res.adjacency_pred, HILL)
             except Exception:
                 preds[alg_name] = np.zeros((n, n), dtype=int)
             fit_times[alg_name] = round(time.perf_counter() - t_fit_start, 4)
