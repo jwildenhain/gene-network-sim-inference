@@ -41,6 +41,7 @@ from grn_sim.inference.sfinn import SFINNAlgorithm
 from grn_sim.inference.notears import NOTEARSAlgorithm
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.inference.orientation import HILL, orient_prediction
+from grn_sim.benchmarks.cross_context import TRANSFER_BY_KEY, TRANSFER_PREDICTORS, TransferData, predict_matrix
 from grn_sim.benchmarks.hill_response import (
     HillResponseModel,
     hill_forward_selection,
@@ -143,6 +144,29 @@ def hill_models() -> List[HillModel]:
         HillModel("oracle", "Oracle: true structure (upper bound)", "reference"),
     ]
     return models
+
+
+SOURCE_NAMES = ["K562_GWPS", "HCT116_Perturb", "HEK293T_Perturb"]
+
+
+def _simulate_contexts(
+    num_genes: int, k_av: float, seed: int, target_rewire_fraction: float, sim: PerturbationSimulator
+) -> Tuple[List[Tuple[str, SimulationExperiment]], SimulationExperiment]:
+    """
+    The three source atlases (the same scale-free network with slightly different basal rates: K562-, HCT116- and
+    HEK293T-like) and the target context (the network with ``target_rewire_fraction`` of its edges moved), each
+    perturbed one gene at a time.
+    """
+    base_net = GeneNetwork.create(n=num_genes, k_av=k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=seed)
+    sources: List[Tuple[str, SimulationExperiment]] = []
+    for idx, name in enumerate(SOURCE_NAMES):
+        net = GeneNetwork.create(n=num_genes, k_av=k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=seed)
+        net.params.v = np.clip(base_net.params.v * (1.0 + 0.15 * np.sin(idx + 1 + np.arange(num_genes))), 0.2, 4.0)
+        sources.append((name, sim.run(net, seed=seed + idx * 10)))
+
+    target_net = GeneNetwork.create(n=num_genes, k_av=k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=seed)
+    _rewire_edges(target_net, target_rewire_fraction, np.random.default_rng(seed + 999), shift=1)
+    return sources, sim.run(target_net, seed=seed + 999)
 
 
 def validate_vcc_params(num_genes: int, k_av: float, rewire_fraction: float, perturbation_mode: str = "input") -> None:
@@ -415,14 +439,6 @@ def run_vcc_comparative_benchmark(
 
     gene_names = [f"Gene_{i+1:02d}" for i in range(num_genes)]
 
-    # 1. Base Shared Regulatory Network (Scale-free Barabási-Albert)
-    base_net = GeneNetwork.create(
-        n=num_genes,
-        k_av=k_av,
-        net_type=TopologyType.POWER_LAW,
-        ratio=0.55,
-        seed=seed,
-    )
     # "input": +1 added to the regulator concentration of the perturbed gene (thesis convention, an activity boost).
     # "knockdown": CRISPRi-like, the perturbed gene's production is scaled by 1 - KNOCKDOWN_EFFICIENCY.
     sim = PerturbationSimulator(
@@ -432,31 +448,9 @@ def run_vcc_comparative_benchmark(
         knockdown_efficiency=KNOCKDOWN_EFFICIENCY,
     )
 
-    # 2. Simulate 3 Source Atlases (slight basal expression differences simulating cell lines)
-    source_experiments = []
-    source_names = ["K562_GWPS", "HCT116_Perturb", "HEK293T_Perturb"]
-    for idx, s_name in enumerate(source_names):
-        s_net = GeneNetwork.create(
-            n=num_genes,
-            k_av=k_av,
-            net_type=TopologyType.POWER_LAW,
-            ratio=0.55,
-            seed=seed,
-        )
-        s_net.params.v = np.clip(base_net.params.v * (1.0 + 0.15 * np.sin(idx + 1 + np.arange(num_genes))), 0.2, 4.0)
-        exp_s = sim.run(s_net, seed=seed + idx * 10)
-        source_experiments.append((s_name, exp_s))
-
-    # 3. Simulate Target Context with Rewiring (Context A)
-    target_net = GeneNetwork.create(
-        n=num_genes,
-        k_av=k_av,
-        net_type=TopologyType.POWER_LAW,
-        ratio=0.55,
-        seed=seed,
-    )
-    _rewire_edges(target_net, target_rewire_fraction, np.random.default_rng(seed + 999), shift=1)
-    target_exp = sim.run(target_net, seed=seed + 999)
+    # 1.-3. Three source atlases and the rewired target context (Context A)
+    source_names = list(SOURCE_NAMES)
+    source_experiments, target_exp = _simulate_contexts(num_genes, k_av, seed, target_rewire_fraction, sim)
 
     X_tgt = target_exp.X
     U_tgt = target_exp.U
@@ -545,6 +539,29 @@ def run_vcc_comparative_benchmark(
         target_exp, seen_indices, held_fits, fit_failures, X_train, U_train, mode=perturbation_mode
     )
 
+    # Cross-context transfer: predict the target's responses from the source atlases, calibrated on the seen target columns
+    # only (leave-one-out for those columns, see cross_context.py). Unlike the AtlasShift row, the held-out genes are present in
+    # the source atlases: they are unmeasured in the *target context*, the zero-shot setting of the 2026 challenge.
+    transfer_data = TransferData(
+        sources=tuple(exp_s.X for _, exp_s in source_experiments),
+        target=X_tgt,
+        design=U_tgt,
+        control=target_exp.reference_steady_state,
+        seen=tuple(seen_indices),
+    )
+    transfer_responses: Dict[str, np.ndarray] = {}
+    transfer_unavailable: Dict[str, str] = {}
+    for predictor in TRANSFER_PREDICTORS:
+        try:
+            result = predict_matrix(predictor, transfer_data)
+        except Exception as exc:  # one failing predictor must not take down the whole benchmark
+            transfer_unavailable[predictor.key] = f"transfer fit failed: {exc}"
+            continue
+        if np.all(np.isfinite(result)):
+            transfer_responses[predictor.key] = result
+        else:
+            transfer_unavailable[predictor.key] = "the prediction contains non-finite values"
+
     target_profiles = []
     scores: Dict[Tuple[str, str], Dict[str, List[Dict[str, float]]]] = {}  # (method, key) -> {"seen": [...], "ood": [...]}
 
@@ -582,6 +599,14 @@ def run_vcc_comparative_benchmark(
             hill_metrics[key] = profile_scores(y_true_j, response[:, j], j)
             record("hill", key, is_ood, hill_metrics[key])
 
+        # Cross-context transfer predictions
+        transfer_preds: Dict[str, List[float]] = {}
+        transfer_metrics: Dict[str, Dict[str, float]] = {}
+        for key, response in transfer_responses.items():
+            transfer_preds[key] = [round(float(v), 4) for v in response[:, j]]
+            transfer_metrics[key] = profile_scores(y_true_j, response[:, j], j)
+            record("transfer", key, is_ood, transfer_metrics[key])
+
         target_profiles.append({
             "target_idx": j,
             "target_gene": gene_names[j],
@@ -591,11 +616,13 @@ def run_vcc_comparative_benchmark(
             "y_atlas": [round(float(v), 4) for v in y_pred_atlas],
             "predictions": preds_dict,
             "hill_predictions": hill_preds,
+            "transfer_predictions": transfer_preds,
             "metrics": {
                 "atlasshift": score_atlas,
                 **metrics_dict,
             },
             "hill_metrics": hill_metrics,
+            "transfer_metrics": transfer_metrics,
         })
 
     def split_means(method: str, key: str) -> Tuple[Dict[str, float], Dict[str, float]]:
@@ -625,6 +652,10 @@ def run_vcc_comparative_benchmark(
                       for m in RESPONSE_MODELS]
     response_table += [table_row("hill", m.key, m.label, m.kind, m.key in hill_responses, hill_unavailable.get(m.key, ""))
                        for m in hill_catalog]
+    response_table += [
+        table_row("transfer", p.key, p.label, p.kind, p.key in transfer_responses, transfer_unavailable.get(p.key, ""))
+        for p in TRANSFER_PREDICTORS
+    ]
     response_table.append(table_row("reference", "atlasshift", "AtlasShift (cross-atlas average)", "reference", True, ""))
 
     # 7. Combinatorial Epistasis & Synthetic Lethality Screen (Gi x Gj)
@@ -684,6 +715,9 @@ def run_vcc_comparative_benchmark(
         "cellbox_r": [],
         "ridge_r": [],
         "hill_r": [],
+        "calibrated_r": [],
+        "transpert_r": [],
+        "pseudobulk_r": [],
     }
     sweep_ops = {
         key: _response_operator(full_fits[name].A_est, RESPONSE_SIGN[name])[0]
@@ -699,6 +733,14 @@ def run_vcc_comparative_benchmark(
         if np.any(signed_vote):
             x_abs_all = (X_tgt + 1.0) * target_exp.reference_steady_state[:, None]
             hill_sweep_model = HillResponseModel(signed_vote, x_abs_all, U_tgt, target_exp.reference_steady_state, mode=perturbation_mode)
+
+    # The transfer predictors are calibrated on every experiment of the target context and applied to each rewired context.
+    all_columns = list(range(num_genes))
+    sweep_sources = [exp_s.X for _, exp_s in source_experiments]
+    sweep_transfer = {
+        series: TRANSFER_BY_KEY[key].fit(sweep_sources, X_tgt, U_tgt, target_exp.reference_steady_state, all_columns)
+        for series, key in (("calibrated_r", "atlas_calibrated"), ("transpert_r", "transpert_style"), ("pseudobulk_r", "pseudobulk_ridge"))
+    }
 
     for rf in rewire_fractions:
         net_rf = GeneNetwork.create(n=num_genes, k_av=k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=seed)
@@ -722,6 +764,11 @@ def run_vcc_comparative_benchmark(
                 for j in range(num_genes)
             ]
             rewire_decay["hill_r"].append(round(float(np.mean(r_hill)), 3))
+        for series, transfer_model in sweep_transfer.items():
+            r_transfer = transfer_model.predict(sweep_sources, exp_rf.U, exp_rf.reference_steady_state, all_columns)
+            rewire_decay[series].append(round(float(np.mean([
+                compute_profile_similarity(exp_rf.X[:, j], r_transfer[:, j])["pearson_r"] for j in range(num_genes)
+            ])), 3))
 
     return {
         "status": "success",
@@ -741,6 +788,11 @@ def run_vcc_comparative_benchmark(
                 {"key": m.key, "label": m.label, "kind": m.kind, "available": m.key in hill_responses,
                  "reason": hill_unavailable.get(m.key, "")}
                 for m in hill_catalog
+            ],
+            "transfer_models": [
+                {"key": p.key, "label": p.label, "kind": p.kind, "description": p.description,
+                 "available": p.key in transfer_responses, "reason": transfer_unavailable.get(p.key, "")}
+                for p in TRANSFER_PREDICTORS
             ],
             "hill_structure_q": HILL_STRUCTURE_Q,
             "perturbation_mode": perturbation_mode,

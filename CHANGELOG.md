@@ -19,6 +19,7 @@ versioning once it leaves 0.x.
   droplet measurement artefacts and guide calling, realism statistics against genome-scale Perturb-seq, anchored
   kinetics and the `replogle_like` preset; `grn-sim perturbseq` CLI; studio panel with h5ad export and realism report
   (`/api/perturbseq/realism`); `modular` topology; precise steady-state solver; large-network studio mode.
+- **Cross-context transfer predictors** for the Virtual Cell Challenge tab (`grn_sim.benchmarks.cross_context`): a plain source-atlas average, a calibrated AtlasShift-style ensemble, a TransPert-style consensus + global-scale predictor and a pseudo-bulk ridge regression, a third response method in the studio (`transfer_models`, `transfer_predictions`, rewiring series `calibrated_r` / `transpert_r` / `pseudobulk_r`) and a reproducible paired study (`scripts/transfer_study.py`, `docs/CROSS_CONTEXT_TRANSFER.md`). Finding: none beats the plain source average on held-out data.
 - **Held-out perturbation prediction** (`grn_sim.benchmarks.hill_response`): structure -> Hill refit -> steady state for
   every algorithm, a model-matched Hill forward search, a mean-profile null, a true-structure oracle and a target-gene
   prior. Research notes: `docs/HOLDOUT_RESEARCH.md`; reproducible paired study: `scripts/holdout_study.py`.

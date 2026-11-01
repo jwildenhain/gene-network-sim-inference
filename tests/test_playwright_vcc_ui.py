@@ -275,3 +275,39 @@ def test_the_table_can_be_sorted_by_the_off_target_column(open_vcc, payload_a):
     values = vp.page.eval_on_selector_all("#tbl-vcc-response tbody tr td:nth-child(5)", "els => els.map(e => e.textContent.trim())")
     numbers = [float(v) for v in values if v.replace("-", "").replace(".", "").isdigit()]
     assert numbers == sorted(numbers) or numbers == sorted(numbers, reverse=True)
+
+
+# --- cross-context transfer method -------------------------------------------------------------------------
+
+def test_cross_context_transfer_lists_the_four_predictors_and_selects_the_reference(open_vcc, payload_a):
+    vp = open_vcc(lambda route, q: fulfil(route, payload_a))
+    vp.page.wait_for_function("document.querySelectorAll('#vcc-model-select option').length > 8")
+    vp.page.select_option("#vcc-method-select", "transfer")
+    vp.page.wait_for_function("document.querySelectorAll('#vcc-model-select option').length === 4")
+    keys = vp.page.eval_on_selector_all("#vcc-model-select option", "els => els.map(e => e.value)")
+    assert keys == [m["key"] for m in payload_a["parameters"]["transfer_models"]]
+    assert vp.page.input_value("#vcc-model-select") == "atlas_mean", "'vote' does not exist here: the first available model is selected"
+    assert vp.page.inner_text("#vcc-target-model-r").startswith("r = ")
+    assert "Source-atlas average" in vp.page.inner_text("#vcc-legend-model-lbl")
+
+
+def test_the_transfer_models_have_rows_in_the_held_out_table_and_the_note_explains_them(open_vcc, payload_a):
+    vp = open_vcc(lambda route, q: fulfil(route, payload_a))
+    vp.page.wait_for_selector("#tbl-vcc-response tbody tr")
+    rows = vp.page.locator('#tbl-vcc-response tbody tr[data-method="transfer"]')
+    assert rows.count() == 4
+    assert "Cross-context transfer" in rows.first.inner_text()
+    note = vp.page.inner_text("#vcc-response-note")
+    assert "Cross-context transfer" in note and "Source-atlas average" in note and "docs/CROSS_CONTEXT_TRANSFER.md" in note
+
+
+def test_switching_between_all_three_methods_keeps_the_comparator_working(open_vcc, payload_a):
+    vp = open_vcc(lambda route, q: fulfil(route, payload_a))
+    vp.page.wait_for_function("document.querySelectorAll('#vcc-model-select option').length > 8")
+    for method, expected in (("transfer", 4), ("linear", 8), ("hill", len(payload_a["parameters"]["hill_models"]))):
+        vp.page.select_option("#vcc-method-select", method)
+        vp.page.wait_for_function(f"document.querySelectorAll('#vcc-model-select option').length === {expected}")
+        assert vp.page.inner_text("#vcc-target-model-r").startswith("r = ")
+        vp.page.select_option("#vcc-target-select", "7")   # a held-out gene
+        assert vp.page.inner_text("#vcc-target-model-r").startswith("r = ")
+        vp.page.select_option("#vcc-target-select", "0")
