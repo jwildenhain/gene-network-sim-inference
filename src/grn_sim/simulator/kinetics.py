@@ -17,9 +17,10 @@ class KineticsKernel:
     The Hill kinetics of one network under one perturbation, with the per-edge constants precomputed.
 
     Build one per solve (the network must not change while it is in use) and call :meth:`derivatives`,
-    :meth:`jacobian` or :meth:`production` in the inner loop. The arithmetic is exactly that of the original per-gene
-    loop (same operations, products accumulated over each target's regulators in ascending order), so results are
-    bit-identical to it.
+    :meth:`jacobian` or :meth:`production` in the inner loop. The arithmetic follows the original per-gene loop (same
+    operations, products accumulated over each target's regulators in ascending order). Results agree with it to
+    floating-point rounding; they are bit-identical where numpy evaluates array powers like scalar ones, but numpy
+    may dispatch ``x ** m`` on arrays to SIMD code (e.g. AVX-512 on some CPUs) that differs in the last bit.
     """
 
     def __init__(

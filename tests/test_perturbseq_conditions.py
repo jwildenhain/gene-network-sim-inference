@@ -47,7 +47,9 @@ def reference_derivatives(x, net, u=None, scale=None):
 # --- kinetics -----------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("net_type", list(TopologyType))
-def test_vectorised_kinetics_are_bit_identical_to_the_per_gene_loop(net_type):
+def test_vectorised_kinetics_match_the_per_gene_loop(net_type):
+    # Same operations in the same order, but numpy may evaluate array powers with SIMD code (e.g. AVX-512 on some
+    # CI runners) that differs from the scalar power in the last bit, so compare to rounding, not bit for bit.
     rng = np.random.default_rng(1)
     for seed in range(3):
         net = network(24, seed, net_type)
@@ -56,8 +58,9 @@ def test_vectorised_kinetics_are_bit_identical_to_the_per_gene_loop(net_type):
         u[seed] = 1.5
         scale = np.ones(24)
         scale[5] = 0.2
-        assert np.array_equal(evaluate_derivatives(x, net, u, scale), reference_derivatives(x, net, u, scale))
-        assert np.array_equal(evaluate_derivatives(x, net), reference_derivatives(x, net))
+        np.testing.assert_allclose(evaluate_derivatives(x, net, u, scale), reference_derivatives(x, net, u, scale),
+                                   rtol=1e-12, atol=1e-14)
+        np.testing.assert_allclose(evaluate_derivatives(x, net), reference_derivatives(x, net), rtol=1e-12, atol=1e-14)
 
 
 def test_analytic_jacobian_matches_finite_differences_and_sparse_form():
