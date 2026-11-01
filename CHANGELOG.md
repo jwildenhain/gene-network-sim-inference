@@ -20,6 +20,18 @@ versioning once it leaves 0.x.
 - Extras: `torch` (PyTorch backend of CellBox / CPA-Lite), `browser` (Playwright), `dev` (pytest, ruff, mypy, build, twine).
 
 ### Changed
+- **G2S follows gen2spec.m exactly and is fast.** `GeneralToSpecific(drop_rule="exact")` (the new default) removes
+  the column whose removal leaves the smallest pinv least-squares residual for every basis size, as MATLAB's
+  `dropanother` does; it reproduces the stored 60-gene MATLAB run (G2S and the S2G/G2S vote) bit for bit. The previous
+  LOO-score shortcut for bases wider than `fast_loo_threshold` columns stays available as `drop_rule="loo"`; it gives
+  the same result on full-column-rank X but not on rank-deficient X, where candidates inside a linear dependency tie.
+  The elimination now runs on O(k^2) inverse-Gram-factor downdates with certified decisions (the reference pinv
+  residual is computed only for tied candidates) and spreads target genes over a process pool
+  (`backend="auto"|"numpy"|"processes"|"reference"`, `n_jobs`); 500-gene networks take seconds instead of hours.
+  On rank-deficient X with many dependent columns, reproducing MATLAB's tie-breaking costs hours per gene; past a
+  per-gene work budget (`exact_budget_flops`, default 2e9) such steps keep the lowest-index column among those with
+  the smallest error increase (same fit at that step) and are counted in `diagnostics["tie_breaks"]`
+  (`diagnostics["matlab_exact"]` is False then). `exact_budget_flops=None` keeps every step MATLAB-exact.
 - **The package is installable on its own.** The web page and the read-only datasets (about 2.5 MB) now ship inside
   the wheel at `grn_sim/web/static/` and `grn_sim/data/`; they used to be found by walking up from the source file,
   which only worked in a clone. The files moved from `data/` to `src/grn_sim/data/` (history is kept).

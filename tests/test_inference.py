@@ -107,4 +107,33 @@ def test_matlab_equivalence_60_gene_archive():
     assert np.array_equal(cmat_nir, np.asarray(rnd.pred_matrix_gardener[:, -1], dtype=int))
 
 
+def test_matlab_equivalence_60_gene_archive_g2s_and_vote():
+    """G2S (gen2spec.m dropanother rule) and the S2G/G2S vote reproduce the stored MATLAB run.
+
+    X has rank 36 of 60 (cond ~1e51): many candidate columns tie and MATLAB's pinv rounding picks
+    one, which the exact drop rule reproduces; the LOO shortcut (drop_rule="loo") does not.
+    """
+    import scipy.io as sio
+    from grn_sim.evaluation.metrics import evaluate_inference
+    from grn_sim.paths import bundled_path
+
+    m = sio.loadmat(str(bundled_path("matlab_benchmarks", "random_nz60_run5_iot2_sig0.mat")),
+                    squeeze_me=True, struct_as_record=False)
+    rnd = m["random"]
+    X = np.real(rnd.steady_state_measurement).astype(float)
+    P = np.real(rnd.perturbation).astype(float)
+    T = np.real(rnd.true_matrix).astype(float)
+
+    def cmat(res):
+        return np.asarray(evaluate_inference(T, res.adjacency_pred).confusion_matrix_3x3, dtype=int).T.flatten()
+
+    g2s = GeneralToSpecific()
+    res_g2s = g2s.fit(X, P)
+    assert np.array_equal(cmat(res_g2s), np.asarray(rnd.pred_matrix_gs[:, -1], dtype=int))
+    res_vote = VotingEnsemble(g2s=g2s).fit(X, P)
+    assert np.array_equal(cmat(res_vote), np.asarray(rnd.pred_matrix_vote[:, -1], dtype=int))
+    res_loo = GeneralToSpecific(drop_rule="loo").fit(X, P)
+    assert not np.array_equal(cmat(res_loo), np.asarray(rnd.pred_matrix_gs[:, -1], dtype=int))
+
+
 
