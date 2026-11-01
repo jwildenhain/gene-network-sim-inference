@@ -2686,24 +2686,55 @@
           </div>
         </div>
 
-        <!-- Single-cell AnnData Specification Card -->
-        <div class="panel" style="padding:14px;">
+        <!-- Single-cell Perturb-seq generator card -->
+        <div class="panel" style="padding:14px;" id="ps-panel">
           <div class="panel-header">
-            <div class="panel-title">&#129516; Single-Cell Perturb-seq AnnData (.h5ad)</div>
-            <span class="badge badge-blue">400 cells/cond</span>
+            <div class="panel-title">&#129516; Single-Cell Perturb-seq Screen (.h5ad)</div>
+            <span class="badge badge-blue" id="ps-badge">CRISPRi screen</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
-            Matches 10x Genomics Chromium &amp; VCC 2026 data formats:
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">
+            Re-simulates the current network as a pooled CRISPR screen: per-cell knockdown doses and escapers,
+            network-propagated cell noise, doublets, ambient RNA, batches and guide calling. Ground truth
+            (total effects, labels, epistasis) is stored in <code>uns</code>.
           </div>
-          <ul style="font-size:11px;color:var(--text-main);padding-left:16px;margin:0 0 10px 0;line-height:1.4;">
-            <li><strong>X / layers:</strong> Raw integer UMI counts &amp; normalized CPM</li>
-            <li><strong>obs:</strong> Barcodes, condition, perturbation target</li>
-            <li><strong>var:</strong> Gene names, mean control CPM</li>
-            <li><strong>uns:</strong> Ground truth causal Jacobian matrix &amp; metadata</li>
-          </ul>
-          <a class="btn btn-primary btn-sm" href="/api/export/perturb_seq_h5ad" download style="display:inline-block;text-align:center;width:100%;">
-            Download .h5ad File
-          </a>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;font-size:11px;margin-bottom:8px;">
+            <label>Perturbation
+              <select id="ps-mode" style="width:100%;font-size:11px;padding:3px;">
+                <option value="knockdown" selected>Knockdown (CRISPRi)</option>
+                <option value="knockout">Knockout</option>
+                <option value="input">Input (thesis)</option>
+              </select>
+            </label>
+            <label>Cell noise
+              <select id="ps-noise" style="width:100%;font-size:11px;padding:3px;">
+                <option value="lna" selected>LNA (fast)</option>
+                <option value="sde">SDE (exact, slow)</option>
+                <option value="legacy">Legacy (i.i.d.)</option>
+              </select>
+            </label>
+            <label>Network
+              <select id="ps-preset" style="width:100%;font-size:11px;padding:3px;">
+                <option value="current" selected>Current network</option>
+                <option value="replogle_like">Replogle-like preset</option>
+                <option value="thesis">Thesis preset</option>
+              </select>
+            </label>
+            <label>Double KOs
+              <input type="number" id="ps-pairs" value="0" min="0" max="2000" style="width:100%;font-size:11px;padding:3px;" />
+            </label>
+            <label>Cells / perturbation
+              <input type="number" id="ps-cells" value="100" min="1" max="2000" style="width:100%;font-size:11px;padding:3px;" />
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;margin-top:14px;">
+              <input type="checkbox" id="ps-measurement" checked /> Measurement artefacts
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <button class="btn btn-primary btn-sm" id="btn-ps-download" onclick="downloadPerturbSeq()">Download .h5ad</button>
+            <button class="btn btn-secondary btn-sm" id="btn-ps-realism" onclick="runRealismReport()">Realism report</button>
+          </div>
+          <div id="ps-status" style="font-size:10.5px;color:var(--text-muted);margin-top:6px;min-height:14px;"></div>
+          <div id="ps-realism" style="margin-top:6px;"></div>
         </div>
       </div>
 
@@ -4767,6 +4798,90 @@
             ? 'Simulated ODE relaxation dynamics for empirical network structure'
             : (isBiophysical ? 'Non-linear Runge-Kutta 4/5 integration to perturbed steady states' : 'Relaxation to perturbed steady state (web_run_p_model.m)');
         }
+      }
+    }
+
+    // --- Perturb-seq screen panel ---------------------------------------------------------------
+    function perturbSeqQuery() {
+      const v = id => document.getElementById(id);
+      const params = new URLSearchParams({
+        perturbation: v('ps-mode').value,
+        noise: v('ps-noise').value,
+        preset: v('ps-preset').value,
+        pairs: String(Math.max(0, parseInt(v('ps-pairs').value) || 0)),
+        cells_per_condition: String(Math.max(1, parseInt(v('ps-cells').value) || 100)),
+        measurement: v('ps-measurement').checked ? '1' : '0',
+      });
+      const runId = (APP_STATE.sim && APP_STATE.sim.run_id) || '';
+      if (runId) params.set('run_id', runId);
+      return params.toString();
+    }
+
+    function setPerturbSeqBusy(busy, message) {
+      ['btn-ps-download', 'btn-ps-realism'].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = busy; });
+      const st = document.getElementById('ps-status');
+      if (st) st.textContent = message || '';
+    }
+
+    async function downloadPerturbSeq() {
+      setPerturbSeqBusy(true, 'Simulating the screen…');
+      const t0 = performance.now();
+      try {
+        const res = await fetch('/api/export/perturb_seq_h5ad?' + perturbSeqQuery());
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setPerturbSeqBusy(false, 'Export failed: ' + (err.error || res.status));
+          return;
+        }
+        const blob = await res.blob();
+        const name = ((res.headers.get('Content-Disposition') || '').match(/filename="?([^"]+)"?/) || [])[1] || 'perturb_seq.h5ad';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        setPerturbSeqBusy(false, `Downloaded ${name} (${(blob.size / 1e6).toFixed(1)} MB, ${((performance.now() - t0) / 1000).toFixed(1)} s)`);
+      } catch (e) {
+        setPerturbSeqBusy(false, 'Export failed: ' + e);
+      }
+    }
+
+    async function runRealismReport() {
+      const box = document.getElementById('ps-realism');
+      setPerturbSeqBusy(true, 'Simulating the screen and computing realism statistics…');
+      try {
+        const res = await fetch('/api/perturbseq/realism?' + perturbSeqQuery());
+        const data = await res.json();
+        if (!res.ok) {
+          setPerturbSeqBusy(false, 'Report failed: ' + (data.error || res.status));
+          return;
+        }
+        const fmt = v => (v === null || v === undefined) ? '–' : Number(v).toFixed(3);
+        const rows = data.report.map(r => `
+          <tr>
+            <td title="${r.note || ''} — ${r.source || ''}">${r.statistic.replace(/_/g, ' ')}</td>
+            <td style="text-align:right;font-family:monospace;">${fmt(r.value)}</td>
+            <td style="text-align:right;font-family:monospace;color:var(--text-muted);">${fmt(r.target_low)}–${fmt(r.target_high)}</td>
+            <td style="text-align:center;font-weight:700;color:${r.within ? '#10b981' : '#ef4444'};">${r.within ? '✓' : '✗'}</td>
+          </tr>`).join('');
+        const n = data.report.filter(r => r.within).length;
+        box.innerHTML = `
+          <table style="width:100%;font-size:10.5px;border-collapse:collapse;" id="ps-realism-table">
+            <thead><tr style="color:var(--text-muted);text-align:left;">
+              <th>Statistic</th><th style="text-align:right;">Simulated</th><th style="text-align:right;">Target</th><th></th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">
+            ${n}/${data.report.length} inside the genome-scale Perturb-seq targets (score ${data.score.toFixed(2)}; 0 = all inside).
+            ${data.n_genes} genes, ${data.n_cells} cells. Targets are calibrated for screens of 500+ genes.
+          </div>`;
+        const secs = Object.values(data.seconds || {}).reduce((a, b) => a + b, 0);
+        setPerturbSeqBusy(false, `Report ready (${secs.toFixed(1)} s)`);
+      } catch (e) {
+        setPerturbSeqBusy(false, 'Report failed: ' + e);
       }
     }
 

@@ -6,6 +6,11 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Added
+- **Perturb-seq screens** (`grn_sim.perturbseq`, see `docs/PERTURBSEQ.md`): knockdown / knockout / double
+  perturbation screens with ground truth, per-cell doses and escapers, network-propagated cell noise (LNA or SDE),
+  droplet measurement artefacts and guide calling, realism statistics against genome-scale Perturb-seq, anchored
+  kinetics and the `replogle_like` preset; `grn-sim perturbseq` CLI; studio panel with h5ad export and realism report
+  (`/api/perturbseq/realism`); `modular` topology; precise steady-state solver; large-network studio mode.
 - **Held-out perturbation prediction** (`grn_sim.benchmarks.hill_response`): structure -> Hill refit -> steady state for
   every algorithm, a model-matched Hill forward search, a mean-profile null, a true-structure oracle and a target-gene
   prior. Research notes: `docs/HOLDOUT_RESEARCH.md`; reproducible paired study: `scripts/holdout_study.py`.

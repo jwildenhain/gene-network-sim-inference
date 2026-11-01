@@ -93,6 +93,34 @@ def cmd_multi_agent(args):
     print(format_table(headers, rows))
 
 
+def cmd_perturbseq(args):
+    """Simulates a Perturb-seq screen on a preset network, writes an .h5ad and prints the realism report."""
+    from grn_sim.perturbseq.calibration import PRESETS
+    from grn_sim.perturbseq.pipeline import build_network, run_screen
+    from grn_sim.perturbseq.realism import format_report
+
+    print(f"Building a {args.genes}-gene '{args.preset}' network (seed {args.seed}) ...")
+    net = build_network(args.preset, args.genes, seed=args.seed)
+    run = run_screen(
+        net, mode=args.mode, pairs=args.pairs, cells_per_condition=args.cells, n_control_cells=args.controls,
+        cell_model=args.noise, measurement=not args.no_measurement, seed=args.seed,
+        guide_efficiency_mean=PRESETS[args.preset].guide_efficiency_mean,
+    )
+    print(f"Simulated {run.adata.n_obs} cells x {run.adata.n_vars} genes  {run.seconds}")
+    if args.out:
+        run.adata.write_h5ad(args.out, compression="gzip")
+        print(f"Wrote {args.out}")
+    if not args.no_report:
+        result = run.realism()
+        print("\n--- Realism vs genome-scale Perturb-seq targets (score 0 = all inside) ---")
+        print(format_report(result["report"]))
+        print(f"score {result['score']:.2f}")
+        if args.report:
+            with open(args.report, "w") as fh:
+                json.dump(result, fh, indent=2, default=float)
+            print(f"Wrote {args.report}")
+
+
 def cmd_web(args):
     from grn_sim.web.server import run_server
     run_server(port=args.port, open_browser=not args.no_browser)
@@ -115,6 +143,22 @@ def main():
     p_ma.add_argument("--noise", type=float, default=0.0, help="Measurement noise variance")
     p_ma.add_argument("--seed", type=int, default=42, help="Random seed")
 
+    # perturbseq
+    p_ps = subparsers.add_parser("perturbseq", help="Simulate a Perturb-seq screen (h5ad + realism report)")
+    p_ps.add_argument("--genes", "-n", type=int, default=200, help="Number of genes (default 200)")
+    p_ps.add_argument("--preset", default="replogle_like", choices=["replogle_like", "thesis"],
+                      help="Network regime (default replogle_like)")
+    p_ps.add_argument("--mode", default="knockdown", choices=["knockdown", "knockout", "input"])
+    p_ps.add_argument("--pairs", type=int, default=0, help="Random double perturbations")
+    p_ps.add_argument("--cells", type=int, default=100, help="Cells per perturbation")
+    p_ps.add_argument("--controls", type=int, default=None, help="Non-targeting cells (default: --cells)")
+    p_ps.add_argument("--noise", default="lna", choices=["lna", "sde", "legacy"], help="Cell noise model")
+    p_ps.add_argument("--no-measurement", action="store_true", help="Skip doublets/ambient/batches/guide calling")
+    p_ps.add_argument("--seed", type=int, default=1)
+    p_ps.add_argument("--out", "-o", default=None, help="Write the AnnData to this .h5ad file")
+    p_ps.add_argument("--report", default=None, help="Write the realism report to this JSON file")
+    p_ps.add_argument("--no-report", action="store_true", help="Skip the realism statistics")
+
     # web
     p_web = subparsers.add_parser("web", help="Launch interactive phpIoRN-equivalent web simulation & inference engine")
     p_web.add_argument("--port", "-p", type=int, default=8080, help="Port to bind server (default: 8080)")
@@ -126,6 +170,8 @@ def main():
         cmd_sos_benchmark(args)
     elif args.command == "multi-agent":
         cmd_multi_agent(args)
+    elif args.command == "perturbseq":
+        cmd_perturbseq(args)
     elif args.command == "web":
         cmd_web(args)
     else:

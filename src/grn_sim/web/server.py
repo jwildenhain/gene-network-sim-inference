@@ -65,12 +65,6 @@ from grn_sim.paths import resolve_data_dir, resolve_data_file
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark, validate_vcc_params
 from grn_sim.perturbseq import (
     PERTURBATION_MODES as PERTURBSEQ_MODES,
-    CellConfig,
-    MeasurementConfig,
-    population_to_anndata,
-    screen_to_anndata,
-    simulate_cells,
-    simulate_conditions,
 )
 from grn_sim.simulator.perturb_seq import (
     create_perturb_seq_anndata,
@@ -2005,6 +1999,91 @@ MAX_PERTURB_SEQ_PAIRS = 2000
 
 
 PERTURB_SEQ_CELL_MODELS = ("lna", "sde", "legacy")
+PERTURB_SEQ_PRESETS = ("current", "replogle_like", "thesis")
+MAX_PERTURB_SEQ_CONTROLS = 20000
+# Last few pipeline runs, so a realism report followed by the download of the same screen simulates it once.
+_PERTURB_SEQ_CACHE: "Dict[tuple, Any]" = {}
+
+
+def _parse_perturb_seq_extras(query: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Reads ?preset= (current [default], replogle_like, thesis), ?measurement= (1 [default] / 0) and ?controls=."""
+    preset = str(query.get("preset", ["current"])[0]).strip().lower()
+    if preset not in PERTURB_SEQ_PRESETS:
+        raise ValueError(f"preset must be one of {list(PERTURB_SEQ_PRESETS)}, got {preset!r}")
+    measurement = str(query.get("measurement", ["1"])[0]).strip().lower() not in ("0", "false", "no", "off")
+    controls_raw = query.get("controls", [""])[0]
+    controls = int(controls_raw) if controls_raw else None
+    if controls is not None and not 0 <= controls <= MAX_PERTURB_SEQ_CONTROLS:
+        raise ValueError(f"controls must be in [0, {MAX_PERTURB_SEQ_CONTROLS}], got {controls}")
+    return {"preset": preset, "measurement": measurement, "n_control_cells": controls}
+
+
+def _perturb_seq_run(
+    target_state: Dict[str, Any],
+    mode: str,
+    n_pairs: int,
+    noise_model: str,
+    cells_per_condition: int,
+    preset: str = "current",
+    measurement: bool = True,
+    n_control_cells: Optional[int] = None,
+) -> Any:
+    """Runs (or reuses) the Perturb-seq pipeline on the run's network or on a preset network of the same size."""
+    from grn_sim.perturbseq.calibration import PRESETS
+    from grn_sim.perturbseq.pipeline import build_network, run_screen
+
+    network = target_state.get("network")
+    if not isinstance(network, GeneNetwork):
+        raise LookupError("the Perturb-seq pipeline needs a simulated network (run a simulation first)")
+    seed = int(target_state.get("seed", 42) or 42)
+    key = (target_state.get("run_id"), mode, int(n_pairs), noise_model, int(cells_per_condition), preset,
+           bool(measurement), n_control_cells, seed)
+    if key in _PERTURB_SEQ_CACHE:
+        return _PERTURB_SEQ_CACHE[key]
+    if preset == "current":
+        net = network
+        names = list(target_state.get("gene_names") or [f"Gene_{i+1:02d}" for i in range(network.n)])
+        efficiency = None
+    else:
+        net = build_network(preset, network.n, seed=seed)
+        names = None
+        efficiency = PRESETS[preset].guide_efficiency_mean
+    run = run_screen(net, mode=mode, pairs=n_pairs or None, cells_per_condition=cells_per_condition,
+                     n_control_cells=n_control_cells, cell_model=noise_model, measurement=measurement,
+                     gene_names=names, guide_efficiency_mean=efficiency, seed=seed)
+    while len(_PERTURB_SEQ_CACHE) >= 2:
+        _PERTURB_SEQ_CACHE.pop(next(iter(_PERTURB_SEQ_CACHE)))
+    _PERTURB_SEQ_CACHE[key] = run
+    return run
+
+
+def _perturb_seq_realism_payload(
+    run_id: Optional[str],
+    cells_per_condition: int,
+    perturbation_mode: str,
+    n_pairs: int,
+    noise_model: str,
+    preset: str,
+    measurement: bool,
+    n_control_cells: Optional[int],
+) -> Dict[str, Any]:
+    """Realism report of the run's Perturb-seq screen against the genome-scale targets (JSON-ready)."""
+    target_state = CURRENT_STATE
+    if run_id and run_id in SIMULATION_RUN_STORE:
+        target_state = SIMULATION_RUN_STORE[run_id]["state"]
+    if not isinstance(target_state.get("network"), GeneNetwork):
+        raise LookupError("the realism report needs a simulated network (run a simulation first)")
+    if perturbation_mode == "input":
+        raise ValueError("the realism report is for knockdown / knockout screens")
+    run = _perturb_seq_run(target_state, perturbation_mode, n_pairs, noise_model, cells_per_condition,
+                           preset=preset, measurement=measurement, n_control_cells=n_control_cells)
+    result = run.realism()
+    stats = {k: (None if not np.isfinite(v) else float(v)) for k, v in result["statistics"].items()}
+    rows = [{k: (None if isinstance(v, float) and not np.isfinite(v) else v) for k, v in r.items()}
+            for r in result["report"]]
+    return {"status": "success", "run_id": target_state.get("run_id"), "score": result["score"], "report": rows,
+            "statistics": stats, "settings": result["settings"], "seconds": result["seconds"],
+            "n_cells": int(run.adata.n_obs), "n_genes": int(run.adata.n_vars)}
 
 
 def _parse_perturb_seq_options(query: Dict[str, List[str]]) -> Tuple[str, int, str]:
@@ -2030,6 +2109,9 @@ def _build_perturb_seq_h5ad_bytes(
     perturbation_mode: str = "knockdown",
     n_pairs: int = 0,
     noise_model: str = "lna",
+    preset: str = "current",
+    measurement: bool = True,
+    n_control_cells: Optional[int] = None,
 ) -> Tuple[bytes, str]:
     """
     Generates a single-cell Perturb-seq AnnData .h5ad file (default 400 cells/condition, VCC layout).
@@ -2040,7 +2122,8 @@ def _build_perturb_seq_h5ad_bytes(
     network-propagated noise) or, with ``legacy``, from independent Gamma-Poisson noise around each condition mean.
     Stage-2 cells are measured with the stage-3 droplet model (doublets, ambient RNA, batches, guide calling).
     ``input`` exports the run's own perturbation experiment (the thesis convention) as before; runs without a
-    simulated network (archived arrays, real benchmark data) always use that path.
+    simulated network (archived arrays, real benchmark data) always use that path. ``preset`` other than
+    ``current`` simulates a fresh network of the run's size from that preset (e.g. ``replogle_like``).
     """
     target_state = CURRENT_STATE
     if run_id and run_id in SIMULATION_RUN_STORE:
@@ -2054,26 +2137,13 @@ def _build_perturb_seq_h5ad_bytes(
         network = target_state.get("network")
 
     if perturbation_mode != "input" and isinstance(network, GeneNetwork):
-        gene_names = target_state.get("gene_names") or [f"Gene_{i+1:02d}" for i in range(network.n)]
-        screen = simulate_conditions(
-            network,
-            mode=perturbation_mode,
-            pairs=n_pairs or None,
-            gene_names=list(gene_names),
-            seed=target_state.get("seed", 42),
-        )
+        run = _perturb_seq_run(target_state, perturbation_mode, n_pairs, noise_model, cells_per_condition,
+                               preset=preset, measurement=measurement, n_control_cells=n_control_cells)
         actual_run_id = target_state.get("run_id") or "vcc_perturb_seq"
-        seed = target_state.get("seed", 42)
-        if noise_model == "legacy":
-            adata = screen_to_anndata(screen, cells_per_condition=cells_per_condition, mean_library_depth=20000,
-                                      seed=seed)
-        else:
-            population = simulate_cells(network, screen, cells_per_condition=cells_per_condition,
-                                        config=CellConfig(noise_model=noise_model), seed=seed)
-            adata = population_to_anndata(population, screen, seed=seed,
-                                          measurement=MeasurementConfig(mean_library_depth=20000))
         suffix = f"{perturbation_mode}{f'_{n_pairs}pairs' if n_pairs else ''}_{noise_model}"
-        return _write_h5ad_bytes(adata, f"{actual_run_id}_perturb_seq_{suffix}_{cells_per_condition}cells")
+        if preset != "current":
+            suffix += f"_{preset}"
+        return _write_h5ad_bytes(run.adata, f"{actual_run_id}_perturb_seq_{suffix}_{cells_per_condition}cells")
 
     exp = target_state.get("experiment")
     gene_names = target_state.get("gene_names")
@@ -2497,10 +2567,33 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             return
 
+        elif path == "/api/perturbseq/realism":
+            try:
+                cells = int(query.get("cells_per_condition", [100])[0])
+                if not 1 <= cells <= MAX_CELLS_PER_CONDITION:
+                    raise ValueError(f"cells_per_condition must be in [1, {MAX_CELLS_PER_CONDITION}], got {cells}")
+                pmode, n_pairs, noise = _parse_perturb_seq_options(query)
+                extras = _parse_perturb_seq_extras(query)
+                payload = _perturb_seq_realism_payload(query.get("run_id", [None])[0], cells, pmode, n_pairs, noise,
+                                                       extras["preset"], extras["measurement"],
+                                                       extras["n_control_cells"])
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            except LookupError as e:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            self._set_headers(200)
+            self.wfile.write(json.dumps(payload, default=float).encode("utf-8"))
+            return
+
         elif path == "/api/export/perturb_seq_h5ad":
             try:
                 cells = _parse_cells_per_condition(query)
                 pmode, n_pairs, noise = _parse_perturb_seq_options(query)
+                extras = _parse_perturb_seq_extras(query)
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
@@ -2508,7 +2601,8 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             try:
                 req_run_id = query.get("run_id", [None])[0]
                 data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
-                                                               perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise)
+                                                               perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
+                                                               **extras)
                 self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                 self.wfile.write(data)
             except Exception as e:
@@ -2603,13 +2697,15 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 try:
                     cells = _parse_cells_per_condition(query)
                     pmode, n_pairs, noise = _parse_perturb_seq_options(query)
+                    extras = _parse_perturb_seq_extras(query)
                 except ValueError as e:
                     self._set_headers(400)
                     self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                     return
                 try:
                     data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
-                                                                   perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise)
+                                                                   perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
+                                                                   **extras)
                     self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                     self.wfile.write(data)
                 except Exception as e:
