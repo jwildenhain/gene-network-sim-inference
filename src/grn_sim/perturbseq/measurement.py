@@ -104,6 +104,8 @@ def measure_population(
     cfg.validate()
     rng = np.random.default_rng(seed)
     n_cells, n_genes = population.expression.shape
+    if not np.all(np.isfinite(population.expression)):
+        raise ValueError("cell expression contains non-finite values; cannot measure")
     expr = np.maximum(population.expression, 0.0)
 
     # 1. Doublets: droplet d holds cell d, and with probability doublet_rate a second, random cell.

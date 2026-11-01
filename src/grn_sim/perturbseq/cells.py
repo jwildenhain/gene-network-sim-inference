@@ -39,6 +39,7 @@ from grn_sim.simulator.steady_state import SteadyStateSolver
 
 NOISE_MODELS = ("lna", "sde")
 FLOOR = 1e-9
+LNA_MAX_LOG_DEV = 6.0   # largest noise-driven log deviation the LNA may produce (~400-fold)
 
 
 @dataclass
@@ -348,6 +349,7 @@ def _simulate_cells(
         return dose, escaped
 
     blocks: List[np.ndarray] = []
+    clipped = [0]
     cond_col: List[str] = []
     guide_col: List[str] = []
     target_col: List[Tuple[int, ...]] = []
@@ -363,9 +365,16 @@ def _simulate_cells(
             u, scale = perturber.inputs(list(targets), list(lna_doses))
             kernel = KineticsKernel(network, u, scale)
             R, root = _lna_factors(kernel, np.exp(state_for_lna), cfg.omega)
-            log_x = log_mean + xi @ R.T
+            dev = xi @ np.nan_to_num(R, nan=0.0, posinf=0.0, neginf=0.0).T
             if root is not None:
-                log_x = log_x + rng.standard_normal((k, n)) @ root.T
+                dev = dev + rng.standard_normal((k, n)) @ np.nan_to_num(root, nan=0.0, posinf=0.0, neginf=0.0).T
+            # Near a bifurcation the linear response explodes and the LNA stops being valid; cap the noise-driven
+            # deviation at e^+-LNA_MAX_LOG_DEV (and count it) instead of overflowing.
+            over = np.abs(dev) > LNA_MAX_LOG_DEV
+            if over.any():
+                clipped[0] += int(over.sum())
+                dev = np.clip(dev, -LNA_MAX_LOG_DEV, LNA_MAX_LOG_DEV)
+            log_x = log_mean + dev
             expr = np.exp(log_x)
             expr[log_mean <= np.log(FLOOR) + 1e-9] = 0.0
         else:
@@ -441,7 +450,7 @@ def _simulate_cells(
         dose=np.vstack(dose_rows) if dose_rows else np.zeros((0, 2)),
         escaped=np.concatenate(escaped_rows) if escaped_rows else np.zeros(0, dtype=bool),
         noise_model=cfg.noise_model,
-        meta={"config": cfg, "seed": seed, "mode": screen.mode},
+        meta={"config": cfg, "seed": seed, "mode": screen.mode, "lna_clipped_values": clipped[0]},
     )
 
 
