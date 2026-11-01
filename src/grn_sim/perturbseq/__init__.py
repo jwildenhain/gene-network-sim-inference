@@ -11,6 +11,11 @@ cell-to-cell noise, with a fast linear-noise model (``"lna"``) or exact chemical
 
 Stage 3 (``measurement``): doublets, ambient RNA, gene capture bias, batches, UMI sampling and guide capture /
 assignment, with the truth recorded next to every observation (``measure_population``).
+
+Stage 4 (``calibration``, ``realism``): anchored Hill kinetics (``calibrate_kinetics``), network presets
+(``PRESETS["replogle_like"]``), ground-truth and observed realism statistics scored against genome-scale Perturb-seq
+targets (``truth_statistics``, ``observed_statistics``, ``realism_report``); sweep with
+``scripts/calibrate_perturbseq.py``.
 """
 
 from grn_sim.perturbseq.conditions import (
