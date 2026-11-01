@@ -66,6 +66,7 @@ from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark, vali
 from grn_sim.perturbseq import (
     PERTURBATION_MODES as PERTURBSEQ_MODES,
     CellConfig,
+    MeasurementConfig,
     population_to_anndata,
     screen_to_anndata,
     simulate_cells,
@@ -2037,6 +2038,7 @@ def _build_perturb_seq_h5ad_bytes(
     ``n_pairs`` double perturbations) and store the ground truth (total effects, labels, epistasis) in ``uns``.
     Their cells come from the stage-2 cell model (``noise_model`` ``lna`` or ``sde``: per-cell doses, escapers and
     network-propagated noise) or, with ``legacy``, from independent Gamma-Poisson noise around each condition mean.
+    Stage-2 cells are measured with the stage-3 droplet model (doublets, ambient RNA, batches, guide calling).
     ``input`` exports the run's own perturbation experiment (the thesis convention) as before; runs without a
     simulated network (archived arrays, real benchmark data) always use that path.
     """
@@ -2068,7 +2070,8 @@ def _build_perturb_seq_h5ad_bytes(
         else:
             population = simulate_cells(network, screen, cells_per_condition=cells_per_condition,
                                         config=CellConfig(noise_model=noise_model), seed=seed)
-            adata = population_to_anndata(population, screen, mean_library_depth=20000, seed=seed)
+            adata = population_to_anndata(population, screen, seed=seed,
+                                          measurement=MeasurementConfig(mean_library_depth=20000))
         suffix = f"{perturbation_mode}{f'_{n_pairs}pairs' if n_pairs else ''}_{noise_model}"
         return _write_h5ad_bytes(adata, f"{actual_run_id}_perturb_seq_{suffix}_{cells_per_condition}cells")
 

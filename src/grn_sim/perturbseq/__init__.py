@@ -8,6 +8,9 @@ truth a benchmark needs (total effects, edge elasticities, linear response, per-
 Stage 2 (``cells``): per-cell perturbation doses (guides, escapers, knockout alleles) and network-propagated
 cell-to-cell noise, with a fast linear-noise model (``"lna"``) or exact chemical-Langevin integration (``"sde"``);
 ``population_to_anndata`` exports the cells.
+
+Stage 3 (``measurement``): doublets, ambient RNA, gene capture bias, batches, UMI sampling and guide capture /
+assignment, with the truth recorded next to every observation (``measure_population``).
 """
 
 from grn_sim.perturbseq.conditions import (
@@ -17,9 +20,13 @@ from grn_sim.perturbseq.conditions import (
     simulate_conditions,
 )
 from grn_sim.perturbseq.cells import NOISE_MODELS, CellConfig, CellPopulation, population_to_counts, simulate_cells
+from grn_sim.perturbseq.measurement import MeasuredScreen, MeasurementConfig, measure_population
 from grn_sim.perturbseq.export import design_matrix, population_to_anndata, screen_to_anndata
 
 __all__ = [
+    "MeasuredScreen",
+    "MeasurementConfig",
+    "measure_population",
     "NOISE_MODELS",
     "CellConfig",
     "CellPopulation",
