@@ -35,8 +35,9 @@ import math
 import multiprocessing as mp
 import os
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -545,12 +546,12 @@ class _GeneState:
         self.refresh()                     # exact alpha, d, sse for the basis, columns in original order
         k = int(self.ind.size)
         svd = self.last_svd
-        dependent = np.zeros(k, dtype=bool)
+        dependent: np.ndarray = np.zeros(k, dtype=bool)
         if svd is not None:
             _, sv, vt = svd
             r = int(np.sum(sv > _RCOND * float(sv[0]))) if sv.size else 0
             in_rowspace = np.einsum("ij,ij->j", vt[:r], vt[:r]) if r else np.zeros(k)
-            dependent = (1.0 - in_rowspace) > 1e-8
+            dependent = np.asarray((1.0 - in_rowspace) > 1e-8, dtype=bool)
         inc = np.where(dependent, 0.0, self.alpha ** 2 / np.maximum(self.d, 1e-30))
         j = int(np.argmin(inc))            # first minimum: lowest original column index
         return j, float(inc[j]), 0.0, self.sse + float(inc[j])
@@ -800,21 +801,36 @@ def solve_genes(
     results: Dict[int, Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = {}
     n_jobs = max(1, min(int(n_jobs), len(genes))) if genes else 1
     if n_jobs <= 1 or "fork" not in mp.get_all_start_methods():
-        for i in genes:
-            s_ind, p_ind = starts.get(i, (None, None))
-            ind, a, stats = solve_gene(Y[i], basis, params, s_ind, p_ind)
-            results[i] = (ind, a, stats)
+        with _one_blas_thread():
+            for i in genes:
+                s_ind, p_ind = starts.get(i, (None, None))
+                ind, a, stats = solve_gene(Y[i], basis, params, s_ind, p_ind)
+                results[i] = (ind, a, stats)
         return results
     # Small interleaved chunks balance the load (genes differ in how many fallback steps they need).
     n_chunks = min(len(genes), n_jobs * 8)
     chunks = [genes[c::n_chunks] for c in range(n_chunks)]
     _hh_kernel()                      # compile once in the parent; forked workers inherit it
     ctx = mp.get_context("fork")
+    parts = []
     with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx, initializer=_worker_init,
                              initargs=(basis, Y, params, starts)) as ex:
         for part in ex.map(_worker_run, chunks):
-            for i, ind, _a, stats in part:
-                # final least squares in the parent, i.e. with the same BLAS threading as the serial
-                # backend, so near-zero coefficients do not depend on the backend
-                results[i] = (ind, np.linalg.pinv(basis.V[:, ind]) @ Y[i], stats)
+            parts.extend(part)
+    # Final least squares in the parent with one BLAS thread (as the serial backend runs), so near-zero
+    # coefficients do not depend on the backend - only after the pool is gone (see GeneralToSpecific._solve_all).
+    with _one_blas_thread():
+        for i, ind, _a, stats in parts:
+            results[i] = (ind, np.linalg.pinv(basis.V[:, ind]) @ Y[i], stats)
     return results
+
+
+@contextmanager
+def _one_blas_thread() -> Iterator[None]:
+    try:
+        from threadpoolctl import threadpool_limits
+    except Exception:  # pragma: no cover - threadpoolctl missing
+        yield
+        return
+    with threadpool_limits(limits=1, user_api="blas"):
+        yield

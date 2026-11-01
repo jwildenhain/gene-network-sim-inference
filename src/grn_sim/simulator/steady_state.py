@@ -81,17 +81,17 @@ class SteadyStateSolver:
         n = network.n
         if x0 is None:
             # Same random start as the thesis solver (create_network.m).
-            x = 0.5 + network.rng.uniform(0.0, 1.0, size=n)
+            x: np.ndarray = np.asarray(0.5 + network.rng.uniform(0.0, 1.0, size=n), dtype=float)
         else:
-            x = np.maximum(np.asarray(x0, dtype=float).copy(), self.min_concentration)
+            x = np.asarray(np.maximum(np.asarray(x0, dtype=float), self.min_concentration), dtype=float)
 
         kernel = KineticsKernel(network, perturbation, production_scale)
 
         def rhs(_t: float, y: np.ndarray) -> np.ndarray:
-            return kernel.derivatives(np.maximum(y, 0.0))
+            return kernel.derivatives(np.asarray(np.maximum(y, 0.0)))
 
         def jac(_t: float, y: np.ndarray) -> np.ndarray:
-            return kernel.jacobian(np.maximum(y, 0.0))
+            return kernel.jacobian(np.asarray(np.maximum(y, 0.0)))
 
         trajectory = [x.copy()]
         n_eval = 0
@@ -101,7 +101,7 @@ class SteadyStateSolver:
             for _ in range(self.max_euler_steps):
                 if residual <= self.newton_switch:
                     break
-                x = np.maximum(x + self.dt * kernel.derivatives(x), self.min_concentration)
+                x = np.asarray(np.maximum(x + self.dt * kernel.derivatives(x), self.min_concentration))
                 n_eval += 1
                 if n_eval % self.record_every == 0:
                     trajectory.append(x.copy())
@@ -115,7 +115,7 @@ class SteadyStateSolver:
             n_eval += int(sol.nfev)
             if not sol.success or sol.y.shape[1] == 0:
                 break
-            x = np.maximum(sol.y[:, -1], self.min_concentration)
+            x = np.asarray(np.maximum(sol.y[:, -1], self.min_concentration))
             trajectory.extend(sol.y.T)
             t_total += self.chunk_time
             residual = float(np.max(np.abs(kernel.derivatives(x))))
@@ -139,7 +139,7 @@ class SteadyStateSolver:
                 accepted = False
                 x_new = x
                 while alpha >= 1.0 / 64.0:
-                    x_new = np.maximum(x + alpha * step, self.min_concentration)
+                    x_new = np.asarray(np.maximum(x + alpha * step, self.min_concentration))
                     if float(np.max(np.abs(kernel.derivatives(x_new)))) < f_norm:
                         accepted = True
                         break

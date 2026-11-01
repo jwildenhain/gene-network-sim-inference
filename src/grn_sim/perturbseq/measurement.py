@@ -110,7 +110,7 @@ def measure_population(
 
     # 1. Doublets: droplet d holds cell d, and with probability doublet_rate a second, random cell.
     partner = np.full(n_cells, -1)
-    is_doublet = rng.uniform(size=n_cells) < cfg.doublet_rate
+    is_doublet: np.ndarray = np.asarray(rng.uniform(size=n_cells) < cfg.doublet_rate, dtype=bool)
     if n_cells > 1 and is_doublet.any():
         draw = rng.integers(0, n_cells - 1, size=int(is_doublet.sum()))
         own = np.flatnonzero(is_doublet)
@@ -129,8 +129,9 @@ def measure_population(
     comp = (1.0 - ambient[:, None]) * comp + ambient[:, None] * soup
 
     # 3.-4. Gene capture bias and batch effects (multiplicative on the composition, then renormalised).
-    capture = rng.lognormal(0.0, cfg.gene_capture_sd, size=n_genes) if cfg.gene_capture_sd > 0 else np.ones(n_genes)
-    batch = rng.integers(0, cfg.n_batches, size=n_cells)
+    capture: np.ndarray = (np.asarray(rng.lognormal(0.0, cfg.gene_capture_sd, size=n_genes), dtype=float)
+                           if cfg.gene_capture_sd > 0 else np.ones(n_genes))
+    batch: np.ndarray = np.asarray(rng.integers(0, cfg.n_batches, size=n_cells), dtype=np.int64)
     batch_shift = cfg.batch_gene_sd * rng.standard_normal((cfg.n_batches, n_genes))
     batch_depth = np.exp(cfg.batch_depth_sd * rng.standard_normal(cfg.n_batches))
     weight = comp * capture[None, :] * np.exp(batch_shift[batch])

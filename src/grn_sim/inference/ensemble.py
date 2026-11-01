@@ -87,8 +87,8 @@ class VotingEnsemble(BaseInferenceAlgorithm):
         members = [self.s2g, self.g2s] + self.extra_members
         results = [m.fit(X, U, **kwargs) for m in members]
         need = self.min_votes if self.min_votes is not None else len(members) // 2 + 1
-        pos = sum((r.adjacency_pred > 0).astype(int) for r in results)
-        neg = sum((r.adjacency_pred < 0).astype(int) for r in results)
+        pos = np.sum([(r.adjacency_pred > 0).astype(int) for r in results], axis=0)
+        neg = np.sum([(r.adjacency_pred < 0).astype(int) for r in results], axis=0)
         adj = np.zeros(pos.shape, dtype=int)
         adj[pos >= need] = 1
         adj[neg >= need] = -1

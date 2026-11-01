@@ -76,9 +76,10 @@ class ODESolver:
         matlab_horizon_e = n * n + 100
         effective_max_steps = self.max_steps if self.max_steps is not None else max(matlab_horizon_e, 500)
 
+        x_curr: np.ndarray
         if x0 is None:
             # Matches create_network.m: series(i, 1) = 0.5 + rand
-            x_curr = 0.5 + network.rng.uniform(0.0, 1.0, size=n)
+            x_curr = 0.5 + np.asarray(network.rng.uniform(0.0, 1.0, size=n), dtype=float)
         else:
             x_curr = np.maximum(x0.copy(), self.min_concentration)
 
