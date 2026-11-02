@@ -43,6 +43,8 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
         self.k_interactions = k_interactions
         self.use_data_prep = use_data_prep
 
+    RESCALE_ABOVE = 20.0  # data magnitude beyond which fit() rescales (see there)
+
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
         X_mat = np.real(X).astype(float)
@@ -54,6 +56,17 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
         if K is not None:
             K = max(1, min(int(K), N - 1))
         w_thresh = float(kwargs.get("w_threshold", self.w_threshold))
+
+        # On engines whose expression spans thousands (linear Jacobian, CellBox) the genes live on wildly different
+        # scales and the proximal-gradient solve never leaves W = 0: the result was an empty graph. Standardise each gene
+        # (dX_i/s_i, U_i/s_i); the weights then relate as W_ij(scaled) = W_ij s_j / s_i and are mapped back at the end.
+        # Ordinary data (spread below RESCALE_ABOVE) is left exactly as it was.
+        gene_scale = np.ones(N)
+        if M > 1 and float(np.max(np.abs(X_mat - X_mat[:, :1]))) > self.RESCALE_ABOVE:
+            spread = np.std(X_mat, axis=1)
+            gene_scale = np.where(spread > 1e-9, spread, 1.0)
+            X_mat = X_mat / gene_scale[:, None]
+            U_mat = U_mat / gene_scale[:, None]
 
         if use_prep:
             # 1. Data Preparation: Baseline shift Delta X = X - x0 & interventional alignment
@@ -125,7 +138,7 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
             alpha += rho * h_val
 
         np.fill_diagonal(W, 0.0)
-        A_est = W.copy()
+        A_est = W * (gene_scale[:, None] / gene_scale[None, :])  # back to the original units
 
         # Discretize into signed adjacency matrix
         adj_pred = np.zeros((N, N), dtype=int)

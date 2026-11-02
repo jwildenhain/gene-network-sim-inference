@@ -11,8 +11,10 @@ which may still be queued - "generate now, infer afterwards"), or an archived ru
 
 The manager knows nothing about the simulator: the two stages are injected callables, which keeps it testable
 without running a simulation. Progress is counted in steps (one for the generation, one per algorithm) and the
-infer stage checks for cancellation between algorithms. Job records live in memory; the networks and inference
-results they create are archived like any other run.
+infer stage checks for cancellation between algorithms. The networks and inference results jobs create are archived
+like any other run. With a ``store_path`` the job list itself survives a restart too: the active jobs and the last
+``keep_finished`` finished ones are saved after every change, and jobs that were queued or running when the server
+stopped come back as ``failed`` ("interrupted") - their networks, if they got that far, are in the archive.
 """
 
 from __future__ import annotations
@@ -20,9 +22,13 @@ from __future__ import annotations
 import collections
 import datetime
 import itertools
+import json
+import os
+import sys
 import threading
 import time
 import traceback
+from pathlib import Path
 from typing import Any, Callable, Deque, Dict, Iterable, List, Optional, Sequence
 
 QUEUED, RUNNING, DONE, FAILED, CANCELLED = "queued", "running", "done", "failed", "cancelled"
@@ -72,6 +78,32 @@ class Job:
         if self.params is not None:
             return "generate+infer" if self.algorithms else "generate"
         return "infer"
+
+    def to_record(self) -> Dict[str, Any]:
+        """Everything needed to show this job again after a restart."""
+        return {
+            "id": self.id, "label": self.label, "params": self.params, "run_id": self.run_id,
+            "depends_on": self.depends_on, "algorithms": self.algorithms, "status": self.status, "stage": self.stage,
+            "steps_total": self.steps_total, "steps_done": self.steps_done, "error": self.error,
+            "summary": self.summary, "created": self.created, "started": self.started, "finished": self.finished,
+            "log": list(self.log),
+        }
+
+    @classmethod
+    def from_record(cls, rec: Dict[str, Any]) -> "Job":
+        job = cls(str(rec["id"]), str(rec.get("label") or rec["id"]), rec.get("params"), rec.get("run_id"),
+                  rec.get("depends_on"), list(rec.get("algorithms") or []))
+        job.status = rec.get("status", FAILED)
+        job.stage = rec.get("stage")
+        job.steps_total = int(rec.get("steps_total", job.steps_total))
+        job.steps_done = int(rec.get("steps_done", 0))
+        job.error = rec.get("error")
+        job.summary = dict(rec.get("summary") or {})
+        job.created = float(rec.get("created") or time.time())
+        job.started = rec.get("started")
+        job.finished = rec.get("finished")
+        job.log.extend(rec.get("log") or [])
+        return job
 
     def to_dict(self, with_log: bool = False) -> Dict[str, Any]:
         end = self.finished or time.time()
@@ -123,7 +155,7 @@ class JobManager:
     def __init__(self, generate: GenerateFn, infer: InferFn, known_algorithms: Iterable[str],
                  validate_params: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
                  can_infer: Optional[Callable[[str], bool]] = None,
-                 max_active: int = 200, keep_finished: int = 100):
+                 max_active: int = 200, keep_finished: int = 100, store_path: Optional[Path] = None):
         self._generate = generate
         self._infer = infer
         self._known = tuple(known_algorithms)
@@ -138,6 +170,51 @@ class JobManager:
         self._wake = threading.Condition(self._lock)
         self._worker: Optional[threading.Thread] = None
         self._stopping = False
+        self._store_path = Path(store_path) if store_path else None
+        self._load()
+
+    # ---- persistence ------------------------------------------------------------------------------------------
+    def _load(self) -> None:
+        """Restores the saved job list. Never raises: a missing or damaged file just means an empty list."""
+        if self._store_path is None or not self._store_path.is_file():
+            return
+        try:
+            records = json.loads(self._store_path.read_text(encoding="utf-8")).get("jobs", [])
+            restored = [Job.from_record(r) for r in records]
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            print(f"[jobs] ignoring unreadable job list {self._store_path}: {exc}", file=sys.stderr)
+            return
+        highest = 0
+        for job in restored:
+            if job.status in ACTIVE:  # the process that was running it is gone
+                was = job.status
+                job.status, job.finished, job.stage, job.current = FAILED, time.time(), None, None
+                job.error = f"interrupted: the server restarted while this job was {was}" + (
+                    f"; its network {job.run_id} is in the archive" if job.run_id else "")
+                job.log.append(f"{datetime.datetime.now():%H:%M:%S}  {job.error}")
+            self._jobs[job.id] = job
+            digits = "".join(c for c in job.id if c.isdigit())
+            highest = max(highest, int(digits) if digits else 0)
+        self._ids = itertools.count(highest + 1)
+        self._trim()
+
+    def _save(self) -> None:
+        """Writes the job list atomically. Call with the lock held. A failing disk must not break the queue."""
+        if self._store_path is None:
+            return
+        try:
+            self._store_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._store_path.with_name(self._store_path.name + ".tmp")
+            tmp.write_text(json.dumps({"version": 1, "jobs": [j.to_record() for j in self._jobs.values()]}),
+                           encoding="utf-8")
+            os.replace(tmp, self._store_path)
+        except OSError as exc:
+            print(f"[jobs] could not save the job list to {self._store_path}: {exc}", file=sys.stderr)
+
+    def _trim(self) -> None:
+        finished = sorted((j for j in self._jobs.values() if j.status in FINISHED), key=lambda j: j.finished or 0)
+        for old in finished[:max(0, len(finished) - self._keep_finished)]:
+            del self._jobs[old.id]
 
     # ---- submitting -------------------------------------------------------------------------------------------
     def submit(self, spec: Dict[str, Any]) -> List[Job]:
@@ -199,6 +276,7 @@ class JobManager:
                 self._jobs[job.id] = job
                 self._queue.append(job.id)
                 jobs.append(job)
+            self._save()
             self._ensure_worker()
             self._wake.notify()
             return jobs
@@ -227,14 +305,21 @@ class JobManager:
         return f"infer on {run_id or 'output of ' + str(depends_on)} ({len(algs)} alg)"
 
     # ---- inspecting / controlling -----------------------------------------------------------------------------
+    def _describe(self, job: Job, with_log: bool = False) -> Dict[str, Any]:
+        out = job.to_dict(with_log=with_log)
+        # can more algorithms still be run on this job's network? (it must still be in memory)
+        run_id = job.run_id
+        out["infer_ok"] = run_id is not None and (self._can_infer is None or bool(self._can_infer(run_id)))
+        return out
+
     def list(self) -> List[Dict[str, Any]]:
         with self._lock:
-            return [j.to_dict() for j in sorted(self._jobs.values(), key=lambda j: j.id, reverse=True)]
+            return [self._describe(j) for j in sorted(self._jobs.values(), key=lambda j: j.id, reverse=True)]
 
     def get(self, job_id: str, with_log: bool = True) -> Optional[Dict[str, Any]]:
         with self._lock:
             job = self._jobs.get(job_id)
-            return job.to_dict(with_log=with_log) if job else None
+            return self._describe(job, with_log) if job else None
 
     def running(self) -> Optional[Dict[str, Any]]:
         """The job being worked on now, if any."""
@@ -265,6 +350,7 @@ class JobManager:
             gone = [i for i, j in self._jobs.items() if j.status in FINISHED]
             for i in gone:
                 del self._jobs[i]
+            self._save()
             return len(gone)
 
     def shutdown(self, timeout: float = 5.0) -> None:
@@ -295,6 +381,7 @@ class JobManager:
                 job.status = RUNNING
                 job.started = time.time()
                 job.log.append(f"{datetime.datetime.now():%H:%M:%S}  started")
+                self._save()
             self._run(job)
 
     def _run(self, job: Job) -> None:
@@ -364,6 +451,5 @@ class JobManager:
             job.error = error
         detail = error if status == CANCELLED else (f"{status}: {error}" if error else status)
         job.log.append(f"{datetime.datetime.now():%H:%M:%S}  {detail or status}")
-        finished = sorted((j for j in self._jobs.values() if j.status in FINISHED), key=lambda j: j.finished or 0)
-        for old in finished[:max(0, len(finished) - self._keep_finished)]:
-            del self._jobs[old.id]
+        self._trim()
+        self._save()

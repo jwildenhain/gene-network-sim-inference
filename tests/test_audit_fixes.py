@@ -77,3 +77,26 @@ def test_limit_cycle_detector_separates_cycles_from_slow_convergence():
     assert not solver._is_limit_cycle(cycle[: 2 * n - 1])  # too early to tell
     drifting_but_improving = [(np.array([1.0 + 0.05 * k]), 0.3 * 0.9 ** k) for k in t]
     assert not solver._is_limit_cycle(drifting_but_improving)
+
+
+@pytest.mark.parametrize("engine", ["linear_jacobian", "cellbox_neural_ode"])
+def test_notears_no_longer_returns_an_empty_graph_on_extreme_range_data(engine):
+    """Expression spanning thousands used to freeze NOTEARS at W = 0 (an empty prediction, F1 = 0)."""
+    server._execute_simulation({"num_genes": 12, "seed": 14, "topology": "random", "k_av": 1.5, "noise": 0.02,
+                                "kinetics_engine": engine})
+    exp = server.CURRENT_STATE["experiment"]
+    assert float(np.max(np.abs(exp.X))) > 100  # the regime that failed
+    metrics = server._execute_inference(["notears"])["metrics"]["notears"]
+    assert metrics["true_positives"] + metrics["false_positives"] > 0
+    assert metrics["f1_score"] > 0.1
+
+
+def test_notears_is_untouched_on_ordinary_data():
+    from grn_sim.inference.notears import NOTEARSAlgorithm
+
+    server._execute_simulation({"num_genes": 12, "seed": 11, "topology": "power_law", "k_av": 1.5, "noise": 0.02})
+    exp = server.CURRENT_STATE["experiment"]
+    assert float(np.max(np.abs(exp.X - exp.X[:, :1]))) < NOTEARSAlgorithm.RESCALE_ABOVE
+    a = NOTEARSAlgorithm().fit(exp.X, exp.U)
+    b = NOTEARSAlgorithm().fit(exp.X.copy(), exp.U.copy())
+    assert np.array_equal(a.adjacency_pred, b.adjacency_pred) and np.allclose(a.A_est, b.A_est)

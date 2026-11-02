@@ -285,3 +285,88 @@ def test_a_second_inference_job_adds_to_the_first_one_instead_of_replacing_it(ap
     # it is what the archive serves too, not only the in-memory copy
     loaded = _call(f"{app_url}/api/history/load?run_id={run_id}")[1]
     assert set(loaded["inferred"]["metrics"]) == {"s2g", "nir", "g2s"}
+
+
+# --- the job list survives a restart --------------------------------------------------------------------------------
+def _manager(store, fake=None, **kw):
+    fake = fake or Fake()
+    return jobs.JobManager(fake.generate, fake.infer, ["s2g", "g2s", "nir"], can_infer=lambda r: r == "run-1",
+                           store_path=store, **kw), fake
+
+
+def test_finished_jobs_are_listed_again_after_a_restart(tmp_path):
+    store = tmp_path / "jobs.json"
+    m, _ = _manager(store)
+    (job,) = m.submit({"params": {"num_genes": 8, "seed": 1}, "algorithms": ["s2g"], "label": "my network"})
+    _wait(m, job.id, jobs.FINISHED)
+    m.shutdown()
+
+    again, _ = _manager(store)
+    (restored,) = again.list()
+    assert restored["id"] == job.id and restored["status"] == jobs.DONE and restored["label"] == "my network"
+    assert restored["run_id"] == "run-1" and restored["summary"]["algorithms_run"] == ["s2g"]
+    assert restored["progress_pct"] == 100.0 and any("generated" in line for line in again.get(job.id)["log"])
+    assert restored["infer_ok"] is True  # the network is (here: pretended to be) in memory
+    (next_job,) = again.submit({"params": {"seed": 2}})
+    assert next_job.id != job.id and int(next_job.id[-4:]) > int(job.id[-4:])  # ids do not restart at 1
+    again.shutdown()
+
+
+def test_jobs_that_were_active_at_shutdown_come_back_as_interrupted(tmp_path):
+    store = tmp_path / "jobs.json"
+    m, fake = _manager(store)
+    fake.gate = threading.Event()
+    (running,) = m.submit({"params": {"seed": 1}})
+    (queued,) = m.submit({"params": {"seed": 2}})
+    _wait(m, running.id, {jobs.RUNNING})
+    saved = json.loads(store.read_text())  # what is on disk while they are active
+    assert {j["status"] for j in saved["jobs"]} == {jobs.RUNNING, jobs.QUEUED}
+    fake.gate.set()
+    m.shutdown()
+
+    store.write_text(json.dumps(saved))  # pretend the process died right there
+    again, _ = _manager(store)
+    states = {j["id"]: j for j in again.list()}
+    assert {s["status"] for s in states.values()} == {jobs.FAILED}
+    assert all("interrupted" in s["error"] and "restarted" in s["error"] for s in states.values())
+    assert again.counts()[jobs.QUEUED] == 0 and again.counts()[jobs.RUNNING] == 0
+    again.shutdown()
+
+
+def test_only_the_last_ten_finished_jobs_are_kept_on_disk(tmp_path):
+    store = tmp_path / "jobs.json"
+    m, _ = _manager(store, keep_finished=10)
+    for seed in range(14):
+        (j,) = m.submit({"params": {"seed": seed}})
+        _wait(m, j.id, jobs.FINISHED)
+    kept = [j["params"]["seed"] for j in json.loads(store.read_text())["jobs"]]
+    assert sorted(kept) == list(range(4, 14)) and len(m.list()) == 10
+    m.shutdown()
+
+
+def test_clearing_is_persisted_and_a_damaged_file_is_ignored(tmp_path):
+    store = tmp_path / "jobs.json"
+    m, _ = _manager(store)
+    (j,) = m.submit({"params": {"seed": 1}})
+    _wait(m, j.id, jobs.FINISHED)
+    assert m.clear_finished() == 1
+    m.shutdown()
+    assert _manager(store)[0].list() == []
+
+    store.write_text("{ this is not json")
+    broken, _ = _manager(store)  # must not raise
+    assert broken.list() == []
+    (j2,) = broken.submit({"params": {"seed": 2}})
+    assert _wait(broken, j2.id, jobs.FINISHED)["status"] == jobs.DONE
+    assert json.loads(store.read_text())["jobs"]  # and it saves again
+    broken.shutdown()
+
+
+def test_infer_ok_is_false_for_networks_no_longer_in_memory(tmp_path):
+    m, _ = _manager(None)
+    (a,) = m.submit({"params": {"seed": 1}})  # fake network "run-1": known to can_infer
+    (b,) = m.submit({"params": {"seed": 2}})  # fake network "run-2": not in memory
+    _wait(m, b.id, jobs.FINISHED)
+    by_id = {j["id"]: j for j in m.list()}
+    assert by_id[a.id]["infer_ok"] is True and by_id[b.id]["infer_ok"] is False
+    m.shutdown()

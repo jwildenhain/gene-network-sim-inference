@@ -61,7 +61,7 @@ from grn_sim.benchmarks.provenance import (
     estimate_biophysical_parameters,
 )
 from grn_sim.evaluation.metrics import compute_aupr
-from grn_sim.paths import resolve_data_dir, resolve_data_file
+from grn_sim.paths import archive_db_path, resolve_data_dir, resolve_data_file
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark, validate_vcc_params
 from grn_sim.perturbseq import (
     PERTURBATION_MODES as PERTURBSEQ_MODES,
@@ -2400,7 +2400,8 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
             CURRENT_STATE.update(snapshot)
     ctx.progress(advance=True)  # the last algorithm
     metrics = result.get("metrics", {})
-    best = min(metrics, key=lambda k: metrics[k]["total_errors"]) if metrics else None
+    # By F1 (fewest errors as tie-break): total errors alone rewards an algorithm that predicts almost nothing
+    best = max(metrics, key=lambda k: (metrics[k]["f1_score"], -metrics[k]["total_errors"])) if metrics else None
     return {"algorithms_run": [a for a in algorithms if a in metrics], "algorithms_stored": list(metrics),
             "best_algorithm": best,
             "best_total_errors": metrics[best]["total_errors"] if best else None,
@@ -2417,6 +2418,8 @@ JOB_MANAGER = _jobs.JobManager(
     known_algorithms=KNOWN_ALGORITHMS,
     validate_params=lambda p: _validate_sim_params(p, strict=True),
     can_infer=_job_can_infer,
+    keep_finished=10,  # the last ten finished jobs stay listed (and survive a restart) as quick links to their runs
+    store_path=archive_db_path().with_name("jobs.json"),
 )
 
 
