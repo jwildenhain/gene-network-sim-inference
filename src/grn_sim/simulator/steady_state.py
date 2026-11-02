@@ -71,6 +71,22 @@ class SteadyStateSolver:
         x, ok, traj, _ = self.solve_with_diagnostics(network, x0=x0, perturbation=perturbation)
         return x, ok, traj
 
+    # A relaxation that has had this many chunks and still neither settles nor makes progress is a limit cycle (or
+    # chaos). Ordinary Hill relaxation takes O(10) time units, i.e. one or two chunks.
+    CYCLE_MIN_CHUNKS = 10
+    CYCLE_AMPLITUDE = 0.02
+
+    def _is_limit_cycle(self, chunk_ends: list) -> bool:
+        """True when the last chunks keep moving by more than CYCLE_AMPLITUDE yet the residual has stopped improving."""
+        n = self.CYCLE_MIN_CHUNKS
+        if len(chunk_ends) < 2 * n:
+            return False
+        recent = chunk_ends[-n:]
+        earlier_best = min(r for _, r in chunk_ends[:-n])
+        recent_best = min(r for _, r in recent)
+        moving = float(np.max(np.ptp(np.asarray([x for x, _ in recent]), axis=0))) > self.CYCLE_AMPLITUDE
+        return moving and recent_best >= 0.5 * earlier_best
+
     def solve_with_diagnostics(
         self,
         network: GeneNetwork,
@@ -81,17 +97,17 @@ class SteadyStateSolver:
         n = network.n
         if x0 is None:
             # Same random start as the thesis solver (create_network.m).
-            x = 0.5 + network.rng.uniform(0.0, 1.0, size=n)
+            x: np.ndarray = np.asarray(0.5 + network.rng.uniform(0.0, 1.0, size=n), dtype=float)
         else:
-            x = np.maximum(np.asarray(x0, dtype=float).copy(), self.min_concentration)
+            x = np.asarray(np.maximum(np.asarray(x0, dtype=float), self.min_concentration), dtype=float)
 
         kernel = KineticsKernel(network, perturbation, production_scale)
 
         def rhs(_t: float, y: np.ndarray) -> np.ndarray:
-            return kernel.derivatives(np.maximum(y, 0.0))
+            return kernel.derivatives(np.asarray(np.maximum(y, 0.0)))
 
         def jac(_t: float, y: np.ndarray) -> np.ndarray:
-            return kernel.jacobian(np.maximum(y, 0.0))
+            return kernel.jacobian(np.asarray(np.maximum(y, 0.0)))
 
         trajectory = [x.copy()]
         n_eval = 0
@@ -101,7 +117,7 @@ class SteadyStateSolver:
             for _ in range(self.max_euler_steps):
                 if residual <= self.newton_switch:
                     break
-                x = np.maximum(x + self.dt * kernel.derivatives(x), self.min_concentration)
+                x = np.asarray(np.maximum(x + self.dt * kernel.derivatives(x), self.min_concentration))
                 n_eval += 1
                 if n_eval % self.record_every == 0:
                     trajectory.append(x.copy())
@@ -109,16 +125,20 @@ class SteadyStateSolver:
             trajectory.append(x.copy())
         # 1b. Stiff integration: the main relaxation for relax="lsoda", the fallback when Euler has not settled.
         t_total = 0.0
+        chunk_ends: list = []  # (state, residual) after each chunk, to recognise a limit cycle
         while residual > self.newton_switch and t_total < self.max_time:
             sol = solve_ivp(rhs, (0.0, self.chunk_time), x, method="LSODA", jac=jac, rtol=1e-8, atol=1e-10,
                             t_eval=np.linspace(0.0, self.chunk_time, 6)[1:])
             n_eval += int(sol.nfev)
             if not sol.success or sol.y.shape[1] == 0:
                 break
-            x = np.maximum(sol.y[:, -1], self.min_concentration)
+            x = np.asarray(np.maximum(sol.y[:, -1], self.min_concentration))
             trajectory.extend(sol.y.T)
             t_total += self.chunk_time
             residual = float(np.max(np.abs(kernel.derivatives(x))))
+            chunk_ends.append((x.copy(), residual))
+            if self._is_limit_cycle(chunk_ends):
+                break  # it will never settle: do not spend the rest of max_time finding that out
         tail = trajectory[-25:]
 
         # 2. Newton polishing to the exact fixed point (only from a settled state, so it cannot jump basins).
@@ -139,7 +159,7 @@ class SteadyStateSolver:
                 accepted = False
                 x_new = x
                 while alpha >= 1.0 / 64.0:
-                    x_new = np.maximum(x + alpha * step, self.min_concentration)
+                    x_new = np.asarray(np.maximum(x + alpha * step, self.min_concentration))
                     if float(np.max(np.abs(kernel.derivatives(x_new)))) < f_norm:
                         accepted = True
                         break

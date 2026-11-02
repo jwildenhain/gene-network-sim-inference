@@ -243,8 +243,7 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
 
         diag: Dict[str, Any] = {"criterion": self.criterion, "matlab_mode": self.matlab_mode,
                                 "drop_rule": self.drop_rule}
-        with _single_blas_thread():
-            solved = self._solve_all(Y, V, diag)
+        solved = self._solve_all(Y, V, diag)
 
         for i in range(n):
             indices, coeffs = solved[i]
@@ -285,12 +284,22 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         n_jobs = self.n_jobs if self.n_jobs is not None else fast.default_n_jobs()
         if backend == "reference":
             diag["backend"] = "reference"
-            return {i: self._gen2spec_reference(Y[i].copy(), V) for i in range(n_targets)}
+            with _single_blas_thread():
+                return {i: self._gen2spec_reference(Y[i].copy(), V) for i in range(n_targets)}
 
-        basis = fast.make_shared_basis(V)
+        with _single_blas_thread():
+            basis = fast.make_shared_basis(V)
         params = self._params()
         genes = list(range(n_targets))
-        res = fast.solve_genes(Y, basis, params, genes, n_jobs=n_jobs if backend == "processes" else 1)
+        if backend == "processes":
+            # Fork the pool OUTSIDE any BLAS thread limit: forking while the parent's OpenBLAS is limited and
+            # restoring the limit afterwards leaves SciPy's bundled OpenBLAS (0.3.28, SciPy 1.15) broken in the
+            # parent - the next SciPy call that uses it segfaults. Workers limit themselves; solve_genes runs the
+            # parent's final least squares with one thread so all backends give identical coefficients.
+            res = fast.solve_genes(Y, basis, params, genes, n_jobs=n_jobs)
+        else:
+            with _single_blas_thread():
+                res = fast.solve_genes(Y, basis, params, genes, n_jobs=1)
         diag["backend"] = backend
         diag["n_jobs"] = n_jobs if backend == "processes" else 1
         diag["refresh_steps"] = int(sum(r[2]["refresh"] for r in res.values()))

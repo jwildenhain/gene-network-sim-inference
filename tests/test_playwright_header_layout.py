@@ -1,5 +1,5 @@
 """
-Browser test for the page header: the title and the light/dark button share the first row, the five tab
+Browser test for the page header: the title and the light/dark button share the first row, the six tab
 buttons sit on the row beneath, and the page content starts below both.
 
 All /api/** calls are stubbed (503) so only the static page is exercised.
@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("playwright.sync_api")
 
-TABS = ["tab-wizard", "tab-sos", "tab-history", "tab-vcc", "tab-figures"]
+TABS = ["tab-wizard", "tab-sos", "tab-history", "tab-vcc", "tab-figures", "tab-jobs"]
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def test_tabs_fill_the_row_evenly_on_one_line(open_page, width):
     nav = page.locator("nav.nav-tabs").bounding_box()
     tabs = [page.locator(f"button[data-tab='{t}']").bounding_box() for t in TABS]
 
-    assert len({round(t["y"]) for t in tabs}) == 1, "all five tabs must be on one line"
+    assert len({round(t["y"]) for t in tabs}) == 1, "all six tabs must be on one line"
     assert [t["x"] for t in tabs] == sorted(t["x"] for t in tabs), "tab order is unchanged"
     widths = [t["width"] for t in tabs]
     assert max(widths) - min(widths) < 2, f"tabs should have equal widths, got {widths}"
@@ -91,10 +91,10 @@ def test_header_is_sticky_except_on_phones(open_page, width, sticky):
     assert position == ("sticky" if sticky else "static")
 
 
-def test_all_five_tabs_still_switch_panes(open_page):
+def test_all_six_tabs_still_switch_panes(open_page):
     page = open_page(1500)
     labels = [page.locator(f"button[data-tab='{t}']").inner_text().strip()[:2] for t in TABS]
-    assert labels == ["1.", "2.", "3.", "4.", "5."]
+    assert labels == ["1.", "2.", "3.", "4.", "5.", "6."]
     for tab in TABS:
         page.click(f"button[data-tab='{tab}']")
         assert page.is_visible(f"#{tab}")

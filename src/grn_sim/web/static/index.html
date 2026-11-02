@@ -215,6 +215,16 @@
       min-width: 130px; /* ...and the row scrolls instead of crushing them on narrow screens */
     }
 
+    /* Phones: wide controls shrink to the screen instead of widening the page */
+    @media (max-width: 700px) {
+      .main-container select, .main-container input:not([type=checkbox]):not([type=radio]) { max-width: 100% !important; min-width: 0; }
+      .main-container .btn { white-space: normal; }
+      /* the many inline-styled control rows were written for desktop: let them wrap */
+      .main-container [style*="display:flex"] { flex-wrap: wrap !important; }
+      .main-container [style*="grid"] > *, .main-container .two-col-grid > *, .main-container .right-column > * { min-width: 0; }
+      .main-container .panel-header > * { min-width: 0; max-width: 100%; }
+    }
+
     /* Phones: a two-row sticky header would cover most of the screen, so let it scroll away */
     @media (max-width: 700px) {
       .topbar { position: static; padding: 10px 14px 12px; }
@@ -231,6 +241,60 @@
       color: #ffffff;
       box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
     }
+
+    /* Job queue: nav badge, toasts, progress bars, status chips */
+    .nav-badge {
+      background: var(--accent-amber);
+      color: #ffffff;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 1px 7px;
+      line-height: 1.5;
+    }
+    .nav-badge[hidden] { display: none; }
+    .toast-host {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: min(380px, calc(100vw - 32px));
+    }
+    .toast {
+      background: var(--bg-panel);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 12.5px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22);
+      cursor: pointer;
+    }
+    .toast.toast-error { border-left-color: var(--accent-red); }
+    .toast.toast-success { border-left-color: var(--accent-emerald); }
+    .toast.toast-warn { border-left-color: var(--accent-amber); }
+    .job-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; min-width: 90px; }
+    .job-bar > div { height: 100%; background: var(--accent-blue); transition: width 0.4s ease; }
+    .job-bar.job-bar-done > div { background: var(--accent-emerald); }
+    .job-bar.job-bar-failed > div { background: var(--accent-red); }
+    .job-bar.job-bar-cancelled > div { background: var(--text-muted); }
+    .job-bar.job-bar-running > div { background-image: linear-gradient(90deg, rgba(255,255,255,0.0), rgba(255,255,255,0.35), rgba(255,255,255,0.0)); background-size: 60px 100%; animation: job-sheen 1.2s linear infinite; background-color: var(--accent-blue); }
+    @keyframes job-sheen { from { background-position: -60px 0; } to { background-position: 120px 0; } }
+    @media (prefers-reduced-motion: reduce) { .job-bar.job-bar-running > div { animation: none; } }
+    .job-status { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 11px; font-weight: 700; border: 1px solid var(--border); }
+    .job-status-queued { color: var(--text-muted); }
+    .job-status-running { color: var(--accent-blue); border-color: var(--accent-blue); }
+    .job-status-done { color: var(--accent-emerald); border-color: var(--accent-emerald); }
+    .job-status-failed { color: var(--accent-red); border-color: var(--accent-red); }
+    .job-status-cancelled { color: var(--accent-amber); border-color: var(--accent-amber); }
+    .job-log { margin: 0; padding: 8px 10px; background: var(--bg-stage); border: 1px solid var(--border); border-radius: 6px; font-family: var(--font-mono); font-size: 11px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
+    .jobs-table td, .jobs-table th { vertical-align: top; }
+    .jobs-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+    .jobs-actions .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* Top-Right Theme Toggle Button (right end of the title row) */
     .theme-toggle-btn {
@@ -1024,6 +1088,10 @@
       <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
         <span>5. Overall Statistics</span>
       </button>
+      <button class="nav-tab" data-tab="tab-jobs" onclick="switchMainTab('tab-jobs')">
+        <span>6. Job Queue</span>
+        <span class="nav-badge" id="jobs-nav-badge" hidden></span>
+      </button>
     </nav>
   </header>
 
@@ -1056,7 +1124,7 @@
             <span class="step-num">6</span> 9-State Graph &amp; Confusion Matrix
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <a class="btn btn-secondary btn-sm" href="/api/download?format=msmt" download>Download .msmt</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=pert" download>Download .pert</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=dot" download>Download .dot</a>
@@ -1234,7 +1302,7 @@
                 <span>Random Seed</span>
                 <span class="val" id="lbl-seed">42</span>
               </label>
-              <input type="number" id="sim-seed" value="42" min="1" max="99999"
+              <input type="number" id="sim-seed" value="42" min="0" max="99999" step="1"
                 oninput="document.getElementById('lbl-seed').textContent=this.value" />
             </div>
           </div>
@@ -1279,6 +1347,20 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <button class="btn btn-secondary btn-sm" id="btn-simulate-only" onclick="runSimulateOnly()">Step 3–4: Simulate Only</button>
               <button class="btn btn-secondary btn-sm" id="btn-infer-only" onclick="runInferOnly()">Step 5–6: Resolve Only</button>
+            </div>
+            <div style="border-top:1px dashed var(--border);padding-top:8px;">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">
+                Background queue &mdash; runs one job at a time while you keep working; follow it in tab 6.
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                <button class="btn btn-secondary btn-sm" id="btn-queue-full" onclick="queueStudioJob(true)"
+                  title="Queue generating this network and then running the selected algorithms on it">&#9201; Queue: Generate + Infer</button>
+                <button class="btn btn-secondary btn-sm" id="btn-queue-gen" onclick="queueStudioJob(false)"
+                  title="Queue generating the network only; queue inference for it later from the Job Queue tab">&#9201; Queue: Generate only</button>
+                <label style="font-size:11px;display:flex;align-items:center;gap:4px;" title="Networks to queue; the seed rises by one for each">
+                  &times;<input type="number" id="sim-queue-count" value="1" min="1" max="50" style="width:54px;padding:4px 6px;" aria-label="Number of networks to queue (the seed increases by one for each)" />
+                </label>
+              </div>
             </div>
           </div>
 
@@ -2215,12 +2297,14 @@
             <span style="font-weight:700;font-size:12px;color:var(--text-primary);letter-spacing:0.3px;">CURATED VIEW:</span>
             <select id="archive-filter-type" style="padding:5px 12px;font-size:12px;font-weight:600;border-radius:5px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);" onchange="filterArchiveByType(this.value)">
               <option value="all">🌟 Best 15 for Each Dynamics Set (Curated N ≥ 12 Benchmark Corpus)</option>
+              <option value="everything">📚 All runs, newest first (every network and size)</option>
               <option value="responsive">⚡ Best 15 Responsive (N ≥ 12, Clear Multi-Gene Shifts)</option>
               <option value="flat">⚪ Best 15 Flat Levels (N ≥ 12, Dampened / Buffered)</option>
               <option value="oscillating">〰 Best 15 Oscillating (N ≥ 12, Limit Cycles &amp; Negative Feedback)</option>
               <option value="random">🎲 Best 15 Random Topology (N ≥ 12)</option>
               <option value="power_law">🌐 Best 15 Scale-Free / Power-Law Topology (N ≥ 12)</option>
               <option value="hierarchical">🌲 Best 15 Hierarchical Topology (N ≥ 12)</option>
+              <option value="modular">🧩 Best 15 Modular Topology (N ≥ 12)</option>
               <option value="overall_top15">🏆 Overall Top 15 Highest Performing Runs (N ≥ 12)</option>
             </select>
             <span id="archive-filter-count-badge" class="badge badge-emerald" style="font-size:11px;">Best 15 (N ≥ 12)</span>
@@ -2299,7 +2383,7 @@
                 <th>k_av</th>
                 <th>Noise (&sigma;_m)</th>
                 <th>ODE Equilibrium</th>
-                <th>Best Method</th>
+                <th title="The algorithm with the highest F1 on this run (fewest total errors breaks ties)">Best Method</th>
                 <th>F1 Score</th>
                 <th>Power (%)</th>
                 <th>Specificity (%)</th>
@@ -2686,24 +2770,55 @@
           </div>
         </div>
 
-        <!-- Single-cell AnnData Specification Card -->
-        <div class="panel" style="padding:14px;">
+        <!-- Single-cell Perturb-seq generator card -->
+        <div class="panel" style="padding:14px;" id="ps-panel">
           <div class="panel-header">
-            <div class="panel-title">&#129516; Single-Cell Perturb-seq AnnData (.h5ad)</div>
-            <span class="badge badge-blue">400 cells/cond</span>
+            <div class="panel-title">&#129516; Single-Cell Perturb-seq Screen (.h5ad)</div>
+            <span class="badge badge-blue" id="ps-badge">CRISPRi screen</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
-            Matches 10x Genomics Chromium &amp; VCC 2026 data formats:
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">
+            Re-simulates the current network as a pooled CRISPR screen: per-cell knockdown doses and escapers,
+            network-propagated cell noise, doublets, ambient RNA, batches and guide calling. Ground truth
+            (total effects, labels, epistasis) is stored in <code>uns</code>.
           </div>
-          <ul style="font-size:11px;color:var(--text-main);padding-left:16px;margin:0 0 10px 0;line-height:1.4;">
-            <li><strong>X / layers:</strong> Raw integer UMI counts &amp; normalized CPM</li>
-            <li><strong>obs:</strong> Barcodes, condition, perturbation target</li>
-            <li><strong>var:</strong> Gene names, mean control CPM</li>
-            <li><strong>uns:</strong> Ground truth causal Jacobian matrix &amp; metadata</li>
-          </ul>
-          <a class="btn btn-primary btn-sm" href="/api/export/perturb_seq_h5ad" download style="display:inline-block;text-align:center;width:100%;">
-            Download .h5ad File
-          </a>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;font-size:11px;margin-bottom:8px;">
+            <label>Perturbation
+              <select id="ps-mode" style="width:100%;font-size:11px;padding:3px;">
+                <option value="knockdown" selected>Knockdown (CRISPRi)</option>
+                <option value="knockout">Knockout</option>
+                <option value="input">Input (thesis)</option>
+              </select>
+            </label>
+            <label>Cell noise
+              <select id="ps-noise" style="width:100%;font-size:11px;padding:3px;">
+                <option value="lna" selected>LNA (fast)</option>
+                <option value="sde">SDE (exact, slow)</option>
+                <option value="legacy">Legacy (i.i.d.)</option>
+              </select>
+            </label>
+            <label>Network
+              <select id="ps-preset" style="width:100%;font-size:11px;padding:3px;">
+                <option value="current" selected>Current network</option>
+                <option value="replogle_like">Replogle-like preset</option>
+                <option value="thesis">Thesis preset</option>
+              </select>
+            </label>
+            <label>Double KOs
+              <input type="number" id="ps-pairs" value="0" min="0" max="2000" style="width:100%;font-size:11px;padding:3px;" />
+            </label>
+            <label>Cells / perturbation
+              <input type="number" id="ps-cells" value="100" min="1" max="2000" style="width:100%;font-size:11px;padding:3px;" />
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;margin-top:14px;">
+              <input type="checkbox" id="ps-measurement" checked /> Measurement artefacts
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <button class="btn btn-primary btn-sm" id="btn-ps-download" onclick="downloadPerturbSeq()">Download .h5ad</button>
+            <button class="btn btn-secondary btn-sm" id="btn-ps-realism" onclick="runRealismReport()">Realism report</button>
+          </div>
+          <div id="ps-status" style="font-size:10.5px;color:var(--text-muted);margin-top:6px;min-height:14px;"></div>
+          <div id="ps-realism" style="margin-top:6px;"></div>
         </div>
       </div>
 
@@ -2877,7 +2992,74 @@
       </div>
     </section>
 
+    <!-- ========================================================================= -->
+    <!-- TAB 6: BACKGROUND JOB QUEUE                                               -->
+    <!-- ========================================================================= -->
+    <section id="tab-jobs" class="tab-pane">
+      <div class="panel" style="padding:16px 18px;margin-bottom:14px;">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;">
+          <div>
+            <h2 style="margin:0 0 4px;font-size:18px;">Background Jobs</h2>
+            <div style="font-size:12.5px;color:var(--text-muted);max-width:760px;">
+              Queue network generation and the reverse-engineering algorithms to run in the background, one job at a time.
+              Queue a network from tab 1 (<em>Queue: Generate + Infer</em> or <em>Generate only</em>), or run algorithms on a network below.
+              The last ten finished jobs stay listed here, also after a restart, as quick links to their runs; the networks and results are saved in the archive.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span id="jobs-live" class="badge badge-sm" title="The list refreshes by itself"></span>
+            <button class="btn btn-secondary btn-sm" onclick="jobsRefresh()">Refresh</button>
+            <button class="btn btn-secondary btn-sm" id="btn-jobs-clear" onclick="clearFinishedJobs()">Clear finished</button>
+          </div>
+        </div>
+        <div id="jobs-counts" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
+        <div id="jobs-error" role="alert" style="display:none;margin-top:10px;color:var(--accent-red);font-size:12.5px;"></div>
+      </div>
+
+      <div class="panel" style="padding:14px 18px;margin-bottom:14px;">
+        <h3 style="margin:0 0 8px;font-size:14px;">Queue inference on a network</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;">
+          <div style="flex:1 1 260px;">
+            <label class="form-label" for="jobs-infer-target">Network</label>
+            <select id="jobs-infer-target"></select>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              Networks made by finished jobs, or the one open in the Studio. Queued generation jobs can be chosen too:
+              the inference then starts once that network exists.
+            </div>
+          </div>
+          <div style="flex:2 1 380px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span class="form-label" style="margin:0;" id="jobs-alg-label">Algorithms</span>
+              <span style="display:flex;gap:6px;">
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;" onclick="jobsSetAlgs('all')">All</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;" onclick="jobsSetAlgs('none')">None</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;" onclick="jobsSetAlgs('core')">Thesis Core (6)</button>
+              </span>
+            </div>
+            <div class="alg-checkboxes" id="jobs-alg-boxes" role="group" aria-labelledby="jobs-alg-label"></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn btn-primary btn-sm" id="btn-jobs-queue-infer" onclick="queueInferJob()">&#9201; Queue inference</button>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:0;overflow:auto;">
+        <table class="data-table jobs-table" id="tbl-jobs" style="width:100%;">
+          <caption style="text-align:left;padding:10px 14px;font-weight:700;">Queue and history</caption>
+          <thead><tr>
+            <th>Job</th><th>What</th><th>Status</th><th style="min-width:170px;">Progress</th><th>Time</th><th>Network / result</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="jobs-tbody"></tbody>
+        </table>
+        <div id="jobs-empty" style="padding:22px;text-align:center;color:var(--text-muted);font-size:13px;">
+          No jobs yet. In tab 1 choose <em>Queue: Generate + Infer</em>, or queue a batch with &times; N.
+        </div>
+      </div>
+    </section>
+
   </main>
+  <div class="toast-host" id="toast-host" role="status" aria-live="polite"></div>
 
   <!-- =========================================================================== -->
   <!-- INTERACTIVE NODE & EDGE ODE KINETIC INSPECTOR MODAL (get_param.php)         -->
@@ -3062,12 +3244,23 @@
     // NAVIGATION & WIZARD HELPERS
     // ============================================================================
     function switchMainTab(tabId) {
+      const previousTab = document.querySelector('.tab-pane.active')?.id;
       document.querySelectorAll('.nav-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabId);
+        const on = btn.dataset.tab === tabId;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
       });
       document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.toggle('active', pane.id === tabId);
+        pane.setAttribute('role', 'tabpanel');
       });
+      // A newly opened tab starts at its top, not wherever the previous one was scrolled to
+      if (previousTab && previousTab !== tabId) window.scrollTo(0, 0);
+      if (tabId === 'tab-jobs') {
+        renderJobsTab();
+        jobsRefresh();
+      }
       if (tabId === 'tab-sos' && !APP_STATE.sosData) {
         loadSosFullStudio(APP_STATE.activeBenchmark || 'ecoli_sos');
       } else if (tabId === 'tab-figures') {
@@ -3842,7 +4035,7 @@
     function getSelectedAlgs() {
       const algs = [];
       document.querySelectorAll('.alg-cb:checked').forEach(cb => algs.push(cb.value));
-      return algs.length ? algs : ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
+      return algs;
     }
 
     function setAllAlgorithms(checked) {
@@ -3856,48 +4049,46 @@
       });
     }
 
-    async function runFullPipeline() {
-      const btn = document.getElementById('btn-run-all');
-      btn.textContent = 'Simulating ODEs & Resolving Networks...';
-      btn.disabled = true;
-      try {
-        const payload = {
-          mode: document.getElementById('sim-mode').value,
-          topology: document.getElementById('sim-topology').value,
-          kinetics_engine: document.getElementById('sim-kinetics-engine')?.value || 'hill_nonlinear',
-          dynamics_preset: document.getElementById('sim-dynamics-preset')?.value || APP_STATE.dynamicsPreset || 'responsive',
-          num_genes: parseInt(document.getElementById('sim-num-genes').value),
-          k_av: parseFloat(document.getElementById('sim-kav').value),
-          act_ratio: parseFloat(document.getElementById('sim-ratio').value),
-          noise: parseFloat(document.getElementById('sim-noise').value),
-          bio_var: parseFloat(document.getElementById('sim-biovar').value),
-          seed: parseInt(document.getElementById('sim-seed').value) || 42,
-          auto_infer: true,
-          algorithms: getSelectedAlgs(),
-        };
-        const res = await fetch('/api/simulate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-          APP_STATE.sim = data;
-          APP_STATE.inferred = data.inferred || {};
-          renderAllSimulationViews();
-          renderAllInferenceViews();
-          highlightWizardStep(6);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        btn.textContent = 'Simulate & Re-Engineer Network';
-        btn.disabled = false;
-      }
+    // --- helpers shared by the run buttons and the job queue ---------------------------------------------------
+    function showToast(message, kind = 'info', ms = 6000, onClick = null) {
+      const host = document.getElementById('toast-host');
+      if (!host) return;
+      const el = document.createElement('div');
+      el.className = 'toast' + (kind && kind !== 'info' ? ' toast-' + kind : '');
+      el.textContent = message;
+      const close = () => el.remove();
+      el.addEventListener('click', () => { if (onClick) onClick(); close(); });
+      host.appendChild(el);
+      while (host.children.length > 4) host.firstChild.remove();
+      setTimeout(close, kind === 'error' ? Math.max(ms, 9000) : ms);
     }
 
-    async function runSimulateOnly() {
-      const payload = {
+    // POST JSON and never throw: {ok, status, data}, with data.error filled in for network and parse failures
+    async function postJson(url, body) {
+      let res;
+      try {
+        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      } catch (e) {
+        return { ok: false, status: 0, data: { error: 'Cannot reach the server (' + e.message + ')' } };
+      }
+      let data;
+      try { data = await res.json(); } catch (e) { data = { error: 'HTTP ' + res.status }; }
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    // Reads the Studio form into a /api/simulate payload. Returns null (after telling the user) if a field is invalid.
+    function collectSimParams() {
+      const seedEl = document.getElementById('sim-seed');
+      const raw = seedEl.value.trim();
+      const seed = Number(raw);
+      if (raw === '' || !Number.isInteger(seed) || seed < 0 || seed > 99999) {
+        seedEl.setAttribute('aria-invalid', 'true');
+        seedEl.focus();
+        showToast('The random seed must be a whole number from 0 to 99999.', 'error');
+        return null;
+      }
+      seedEl.removeAttribute('aria-invalid');
+      return {
         mode: document.getElementById('sim-mode').value,
         topology: document.getElementById('sim-topology').value,
         kinetics_engine: document.getElementById('sim-kinetics-engine')?.value || 'hill_nonlinear',
@@ -3907,34 +4098,377 @@
         act_ratio: parseFloat(document.getElementById('sim-ratio').value),
         noise: parseFloat(document.getElementById('sim-noise').value),
         bio_var: parseFloat(document.getElementById('sim-biovar').value),
-        seed: parseInt(document.getElementById('sim-seed').value) || 42,
-        auto_infer: false,
+        seed: seed,
       };
-      const res = await fetch('/api/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        APP_STATE.sim = data;
-        renderAllSimulationViews();
-        highlightWizardStep(4);
+    }
+
+    // The checked algorithms, or null (after telling the user) when none is checked
+    function requireAlgorithms() {
+      const algs = getSelectedAlgs();
+      if (!algs.length) {
+        showToast('Select at least one algorithm in Step 5 first.', 'warn');
+        document.getElementById('step-section-5')?.scrollIntoView({ block: 'center' });
+        return null;
+      }
+      return algs;
+    }
+
+    // Shows "<label> 12 s" on a button while a request runs; returns the function that stops the clock
+    function startElapsed(btn, label) {
+      const t0 = Date.now();
+      const tick = () => { btn.textContent = `${label} ${Math.round((Date.now() - t0) / 1000)} s`; };
+      tick();
+      const id = setInterval(tick, 1000);
+      return () => clearInterval(id);
+    }
+
+    function isLargeRun(numGenes, algCount) {
+      return (numGenes > 100 && algCount > 6) || numGenes >= 250;
+    }
+
+    async function runFullPipeline() {
+      const btn = document.getElementById('btn-run-all');
+      const params = collectSimParams();
+      if (!params) return;
+      const algs = requireAlgorithms();
+      if (!algs) return;
+      if (params.mode === 'insilico' && isLargeRun(params.num_genes, algs.length) &&
+          confirm(`${params.num_genes} genes with ${algs.length} algorithms can take many minutes, and the server handles one simulation at a time.\n\nOK: queue it as a background job and keep working.\nCancel: run it here and wait.`)) {
+        return queueStudioJob(true);
+      }
+      btn.disabled = true;
+      const stopClock = startElapsed(btn, 'Simulating ODEs & resolving networks…');
+      try {
+        const { ok, data } = await postJson('/api/simulate', { ...params, auto_infer: true, algorithms: algs });
+        if (ok && data.status === 'success') {
+          APP_STATE.sim = data;
+          APP_STATE.inferred = data.inferred || {};
+          renderAllSimulationViews();
+          renderAllInferenceViews();
+          highlightWizardStep(6);
+        } else {
+          showToast('Simulation failed: ' + (data.error || 'unknown error'), 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Simulation failed: ' + e.message, 'error');
+      } finally {
+        stopClock();
+        btn.textContent = 'Simulate & Re-Engineer Network';
+        btn.disabled = false;
+      }
+    }
+
+    async function runSimulateOnly() {
+      const btn = document.getElementById('btn-simulate-only');
+      const params = collectSimParams();
+      if (!params) return;
+      const label = btn.textContent;
+      btn.disabled = true;
+      try {
+        const { ok, data } = await postJson('/api/simulate', { ...params, auto_infer: false });
+        if (ok && data.status === 'success') {
+          APP_STATE.sim = data;
+          renderAllSimulationViews();
+          highlightWizardStep(4);
+        } else {
+          showToast('Simulation failed: ' + (data.error || 'unknown error'), 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Simulation failed: ' + e.message, 'error');
+      } finally {
+        btn.textContent = label;
+        btn.disabled = false;
       }
     }
 
     async function runInferOnly() {
-      const res = await fetch('/api/infer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ algorithms: getSelectedAlgs() }),
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        APP_STATE.inferred = data;
-        renderAllInferenceViews();
-        highlightWizardStep(6);
+      const btn = document.getElementById('btn-infer-only');
+      const algs = requireAlgorithms();
+      if (!algs) return;
+      const label = btn.textContent;
+      btn.disabled = true;
+      const stopClock = startElapsed(btn, 'Resolving…');
+      try {
+        const { ok, data } = await postJson('/api/infer', { algorithms: algs });
+        if (ok && data.status === 'success') {
+          APP_STATE.inferred = data;
+          renderAllInferenceViews();
+          highlightWizardStep(6);
+        } else {
+          showToast('Inference failed: ' + (data.error || 'unknown error'), 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Inference failed: ' + e.message, 'error');
+      } finally {
+        stopClock();
+        btn.textContent = label;
+        btn.disabled = false;
       }
+    }
+
+    // ============================================================================
+    // BACKGROUND JOB QUEUE (tab 6)
+    // ============================================================================
+    const JOBS = { list: [], counts: {}, algorithms: [], status: {}, open: new Set(), logs: {}, timer: null, loaded: false, error: null, updated: null };
+
+    // A diverged (oscillating / exploding) run can have an amplitude of millions of percent; show that as a bound
+    function formatAmplitudePct(fraction, digits = 1) {
+      if (fraction == null || !isFinite(fraction)) return '--';
+      const pct = fraction * 100;
+      return Math.abs(pct) > 1000 ? '>1000%' : `${pct.toFixed(digits)}%`;
+    }
+
+    function formatVariance(v, digits = 4) {
+      if (v == null || !isFinite(v)) return '--';
+      return Math.abs(v) >= 1e5 ? v.toExponential(2) : v.toFixed(digits);
+    }
+
+    function jobEsc(v) {
+      return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function jobDuration(sec) {
+      sec = Math.max(0, Math.round(sec || 0));
+      return sec < 60 ? `${sec} s` : `${Math.floor(sec / 60)} min ${String(sec % 60).padStart(2, '0')} s`;
+    }
+
+    async function queueStudioJob(withInference) {
+      const params = collectSimParams();
+      if (!params) return;
+      if (params.mode !== 'insilico') {
+        showToast('Background jobs generate synthetic networks. Set "Mode & Source" to In Silico first.', 'warn');
+        return;
+      }
+      let algs = [];
+      if (withInference) {
+        algs = requireAlgorithms();
+        if (!algs) return;
+      }
+      const count = Math.min(50, Math.max(1, parseInt(document.getElementById('sim-queue-count').value) || 1));
+      const { mode, ...simParams } = params;
+      const { ok, data } = await postJson('/api/jobs', { params: simParams, algorithms: algs, count });
+      if (!ok) {
+        showToast('Could not queue the job: ' + (data.error || 'unknown error'), 'error');
+        return;
+      }
+      showToast(`Queued ${data.jobs.length} job${data.jobs.length > 1 ? 's' : ''} (${withInference ? 'generate + infer' : 'generate only'}). Click to follow in the Job Queue.`,
+        'success', 6000, () => switchMainTab('tab-jobs'));
+      jobsRefresh();
+    }
+
+    async function queueInferJob() {
+      const target = document.getElementById('jobs-infer-target').value;
+      const algs = [...document.querySelectorAll('.jobs-alg-cb:checked')].map(cb => cb.value);
+      if (!target) { showToast('There is no network to run on yet. Queue or generate one first.', 'warn'); return; }
+      if (!algs.length) { showToast('Tick at least one algorithm.', 'warn'); return; }
+      const spec = { algorithms: algs };
+      if (target.startsWith('job:')) spec.depends_on = target.slice(4); else spec.run_id = target.slice(4);
+      const { ok, data } = await postJson('/api/jobs', spec);
+      if (!ok) { showToast('Could not queue the inference: ' + (data.error || 'unknown error'), 'error'); return; }
+      showToast(`Queued inference with ${algs.length} algorithm${algs.length > 1 ? 's' : ''}.`, 'success');
+      jobsRefresh();
+    }
+
+    async function cancelJob(id) {
+      const { ok, data } = await postJson(`/api/jobs/${encodeURIComponent(id)}/cancel`, {});
+      if (!ok) showToast('Could not cancel: ' + (data.error || 'unknown error'), 'error');
+      jobsRefresh();
+    }
+
+    async function clearFinishedJobs() {
+      await postJson('/api/jobs/clear', {});
+      JOBS.open.clear();
+      jobsRefresh();
+    }
+
+    function jobsSetAlgs(which) {
+      const core = ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
+      document.querySelectorAll('.jobs-alg-cb').forEach(cb => {
+        cb.checked = which === 'all' ? true : (which === 'core' ? core.includes(cb.value) : false);
+      });
+    }
+
+    // Algorithm check boxes for the "queue inference" form; labels are copied from the Studio's Step 5 list
+    function jobsBuildAlgorithmBoxes() {
+      const host = document.getElementById('jobs-alg-boxes');
+      if (!host || host.childElementCount) return;
+      const core = ['s2g', 'g2s', 'vote', 'nir', 'fast', 'by_chance'];
+      const names = {};
+      document.querySelectorAll('.alg-cb').forEach(cb => { names[cb.value] = cb.parentElement.textContent.trim(); });
+      const keys = JOBS.algorithms.length ? JOBS.algorithms : Object.keys(names);
+      host.innerHTML = keys.map(k => `<label class="alg-check"><input type="checkbox" class="jobs-alg-cb" value="${jobEsc(k)}" ${core.includes(k) ? 'checked' : ''} /> ${jobEsc(names[k] || k.toUpperCase())}</label>`).join('');
+    }
+
+    // Networks the inference form can target: ones jobs made, queued generation jobs, and the one open in the Studio
+    function jobsRefreshTargets() {
+      const sel = document.getElementById('jobs-infer-target');
+      if (!sel) return;
+      const options = [];
+      const seen = new Set();
+      JOBS.list.forEach(j => {
+        if (j.run_id && j.infer_ok && !seen.has(j.run_id)) {
+          seen.add(j.run_id);
+          options.push([`run:${j.run_id}`, `${j.run_id} — ${j.label}`]);
+        } else if (!j.run_id && (j.status === 'queued' || j.status === 'running') && j.kind !== 'infer') {
+          options.push([`job:${j.id}`, `${j.id} (network not generated yet) — ${j.label}`]);
+        }
+      });
+      const live = APP_STATE.sim && APP_STATE.sim.run_id;
+      if (live && !seen.has(live)) options.push([`run:${live}`, `${live} — open in the Studio`]);
+      const signature = JSON.stringify(options);
+      if (sel.dataset.signature === signature) return;
+      const previous = sel.value;
+      sel.dataset.signature = signature;
+      sel.innerHTML = options.length
+        ? options.map(([v, label]) => `<option value="${jobEsc(v)}">${jobEsc(label)}</option>`).join('')
+        : '<option value="">No networks yet</option>';
+      if (options.some(([v]) => v === previous)) sel.value = previous;
+    }
+
+    function jobResultText(j) {
+      if (j.error) {
+        return `<div style="font-size:11.5px;margin-top:2px;color:${j.status === 'failed' ? 'var(--accent-red)' : 'var(--accent-amber)'};">${jobEsc(j.error)}</div>`;
+      }
+      const sm = j.summary || {};
+      const parts = [];
+      if (sm.num_genes) parts.push(`${sm.num_genes} genes`);
+      if (sm.total_edges != null) parts.push(`${sm.total_edges} edges`);
+      if (sm.response_type) parts.push(sm.response_type);
+      if (sm.best_algorithm) parts.push(`top F1 ${String(sm.best_algorithm).toUpperCase()} ${sm.best_f1} (${sm.best_total_errors} errors)`);
+      return parts.length ? `<div style="font-size:11.5px;color:var(--text-muted);">${jobEsc(parts.join(' · '))}</div>` : '';
+    }
+
+    function renderJobsTab() {
+      jobsBuildAlgorithmBoxes();
+      jobsRefreshTargets();
+      const c = JOBS.counts || {};
+      document.getElementById('jobs-counts').innerHTML = ['running', 'queued', 'done', 'failed', 'cancelled']
+        .map(k => `<span class="job-status job-status-${k}">${c[k] || 0} ${k}</span>`).join('');
+      const errBox = document.getElementById('jobs-error');
+      errBox.style.display = JOBS.error ? 'block' : 'none';
+      errBox.textContent = JOBS.error || '';
+      const live = document.getElementById('jobs-live');
+      live.textContent = JOBS.error ? 'offline' : (JOBS.updated ? `live · ${JOBS.updated}` : '');
+      document.getElementById('btn-jobs-clear').disabled = !((c.done || 0) + (c.failed || 0) + (c.cancelled || 0));
+      document.getElementById('jobs-empty').style.display = JOBS.list.length ? 'none' : 'block';
+
+      document.getElementById('jobs-tbody').innerHTML = JOBS.list.map(j => {
+        const active = j.status === 'queued' || j.status === 'running';
+        const stage = j.status === 'running' && j.current ? j.current : (j.status === 'queued' ? (j.depends_on ? `waits for ${j.depends_on}` : 'waiting') : '');
+        const time = j.status === 'queued' ? `waiting ${jobDuration(j.queued_s)}`
+          : `${jobDuration(j.elapsed_s)}${j.status === 'running' ? ' (running)' : ''}`;
+        const actions = [];
+        if (active) actions.push(`<button class="btn btn-secondary btn-sm" data-act="cancel" data-id="${j.id}">${j.cancel_requested ? 'Cancelling…' : 'Cancel'}</button>`);
+        if (j.kind !== 'infer' || j.run_id) {
+          // more algorithms need the network in memory; it is not after a server restart (the archived results remain)
+          const waiting = !j.run_id && active;
+          const canInfer = waiting || j.infer_ok;
+          actions.push(`<button class="btn btn-secondary btn-sm" data-act="infer" data-id="${j.id}" data-run="${jobEsc(j.run_id || '')}" ${canInfer ? '' : 'disabled'} title="${canInfer ? 'Run more algorithms on this network' : 'This network is no longer in memory (the server restarted). Its results stay in the archive; queue a new generation to run more algorithms.'}">Infer…</button>`);
+        }
+        if (j.run_id && !active) actions.push(`<button class="btn btn-secondary btn-sm" data-act="open" data-run="${jobEsc(j.run_id)}">Open in Studio</button>`);
+        actions.push(`<button class="btn btn-secondary btn-sm" data-act="log" data-id="${j.id}" aria-expanded="${JOBS.open.has(j.id)}">Log</button>`);
+        const algs = j.algorithms.length ? ` · ${j.algorithms.length} alg` : '';
+        let html = `<tr>
+          <td><code>${jobEsc(j.id)}</code></td>
+          <td>${jobEsc(j.label)}<div style="font-size:11px;color:var(--text-muted);">${jobEsc(j.kind)}${algs}</div></td>
+          <td><span class="job-status job-status-${j.status}">${j.status}</span></td>
+          <td><div class="job-bar job-bar-${j.status}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${j.progress_pct}" aria-label="${jobEsc(j.id)} progress"><div style="width:${j.progress_pct}%;"></div></div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${j.steps_done}/${j.steps_total} steps${stage ? ' · ' + jobEsc(stage) : ''}</div></td>
+          <td style="white-space:nowrap;">${jobEsc(time)}</td>
+          <td>${j.run_id ? `<code>${jobEsc(j.run_id)}</code>` : '<span style="color:var(--text-muted);">—</span>'}${jobResultText(j)}</td>
+          <td><div class="jobs-actions">${actions.join('')}</div></td>
+        </tr>`;
+        if (JOBS.open.has(j.id)) {
+          html += `<tr><td colspan="7"><pre class="job-log">${jobEsc((JOBS.logs[j.id] || ['(loading)']).join('\n'))}</pre></td></tr>`;
+        }
+        return html;
+      }).join('');
+    }
+
+    function updateJobsBadge() {
+      const badge = document.getElementById('jobs-nav-badge');
+      if (!badge) return;
+      const c = JOBS.counts || {};
+      const active = (c.running || 0) + (c.queued || 0);
+      badge.hidden = !active;
+      badge.textContent = String(active);
+      badge.title = `${c.running || 0} running, ${c.queued || 0} queued`;
+    }
+
+    function jobsSchedule() {
+      clearTimeout(JOBS.timer);
+      const c = JOBS.counts || {};
+      const active = (c.running || 0) + (c.queued || 0) > 0;
+      const onTab = document.getElementById('tab-jobs')?.classList.contains('active');
+      const delay = document.hidden ? 15000 : (active || onTab ? 1500 : 6000);
+      JOBS.timer = setTimeout(jobsRefresh, delay);
+    }
+
+    async function jobsRefresh() {
+      clearTimeout(JOBS.timer);
+      try {
+        const res = await fetch('/api/jobs');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+        JOBS.list = data.jobs || [];
+        JOBS.counts = data.counts || {};
+        JOBS.algorithms = data.algorithms || JOBS.algorithms;
+        JOBS.error = null;
+        JOBS.updated = new Date().toLocaleTimeString();
+        const finishedNow = [];
+        for (const j of JOBS.list) {
+          const before = JOBS.status[j.id];
+          if (JOBS.loaded && before && before !== j.status && ['done', 'failed', 'cancelled'].includes(j.status)) finishedNow.push(j);
+          JOBS.status[j.id] = j.status;
+        }
+        // One toast per poll, however many jobs finished, so a batch does not bury the table
+        if (finishedNow.length === 1) {
+          const j = finishedNow[0];
+          showToast(`${j.id} ${j.status}: ${j.label}${j.error ? ' — ' + j.error : ''}`,
+            j.status === 'done' ? 'success' : (j.status === 'failed' ? 'error' : 'warn'), 7000, () => switchMainTab('tab-jobs'));
+        } else if (finishedNow.length > 1) {
+          const n = status => finishedNow.filter(j => j.status === status).length;
+          const parts = ['done', 'failed', 'cancelled'].filter(n).map(k => `${n(k)} ${k}`);
+          showToast(`${finishedNow.length} jobs finished: ${parts.join(', ')}.`,
+            n('failed') ? 'error' : (n('cancelled') ? 'warn' : 'success'), 7000, () => switchMainTab('tab-jobs'));
+        }
+        JOBS.loaded = true;
+        await Promise.all([...JOBS.open].map(async id => {
+          try {
+            const r = await fetch('/api/jobs/' + encodeURIComponent(id));
+            if (r.ok) JOBS.logs[id] = (await r.json()).job.log || [];
+            else JOBS.open.delete(id);
+          } catch (e) { /* keep the last log */ }
+        }));
+      } catch (e) {
+        JOBS.error = 'Cannot read the job queue: ' + e.message;
+      }
+      updateJobsBadge();
+      if (document.getElementById('tab-jobs')?.classList.contains('active')) renderJobsTab();
+      jobsSchedule();
+    }
+
+    function initJobsTab() {
+      document.getElementById('jobs-tbody')?.addEventListener('click', ev => {
+        const btn = ev.target.closest('button[data-act]');
+        if (!btn) return;
+        const { act, id, run } = btn.dataset;
+        if (act === 'cancel') cancelJob(id);
+        else if (act === 'open') selectArchiveRun(run, true);
+        else if (act === 'infer') {
+          const sel = document.getElementById('jobs-infer-target');
+          sel.value = run ? `run:${run}` : `job:${id}`;
+          sel.scrollIntoView({ block: 'center' });
+          sel.focus();
+        } else if (act === 'log') {
+          if (JOBS.open.has(id)) JOBS.open.delete(id); else JOBS.open.add(id);
+          jobsRefresh();
+        }
+      });
+      jobsRefresh();
     }
 
     // ============================================================================
@@ -4493,10 +5027,15 @@
 
     window.inspectEdge = function(srcIdx, dstIdx, openModal = true) {
       const sim = APP_STATE.sim;
-      if (!sim || !sim.edge_params) return;
+      if (!sim) return;
       const key = `${srcIdx}-${dstIdx}`;
-      const ep = sim.edge_params[key];
-      if (!ep) return;
+      const ep = sim.edge_params && sim.edge_params[key];
+      if (!ep) {
+        if (sim.kinetics_stored === false) {
+          showToast('This archived run (a benchmark sweep) stored the network but not its Hill parameters, so there is no kinetics to show for this edge.', 'info');
+        }
+        return;
+      }
       APP_STATE.selectedEdgeKey = key;
 
       const color = ep.sign > 0 ? '#10b981' : '#ef4444';
@@ -4770,6 +5309,90 @@
       }
     }
 
+    // --- Perturb-seq screen panel ---------------------------------------------------------------
+    function perturbSeqQuery() {
+      const v = id => document.getElementById(id);
+      const params = new URLSearchParams({
+        perturbation: v('ps-mode').value,
+        noise: v('ps-noise').value,
+        preset: v('ps-preset').value,
+        pairs: String(Math.max(0, parseInt(v('ps-pairs').value) || 0)),
+        cells_per_condition: String(Math.max(1, parseInt(v('ps-cells').value) || 100)),
+        measurement: v('ps-measurement').checked ? '1' : '0',
+      });
+      const runId = (APP_STATE.sim && APP_STATE.sim.run_id) || '';
+      if (runId) params.set('run_id', runId);
+      return params.toString();
+    }
+
+    function setPerturbSeqBusy(busy, message) {
+      ['btn-ps-download', 'btn-ps-realism'].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = busy; });
+      const st = document.getElementById('ps-status');
+      if (st) st.textContent = message || '';
+    }
+
+    async function downloadPerturbSeq() {
+      setPerturbSeqBusy(true, 'Simulating the screen…');
+      const t0 = performance.now();
+      try {
+        const res = await fetch('/api/export/perturb_seq_h5ad?' + perturbSeqQuery());
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setPerturbSeqBusy(false, 'Export failed: ' + (err.error || res.status));
+          return;
+        }
+        const blob = await res.blob();
+        const name = ((res.headers.get('Content-Disposition') || '').match(/filename="?([^"]+)"?/) || [])[1] || 'perturb_seq.h5ad';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        setPerturbSeqBusy(false, `Downloaded ${name} (${(blob.size / 1e6).toFixed(1)} MB, ${((performance.now() - t0) / 1000).toFixed(1)} s)`);
+      } catch (e) {
+        setPerturbSeqBusy(false, 'Export failed: ' + e);
+      }
+    }
+
+    async function runRealismReport() {
+      const box = document.getElementById('ps-realism');
+      setPerturbSeqBusy(true, 'Simulating the screen and computing realism statistics…');
+      try {
+        const res = await fetch('/api/perturbseq/realism?' + perturbSeqQuery());
+        const data = await res.json();
+        if (!res.ok) {
+          setPerturbSeqBusy(false, 'Report failed: ' + (data.error || res.status));
+          return;
+        }
+        const fmt = v => (v === null || v === undefined) ? '–' : Number(v).toFixed(3);
+        const rows = data.report.map(r => `
+          <tr>
+            <td title="${r.note || ''} — ${r.source || ''}">${r.statistic.replace(/_/g, ' ')}</td>
+            <td style="text-align:right;font-family:monospace;">${fmt(r.value)}</td>
+            <td style="text-align:right;font-family:monospace;color:var(--text-muted);">${fmt(r.target_low)}–${fmt(r.target_high)}</td>
+            <td style="text-align:center;font-weight:700;color:${r.within ? '#10b981' : '#ef4444'};">${r.within ? '✓' : '✗'}</td>
+          </tr>`).join('');
+        const n = data.report.filter(r => r.within).length;
+        box.innerHTML = `
+          <table style="width:100%;font-size:10.5px;border-collapse:collapse;" id="ps-realism-table">
+            <thead><tr style="color:var(--text-muted);text-align:left;">
+              <th>Statistic</th><th style="text-align:right;">Simulated</th><th style="text-align:right;">Target</th><th></th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">
+            ${n}/${data.report.length} inside the genome-scale Perturb-seq targets (score ${data.score.toFixed(2)}; 0 = all inside).
+            ${data.n_genes} genes, ${data.n_cells} cells. Targets are calibrated for screens of 500+ genes.
+          </div>`;
+        const secs = Object.values(data.seconds || {}).reduce((a, b) => a + b, 0);
+        setPerturbSeqBusy(false, `Report ready (${secs.toFixed(1)} s)`);
+      } catch (e) {
+        setPerturbSeqBusy(false, 'Report failed: ' + e);
+      }
+    }
+
     function updateLargeNetworkHint(n) {
       const hint = document.getElementById('hint-large-network');
       if (hint) hint.style.display = Number(n) > 60 ? 'block' : 'none';
@@ -4920,6 +5543,13 @@
         APP_STATE.activeAlg = algs[0] || 's2g';
       }
       document.getElementById('select-infer-alg').value = APP_STATE.activeAlg;
+      // Only algorithms that were run can be shown; say so instead of letting a pick silently do nothing
+      document.querySelectorAll('#select-infer-alg option').forEach(opt => {
+        if (!opt.dataset.label) opt.dataset.label = opt.textContent;
+        const ran = algs.includes(opt.value);
+        opt.disabled = !ran;
+        opt.textContent = ran ? opt.dataset.label : `${opt.dataset.label} (not run)`;
+      });
 
       const tbody = document.querySelector('#tbl-alg-comparison tbody');
       tbody.innerHTML = '';
@@ -6198,6 +6828,13 @@
       if (elAlgRuns) elAlgRuns.textContent = (data.total_algorithmic_evaluations || 720).toLocaleString();
 
       const lb = data.algorithm_leaderboard || [];
+      // The banner quoted fixed numbers (7 algorithms, 1,237 runs) that disagreed with the tiles below it: derive them
+      const banner = document.getElementById('desc-tab5-banner');
+      if (banner && data.total_sweep_runs != null) {
+        banner.textContent = `Systematic parameter sweep over network size, topology, regulator density (k_av) and measurement noise: ` +
+          `${Number(data.total_sweep_runs).toLocaleString()} networks, ${lb.length} inference algorithms, ` +
+          `${Number(data.total_algorithmic_evaluations || 0).toLocaleString()} evaluated algorithmic runs.`;
+      }
       if (lb.length > 0) {
         const elTopAlg = document.getElementById('kpi-overall-top-alg');
         if (elTopAlg) elTopAlg.textContent = lb[0].algorithm_name;
@@ -7255,6 +7892,8 @@
       return 1 / (1 + totErr);
     }
 
+    const MAX_ARCHIVE_ROWS = 500;
+
     async function loadHistoryTable(forceRefresh = false) {
       try {
         let data = APP_STATE.cachedHistoryPayload;
@@ -7291,7 +7930,7 @@
 
         // 2. Group runs by dynamics category and by topology to establish set rankings
         const dynamicsSets = { responsive: [], flat: [], oscillating: [] };
-        const topoSets = { random: [], power_law: [], hierarchical: [] };
+        const topoSets = { random: [], power_law: [], hierarchical: [], modular: [] };
 
         data.history.forEach(h => {
           if (dynamicsSets[h.rType]) dynamicsSets[h.rType].push(h);
@@ -7321,6 +7960,7 @@
         const rankedRandom = sortAndRankSet(topoSets.random, 'Random Topo');
         const rankedPowerLaw = sortAndRankSet(topoSets.power_law, 'Scale-Free Topo');
         const rankedHierarchical = sortAndRankSet(topoSets.hierarchical, 'Hierarchical Topo');
+        const rankedModular = sortAndRankSet(topoSets.modular, 'Modular Topo');
 
         // All runs sorted for overall top 15 (minimum network size N >= 12)
         const allSorted = [...data.history];
@@ -7352,6 +7992,13 @@
         } else if (currentFilter === 'hierarchical') {
           visibleRows = rankedHierarchical;
           bannerSetText = 'Displaying the Best 15 Hierarchical Modular Graph Simulations (N ≥ 12).';
+        } else if (currentFilter === 'everything') {
+          // Unranked, in archive order (newest first); capped so a very large archive cannot freeze the page
+          visibleRows = data.history.slice(0, MAX_ARCHIVE_ROWS).map(h => ({ ...h, rankInSet: null, setName: 'All runs' }));
+          bannerSetText = `Displaying every run in the archive, newest first${data.history.length > MAX_ARCHIVE_ROWS ? ` (the newest ${MAX_ARCHIVE_ROWS} of ${data.history.length})` : ''}. Sort any column header to reorder.`;
+        } else if (currentFilter === 'modular') {
+          visibleRows = rankedModular;
+          bannerSetText = 'Displaying the Best 15 Modular Preferential-Attachment Graph Simulations (N ≥ 12).';
         } else if (currentFilter === 'overall_top15') {
           visibleRows = rankedOverall;
           bannerSetText = 'Displaying the Top 15 Highest-Performing Re-Engineering Runs (N ≥ 12) across the entire database.';
@@ -7364,11 +8011,13 @@
         const bannerEl = document.getElementById('archive-best15-banner-text');
         if (bannerEl) bannerEl.textContent = bannerSetText;
         const bannerSubEl = document.getElementById('archive-best15-banner-sub');
-        if (bannerSubEl) bannerSubEl.textContent = `Showing ${visibleRows.length} curated of ${data.history.length} total runs in SQLite rgn_db.`;
+        if (bannerSubEl) bannerSubEl.textContent = currentFilter === 'everything'
+          ? `Showing ${visibleRows.length} of ${data.history.length} runs in the archive.`
+          : `Showing ${visibleRows.length} curated of ${data.history.length} runs in this list (the archive database counts ${data.database ? data.database.nw_rows : '?'} networks, including benchmark sweeps).`;
 
         const filterBadge = document.getElementById('archive-filter-count-badge');
         if (filterBadge) {
-          filterBadge.textContent = `Showing ${visibleRows.length} Curated Runs`;
+          filterBadge.textContent = currentFilter === 'everything' ? `Showing ${visibleRows.length} Runs` : `Showing ${visibleRows.length} Curated Runs`;
           filterBadge.className = 'badge badge-emerald';
         }
 
@@ -7400,7 +8049,7 @@
           tr.innerHTML = `
             <td>
               <span class="badge" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:${rankBadgeColor};font-weight:700;">
-                #${h.rankInSet} in ${h.setName}
+                ${h.rankInSet == null ? '—' : `#${h.rankInSet} in ${h.setName}`}
               </span>
             </td>
             <td><code style="color:var(--accent-blue);font-weight:700;">${h.run_id}</code></td>
@@ -7444,7 +8093,10 @@
       try {
         const res = await fetch(`/api/history/load?run_id=${encodeURIComponent(runId)}`);
         const data = await res.json();
-        if (data.status !== 'success') return;
+        if (data.status !== 'success') {
+          showToast(`Could not open ${runId}: ${data.error || 'unknown error'}`, 'error');
+          return;
+        }
 
         // Update both the Archive Detail View and the Studio State + Settings
         APP_STATE.archiveDetail = data;
@@ -7490,7 +8142,7 @@
       document.getElementById('hist-detail-runid').textContent = data.run_id;
       document.getElementById('hist-detail-topo').textContent = data.topology;
       document.getElementById('hist-detail-subtitle').textContent =
-        `Loaded Run ${data.run_id} (${data.num_genes} genes, ${data.total_edges} true edges: +${data.activations} / -${data.inhibitions}, seed=${data.seed ?? s.seed ?? 42}) — Stored in SQLite rgn_db.`;
+        `Loaded Run ${data.run_id} (${data.num_genes} genes, ${data.total_edges ?? '?'} true edges: +${data.activations ?? '?'} / -${data.inhibitions ?? '?'}, seed=${data.seed ?? s.seed ?? 42}) — Stored in SQLite rgn_db.`;
 
       const respDyn = data.response_dynamics || {};
       const rType = data.response_type || respDyn.response_type || (diag.oscillating_detected ? 'oscillating' : 'responsive');
@@ -7509,7 +8161,7 @@
       }
       const hspDynamics = document.getElementById('hsp-dynamics');
       if (hspDynamics) {
-        const maxAmp = respDyn.max_amplitude != null ? `${(respDyn.max_amplitude * 100).toFixed(1)}%` : '--';
+        const maxAmp = formatAmplitudePct(respDyn.max_amplitude);
         hspDynamics.textContent = `${rType.toUpperCase()} (max ${maxAmp})`;
       }
 
@@ -8694,31 +9346,31 @@
     }
 
     async function simulatePresetRun(presetType) {
+      const btn = event?.currentTarget;
+      if (btn) btn.disabled = true;
       try {
-        const btn = event?.currentTarget;
-        if (btn) btn.disabled = true;
-        const resp = await fetch('/api/simulate', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            dynamics_preset: presetType,
-            auto_infer: true,
-            num_genes: 12,
-            topology: presetType === 'oscillating' ? 'random' : (presetType === 'flat' ? 'hierarchical' : 'power_law'),
-            seed: Date.now() % 10000,
-          }),
+        const { ok, data: simData } = await postJson('/api/simulate', {
+          dynamics_preset: presetType,
+          auto_infer: true,
+          num_genes: 12,
+          topology: presetType === 'oscillating' ? 'random' : (presetType === 'flat' ? 'hierarchical' : 'power_law'),
+          seed: Date.now() % 10000,
         });
-        const simData = await resp.json();
-        if (btn) btn.disabled = false;
-        if (simData.status === 'success') {
+        if (ok && simData.status === 'success') {
           APP_STATE.archiveFilterType = 'all';
           const filterSel = document.getElementById('archive-filter-type');
           if (filterSel) filterSel.value = 'all';
           await loadHistoryTable(true);
           await selectArchiveRun(simData.run_id, false);
+          showToast(`Created ${simData.run_id} (${presetType}). It opens below; use the filters or the Job Queue to find it again.`, 'success');
+        } else {
+          showToast(`Could not simulate a ${presetType} network: ${simData.error || 'unknown error'}`, 'error');
         }
       } catch (e) {
         console.error('Failed to simulate preset run:', e);
+        showToast(`Could not simulate a ${presetType} network: ${e.message}`, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
 
@@ -8785,11 +9437,11 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11.5px;margin-bottom:10px;">
             <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
               <div style="color:var(--text-muted);font-size:10px;">MAX AMPLITUDE (Δ)</div>
-              <div style="font-weight:700;font-size:13px;color:var(--text-primary);">${(c.avg_max_amplitude * 100).toFixed(1)}%</div>
+              <div style="font-weight:700;font-size:13px;color:var(--text-primary);"><span title="Average over all runs in this class; diverged runs can dominate it">${formatAmplitudePct(c.avg_max_amplitude)}</span></div>
             </div>
             <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
               <div style="color:var(--text-muted);font-size:10px;">EXPR. VARIANCE</div>
-              <div style="font-weight:700;font-size:13px;color:var(--text-primary);">${c.avg_variance.toFixed(4)}</div>
+              <div style="font-weight:700;font-size:13px;color:var(--text-primary);"><span title="Average over all runs in this class; diverged runs can dominate it">${formatVariance(c.avg_variance)}</span></div>
             </div>
             <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
               <div style="color:var(--text-muted);font-size:10px;">AVG GENES (N)</div>
@@ -8797,7 +9449,7 @@
             </div>
             <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
               <div style="color:var(--text-muted);font-size:10px;">TOP ALGORITHM</div>
-              <div style="font-weight:700;font-size:13px;color:var(--accent-blue);">${c.top_algorithm} (${c.top_algorithm_errors} err)</div>
+              <div style="font-weight:700;font-size:13px;color:var(--accent-blue);">${c.top_algorithm} (F1 ${Number(c.top_algorithm_f1 ?? 0).toFixed(2)} · ${c.top_algorithm_errors} err)</div>
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted);">
@@ -8838,7 +9490,78 @@
       }
     }
 
+
+    // ============================================================================
+    // Small accessibility / presentation fixes applied to the whole page
+    // ============================================================================
+    // Several labels were written as LaTeX ("$k_{av}$", "$N \in [10..70]$") but no math renderer is loaded. Turn the
+    // simple ones into readable text with real sub/superscripts; anything that is not plainly a formula is left alone.
+    const LATEX_SYMBOLS = { in: '∈', sigma: 'σ', to: '→', rightarrow: '→', times: '×', cdot: '·', ge: '≥', le: '≤', geq: '≥', leq: '≤',
+      alpha: 'α', beta: 'β', mu: 'μ', Delta: 'Δ', delta: 'δ', lambda: 'λ', theta: 'θ', pm: '±', approx: '≈', ldots: '…' };
+    const LATEX_FORMULA = /\$([A-Za-z0-9_{}\\^ ,.\[\]()=+\-*\/|]{1,48}?)\$/g;
+
+    function latexToHtml(text) {
+      return text.replace(LATEX_FORMULA, (whole, body) => {
+        let h = jobEsc(body).replace(/\\([A-Za-z]+)/g, (m, name) => LATEX_SYMBOLS[name] || m);
+        h = h.replace(/_\{([^}]*)\}|_([A-Za-z0-9])/g, (m, a, b) => `<sub>${a ?? b}</sub>`);
+        h = h.replace(/\^\{([^}]*)\}|\^([A-Za-z0-9])/g, (m, a, b) => `<sup>${a ?? b}</sup>`);
+        return h.replace(/\.\./g, '…');
+      });
+    }
+
+    function renderLatexIn(root) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: n => (n.nodeValue.includes('$') && !n.parentElement.closest('script,style,pre,code,textarea,option,title'))
+          ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+      });
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(n => {
+        LATEX_FORMULA.lastIndex = 0;
+        if (!LATEX_FORMULA.test(n.nodeValue)) return;
+        const span = document.createElement('span');
+        span.innerHTML = latexToHtml(n.nodeValue);
+        n.replaceWith(span);
+      });
+    }
+
+    // Give every form control without a label an accessible name: its own visible <label>, or the nearest label text
+    function nameOrphanControls(root = document) {
+      root.querySelectorAll('input:not([type=hidden]), select, textarea').forEach(el => {
+        if (el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || el.title || el.closest('label')) return;
+        if (el.id && document.querySelector(`label[for="${el.id}"]`)) return;
+        const group = el.closest('.form-group, .control-row, div');
+        const label = group && group.querySelector('label, .form-label');
+        const text = (label ? label.textContent : el.id.replace(/[-_]+/g, ' ')).replace(/\s+/g, ' ').trim();
+        if (text) el.setAttribute('aria-label', text.slice(0, 80));
+      });
+    }
+
+    function polishPage() {
+      renderLatexIn(document.body);
+      nameOrphanControls();
+      document.querySelectorAll('[onclick]:not(button):not(a):not(input):not(select)').forEach(el => {
+        if (el.hasAttribute('tabindex')) return;
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('role', el.getAttribute('role') || 'button');
+        el.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click(); } });
+      });
+    }
+
+    // Content is rebuilt as results arrive, so re-apply to what gets added (cheap: only touches nodes containing "$")
+    function watchForLatex() {
+      let queued = false;
+      new MutationObserver(() => {
+        if (queued) return;
+        queued = true;
+        setTimeout(() => { queued = false; renderLatexIn(document.body); nameOrphanControls(); }, 50);
+      }).observe(document.body, { childList: true, subtree: true, characterData: false });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => { polishPage(); watchForLatex(); });
     window.addEventListener('DOMContentLoaded', initApp);
+    window.addEventListener('DOMContentLoaded', initJobsTab);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) jobsRefresh(); });
   </script>
 </body>
 </html>

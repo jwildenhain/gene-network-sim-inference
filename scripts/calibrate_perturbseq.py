@@ -32,7 +32,8 @@ def run_one(n: int, preset_kwargs: dict, guide_efficiency: float, cells: int, co
                          config=preset.cell_config(guide_efficiency_mean=guide_efficiency), seed=seed + 1)
     adata = population_to_anndata(pop, screen, seed=seed + 2, measurement=MeasurementConfig())
     t1 = time.time()
-    stats = {**truth_statistics(screen), **observed_statistics(adata, seed=seed)}
+    stats = {**truth_statistics(screen), **observed_statistics(adata, seed=seed),
+             "lna_clipped_values": float(pop.meta.get("lna_clipped_values", 0))}
     rows = realism_report(stats)
     return {
         "params": {**preset_kwargs, "guide_efficiency_mean": guide_efficiency, "genes": n, "seed": seed},
@@ -70,6 +71,7 @@ def main() -> None:
         results.append(res)
         print(f"\n=== {res['params']}  score {res['score']:.2f}  ({res['seconds']})", flush=True)
         print(format_report(res["report"]), flush=True)
+        print(f"LNA values clipped: {int(res['statistics']['lna_clipped_values'])}", flush=True)
     best = min(results, key=lambda r: r["score"])
     print(f"\nbest: {best['params']}  score {best['score']:.2f}")
     if args.out:

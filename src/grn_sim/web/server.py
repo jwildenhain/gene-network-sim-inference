@@ -61,16 +61,10 @@ from grn_sim.benchmarks.provenance import (
     estimate_biophysical_parameters,
 )
 from grn_sim.evaluation.metrics import compute_aupr
-from grn_sim.paths import resolve_data_dir, resolve_data_file
+from grn_sim.paths import archive_db_path, resolve_data_dir, resolve_data_file
 from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark, validate_vcc_params
 from grn_sim.perturbseq import (
     PERTURBATION_MODES as PERTURBSEQ_MODES,
-    CellConfig,
-    MeasurementConfig,
-    population_to_anndata,
-    screen_to_anndata,
-    simulate_cells,
-    simulate_conditions,
 )
 from grn_sim.simulator.perturb_seq import (
     create_perturb_seq_anndata,
@@ -99,6 +93,7 @@ from grn_sim.web.database import (
     get_summary_statistics_by_type,
 )
 from grn_sim.simulator.response_dynamics import classify_perturbation_response
+from grn_sim.web import jobs as _jobs
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -163,6 +158,16 @@ CURRENT_STATE: Dict[str, Any] = {
 # Archive of runs matching `showpre.php` (backed by SQLite `rgn_db.sqlite`)
 SIMULATION_HISTORY: List[Dict[str, Any]] = []
 SIMULATION_RUN_STORE: Dict[str, Dict[str, Any]] = {}
+# Runs kept in memory (network objects + data); older ones stay in the SQLite archive. Queued batches would
+# otherwise grow the store without bound.
+MAX_RUNS_IN_MEMORY = 300
+
+
+def _trim_run_store() -> None:
+    """Drops the oldest in-memory runs beyond MAX_RUNS_IN_MEMORY (never the active one). Call with STATE_LOCK held."""
+    excess = len(SIMULATION_RUN_STORE) - MAX_RUNS_IN_MEMORY
+    for run_id in [r for r in SIMULATION_RUN_STORE if r != CURRENT_STATE.get("run_id")][:max(0, excess)]:
+        del SIMULATION_RUN_STORE[run_id]
 
 # The handler runs on one thread per request, so everything that rewrites CURRENT_STATE /
 # SIMULATION_HISTORY / SIMULATION_RUN_STORE holds this (re-entrant) lock.
@@ -382,7 +387,7 @@ def _gene_profile(
             r_curves[r["name"]] = traj[i]
     b_val = float(x_ss[i]) if (x_ss is not None and i < len(x_ss)) else 1.0
 
-    expr_conds = []
+    expr_conds: List[Dict[str, Any]] = []
     n_c = min(N, X_mat.shape[1])
     for cond in range(n_c):
         expr_val = float(X_mat[i, cond])
@@ -842,6 +847,7 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "inferred_payload": {},
         "settings": dict(input_settings),
     }
+    _trim_run_store()
 
     # Persist initial network record to SQLite `rgn_db.sqlite`
     save_simulation_to_db(run_id=run_id, sim_payload=sim_payload)
@@ -850,8 +856,18 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @_state_locked
-def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
-    """Runs selected reverse-engineering algorithms on CURRENT_STATE and records to SIMULATION_HISTORY and SQLite `rgn_db`."""
+def _execute_inference(selected_algs: List[str],
+                       on_algorithm: Optional[Callable[[str, int, int], None]] = None,
+                       previous: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Runs selected reverse-engineering algorithms on CURRENT_STATE and records to SIMULATION_HISTORY and SQLite `rgn_db`.
+
+    ``on_algorithm(alg, index, total)`` is called before each algorithm; raising from it aborts the call before
+    anything is stored (the background job queue uses this for progress and cancellation).
+
+    Without ``previous`` the stored results are replaced by those of ``selected_algs``. With the run's earlier
+    inference payload they are added to instead (algorithms run again overwrite their own entry only).
+    """
     experiment = CURRENT_STATE["experiment"]
     true_matrix = CURRENT_STATE["true_matrix"]
     gene_names = CURRENT_STATE["gene_names"]
@@ -894,17 +910,21 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "notears": NOTEARSAlgorithm(k_interactions=k_est if use_reg else None),
     }
 
-    metrics_dict = {}
-    tmp_statmat_dict = {}
-    cmat_dict = {}
-    comp_graphs = {}
-    dots_dict = {}
-    svgs_dot_dict = {}
-    svgs_dot_grid_dict = {}
-    svgs_neato_dict = {}
-    pred_matrices = {}
+    prev = previous or {}
+    metrics_dict = dict(prev.get("metrics") or {})
+    tmp_statmat_dict = dict(prev.get("tmp_statmat") or {})
+    cmat_dict = dict(prev.get("confusion_matrix") or {})
+    comp_graphs = dict(prev.get("comparison_graphs") or {})
+    dots_dict = dict(prev.get("dots") or {})
+    svgs_dot_dict = dict(prev.get("svgs_dot") or {})
+    svgs_dot_grid_dict = dict(prev.get("svgs_dot_grid") or {})
+    svgs_neato_dict = dict(prev.get("svgs_neato") or {})
+    pred_matrices = dict(prev.get("pred_matrices") or {})
 
-    for alg in selected_algs:
+    runnable = [a for a in selected_algs if a in alg_runners]
+    for position, alg in enumerate(runnable):
+        if on_algorithm is not None:
+            on_algorithm(alg, position, len(runnable))
         if alg in alg_runners:
             t0 = time.perf_counter()
             # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3, fast_modified, and ridge_cv
@@ -958,7 +978,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
             svgs_neato_dict[alg] = render_graphviz_svg(dot_9_neato, engine="neato", matrix=draw_stats, gene_names=gene_names, is_9state=True)
 
     aic_profile = _compute_aic_profile(X, U, target_gene=0)
-    primary_alg = selected_algs[0] if selected_algs else "s2g"
+    primary_alg = prev.get("primary_algorithm") or (selected_algs[0] if selected_algs else "s2g")
 
     result_payload = {
         "status": "success",
@@ -982,7 +1002,10 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
     CURRENT_STATE["inferred_results"] = result_payload
 
     run_id = CURRENT_STATE["run_id"]
-    best_alg = min(metrics_dict.keys(), key=lambda k: metrics_dict[k]["total_errors"]) if metrics_dict else primary_alg
+    # Best = highest F1, fewest total errors as the tie-break. Fewest errors alone is won by an algorithm that predicts
+    # (almost) nothing, since an empty graph has only as many errors as the network has edges.
+    best_alg = (max(metrics_dict, key=lambda k: (metrics_dict[k]["f1_score"], -metrics_dict[k]["total_errors"]))
+                if metrics_dict else primary_alg)
     settings = dict(CURRENT_STATE.get("settings") or {})
     settings["algorithms"] = list(metrics_dict.keys())
     ss_diag = CURRENT_STATE.get("steady_state_diagnostics") or {}
@@ -1014,6 +1037,7 @@ def _execute_inference(selected_algs: List[str]) -> Dict[str, Any]:
         "algorithms": list(metrics_dict.keys()),
         "best_algorithm": best_alg.upper(),
         "best_alg_key": best_alg,
+        "best_basis": "f1",
         "best_power_pct": tmp_statmat_dict[best_alg]["power"] if best_alg in tmp_statmat_dict else 0.0,
         "best_specificity_pct": tmp_statmat_dict[best_alg]["specificity"] if best_alg in tmp_statmat_dict else 0.0,
         "best_total_errors": metrics_dict[best_alg]["total_errors"] if best_alg in metrics_dict else 0,
@@ -1043,6 +1067,29 @@ def _is_arrowless_fallback_svg(svg: str) -> bool:
     return bool(svg) and 'class="graph"' not in svg and "data-arrowhead" not in svg
 
 
+def _fill_edge_summary(sim_payload: Dict[str, Any], true_matrix: np.ndarray, names: List[str]) -> None:
+    """
+    Gives runs archived without a per-edge description (the benchmark sweep stores only the matrices) the edge counts and
+    a plain edge list, derived from the stored ground truth. Kinetic parameters are not recoverable and stay absent.
+    """
+    if sim_payload.get("total_edges") is None:
+        sim_payload["total_edges"] = int(np.count_nonzero(true_matrix))
+    if sim_payload.get("activations") is None:
+        sim_payload["activations"] = int(np.sum(true_matrix > 0))
+    if sim_payload.get("inhibitions") is None:
+        sim_payload["inhibitions"] = int(np.sum(true_matrix < 0))
+    if not sim_payload.get("edge_list"):
+        truth_tr = _run_truth_target_regulator(sim_payload)
+        reg_target = true_matrix.T if truth_tr else true_matrix  # (regulator, target)
+        sim_payload["edge_list"] = [
+            {"key": f"{i}-{j}", "source_idx": int(i), "target_idx": int(j), "source": names[i], "target": names[j],
+             "sign": 1 if reg_target[i, j] > 0 else -1,
+             "action": "Activatory (+1)" if reg_target[i, j] > 0 else "Inhibitory (-1)"}
+            for i, j in zip(*np.nonzero(reg_target))
+        ]
+        sim_payload["kinetics_stored"] = False
+
+
 def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Brings an archived run up to date with the current graph views, in place:
@@ -1057,6 +1104,8 @@ def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
     names = sim_payload.get("gene_names") or []
     if true_matrix.ndim != 2 or not true_matrix.size or len(names) != true_matrix.shape[0]:
         return sim_payload
+
+    _fill_edge_summary(sim_payload, true_matrix, names)
 
     truth_tr = _run_truth_target_regulator(sim_payload)
     # Archived SOS runs simulated the target-major ground truth as is, which the old reading displayed correctly
@@ -2005,6 +2054,95 @@ MAX_PERTURB_SEQ_PAIRS = 2000
 
 
 PERTURB_SEQ_CELL_MODELS = ("lna", "sde", "legacy")
+PERTURB_SEQ_PRESETS = ("current", "replogle_like", "thesis")
+MAX_PERTURB_SEQ_CONTROLS = 20000
+# Last few pipeline runs, so a realism report followed by the download of the same screen simulates it once.
+_PERTURB_SEQ_CACHE: "Dict[tuple, Any]" = {}
+
+
+def _parse_perturb_seq_extras(query: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Reads ?preset= (current [default], replogle_like, thesis), ?measurement= (1 [default] / 0) and ?controls=."""
+    preset = str(query.get("preset", ["current"])[0]).strip().lower()
+    if preset not in PERTURB_SEQ_PRESETS:
+        raise ValueError(f"preset must be one of {list(PERTURB_SEQ_PRESETS)}, got {preset!r}")
+    measurement = str(query.get("measurement", ["1"])[0]).strip().lower() not in ("0", "false", "no", "off")
+    controls_raw = query.get("controls", [""])[0]
+    controls = int(controls_raw) if controls_raw else None
+    if controls is not None and not 0 <= controls <= MAX_PERTURB_SEQ_CONTROLS:
+        raise ValueError(f"controls must be in [0, {MAX_PERTURB_SEQ_CONTROLS}], got {controls}")
+    return {"preset": preset, "measurement": measurement, "n_control_cells": controls}
+
+
+def _perturb_seq_run(
+    target_state: Dict[str, Any],
+    mode: str,
+    n_pairs: int,
+    noise_model: str,
+    cells_per_condition: int,
+    preset: str = "current",
+    measurement: bool = True,
+    n_control_cells: Optional[int] = None,
+) -> Any:
+    """Runs (or reuses) the Perturb-seq pipeline on the run's network or on a preset network of the same size."""
+    from grn_sim.perturbseq.calibration import PRESETS
+    from grn_sim.perturbseq.pipeline import build_network, run_screen
+
+    network = target_state.get("network")
+    if not isinstance(network, GeneNetwork):
+        raise LookupError("the Perturb-seq pipeline needs a simulated network (run a simulation first)")
+    seed = int(target_state.get("seed", 42) or 42)
+    key = (target_state.get("run_id"), mode, int(n_pairs), noise_model, int(cells_per_condition), preset,
+           bool(measurement), n_control_cells, seed)
+    if key in _PERTURB_SEQ_CACHE:
+        return _PERTURB_SEQ_CACHE[key]
+    if preset == "current":
+        if (target_state.get("steady_state_diagnostics") or {}).get("oscillating_detected"):
+            raise ValueError(
+                "this run's network oscillates (it has no steady state), so a Perturb-seq screen of it would be "
+                "meaningless; pick a preset network or a responsive / flat run")
+        net = network
+        names = list(target_state.get("gene_names") or [f"Gene_{i+1:02d}" for i in range(network.n)])
+        efficiency = None
+    else:
+        net = build_network(preset, network.n, seed=seed)
+        names = None
+        efficiency = PRESETS[preset].guide_efficiency_mean
+    run = run_screen(net, mode=mode, pairs=n_pairs or None, cells_per_condition=cells_per_condition,
+                     n_control_cells=n_control_cells, cell_model=noise_model, measurement=measurement,
+                     gene_names=names, guide_efficiency_mean=efficiency, seed=seed)
+    while len(_PERTURB_SEQ_CACHE) >= 2:
+        _PERTURB_SEQ_CACHE.pop(next(iter(_PERTURB_SEQ_CACHE)))
+    _PERTURB_SEQ_CACHE[key] = run
+    return run
+
+
+def _perturb_seq_realism_payload(
+    run_id: Optional[str],
+    cells_per_condition: int,
+    perturbation_mode: str,
+    n_pairs: int,
+    noise_model: str,
+    preset: str,
+    measurement: bool,
+    n_control_cells: Optional[int],
+) -> Dict[str, Any]:
+    """Realism report of the run's Perturb-seq screen against the genome-scale targets (JSON-ready)."""
+    target_state = CURRENT_STATE
+    if run_id and run_id in SIMULATION_RUN_STORE:
+        target_state = SIMULATION_RUN_STORE[run_id]["state"]
+    if not isinstance(target_state.get("network"), GeneNetwork):
+        raise LookupError("the realism report needs a simulated network (run a simulation first)")
+    if perturbation_mode == "input":
+        raise ValueError("the realism report is for knockdown / knockout screens")
+    run = _perturb_seq_run(target_state, perturbation_mode, n_pairs, noise_model, cells_per_condition,
+                           preset=preset, measurement=measurement, n_control_cells=n_control_cells)
+    result = run.realism()
+    stats = {k: (None if not np.isfinite(v) else float(v)) for k, v in result["statistics"].items()}
+    rows = [{k: (None if isinstance(v, float) and not np.isfinite(v) else v) for k, v in r.items()}
+            for r in result["report"]]
+    return {"status": "success", "run_id": target_state.get("run_id"), "score": result["score"], "report": rows,
+            "statistics": stats, "settings": result["settings"], "seconds": result["seconds"],
+            "n_cells": int(run.adata.n_obs), "n_genes": int(run.adata.n_vars)}
 
 
 def _parse_perturb_seq_options(query: Dict[str, List[str]]) -> Tuple[str, int, str]:
@@ -2030,6 +2168,9 @@ def _build_perturb_seq_h5ad_bytes(
     perturbation_mode: str = "knockdown",
     n_pairs: int = 0,
     noise_model: str = "lna",
+    preset: str = "current",
+    measurement: bool = True,
+    n_control_cells: Optional[int] = None,
 ) -> Tuple[bytes, str]:
     """
     Generates a single-cell Perturb-seq AnnData .h5ad file (default 400 cells/condition, VCC layout).
@@ -2040,7 +2181,8 @@ def _build_perturb_seq_h5ad_bytes(
     network-propagated noise) or, with ``legacy``, from independent Gamma-Poisson noise around each condition mean.
     Stage-2 cells are measured with the stage-3 droplet model (doublets, ambient RNA, batches, guide calling).
     ``input`` exports the run's own perturbation experiment (the thesis convention) as before; runs without a
-    simulated network (archived arrays, real benchmark data) always use that path.
+    simulated network (archived arrays, real benchmark data) always use that path. ``preset`` other than
+    ``current`` simulates a fresh network of the run's size from that preset (e.g. ``replogle_like``).
     """
     target_state = CURRENT_STATE
     if run_id and run_id in SIMULATION_RUN_STORE:
@@ -2054,26 +2196,13 @@ def _build_perturb_seq_h5ad_bytes(
         network = target_state.get("network")
 
     if perturbation_mode != "input" and isinstance(network, GeneNetwork):
-        gene_names = target_state.get("gene_names") or [f"Gene_{i+1:02d}" for i in range(network.n)]
-        screen = simulate_conditions(
-            network,
-            mode=perturbation_mode,
-            pairs=n_pairs or None,
-            gene_names=list(gene_names),
-            seed=target_state.get("seed", 42),
-        )
+        run = _perturb_seq_run(target_state, perturbation_mode, n_pairs, noise_model, cells_per_condition,
+                               preset=preset, measurement=measurement, n_control_cells=n_control_cells)
         actual_run_id = target_state.get("run_id") or "vcc_perturb_seq"
-        seed = target_state.get("seed", 42)
-        if noise_model == "legacy":
-            adata = screen_to_anndata(screen, cells_per_condition=cells_per_condition, mean_library_depth=20000,
-                                      seed=seed)
-        else:
-            population = simulate_cells(network, screen, cells_per_condition=cells_per_condition,
-                                        config=CellConfig(noise_model=noise_model), seed=seed)
-            adata = population_to_anndata(population, screen, seed=seed,
-                                          measurement=MeasurementConfig(mean_library_depth=20000))
         suffix = f"{perturbation_mode}{f'_{n_pairs}pairs' if n_pairs else ''}_{noise_model}"
-        return _write_h5ad_bytes(adata, f"{actual_run_id}_perturb_seq_{suffix}_{cells_per_condition}cells")
+        if preset != "current":
+            suffix += f"_{preset}"
+        return _write_h5ad_bytes(run.adata, f"{actual_run_id}_perturb_seq_{suffix}_{cells_per_condition}cells")
 
     exp = target_state.get("experiment")
     gene_names = target_state.get("gene_names")
@@ -2188,6 +2317,129 @@ def _bootstrap_initial_simulation():
                 _load_archived_run(latest_run_id)
     except Exception as e:
         print(f"Bootstrap warning: {e}")
+
+
+# --- Parameter validation and the background job queue ------------------------------------------------------------
+KNOWN_ALGORITHMS = (
+    "s2g", "g2s", "vote", "nir", "fast", "by_chance", "atlasshift", "cellbox", "genie3", "netdeconv", "ridge_cv",
+    "cpa_lite", "arachne", "causalgrn", "dmdgrn", "deeprig", "sfinn", "notears",
+)
+SIM_TOPOLOGIES = ("power_law", "random", "hierarchical", "modular")
+SIM_KINETICS = ("hill_nonlinear", "cellbox_neural_ode", "linear_jacobian", "perturb_seq_counts")
+SIM_PRESETS = ("responsive", "flat", "oscillating")
+MAX_SIM_GENES = 500
+MAX_SEED = 2 ** 32 - 1
+
+
+def _validate_sim_params(params: Dict[str, Any], strict: bool = False) -> Dict[str, Any]:
+    """
+    Checks the numeric fields of a simulation request and returns a cleaned copy; raises ValueError naming the field.
+    Without ``strict`` only the numbers are checked (the simulator falls back to defaults for unknown names, which API
+    users may rely on); the job queue passes ``strict=True`` and also rejects unknown topology / engine / preset names.
+    """
+    out = dict(params)
+
+    def number(key: str, lo: float, hi: float, integer: bool = False) -> None:
+        if out.get(key) in (None, ""):
+            out.pop(key, None)
+            return
+        try:
+            value = float(out[key])
+        except (TypeError, ValueError):
+            raise ValueError(f"{key} must be a number, got {out[key]!r}") from None
+        if value != value or not lo <= value <= hi:
+            raise ValueError(f"{key} must be between {lo:g} and {hi:g}, got {out[key]!r}")
+        out[key] = int(value) if integer else value
+
+    number("seed", 0, MAX_SEED, integer=True)
+    number("noise", 0.0, 1.0)
+    number("bio_var", 0.0, 1.0)
+    number("act_ratio", 0.0, 1.0)
+    number("k_av", 0.1, 10.0)
+    is_benchmark = bool(out.get("dataset_id")) or str(out.get("mode", "insilico")).startswith(("benchmark_", "sos"))
+    if not is_benchmark:
+        number("num_genes", 6, MAX_SIM_GENES, integer=True)
+    if strict:
+        for key, allowed in (("topology", SIM_TOPOLOGIES), ("kinetics_engine", SIM_KINETICS),
+                             ("dynamics_preset", SIM_PRESETS)):
+            if out.get(key) is not None and out[key] not in allowed:
+                raise ValueError(f"{key} must be one of {', '.join(allowed)}, got {out[key]!r}")
+    return out
+
+
+def _job_generate(params: Dict[str, Any], ctx: "_jobs.JobContext") -> Dict[str, Any]:
+    """Job stage 1: simulate a network. The studio's active network is put back afterwards."""
+    with STATE_LOCK:
+        snapshot = dict(CURRENT_STATE)
+        try:
+            resp = _execute_simulation(params)
+        finally:
+            CURRENT_STATE.clear()
+            CURRENT_STATE.update(snapshot)
+    return {"run_id": resp["run_id"], "num_genes": resp.get("num_genes"), "topology": resp.get("topology"),
+            "total_edges": resp.get("total_edges"), "response_type": resp.get("response_type")}
+
+
+def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> Dict[str, Any]:
+    """Job stage 2: run the algorithms on a network held in memory. The studio's active network is put back afterwards."""
+    def before_algorithm(alg: str, index: int, total: int) -> None:
+        ctx.check_cancel()
+        ctx.progress(f"{alg} ({index + 1}/{total})")
+        if index:
+            ctx.progress(advance=True)
+        ctx.log(f"running {alg}")
+
+    with STATE_LOCK:
+        stored = SIMULATION_RUN_STORE.get(run_id)
+        if stored is None:
+            raise LookupError(f"network {run_id!r} is no longer in memory")
+        snapshot = dict(CURRENT_STATE)
+        try:
+            CURRENT_STATE.clear()
+            CURRENT_STATE.update(stored["state"])
+            result = _execute_inference(algorithms, on_algorithm=before_algorithm,
+                                        previous=stored.get("inferred_payload") or None)
+        finally:
+            CURRENT_STATE.clear()
+            CURRENT_STATE.update(snapshot)
+    ctx.progress(advance=True)  # the last algorithm
+    metrics = result.get("metrics", {})
+    # By F1 (fewest errors as tie-break): total errors alone rewards an algorithm that predicts almost nothing
+    best = max(metrics, key=lambda k: (metrics[k]["f1_score"], -metrics[k]["total_errors"])) if metrics else None
+    return {"algorithms_run": [a for a in algorithms if a in metrics], "algorithms_stored": list(metrics),
+            "best_algorithm": best,
+            "best_total_errors": metrics[best]["total_errors"] if best else None,
+            "best_f1": metrics[best]["f1_score"] if best else None}
+
+
+def _job_can_infer(run_id: str) -> bool:
+    return run_id in SIMULATION_RUN_STORE  # no STATE_LOCK: a running job holds it, and submitting must not wait
+
+
+JOB_MANAGER = _jobs.JobManager(
+    generate=_job_generate,
+    infer=_job_infer,
+    known_algorithms=KNOWN_ALGORITHMS,
+    validate_params=lambda p: _validate_sim_params(p, strict=True),
+    can_infer=_job_can_infer,
+    keep_finished=10,  # the last ten finished jobs stay listed (and survive a restart) as quick links to their runs
+    store_path=archive_db_path().with_name("jobs.json"),
+)
+
+
+def _engine_busy_message() -> Optional[str]:
+    """
+    Why an interactive simulate / infer cannot start right now, or None. A background job holds the simulation state
+    for a whole stage (minutes for big networks); answering at once beats a request that hangs behind it.
+    """
+    job = JOB_MANAGER.running()
+    if job is None:
+        return None
+    if STATE_LOCK.acquire(blocking=False):
+        STATE_LOCK.release()
+        return None
+    return (f"Background job {job['id']} ({job['label']}) is using the simulation engine ({job['progress_pct']:.0f}% done). "
+            "Wait for it, cancel it in the Job Queue tab, or queue this work as a job.")
 
 
 class GRNWebHandler(BaseHTTPRequestHandler):
@@ -2497,10 +2749,33 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             return
 
+        elif path == "/api/perturbseq/realism":
+            try:
+                cells = int(query.get("cells_per_condition", [100])[0])
+                if not 1 <= cells <= MAX_CELLS_PER_CONDITION:
+                    raise ValueError(f"cells_per_condition must be in [1, {MAX_CELLS_PER_CONDITION}], got {cells}")
+                pmode, n_pairs, noise = _parse_perturb_seq_options(query)
+                extras = _parse_perturb_seq_extras(query)
+                payload = _perturb_seq_realism_payload(query.get("run_id", [None])[0], cells, pmode, n_pairs, noise,
+                                                       extras["preset"], extras["measurement"],
+                                                       extras["n_control_cells"])
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            except LookupError as e:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            self._set_headers(200)
+            self.wfile.write(json.dumps(payload, default=float).encode("utf-8"))
+            return
+
         elif path == "/api/export/perturb_seq_h5ad":
             try:
                 cells = _parse_cells_per_condition(query)
                 pmode, n_pairs, noise = _parse_perturb_seq_options(query)
+                extras = _parse_perturb_seq_extras(query)
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
@@ -2508,7 +2783,8 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             try:
                 req_run_id = query.get("run_id", [None])[0]
                 data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
-                                                               perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise)
+                                                               perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
+                                                               **extras)
                 self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                 self.wfile.write(data)
             except Exception as e:
@@ -2603,19 +2879,36 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 try:
                     cells = _parse_cells_per_condition(query)
                     pmode, n_pairs, noise = _parse_perturb_seq_options(query)
+                    extras = _parse_perturb_seq_extras(query)
                 except ValueError as e:
                     self._set_headers(400)
                     self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                     return
                 try:
                     data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
-                                                                   perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise)
+                                                                   perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
+                                                                   **extras)
                     self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
                     self.wfile.write(data)
                 except Exception as e:
                     self._set_headers(500)
                     self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                 return
+
+        if path == "/api/jobs":
+            self._set_headers(200)
+            self.wfile.write(json.dumps({
+                "status": "success", "jobs": JOB_MANAGER.list(), "counts": JOB_MANAGER.counts(),
+                "algorithms": list(KNOWN_ALGORITHMS),
+            }).encode("utf-8"))
+            return
+
+        if path.startswith("/api/jobs/"):
+            job = JOB_MANAGER.get(path[len("/api/jobs/"):])
+            self._set_headers(200 if job else 404)
+            self.wfile.write(json.dumps({"status": "success", "job": job} if job
+                                        else {"error": "no such job"}).encode("utf-8"))
+            return
 
         self._set_headers(404, "text/plain")
         self.wfile.write(b"Not Found")
@@ -2638,6 +2931,17 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/simulate":
+            busy = _engine_busy_message()
+            if busy:
+                self._set_headers(409)
+                self.wfile.write(json.dumps({"error": busy}).encode("utf-8"))
+                return
+            try:
+                params = _validate_sim_params(params)
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
             try:
                 resp = _execute_simulation(params)
                 if params.get("auto_infer", False):
@@ -2670,6 +2974,11 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             return
 
         elif path == "/api/infer":
+            busy = _engine_busy_message()
+            if busy:
+                self._set_headers(409)
+                self.wfile.write(json.dumps({"error": busy}).encode("utf-8"))
+                return
             if CURRENT_STATE["true_matrix"] is None:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"error": "No simulation running. Call /api/simulate first."}).encode("utf-8"))
@@ -2705,6 +3014,33 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 traceback.print_exc()
                 self._set_headers(500)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/jobs":
+            try:
+                jobs = JOB_MANAGER.submit(params)
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            except _jobs.QueueFull as e:
+                self._set_headers(429)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            self._set_headers(202)
+            self.wfile.write(json.dumps({"status": "queued", "jobs": [j.to_dict() for j in jobs]}).encode("utf-8"))
+            return
+
+        elif path == "/api/jobs/clear":
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"status": "success", "removed": JOB_MANAGER.clear_finished()}).encode("utf-8"))
+            return
+
+        elif path.startswith("/api/jobs/") and path.endswith("/cancel"):
+            job = JOB_MANAGER.cancel(path[len("/api/jobs/"):-len("/cancel")])
+            self._set_headers(200 if job else 404)
+            self.wfile.write(json.dumps({"status": "success", "job": job} if job
+                                        else {"error": "no such job"}).encode("utf-8"))
             return
 
         else:

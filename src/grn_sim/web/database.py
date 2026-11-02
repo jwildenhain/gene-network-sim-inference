@@ -193,6 +193,36 @@ def save_simulation_to_db(
         conn.close()
 
 
+def _stat_f1(stat: Dict[str, Any]) -> float:
+    """F1 from the percent power (recall) and PPV (precision) stored in a per-algorithm summary."""
+    power = float(stat.get("power", 0) or 0) / 100.0
+    ppv = float(stat.get("ppv", 0) or 0) / 100.0
+    return 2.0 * power * ppv / (power + ppv) if power + ppv > 0 else 0.0
+
+
+def _rebase_best_on_f1(entry: Dict[str, Any]) -> None:
+    """
+    Makes a legacy entry's "best method" the algorithm with the highest F1 (fewest total errors breaks ties).
+
+    Entries were first written with the fewest-total-errors winner, which rewards predicting almost nothing (an empty
+    graph has as many errors as the network has edges). New entries carry ``best_basis == "f1"`` and are left alone;
+    older ones are re-derived here from their stored per-algorithm summary, without touching the database.
+    """
+    summary = entry.get("metrics_summary") or {}
+    if entry.get("best_basis") == "f1" or not summary:
+        return
+    if not all(isinstance(st, dict) and "power" in st and "ppv" in st for st in summary.values()):
+        return  # incomplete summary: keep what was stored rather than guess an F1
+    best = max(summary, key=lambda a: (_stat_f1(summary[a]), -float(summary[a].get("total_errors", 0) or 0)))
+    stat = summary[best]
+    entry.update({
+        "best_algorithm": best.upper(), "best_alg_key": best,
+        "best_power_pct": stat.get("power", 0.0), "best_specificity_pct": stat.get("specificity", 0.0),
+        "best_total_errors": stat.get("total_errors", 0), "f1_score": round(_stat_f1(stat), 4),
+        "best_basis": "f1",
+    })
+
+
 def _compute_entry_f1(entry: Dict[str, Any]) -> float:
     """Computes F1 score for re-engineering accuracy from power (recall) and PPV (precision)."""
     best_alg = entry.get("best_alg_key") or (entry.get("best_algorithm", "vote").lower())
@@ -229,6 +259,7 @@ def load_all_history_from_db(db_path: Optional[str] = None) -> List[Dict[str, An
                     entry["response_type"] = r_type or "responsive"
                 if r_stats_json and r_stats_json != "{}":
                     entry["response_dynamics"] = json.loads(r_stats_json)
+                _rebase_best_on_f1(entry)
                 # `is None`, not falsiness: a stored F1 of 0.0 (nothing recovered) must stay 0.0
                 if entry.get("f1_score") is None:
                     entry["f1_score"] = _compute_entry_f1(entry)
@@ -413,7 +444,9 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, A
                         all_algs.setdefault(a["algid"], []).append(a)
 
                 best_alg = "N/A"
-                lowest_err = float("inf")
+                best_key = (-1.0, float("inf"))  # (mean F1, mean errors): highest F1 wins, fewest errors breaks ties
+                top_f1 = 0.0
+                top_err = 0.0
                 for a_id, a_list in all_algs.items():
                     avg_err = round(float(np.mean([x["total_errors"] for x in a_list])), 1)
                     avg_f1 = round(float(np.mean([x["f1_score"] for x in a_list])), 3)
@@ -431,12 +464,13 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, A
                         "avg_precision_pct": avg_prec,
                         "avg_signed_ppv_pct": avg_sppv,
                     }
-                    if avg_err < lowest_err:
-                        lowest_err = avg_err
-                        best_alg = a_id
+                    if (avg_f1, -avg_err) > (best_key[0], -best_key[1]):
+                        best_key = (avg_f1, avg_err)
+                        best_alg, top_f1, top_err = a_id, avg_f1, avg_err
 
                 c_dict["top_algorithm"] = best_alg.upper()
-                c_dict["top_algorithm_errors"] = lowest_err if best_alg != "N/A" else 0  # never Infinity: it is not valid JSON
+                c_dict["top_algorithm_errors"] = top_err if best_alg != "N/A" else 0  # never Infinity: it is not valid JSON
+                c_dict["top_algorithm_f1"] = top_f1 if best_alg != "N/A" else 0
     finally:
         conn.close()
 

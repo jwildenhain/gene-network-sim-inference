@@ -65,9 +65,9 @@ def run_topology_comparison(
                     k_av=k_av,
                     net_type=topo_type,
                     ratio=0.5,
-                    seed=rng.integers(0, 100000),
+                    seed=int(rng.integers(0, 100000)),
                 )
-                exp = sim.run(net, seed=rng.integers(0, 100000))
+                exp = sim.run(net, seed=int(rng.integers(0, 100000)))
 
                 for name, algo in algos.items():
                     res = algo.fit(exp.X, exp.U)
@@ -114,9 +114,9 @@ def run_noise_sweep(
                 n=network_size,
                 k_av=k_av,
                 net_type=TopologyType.POWER_LAW,
-                seed=rng.integers(0, 100000),
+                seed=int(rng.integers(0, 100000)),
             )
-            exp = sim.run(net, seed=rng.integers(0, 100000))
+            exp = sim.run(net, seed=int(rng.integers(0, 100000)))
 
             for name, algo in algos.items():
                 res = algo.fit(exp.X, exp.U)

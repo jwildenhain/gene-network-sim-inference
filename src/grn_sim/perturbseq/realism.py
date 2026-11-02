@@ -73,11 +73,11 @@ def truth_statistics(screen: ConditionScreen, effect_threshold: Optional[float] 
     n_aff = int(affected.sum())
     per_pert = affected.sum(axis=0)
     # pair (perturbed g -> gene i); bidirectional if i is also perturbed and moves g
-    pos = {g: col for col, g in enumerate(genes)}
+    pos = {int(g): col for col, g in enumerate(genes)}
     bidir = 0
     for col, g in enumerate(genes):
-        for i in np.flatnonzero(affected[:, col]):
-            if i in pos and affected[g, pos[i]]:
+        for i in np.flatnonzero(affected[:, col]).tolist():
+            if i in pos and bool(affected[int(g), pos[i]]):
                 bidir += 1
     top = max(1, int(np.ceil(0.05 * len(genes))))
     own = np.array([screen.total_effects[g, k] for g, k in zip(genes, singles)])
@@ -184,14 +184,17 @@ def observed_statistics(
     L = _log_normalise(adata.X)
 
     if use_assigned_guides and "assignment_status" in obs.columns:
-        keep = (obs["assignment_status"].values == "single")
-        guide = obs["assigned_guide"].values.astype(str)
-        target = np.array([g.rsplit("_g", 1)[0] if not g.startswith("non-targeting") else "control" for g in guide])
-        nt_guide = np.where(np.char.startswith(guide.astype(str), "non-targeting"), guide, "")
+        keep = np.array([str(v) == "single" for v in obs["assignment_status"].tolist()], dtype=bool)
+        # plain Python strings: pandas/numpy 2.x may hand back object or StringDtype arrays that np.char rejects
+        guide = np.array([str(g) for g in obs["assigned_guide"].tolist()], dtype=object)
+        target = np.array([g.rsplit("_g", 1)[0] if not g.startswith("non-targeting") else "control" for g in guide],
+                          dtype=object)
+        nt_guide = np.array([g if g.startswith("non-targeting") else "" for g in guide], dtype=object)
     else:
         keep = np.ones(adata.n_obs, dtype=bool)
-        target = np.array(["control" if c == "control" else c for c in obs["condition"].values.astype(str)])
-        nt_guide = obs["guide"].values.astype(str) if "guide" in obs.columns else np.full(adata.n_obs, "")
+        target = np.array(["control" if str(c) == "control" else str(c) for c in obs["condition"].tolist()], dtype=object)
+        nt_guide = (np.array([str(g) for g in obs["guide"].tolist()], dtype=object) if "guide" in obs.columns
+                    else np.full(adata.n_obs, "", dtype=object))
         nt_guide = np.where(target == "control", nt_guide, "")
     singles = sorted({t for t in target[keep] if t != "control" and "+" not in t})
     ctrl = np.flatnonzero(keep & (target == "control"))
@@ -259,8 +262,8 @@ def observed_statistics(
         "n_tested_perturbations": float(len(p_energy)),
         "fraction_with_phenotype": float(called.mean()) if called.size else 0.0,
         "median_degs_per_perturbation": float(np.median(n_deg_arr)) if n_deg_arr.size else 0.0,
-        "observed_deg_pair_density": float(n_deg_arr.sum() / max(n_deg_arr.size * (len(genes) - 1), 1)),
-        "observed_top5pct_deg_share": float(np.sort(n_deg_arr)[::-1][:top].sum() / max(n_deg_arr.sum(), 1)),
+        "observed_deg_pair_density": float(int(n_deg_arr.sum()) / max(n_deg_arr.size * (len(genes) - 1), 1)),
+        "observed_top5pct_deg_share": float(int(np.sort(n_deg_arr)[::-1][:top].sum()) / max(int(n_deg_arr.sum()), 1)),
         "on_target_knockdown": float(np.median(knockdown)) if knockdown else float("nan"),
         "control_false_positive_rate": float(fp_called.mean()) if fp_called.size else float("nan"),
         "n_control_guides_tested": float(len(fp)),

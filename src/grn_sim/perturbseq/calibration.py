@@ -94,7 +94,7 @@ def calibrate_kinetics(
     return {
         "rounds": rounds,
         "final_q95_dlogx": change,
-        "final_max_dlogx": float(dlog.max()),
+        "final_max_dlogx": float(np.max(dlog)),
         "genes_still_moving": int(np.sum(dlog >= tol)),
         "converged": bool(change < tol),
         "final_damping": step,

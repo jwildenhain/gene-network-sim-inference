@@ -1,6 +1,6 @@
 """
 Browser test of the top navigation of the web studio (in-process server, see conftest.py):
-the five tabs in order with short titles, switching between them, and a screenshot of the header.
+the six tabs in order with short titles, switching between them, and a screenshot of the header.
 """
 
 import pytest
@@ -13,6 +13,7 @@ EXPECTED_TABS = [
     ("tab-history", "3. Previous Simulations Archive"),
     ("tab-vcc", "4. Virtual Cell Challenge"),
     ("tab-figures", "5. Overall Statistics"),
+    ("tab-jobs", "6. Job Queue"),
 ]
 
 
