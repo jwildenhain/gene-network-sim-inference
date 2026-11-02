@@ -30,6 +30,7 @@ from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.experiment import PerturbationSimulator, SimulationExperiment
 from grn_sim.inference.s2g import SimpleToGeneral
 from grn_sim.inference.g2s import GeneralToSpecific
+from grn_sim.perturbseq.pipeline import build_network as build_perturbseq_network
 from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
@@ -647,14 +648,19 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             # Number of modules: explicit "subdiv", else ~1 module per 10 genes (2..8; Perturb-seq-calibrated
             # networks have 5-10 modules).
             eff_subdiv = int(params["subdiv"]) if "subdiv" in params else int(np.clip(num_genes // 10, 2, 8))
-        network = GeneNetwork.create(
-            n=num_genes,
-            k_av=k_av,
-            net_type=net_type,
-            ratio=act_ratio,
-            subdiv=eff_subdiv,
-            seed=seed,
-        )
+        calibration_preset = params.get("calibration_preset")
+        if calibration_preset:
+            # Perturb-seq calibrated network (anchored kinetics): reaches a steady state at genome-like sizes
+            network = build_perturbseq_network(str(calibration_preset), num_genes, seed=seed)
+        else:
+            network = GeneNetwork.create(
+                n=num_genes,
+                k_av=k_av,
+                net_type=net_type,
+                ratio=act_ratio,
+                subdiv=eff_subdiv,
+                seed=seed,
+            )
 
         if dynamics_preset == "oscillating":
             # Genuine odd-cycle negative feedback repressilator core ensuring sustained limit cycles
@@ -2327,8 +2333,13 @@ KNOWN_ALGORITHMS = (
 SIM_TOPOLOGIES = ("power_law", "random", "hierarchical", "modular")
 SIM_KINETICS = ("hill_nonlinear", "cellbox_neural_ode", "linear_jacobian", "perturb_seq_counts")
 SIM_PRESETS = ("responsive", "flat", "oscillating")
-MAX_SIM_GENES = 500
+MAX_SIM_GENES = 2000
 MAX_SEED = 2 ** 32 - 1
+
+
+def _perturbseq_presets() -> Tuple[str, ...]:
+    from grn_sim.perturbseq.calibration import PRESETS
+    return tuple(PRESETS)
 
 
 def _validate_sim_params(params: Dict[str, Any], strict: bool = False) -> Dict[str, Any]:
@@ -2359,6 +2370,11 @@ def _validate_sim_params(params: Dict[str, Any], strict: bool = False) -> Dict[s
     is_benchmark = bool(out.get("dataset_id")) or str(out.get("mode", "insilico")).startswith(("benchmark_", "sos"))
     if not is_benchmark:
         number("num_genes", 6, MAX_SIM_GENES, integer=True)
+    if out.get("calibration_preset") in ("", None):
+        out.pop("calibration_preset", None)
+    elif out["calibration_preset"] not in _perturbseq_presets():
+        raise ValueError(f"calibration_preset must be one of {', '.join(sorted(_perturbseq_presets()))}, "
+                         f"got {out['calibration_preset']!r}")
     if strict:
         for key, allowed in (("topology", SIM_TOPOLOGIES), ("kinetics_engine", SIM_KINETICS),
                              ("dynamics_preset", SIM_PRESETS)):
