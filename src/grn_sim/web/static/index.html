@@ -2383,7 +2383,7 @@
                 <th>k_av</th>
                 <th>Noise (&sigma;_m)</th>
                 <th>ODE Equilibrium</th>
-                <th>Best Method</th>
+                <th title="The algorithm with the highest F1 on this run (fewest total errors breaks ties)">Best Method</th>
                 <th>F1 Score</th>
                 <th>Power (%)</th>
                 <th>Specificity (%)</th>
@@ -9449,7 +9449,7 @@
             </div>
             <div style="background:var(--bg-elevated);padding:6px 8px;border-radius:4px;">
               <div style="color:var(--text-muted);font-size:10px;">TOP ALGORITHM</div>
-              <div style="font-weight:700;font-size:13px;color:var(--accent-blue);">${c.top_algorithm} (${c.top_algorithm_errors} err)</div>
+              <div style="font-weight:700;font-size:13px;color:var(--accent-blue);">${c.top_algorithm} (F1 ${Number(c.top_algorithm_f1 ?? 0).toFixed(2)} · ${c.top_algorithm_errors} err)</div>
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted);">

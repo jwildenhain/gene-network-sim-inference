@@ -1002,7 +1002,10 @@ def _execute_inference(selected_algs: List[str],
     CURRENT_STATE["inferred_results"] = result_payload
 
     run_id = CURRENT_STATE["run_id"]
-    best_alg = min(metrics_dict.keys(), key=lambda k: metrics_dict[k]["total_errors"]) if metrics_dict else primary_alg
+    # Best = highest F1, fewest total errors as the tie-break. Fewest errors alone is won by an algorithm that predicts
+    # (almost) nothing, since an empty graph has only as many errors as the network has edges.
+    best_alg = (max(metrics_dict, key=lambda k: (metrics_dict[k]["f1_score"], -metrics_dict[k]["total_errors"]))
+                if metrics_dict else primary_alg)
     settings = dict(CURRENT_STATE.get("settings") or {})
     settings["algorithms"] = list(metrics_dict.keys())
     ss_diag = CURRENT_STATE.get("steady_state_diagnostics") or {}
@@ -1034,6 +1037,7 @@ def _execute_inference(selected_algs: List[str],
         "algorithms": list(metrics_dict.keys()),
         "best_algorithm": best_alg.upper(),
         "best_alg_key": best_alg,
+        "best_basis": "f1",
         "best_power_pct": tmp_statmat_dict[best_alg]["power"] if best_alg in tmp_statmat_dict else 0.0,
         "best_specificity_pct": tmp_statmat_dict[best_alg]["specificity"] if best_alg in tmp_statmat_dict else 0.0,
         "best_total_errors": metrics_dict[best_alg]["total_errors"] if best_alg in metrics_dict else 0,
