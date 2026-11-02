@@ -6,6 +6,14 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Added
+- **Background job queue** (`grn_sim.web.jobs`, tab 6 "Job Queue"): queue network generation and the inference
+  algorithms as jobs that run one at a time while the studio stays usable. A job generates a network, runs
+  algorithms on one (its own, a queued job's - "generate now, infer afterwards" - or an in-memory run), or both;
+  batches (`count`, seeds rise by one), live progress per algorithm, cancel, logs, toasts and a badge on the tab.
+  The studio's open network is never replaced by a job. API: `GET/POST /api/jobs`, `GET /api/jobs/<id>`,
+  `POST /api/jobs/<id>/cancel`, `POST /api/jobs/clear`. While a job holds the engine, interactive simulate / infer
+  answer `409` with the job's name instead of hanging. Jobs live in memory; the runs they create are archived.
+- Archive filters: "All runs, newest first" and "Modular topology".
 - **Perturb-seq screens** (`grn_sim.perturbseq`, see `docs/PERTURBSEQ.md`): knockdown / knockout / double
   perturbation screens with ground truth, per-cell doses and escapers, network-propagated cell noise (LNA or SDE),
   droplet measurement artefacts and guide calling, realism statistics against genome-scale Perturb-seq, anchored
@@ -51,6 +59,14 @@ versioning once it leaves 0.x.
 - Lint (ruff) and type (mypy) clean; unused imports, dead variables and mutable default arguments removed.
 
 ### Fixed
+- **UI/UX audit fixes.** `/api/simulate` answers `400` naming the field for a bad seed / size / noise instead of a
+  `500`; seed `0` is a real seed (it became 42) and the studio reports every failed run instead of staying silent;
+  clearing all algorithms no longer runs six anyway. Archived benchmark-sweep runs (about half the archive) showed
+  `undefined` edge counts and had no edge list. A Perturb-seq screen of an oscillating network ran for minutes: it
+  now says it has no steady state, and the steady-state solver stops relaxing once it recognises a limit cycle
+  (4x faster there). The inference-algorithm menu disables algorithms that were not run; diverged-run amplitudes
+  print as `>1000%`; the statistics banner quotes the live numbers; LaTeX in labels shows as text; new tabs open at
+  the top; no horizontal overflow on phones; unlabeled controls have accessible names.
 - **Studio networks were shown with every edge reversed.** The simulator's adjacency is T[regulator, target], but the
   node inspector (in/out degree, activators/inhibitors), edge parameters, gene profiles (server and the page's
   `buildClientGeneProfile`) and the graph DOT/SVG/JSON read it row-wise as regulators. The Hill constants shown for an

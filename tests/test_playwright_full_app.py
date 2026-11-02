@@ -18,7 +18,7 @@ pytest.importorskip("playwright.sync_api")
 from grn_sim.web import server  # noqa: E402
 
 DATASETS = ["ecoli_sos", "norman_2019_real_16tf", "dream4_10gene", "replogle_2022_p53", "norman_2019_tf16"]
-TABS = ["tab-wizard", "tab-sos", "tab-history", "tab-vcc", "tab-figures"]
+TABS = ["tab-wizard", "tab-sos", "tab-history", "tab-vcc", "tab-figures", "tab-jobs"]
 VIEWS = ("hier", "spring", "canvas")
 
 
