@@ -496,7 +496,7 @@ Tested in [`tests/test_atlasshift_and_perturbseq.py`](tests/test_atlasshift_and_
 - `test_create_and_export_anndata`: Validates AnnData creation, layer preservation, and HDF5 `.h5ad` export.
 - `test_profile_similarity`: Verifies metric computation (Pearson $r$, Cosine Sim, RMSE).
 - `test_run_vcc_benchmark`: Validates end-to-end multi-context comparative benchmark pipeline.
-- [`tests/test_hill_response.py`](tests/test_hill_response.py), [`tests/test_knockdown_mode.py`](tests/test_knockdown_mode.py), [`tests/test_holdout_study_script.py`](tests/test_holdout_study_script.py): the Hill refit (held-out columns never used for fitting, oracle vs null), the CRISPRi knockdown generator, the off-target score and the reproducible paired study.
+- [`tests/test_cross_context.py`](tests/test_cross_context.py), [`tests/test_hill_response.py`](tests/test_hill_response.py), [`tests/test_knockdown_mode.py`](tests/test_knockdown_mode.py), [`tests/test_holdout_study_script.py`](tests/test_holdout_study_script.py): the Hill refit (held-out columns never used for fitting, oracle vs null), the CRISPRi knockdown generator, the off-target score and the reproducible paired study.
 - [`tests/test_vcc_benchmark_fixes.py`](tests/test_vcc_benchmark_fixes.py): per-algorithm response signs, unavailable models are reported instead of substituted, the held-out refit never sees the unseen experiments, rewired edges keep their kinetics, the epistasis screen matches an independent double-perturbation simulation, input validation and the bounded cache.
 
 ##### Benchmark Results: Multi-Context Scale-Free Network ($N=16$, $k_{\text{av}}=1.8$, 3 Source Atlases, 15% target rewiring, seed 2026)
@@ -552,6 +552,16 @@ Because one simulated network with 4 held-out genes is very noisy (the null alon
 | G2S / NIR / Vote structure + Hill | +0.054 / +0.047 / +0.041 | +0.682 / +0.680 / +0.679 | +0.039 / +0.073 / +0.035 (within 0.03 of the null) |
 
 *Takeaways*: (1) with the **true** structure the response to an unseen perturbation *is* predictable ($r \approx 0.48$ at 1% noise, $0.89$ without noise); (2) the structures **inferred by the existing algorithms are the bottleneck** — across all 17 algorithms the Hill refit is not distinguishable from one that uses a *random* structure (`by_chance`, +0.074 $\pm$ 0.052 over the null); only NOTEARS is nominally above the null (+0.106 $\pm$ 0.044, one of 17 comparisons); (3) searching regulators with the same model class that is refit (Hill forward selection) is the only approach that beats the null clearly, but it recovers only about half of the true edges; (4) the simulator's default perturbation adds $+1$ to the regulator input, so the perturbed gene's *own* transcript barely changes, unlike CRISPRi. With the new **CRISPRi knockdown** generator (`perturbation=knockdown`: the gene's production is cut by 80%) the target's own drop is ~77% of every profile, so **all-gene $r$ is inflated**: a baseline that knows only *which* gene was hit scores $r = 0.79$, higher than every algorithm. Judge knockdown results on the **off-target** column. Details, negative results and caveats: [`docs/HOLDOUT_RESEARCH.md`](docs/HOLDOUT_RESEARCH.md).
+
+###### 2c. Cross-context transfer predictors (lightweight, leaderboard-inspired)
+A third response method, **Cross-context transfer**, predicts the target context from the three source atlases and calibrates on the
+seen target perturbations only (leave-one-out for the seen ones, held-out target columns never read). Three small predictors, written
+from public descriptions and not from anyone's code, are compared with the plain source average: **AtlasShift, calibrated** (weighted
+atlases + per-gene scale), **TransPert-style** (cross-source consensus gate + one global scale) and **pseudo-bulk regression** (ridge on
+engineered features). Paired study over 24 networks (`python scripts/transfer_study.py`): the plain average already reaches held-out
+$r \approx 0.49$ (activation) / $0.90$ (knockdown, all genes), **none of the three beats it** (every paired difference within $\pm 0.02$,
+s.e. 0.01-0.03), and at 30% rewiring the true-structure oracle is ahead by $+0.17 \pm 0.05$. The AtlasShift row's 0 for held-out genes is a
+convention of the benchmark (no atlas observation), not a result. Details: [`docs/CROSS_CONTEXT_TRANSFER.md`](docs/CROSS_CONTEXT_TRANSFER.md).
 
 ###### 3. Destination Context Rewiring Sensitivity Sweep
 Models fitted on the 15%-rewired target context are applied to contexts that diverge from the source atlases by $\rho = 0\% \to 50\%$ edge rewiring (new edges are moved together with their kinetic parameters):

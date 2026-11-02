@@ -2868,9 +2868,9 @@
       <div class="panel" style="margin-bottom:14px;padding:14px;">
         <div class="panel-header" style="flex-wrap:wrap;gap:8px;">
           <div>
-            <div class="panel-title">Held-Out Perturbation Prediction: Every Algorithm, Two Response Methods</div>
+            <div class="panel-title">Held-Out Perturbation Prediction: Every Algorithm, Three Response Methods</div>
             <div style="font-size:11px;color:var(--text-muted);">
-              Each model is refit without the held-out experiments. <b>Linear Jacobian</b> = pinv(A); <b>Hill refit</b> = the algorithm's regulators, Hill kinetics refit on the seen experiments, steady-state response.
+              Each model is refit without the held-out experiments. <b>Linear Jacobian</b> = pinv(A); <b>Hill refit</b> = the algorithm's regulators, Hill kinetics refit on the seen experiments, steady-state response; <b>Cross-context transfer</b> = the three source atlases (which still contain the held-out genes) calibrated on the seen target experiments.
             </div>
           </div>
           <span class="badge badge-emerald">Table 2</span>
@@ -2911,6 +2911,7 @@
             <select id="vcc-method-select" style="width:auto;padding:4px 8px;font-size:12px;font-weight:700;" onchange="onVccMethodChange()">
               <option value="hill" selected>Hill refit (structure &rarr; kinetics)</option>
               <option value="linear">Linear Jacobian (pinv A)</option>
+              <option value="transfer">Cross-context transfer (atlases + seen target)</option>
             </select>
 
             <label style="font-size:11.5px;font-weight:700;color:var(--text-main);margin-left:8px;" for="vcc-model-select">Compare Model:</label>
@@ -8993,7 +8994,7 @@
     function renderVccResponseTable(data) {
       const tbody = document.querySelector('#tbl-vcc-response tbody');
       if (!tbody || !data.response_table) return;
-      const methodLabel = { linear: 'Linear Jacobian', hill: 'Hill refit', reference: 'Reference' };
+      const methodLabel = { linear: 'Linear Jacobian', hill: 'Hill refit', transfer: 'Cross-context transfer', reference: 'Reference' };
       tbody.innerHTML = '';
       data.response_table.forEach(row => {
         const tr = document.createElement('tr');
@@ -9028,14 +9029,16 @@
             + `r over all genes therefore mostly rewards knowing <i>which</i> gene was hit (the "Target-gene prior" row needs no model at all), so compare models on the off-target column.`
           : `<b>Activation:</b> +1 is added to the perturbed gene's regulator input; its own transcript barely changes, so r is dominated by the downstream response.`;
         note.innerHTML = `${modeText}<br>One simulated network with ${p.unseen_ood_targets} held-out genes: differences under about 0.1 are within noise `
-          + `(see <code>docs/HOLDOUT_RESEARCH.md</code> for the 24-network paired study); "no skill" = off-target r of 0.1 or less. Linear Jacobian rows are exactly 0 for held-out genes because their row of A is never identified.`;
+          + `(see <code>docs/HOLDOUT_RESEARCH.md</code> for the 24-network paired study); "no skill" = off-target r of 0.1 or less. Linear Jacobian rows are exactly 0 for held-out genes because their row of A is never identified. `
+          + `<b>Cross-context transfer</b> rows predict the target from the source atlases, which do contain the held-out genes; the AtlasShift row predicts 0 for them by construction (no atlas observation), so compare transfer methods with the plain "Source-atlas average" (see <code>docs/CROSS_CONTEXT_TRANSFER.md</code>).`;
       }
     }
 
     function currentVccModels(data) {
       const method = document.getElementById('vcc-method-select')?.value || 'hill';
       const params = (data && data.parameters) || {};
-      return (method === 'linear' ? params.response_models : params.hill_models) || [];
+      const lists = { linear: params.response_models, hill: params.hill_models, transfer: params.transfer_models };
+      return lists[method] || [];
     }
 
     function onVccMethodChange() {
@@ -9088,8 +9091,10 @@
 
       // Update Metrics Ribbon
       const method = document.getElementById('vcc-method-select')?.value || 'hill';
-      const predictions = (method === 'linear' ? profile.predictions : profile.hill_predictions) || {};
-      const metricsByModel = (method === 'linear' ? profile.metrics : profile.hill_metrics) || {};
+      const predictionsByMethod = { linear: profile.predictions, hill: profile.hill_predictions, transfer: profile.transfer_predictions };
+      const metricsByMethod = { linear: profile.metrics, hill: profile.hill_metrics, transfer: profile.transfer_metrics };
+      const predictions = predictionsByMethod[method] || {};
+      const metricsByModel = metricsByMethod[method] || {};
       const modelMetrics = metricsByModel[modelKey] || { pearson_r: 0, cosine_sim: 0, rmse: 0 };
       const atlasMetrics = (profile.metrics && profile.metrics.atlasshift) || { pearson_r: 0, cosine_sim: 0, rmse: 0 };
 
@@ -9322,6 +9327,9 @@
         { label: 'CellBox Neural ODE', data: rewire.cellbox_r || [], color: '#ec4899', width: 1.8, dash: [4, 2] },
         { label: 'RidgeCV Regularized', data: rewire.ridge_r || [], color: '#06b6d4', width: 1.8, dash: [2, 2] },
         { label: 'Hill refit (Voting structure)', data: rewire.hill_r || [], color: '#10b981', width: 2.2 },
+        { label: 'AtlasShift, calibrated', data: rewire.calibrated_r || [], color: '#a855f7', width: 1.6, dash: [6, 3] },
+        { label: 'TransPert-style', data: rewire.transpert_r || [], color: '#f59e0b', width: 1.6, dash: [6, 3] },
+        { label: 'Pseudo-bulk regression', data: rewire.pseudobulk_r || [], color: '#64748b', width: 1.6, dash: [2, 3] },
       ].filter(sr => sr.data.length === xLabels.length);  // models without a usable fit have no series
       drawMultiLineChart('canvas-vcc-rewire', xLabels, series, 'Pearson r', 0.0, 1.0);
     }

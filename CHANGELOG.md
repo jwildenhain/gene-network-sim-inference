@@ -12,13 +12,16 @@ versioning once it leaves 0.x.
   batches (`count`, seeds rise by one), live progress per algorithm, cancel, logs, toasts and a badge on the tab.
   The studio's open network is never replaced by a job. API: `GET/POST /api/jobs`, `GET /api/jobs/<id>`,
   `POST /api/jobs/<id>/cancel`, `POST /api/jobs/clear`. While a job holds the engine, interactive simulate / infer
-  answer `409` with the job's name instead of hanging. Jobs live in memory; the runs they create are archived.
+  answer `409` with the job's name instead of hanging. The last ten finished jobs are kept in `jobs.json` beside the
+  archive and survive a restart (jobs still queued or running then come back as interrupted); the runs they create are
+  archived.
 - Archive filters: "All runs, newest first" and "Modular topology".
 - **Perturb-seq screens** (`grn_sim.perturbseq`, see `docs/PERTURBSEQ.md`): knockdown / knockout / double
   perturbation screens with ground truth, per-cell doses and escapers, network-propagated cell noise (LNA or SDE),
   droplet measurement artefacts and guide calling, realism statistics against genome-scale Perturb-seq, anchored
   kinetics and the `replogle_like` preset; `grn-sim perturbseq` CLI; studio panel with h5ad export and realism report
   (`/api/perturbseq/realism`); `modular` topology; precise steady-state solver; large-network studio mode.
+- **Cross-context transfer predictors** for the Virtual Cell Challenge tab (`grn_sim.benchmarks.cross_context`): a plain source-atlas average, a calibrated AtlasShift-style ensemble, a TransPert-style consensus + global-scale predictor and a pseudo-bulk ridge regression, a third response method in the studio (`transfer_models`, `transfer_predictions`, rewiring series `calibrated_r` / `transpert_r` / `pseudobulk_r`) and a reproducible paired study (`scripts/transfer_study.py`, `docs/CROSS_CONTEXT_TRANSFER.md`). Finding: none beats the plain source average on held-out data.
 - **Held-out perturbation prediction** (`grn_sim.benchmarks.hill_response`): structure -> Hill refit -> steady state for
   every algorithm, a model-matched Hill forward search, a mean-profile null, a true-structure oracle and a target-gene
   prior. Research notes: `docs/HOLDOUT_RESEARCH.md`; reproducible paired study: `scripts/holdout_study.py`.
@@ -33,6 +36,12 @@ versioning once it leaves 0.x.
 - Extras: `torch` (PyTorch backend of CellBox / CPA-Lite), `browser` (Playwright), `dev` (pytest, ruff, mypy, build, twine).
 
 ### Changed
+- **The archive's "best method" is the highest F1, not the fewest total errors.** Fewest errors is won by an algorithm
+  that predicts almost nothing (an empty graph has only as many errors as the network has edges): 28 archived runs
+  named the by-chance baseline best and 22 named one that recovered nothing. New runs carry `best_basis: "f1"`; older
+  entries are re-derived on load from their stored per-algorithm summary (the database is not rewritten); the summary
+  cards name the top algorithm by mean F1. NOTEARS also no longer returns an empty graph on the linear-Jacobian and
+  CellBox engines (expression spanning thousands).
 - **G2S follows gen2spec.m exactly and is fast.** `GeneralToSpecific(drop_rule="exact")` (the new default) removes
   the column whose removal leaves the smallest pinv least-squares residual for every basis size, as MATLAB's
   `dropanother` does; it reproduces the stored 60-gene MATLAB run (G2S and the S2G/G2S vote) bit for bit. The previous
