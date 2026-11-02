@@ -4329,7 +4329,7 @@
 
     function jobResultText(j) {
       if (j.error) {
-        return `<span style="color:${j.status === 'failed' ? 'var(--accent-red)' : 'var(--accent-amber)'};">${jobEsc(j.error)}</span>`;
+        return `<div style="font-size:11.5px;margin-top:2px;color:${j.status === 'failed' ? 'var(--accent-red)' : 'var(--accent-amber)'};">${jobEsc(j.error)}</div>`;
       }
       const sm = j.summary || {};
       const parts = [];
@@ -4412,13 +4412,22 @@
         JOBS.algorithms = data.algorithms || JOBS.algorithms;
         JOBS.error = null;
         JOBS.updated = new Date().toLocaleTimeString();
+        const finishedNow = [];
         for (const j of JOBS.list) {
           const before = JOBS.status[j.id];
-          if (JOBS.loaded && before && before !== j.status && ['done', 'failed', 'cancelled'].includes(j.status)) {
-            showToast(`${j.id} ${j.status}: ${j.label}${j.error ? ' — ' + j.error : ''}`,
-              j.status === 'done' ? 'success' : (j.status === 'failed' ? 'error' : 'warn'), 7000, () => switchMainTab('tab-jobs'));
-          }
+          if (JOBS.loaded && before && before !== j.status && ['done', 'failed', 'cancelled'].includes(j.status)) finishedNow.push(j);
           JOBS.status[j.id] = j.status;
+        }
+        // One toast per poll, however many jobs finished, so a batch does not bury the table
+        if (finishedNow.length === 1) {
+          const j = finishedNow[0];
+          showToast(`${j.id} ${j.status}: ${j.label}${j.error ? ' — ' + j.error : ''}`,
+            j.status === 'done' ? 'success' : (j.status === 'failed' ? 'error' : 'warn'), 7000, () => switchMainTab('tab-jobs'));
+        } else if (finishedNow.length > 1) {
+          const n = status => finishedNow.filter(j => j.status === status).length;
+          const parts = ['done', 'failed', 'cancelled'].filter(n).map(k => `${n(k)} ${k}`);
+          showToast(`${finishedNow.length} jobs finished: ${parts.join(', ')}.`,
+            n('failed') ? 'error' : (n('cancelled') ? 'warn' : 'success'), 7000, () => switchMainTab('tab-jobs'));
         }
         JOBS.loaded = true;
         await Promise.all([...JOBS.open].map(async id => {

@@ -256,3 +256,32 @@ def test_interactive_requests_get_an_immediate_409_while_a_job_holds_the_engine(
         t.join(5)
     # with the engine free again the same request goes through
     assert _call(app_url + "/api/simulate", "POST", {"num_genes": 6, "seed": 1})[0] == 200
+
+
+def test_a_second_inference_job_adds_to_the_first_one_instead_of_replacing_it(app_url):
+    from grn_sim.web import server
+
+    code, body = _call(f"{app_url}/api/jobs", "POST",
+                       {"params": {"num_genes": 6, "seed": 21, "topology": "random", "noise": 0.0}, "algorithms": ["s2g"]})
+    assert code == 202
+    first = _poll(app_url, body["jobs"][0]["id"])
+    run_id = first["run_id"]
+    s2g_before = server.SIMULATION_RUN_STORE[run_id]["inferred_payload"]["metrics"]["s2g"]
+
+    code, body = _call(f"{app_url}/api/jobs", "POST", {"run_id": run_id, "algorithms": ["nir", "g2s"]})
+    assert code == 202
+    second = _poll(app_url, body["jobs"][0]["id"])
+    assert second["status"] == jobs.DONE, second
+    assert second["summary"]["algorithms_run"] == ["nir", "g2s"]
+    assert set(second["summary"]["algorithms_stored"]) == {"s2g", "nir", "g2s"}
+
+    stored = server.SIMULATION_RUN_STORE[run_id]["inferred_payload"]
+    assert set(stored["metrics"]) == {"s2g", "nir", "g2s"}
+    assert stored["metrics"]["s2g"] == s2g_before  # the earlier result is untouched
+    for per_alg in ("tmp_statmat", "confusion_matrix", "comparison_graphs", "pred_matrices", "svgs_dot"):
+        assert set(stored[per_alg]) == {"s2g", "nir", "g2s"}, per_alg
+    assert stored["primary_algorithm"] == "s2g"
+
+    # it is what the archive serves too, not only the in-memory copy
+    loaded = _call(f"{app_url}/api/history/load?run_id={run_id}")[1]
+    assert set(loaded["inferred"]["metrics"]) == {"s2g", "nir", "g2s"}

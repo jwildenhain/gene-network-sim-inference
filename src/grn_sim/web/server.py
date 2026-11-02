@@ -857,12 +857,16 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
 
 @_state_locked
 def _execute_inference(selected_algs: List[str],
-                       on_algorithm: Optional[Callable[[str, int, int], None]] = None) -> Dict[str, Any]:
+                       on_algorithm: Optional[Callable[[str, int, int], None]] = None,
+                       previous: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Runs selected reverse-engineering algorithms on CURRENT_STATE and records to SIMULATION_HISTORY and SQLite `rgn_db`.
 
     ``on_algorithm(alg, index, total)`` is called before each algorithm; raising from it aborts the call before
     anything is stored (the background job queue uses this for progress and cancellation).
+
+    Without ``previous`` the stored results are replaced by those of ``selected_algs``. With the run's earlier
+    inference payload they are added to instead (algorithms run again overwrite their own entry only).
     """
     experiment = CURRENT_STATE["experiment"]
     true_matrix = CURRENT_STATE["true_matrix"]
@@ -906,15 +910,16 @@ def _execute_inference(selected_algs: List[str],
         "notears": NOTEARSAlgorithm(k_interactions=k_est if use_reg else None),
     }
 
-    metrics_dict = {}
-    tmp_statmat_dict = {}
-    cmat_dict = {}
-    comp_graphs = {}
-    dots_dict = {}
-    svgs_dot_dict = {}
-    svgs_dot_grid_dict = {}
-    svgs_neato_dict = {}
-    pred_matrices = {}
+    prev = previous or {}
+    metrics_dict = dict(prev.get("metrics") or {})
+    tmp_statmat_dict = dict(prev.get("tmp_statmat") or {})
+    cmat_dict = dict(prev.get("confusion_matrix") or {})
+    comp_graphs = dict(prev.get("comparison_graphs") or {})
+    dots_dict = dict(prev.get("dots") or {})
+    svgs_dot_dict = dict(prev.get("svgs_dot") or {})
+    svgs_dot_grid_dict = dict(prev.get("svgs_dot_grid") or {})
+    svgs_neato_dict = dict(prev.get("svgs_neato") or {})
+    pred_matrices = dict(prev.get("pred_matrices") or {})
 
     runnable = [a for a in selected_algs if a in alg_runners]
     for position, alg in enumerate(runnable):
@@ -973,7 +978,7 @@ def _execute_inference(selected_algs: List[str],
             svgs_neato_dict[alg] = render_graphviz_svg(dot_9_neato, engine="neato", matrix=draw_stats, gene_names=gene_names, is_9state=True)
 
     aic_profile = _compute_aic_profile(X, U, target_gene=0)
-    primary_alg = selected_algs[0] if selected_algs else "s2g"
+    primary_alg = prev.get("primary_algorithm") or (selected_algs[0] if selected_algs else "s2g")
 
     result_payload = {
         "status": "success",
@@ -2388,14 +2393,16 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
         try:
             CURRENT_STATE.clear()
             CURRENT_STATE.update(stored["state"])
-            result = _execute_inference(algorithms, on_algorithm=before_algorithm)
+            result = _execute_inference(algorithms, on_algorithm=before_algorithm,
+                                        previous=stored.get("inferred_payload") or None)
         finally:
             CURRENT_STATE.clear()
             CURRENT_STATE.update(snapshot)
     ctx.progress(advance=True)  # the last algorithm
     metrics = result.get("metrics", {})
     best = min(metrics, key=lambda k: metrics[k]["total_errors"]) if metrics else None
-    return {"algorithms_run": list(metrics), "best_algorithm": best,
+    return {"algorithms_run": [a for a in algorithms if a in metrics], "algorithms_stored": list(metrics),
+            "best_algorithm": best,
             "best_total_errors": metrics[best]["total_errors"] if best else None,
             "best_f1": metrics[best]["f1_score"] if best else None}
 
