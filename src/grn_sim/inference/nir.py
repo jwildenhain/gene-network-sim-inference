@@ -8,6 +8,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 
+from grn_sim.inference._parallel import default_n_jobs, map_indices
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
 
@@ -30,8 +31,10 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         threshold: float = 0.0,
         adaptive_k: bool = False,
         perturbation_mode: str = "additive",
+        n_jobs: Optional[int] = None,
     ):
         super().__init__(name="nir")
+        self.n_jobs = n_jobs
         self.k_interactions = k_interactions
         self.top_d = top_d
         self.ridge = ridge
@@ -103,22 +106,7 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
             SSEK_tmp = np.full(combinations, np.inf, dtype=float)
             reg_eye = self.ridge * np.eye(ncoeff + 1)
 
-            for j in range(combinations):
-                Z = Xtmp[subN[j, :], :]
-                ZZt = Z @ Z.T
-                cond_val = np.linalg.cond(ZZt) if ZZt.size > 1 else (1.0 if ZZt[0, 0] > 0 else np.inf)
-                if cond_val <= self.cond_max:
-                    try:
-                        aest[j, :] = -u @ Z.T @ np.linalg.inv(ZZt + reg_eye)
-                        SSEK_tmp[j] = float(np.sum((u + aest[j, :] @ Z) ** 2))
-                    except np.linalg.LinAlgError:
-                        pass
-                elif self.ridge > 0 or adaptive_k:
-                    try:
-                        aest[j, :] = -u @ Z.T @ np.linalg.pinv(ZZt + reg_eye)
-                        SSEK_tmp[j] = float(np.sum((u + aest[j, :] @ Z) ** 2))
-                    except Exception:
-                        pass
+            self._score_combinations(Xtmp, u, subN, reg_eye, adaptive_k, aest, SSEK_tmp)
 
             # Sort errors (mergesort preserves MATLAB's stable tie-breaking order)
             srtidxSSE = np.argsort(SSEK_tmp, kind="mergesort")
@@ -150,6 +138,53 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
 
         return best_combo, best_coeffs, best_sse, nopert
 
+    def _fit_row(self, payload, i: int):
+        X_f, U_f, K, D, adaptive = payload
+        return self._fit_single_row(i, X_f, U_f, K, D, adaptive_k=adaptive)
+
+    def _score_combinations(self, Xtmp, u, subN, reg_eye, adaptive_k, aest, SSEK_tmp, chunk: int = 1024) -> None:
+        """
+        Least-squares fit of every candidate regressor set in ``subN`` (rows), in batches: coefficients go to ``aest``
+        and the squared error to ``SSEK_tmp``. Same rule as the one-set-at-a-time loop of nir_v3.m: well-conditioned
+        sets use the inverse, ill-conditioned ones the pseudo-inverse (when ridge > 0 or adaptive_k), else skipped.
+        """
+        combinations, k1 = subN.shape
+        use_pinv = self.ridge > 0 or adaptive_k
+        for start in range(0, combinations, chunk):
+            idx = slice(start, min(start + chunk, combinations))
+            Z = Xtmp[subN[idx, :], :]                                  # (c, k1, M)
+            ZZt = Z @ Z.transpose(0, 2, 1)                             # (c, k1, k1)
+            uZ = np.einsum("m,ckm->ck", -u, Z)                         # -u @ Z.T per set
+            if k1 > 1:
+                cond = np.linalg.cond(ZZt)
+            else:
+                cond = np.where(ZZt[:, 0, 0] > 0, 1.0, np.inf)
+            good = np.flatnonzero(cond <= self.cond_max)                # includes nothing for nan
+            bad = np.flatnonzero(~(cond <= self.cond_max))
+            for sel, solver in ((good, np.linalg.inv), (bad, np.linalg.pinv if use_pinv else None)):
+                if sel.size == 0 or solver is None:
+                    continue
+                try:
+                    inv = solver(ZZt[sel] + reg_eye)
+                    coef = np.einsum("ck,ckl->cl", uZ[sel], inv)
+                    ok = np.arange(sel.size)
+                except (np.linalg.LinAlgError, ValueError):             # a singular set: go one at a time
+                    coef = np.zeros((sel.size, k1))
+                    ok_list = []
+                    for q, c in enumerate(sel):
+                        try:
+                            coef[q] = uZ[c] @ solver(ZZt[c] + reg_eye)
+                            ok_list.append(q)
+                        except Exception:
+                            pass
+                    ok = np.array(ok_list, dtype=int)
+                if ok.size == 0:
+                    continue
+                rows = start + sel[ok]
+                aest[rows, :] = coef[ok]
+                resid = u[None, :] + np.einsum("ck,ckm->cm", coef[ok], Z[sel[ok]])
+                SSEK_tmp[rows] = np.sum(resid ** 2, axis=1)
+
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
         Fits regulatory interaction matrix using NIR matching nir_v3.m.
@@ -171,8 +206,9 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
         A_est = np.zeros((N, N), dtype=float)
         diagnostics: Dict[str, List[float]] = {"sse": [], "r2": []}
 
-        for i in range(N):
-            indices, coeffs, sse, nopert = self._fit_single_row(i, X_f, U_f, K, D, adaptive_k=adaptive)
+        n_jobs = self.n_jobs if self.n_jobs is not None else default_n_jobs(cap=16)
+        fits = map_indices(self._fit_row, (X_f, U_f, K, D, adaptive), N, n_jobs)
+        for i, (indices, coeffs, sse, nopert) in enumerate(fits):
             if nopert:
                 A_est[i, i] = -1.0
             for idx, c in zip(indices, coeffs):

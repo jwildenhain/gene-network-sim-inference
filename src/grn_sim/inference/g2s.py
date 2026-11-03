@@ -27,12 +27,8 @@ def _single_blas_thread() -> Iterator[None]:
     tie-breaking (like the MATLAB original) depends on the BLAS thread count; fixing it makes all
     backends (process workers use one thread) and repeated runs agree.
     """
-    try:
-        from threadpoolctl import threadpool_limits
-    except Exception:  # pragma: no cover - threadpoolctl missing
-        yield
-        return
-    with threadpool_limits(limits=1, user_api="blas"):
+    from grn_sim.inference._native import blas_limit
+    with blas_limit(1):
         yield
 
 

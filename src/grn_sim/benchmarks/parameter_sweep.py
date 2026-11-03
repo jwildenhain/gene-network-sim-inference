@@ -10,8 +10,10 @@ Generates comprehensive simulation runs across:
 4. Measurement Noise Axis (sigma_m in [0.0, 0.02, 0.05, 0.10, 0.15, 0.20])
 5. Dynamics Regimes (Responsive, Flat, Oscillating across all 3 architectures)
 
-Evaluates ALL 12 available reverse-engineering algorithms:
-- Voting Ensemble (Consensus S2G ∩ G2S)
+Evaluates ALL 19 reverse-engineering algorithms, configured as in the web studio (regulator-input fits on the Hill
+simulator's data, G2S with the LOO drop rule, K = the network's mean in-degree):
+- Voting Ensemble (majority of S2G, G2S and NIR)
+- Score Vote (evidence-weighted S2G + G2S + NIR)
 - Simple-to-General (S2G Forward Stepwise AIC)
 - General-to-Specific (G2S Backward Stepwise AIC)
 - AtlasShift (Cross-Atlas Empirical Latent Transfer)
@@ -21,6 +23,7 @@ Evaluates ALL 12 available reverse-engineering algorithms:
 - FAST SVD (Singular Value Decomposition Inversion Truncation)
 - CellBox (Neural ODE Adjoint Differential Equation Optimizer)
 - Kaggle Multi-Output RidgeCV (L2 Regularized Inversion)
+- ARACNE, CausalGRN, DMD-GRN, DeepRIG, SFINN, NOTEARS
 - CPA-Lite (Compositional Perturbation Autoencoder Lite)
 - By-Chance (Null Random Bernoulli Baseline Model)
 
@@ -58,6 +61,7 @@ from grn_sim.inference import (
     SFINNAlgorithm,
     NOTEARSAlgorithm,
 )
+from grn_sim.inference import registry as algorithm_registry
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.inference.orientation import HILL, orient_prediction
 from grn_sim.visualization.graph_export import (
@@ -68,30 +72,13 @@ from grn_sim.visualization.graph_export import (
 from grn_sim.web.database import save_simulation_to_db, init_db, get_db_path
 
 
-ALGO_METADATA = {
-    "vote": {"name": "Voting Ensemble", "type": "Consensus (S2G ∩ G2S)", "badge": "Consensus Winner"},
-    "s2g": {"name": "Simple-to-General (S2G)", "type": "Forward Stepwise AIC", "badge": "Top Single Stepwise"},
-    "g2s": {"name": "General-to-Specific (G2S)", "type": "Backward Stepwise AIC", "badge": "Stepwise Backward"},
-    "atlasshift": {"name": "AtlasShift (Empirical)", "type": "Cross-Atlas Latent Transfer", "badge": "Empirical Transfer"},
-    "genie3": {"name": "GENIE3", "type": "Random Forest Tree Importance", "badge": "ML Tree Ensemble"},
-    "nir": {"name": "NIR (Multiple Regression)", "type": "Linear Matrix Inverse", "badge": "Matrix Inverse Baseline"},
-    "netdeconv": {"name": "Network Deconvolution", "type": "Direct-Indirect Deconvolution", "badge": "Spectral Deconvolution"},
-    "fast": {"name": "FAST (SVD Inversion)", "type": "SVD Truncation", "badge": "SVD Regularized"},
-    "cellbox": {"name": "CellBox Neural ODE", "type": "Adjoint Gradient Optimizer", "badge": "Deep Neural ODE"},
-    "ridge": {"name": "Multi-Output RidgeCV", "type": "L2 Regularized Inverse", "badge": "L2 Ridge Baseline"},
-    "cpa_lite": {"name": "CPA-Lite Autoencoder", "type": "Latent Perturbation AE", "badge": "Latent Autoencoder"},
-    "by_chance": {"name": "By-Chance (Random)", "type": "Null Bernoulli Model", "badge": "Null Random Baseline"},
-    "arachne": {"name": "ARACNE", "type": "Information Theoretic (MI + DPI)", "badge": "Mutual Info & DPI"},
-    "causalgrn": {"name": "CausalGRN", "type": "Interventional Causal Discovery", "badge": "Causal Do-Calculus"},
-    "dmdgrn": {"name": "DMD-GRN", "type": "Dynamic Mode Decomposition", "badge": "Koopman Dynamics"},
-    "deeprig": {"name": "DeepRIG", "type": "Graph Autoencoder (GCN)", "badge": "Deep Graph AE"},
-    "sfinn": {"name": "SFINN", "type": "Shared Factor & Integrated NN", "badge": "Neighborhood GCN+FNN"},
-    "notears": {"name": "NOTEARS", "type": "Differentiable Acyclic DAG", "badge": "Continuous DAG Optimization"},
-}
+def ALGO_METADATA() -> Dict[str, Dict[str, str]]:
+    """Name / type / badge of every registered algorithm (the sweep covers whatever is registered when it runs)."""
+    return algorithm_registry.sweep_metadata()
 
 
 def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True) -> Dict[str, Any]:
-    """Runs a complete 12-algorithm multi-axis benchmark across Random, Scale-Free, and Hierarchical topologies."""
+    """Runs a complete 19-algorithm multi-axis benchmark across Random, Scale-Free, and Hierarchical topologies."""
     t_start = time.time()
     db_file = db_path or get_db_path()
     init_db(db_file)
@@ -109,7 +96,8 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
         ("hierarchical", TopologyType.HIERARCHICAL, "Hierarchical Modular (Ravasz-Barabási)"),
     ]
 
-    all_algorithms = list(ALGO_METADATA.keys())
+    algo_meta = ALGO_METADATA()
+    all_algorithms = list(algo_meta.keys())
 
     # Containers for aggregated curves across algorithms
     size_sweep_data: Dict[str, Dict[str, List[float]]] = {alg: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for alg in all_algorithms}
@@ -160,37 +148,19 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
         gene_names = [f"G{i+1}" for i in range(n)]
         k_est = max(1, int(np.ceil(np.sum(exp.true_matrix != 0) / n)))
 
-        # 2. Instantiate and fit ALL 12 available inference algorithms
-        runners = {
-            "vote": VotingEnsemble(),
-            "s2g": SimpleToGeneral(),
-            "g2s": GeneralToSpecific(),
-            "atlasshift": AtlasShift(de_threshold=0.15),
-            "genie3": GENIE3Algorithm(n_estimators=15, seed=seed),
-            "nir": NIRAlgorithm(k_interactions=k_est, top_d=min(4, n - 1)),
-            "netdeconv": NetworkDeconvolution(),
-            "fast": FastSVD(k_interactions=k_est, add_diagonal_identity=False),
-            "cellbox": CellBoxNeuralODE(epochs=8),
-            "ridge": KaggleMultiOutputRidge(),
-            "cpa_lite": CPALite(epochs=6),
-            "by_chance": ByChance(k_interactions=k_est, seed=seed),
-            "arachne": AracneAlgorithm(k_interactions=k_est),
-            "causalgrn": CausalGRNAlgorithm(k_interactions=k_est),
-            "dmdgrn": DMDGRNAlgorithm(k_interactions=k_est),
-            "deeprig": DeepRIGAlgorithm(k_interactions=k_est, seed=seed),
-            "sfinn": SFINNAlgorithm(k_interactions=k_est, seed=seed),
-            "notears": NOTEARSAlgorithm(k_interactions=k_est),
-        }
+        # 2. Instantiate and fit every registered algorithm, configured as in the web studio's Hill-data runs
+        ctx = algorithm_registry.BuildContext(k_est=k_est, use_reg=True, seed=seed)
+        runners = algorithm_registry.build_all(ctx)
 
         preds = {}
         fit_times = {}
         for alg_name, runner in runners.items():
             t_fit_start = time.perf_counter()
             try:
-                U_in = -exp.U if alg_name in ("nir", "fast", "ridge") else exp.U
-                res = runner.fit(exp.X, U_in)
+                res = runner.fit(exp.X, exp.U)
                 # scored against T[regulator, target]; algorithms differ in output orientation
-                preds[alg_name] = orient_prediction(alg_name, res.adjacency_pred, HILL)
+                fit_mode = str(res.diagnostics.get("perturbation_mode", "additive"))
+                preds[alg_name] = orient_prediction(alg_name, res.adjacency_pred, HILL, False, fit_mode)
             except Exception:
                 preds[alg_name] = np.zeros((n, n), dtype=int)
             fit_times[alg_name] = round(time.perf_counter() - t_fit_start, 4)
@@ -356,7 +326,7 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
             "history_entry": history_entry,
         }
 
-    print("Executing Complete Benchmark Sweep Across 18 Algorithms and 3 Graph Architectures...")
+    print("Executing Complete Benchmark Sweep Across 19 Algorithms and 3 Graph Architectures...")
 
     # -------------------------------------------------------------------------
     # AXIS 1: NETWORK SIZE SWEEP ACROSS RANDOM, SCALE-FREE & HIERARCHICAL (N in [12..60])
@@ -518,7 +488,7 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
     for alg, m_list in all_evaluated_metrics.items():
         if not m_list:
             continue
-        meta = ALGO_METADATA.get(alg, {"name": alg.upper(), "type": "Standard", "badge": "Algorithm"})
+        meta = algo_meta.get(alg, {"name": alg.upper(), "type": "Standard", "badge": "Algorithm"})
         f1_mean = round(float(np.mean([x["f1"] for x in m_list])), 3)
         pwr_mean = round(float(np.mean([x["power"] for x in m_list])), 1)
         spec_mean = round(float(np.mean([x["specificity"] for x in m_list])), 1)
@@ -592,7 +562,7 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
             "mean_specificity_pct": round(float(np.mean(all_specs)), 1) if all_specs else 0.0,
             "mean_total_errors": round(float(np.mean(all_errors)), 1) if all_errors else 0.0,
             "best_algorithm_key": best_in_arch,
-            "best_algorithm_name": ALGO_METADATA.get(best_in_arch, {}).get("name", best_in_arch.upper()),
+            "best_algorithm_name": algo_meta.get(best_in_arch, {}).get("name", best_in_arch.upper()),
             "best_algorithm_f1": alg_breakdown[best_in_arch]["mean_f1"],
             "algorithms": alg_breakdown,
         }

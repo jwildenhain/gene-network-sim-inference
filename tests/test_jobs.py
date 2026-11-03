@@ -220,14 +220,15 @@ def test_http_errors_are_reported_not_swallowed(app_url):
 
 
 def test_algorithm_keys_match_the_inference_runners():
-    import inspect
-    import re
-
+    """The job queue, the API and the studio's runners all read one registry, so they cannot drift apart."""
+    from grn_sim.inference import registry
     from grn_sim.web import server
 
-    src = inspect.getsource(server._execute_inference)
-    keys = set(re.findall(r'^\s{8}"(\w+)": ', src.split("alg_runners = {")[1].split("\n    }")[0], re.M))
-    assert keys == set(server.KNOWN_ALGORITHMS)
+    assert server.known_algorithms() == registry.keys() == list(server.KNOWN_ALGORITHMS)
+    for use_reg in (True, False):                       # every known key builds a runner for either data model
+        ctx = registry.BuildContext(k_est=3, use_reg=use_reg)
+        for key in server.known_algorithms():
+            assert registry.build(key, ctx).fit is not None
 
 
 def test_interactive_requests_get_an_immediate_409_while_a_job_holds_the_engine(app_url, monkeypatch):

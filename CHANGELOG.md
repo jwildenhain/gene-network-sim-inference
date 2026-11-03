@@ -5,6 +5,47 @@ versioning once it leaves 0.x.
 
 ## [Unreleased]
 
+### Changed
+- **Archive tab is paged.** It no longer downloads the whole history (3.3 MB, 3.6 s for 340 runs): `/api/history` accepts
+  `set`, `page`, `page_size`, `sort`, `order` and `q` and returns one page of slim rows (about 20 KB), ranked, sorted and
+  searched on the server, so sorting a column orders the whole archive, not only the visible page. The tab has a pager, a page
+  size and a run-id search. Without those parameters `/api/history` answers as before. The ranked sets and the by-type summary
+  are cached against the archive file's version.
+
+### Fixed
+- **Server hang under concurrent requests.** OpenBLAS's thread pool and `fork()` deadlocked the process pools (G2S, S2G,
+  GENIE3, ...) when several request threads computed at once: six concurrent G2S fits hung in one run of three. The package
+  now sets `OPENBLAS_NUM_THREADS=1` / `MKL_NUM_THREADS=1` at import (before NumPy loads; your own value wins), the
+  Dockerfile sets them too, and the BLAS controller / Numba kernel are warmed up before the first request
+  (`grn_sim.inference._native`). Fits are also about 3x faster on one thread.
+- **Stale results drawn over newer ones.** A slow earlier run, archive selection or benchmark load no longer overwrites what
+  the user asked for later (newest request wins), and its busy button is released only when the last request ends.
+- `/api/infer` with an empty or unknown algorithm list no longer wipes the run's stored results (400); `/api/simulate`
+  rejects unknown topology / engine / preset names; the Studio no longer starts a run with a blank topology; the real-data
+  banner follows the run that was just made; the archive detail menu used the retired key `ridge`.
+
+### Accessibility
+- axe-core (WCAG 2.0-2.2 A/AA and best-practice rules) reports no violations on any tab in the light, dark and phone layouts,
+  down from 1,562 nodes: text colours now use darker "ink" tokens on the light theme (the accent colours remain for fills),
+  the dark-theme indigo fill holds 4.5:1 under white text, targets are at least 24 px (40 px on touch screens), scrollable
+  regions can be focused, the tab bar is a real `tablist` with roving focus and arrow / Home / End keys, and there is a skip link
+  and a visible focus ring.
+- Every chart has a text alternative (a summary plus its numbers for screen readers); clickable rows and badges work with
+  Enter / Space; tables have names and header scopes; the theme button names the action it will take; reduced-motion is respected.
+- Not covered: the network graphs' nodes are focusable but edges are not keyboard-operable, chart hover tooltips have no keyboard
+  equivalent (the numbers are in the text alternative), and no screen reader was used for testing.
+
+### Added
+- **Algorithm registry** (`grn_sim.inference.registry`): one `register(AlgorithmSpec(...))` call makes an algorithm known to
+  the API, the job queue, the studio, the benchmark studio, the Virtual Cell Challenge, the parameter sweep, scoring
+  orientation and the page (`/api/algorithms`).
+- **Score Vote** (`score_vote`): S2G + G2S (+ NIR) combined through per-edge evidence scores instead of a presence/sign vote.
+- A loading bar with elapsed seconds for slow requests; F1 columns in the run, archive and Virtual Cell Challenge tables;
+  F1 charts for all algorithms across the size, connectivity and noise sweeps; the runtime chart lists every algorithm.
+- S2G, GENIE3, CausalGRN, NIR and RidgeCV run per-gene work on a process pool (identical results, 5-17x faster);
+  CausalGRN's partial-correlation loop is vectorised; SFINN is now a deterministic scoring rule (the earlier random,
+  untrained network scored at chance level).
+
 ### Added
 - **Background job queue** (`grn_sim.web.jobs`, tab 6 "Job Queue"): queue network generation and the inference
   algorithms as jobs that run one at a time while the studio stays usable. A job generates a network, runs

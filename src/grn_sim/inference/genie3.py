@@ -9,6 +9,7 @@ from typing import Optional
 import numpy as np
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 
+from grn_sim.inference._parallel import default_n_jobs, map_indices
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 
 
@@ -26,13 +27,29 @@ class GENIE3Algorithm(BaseInferenceAlgorithm):
         k_interactions: Optional[int] = None,
         threshold: float = 0.05,
         seed: int = 42,
+        n_jobs: Optional[int] = None,
     ):
         super().__init__(name="genie3")
+        self.n_jobs = n_jobs
         self.n_estimators = n_estimators
         self.tree_type = tree_type
         self.k_interactions = k_interactions
         self.threshold = threshold
         self.seed = seed
+
+    def _target_importances(self, payload, i: int) -> np.ndarray:
+        """Normalised feature importances of target ``i`` over the other genes (in index order)."""
+        X_mat, n_trees, seed = payload
+        N = X_mat.shape[0]
+        target = X_mat[i, :]
+        reg_idx = [j for j in range(N) if j != i]   # no self-loop candidates
+        features = X_mat[reg_idx, :].T              # (M, N-1)
+        cls = RandomForestRegressor if self.tree_type == "random_forest" else ExtraTreesRegressor
+        model = cls(n_estimators=n_trees, max_features="sqrt", random_state=seed + i, n_jobs=1)
+        model.fit(features, target)
+        importances = model.feature_importances_
+        total = np.sum(importances)
+        return importances / total if total > 0 else importances
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
@@ -52,36 +69,11 @@ class GENIE3Algorithm(BaseInferenceAlgorithm):
         corr = np.corrcoef(X_mat)
         np.nan_to_num(corr, copy=False, nan=0.0)
 
-        # Regress each target gene i against all candidate regulators j != i
-        for i in range(N):
-            target = X_mat[i, :]
-            # Exclude self-loop from candidate regulators
+        # Regress each target gene i against all candidate regulators j != i (targets are independent)
+        n_jobs = self.n_jobs if self.n_jobs is not None else default_n_jobs(cap=16)
+        rows = map_indices(self._target_importances, (X_mat, n_trees, seed), N, n_jobs)
+        for i, importances in enumerate(rows):
             reg_idx = [j for j in range(N) if j != i]
-            features = X_mat[reg_idx, :].T  # Shape (M, N-1)
-
-            if self.tree_type == "random_forest":
-                model = RandomForestRegressor(
-                    n_estimators=n_trees,
-                    max_features="sqrt",
-                    random_state=seed + i,
-                    n_jobs=1,
-                )
-            else:
-                model = ExtraTreesRegressor(
-                    n_estimators=n_trees,
-                    max_features="sqrt",
-                    random_state=seed + i,
-                    n_jobs=1,
-                )
-
-            model.fit(features, target)
-            importances = model.feature_importances_
-
-            # Normalize importances
-            sum_imp = np.sum(importances)
-            if sum_imp > 0:
-                importances = importances / sum_imp
-
             for idx, reg in enumerate(reg_idx):
                 sign_val = 1 if corr[reg, i] >= 0 else -1
                 W[i, reg] = importances[idx] * sign_val

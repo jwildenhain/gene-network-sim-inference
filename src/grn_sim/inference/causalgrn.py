@@ -9,6 +9,7 @@ import time
 from typing import Optional
 import numpy as np
 
+from grn_sim.inference._parallel import default_n_jobs, map_indices
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 from grn_sim.inference.preprocessor import default_preprocessor
 
@@ -30,12 +31,37 @@ class CausalGRNAlgorithm(BaseInferenceAlgorithm):
         k_interactions: Optional[int] = None,
         alpha: float = 0.05,
         use_data_prep: bool = True,
+        n_jobs: Optional[int] = None,
     ):
         super().__init__(name="causalgrn")
+        self.n_jobs = n_jobs
         self.pcorr_threshold = pcorr_threshold
         self.k_interactions = k_interactions
         self.alpha = alpha
         self.use_data_prep = use_data_prep
+
+    @staticmethod
+    def _pcorr_row(corr: np.ndarray, i: int) -> np.ndarray:
+        """Signed minimum |partial correlation| of gene ``i`` with each gene j > i (first minimum over k wins, and it
+        must beat the marginal |r_ij| strictly)."""
+        N = corr.shape[0]
+        js = np.arange(i + 1, N)
+        rows = np.arange(js.size)
+        r_ij = corr[i, js]
+        r_ik = corr[i, :]
+        r_jk = corr[js, :]
+        denom = np.sqrt(np.maximum(1e-6, (1.0 - r_ik ** 2)[None, :] * (1.0 - r_jk ** 2)))
+        val = (r_ij[:, None] - r_ik[None, :] * r_jk) / denom
+        mag = np.abs(val)
+        mag[np.isnan(mag)] = np.inf
+        mag[:, i] = np.inf                  # k == i
+        mag[rows, js] = np.inf              # k == j
+        k_best = np.argmin(mag, axis=1)
+        min_k = mag[rows, k_best]
+        better = min_k < np.abs(r_ij)
+        min_pcorr = np.where(better, min_k, np.abs(r_ij))
+        best_sign = np.where(better, np.sign(val[rows, k_best]), np.sign(r_ij))
+        return best_sign * min_pcorr
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
@@ -65,40 +91,22 @@ class CausalGRNAlgorithm(BaseInferenceAlgorithm):
 
         # 2. Compute first-order partial correlation matrix:
         # r_{ij|k} = (r_ij - r_ik * r_jk) / sqrt((1 - r_ik^2) * (1 - r_jk^2))
+        # For each pair the smallest |partial correlation| over all conditioning genes k, one row i at a time.
         pcorr_mat = np.zeros((N, N), dtype=float)
-        for i in range(N):
-            for j in range(i + 1, N):
-                r_ij = corr[i, j]
-                min_pcorr = abs(r_ij)
-                best_sign = np.sign(r_ij)
-                for k in range(N):
-                    if k == i or k == j:
-                        continue
-                    r_ik = corr[i, k]
-                    r_jk = corr[j, k]
-                    denom = np.sqrt(max(1e-6, (1.0 - r_ik ** 2) * (1.0 - r_jk ** 2)))
-                    pcorr_val = (r_ij - r_ik * r_jk) / denom
-                    if abs(pcorr_val) < min_pcorr:
-                        min_pcorr = abs(pcorr_val)
-                        best_sign = np.sign(pcorr_val)
-
-                pcorr_mat[i, j] = best_sign * min_pcorr
-                pcorr_mat[j, i] = best_sign * min_pcorr
+        n_jobs = self.n_jobs if self.n_jobs is not None else default_n_jobs(cap=16)
+        for i, vals in enumerate(map_indices(self._pcorr_row, corr, N - 1, n_jobs)):
+            pcorr_mat[i, i + 1:] = vals
+            pcorr_mat[i + 1:, i] = vals
 
         A_est = np.zeros((N, N), dtype=float)
         adj_pred = np.zeros((N, N), dtype=int)
 
-        for i in range(N):
-            for j in range(N):
-                if i == j:
-                    continue
-                direct_skel = abs(pcorr_mat[i, j])
-                interv_eff = B_effect[i, j] if abs(B_effect[i, j]) > 1e-4 else pcorr_mat[i, j]
-                sign_eff = np.sign(interv_eff) if abs(interv_eff) > 1e-5 else np.sign(corr[i, j])
-                if sign_eff == 0:
-                    sign_eff = 1.0
-
-                A_est[i, j] = sign_eff * (0.6 * direct_skel + 0.4 * min(1.0, abs(interv_eff)))
+        direct_skel = np.abs(pcorr_mat)
+        interv_eff = np.where(np.abs(B_effect) > 1e-4, B_effect, pcorr_mat)
+        sign_eff = np.where(np.abs(interv_eff) > 1e-5, np.sign(interv_eff), np.sign(corr))
+        sign_eff = np.where(sign_eff == 0, 1.0, sign_eff)
+        A_est = sign_eff * (0.6 * direct_skel + 0.4 * np.minimum(1.0, np.abs(interv_eff)))
+        np.fill_diagonal(A_est, 0.0)
 
         # 4. Discretization
         for i in range(N):
@@ -110,9 +118,8 @@ class CausalGRNAlgorithm(BaseInferenceAlgorithm):
                         adj_pred[i, j] = int(np.sign(A_est[i, j]))
             else:
                 row_thresh = max(thresh, np.mean(scores) * 0.75) if np.any(scores > 0) else thresh
-                for j in range(N):
-                    if scores[j] > row_thresh and scores[j] > 1e-4:
-                        adj_pred[i, j] = int(np.sign(A_est[i, j]))
+                keep = (scores > row_thresh) & (scores > 1e-4)
+                adj_pred[i, keep] = np.sign(A_est[i, keep]).astype(int)
 
         time_elapsed = time.time() - start_time
         return InferenceResult(

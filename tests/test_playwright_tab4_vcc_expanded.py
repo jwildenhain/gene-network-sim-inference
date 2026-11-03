@@ -40,26 +40,27 @@ def test_tab4_vcc_expanded():
         row_count = rows.count()
         print(f"Initial VCC table row count: {row_count}")
 
-        if row_count < 18:
+        expected_rows = page.evaluate("fetch('/api/algorithms').then(r => r.json()).then(d => d.algorithms.length)")
+        if row_count < expected_rows:
             print("Triggering #btn-run-vcc ...")
             page.locator("#btn-run-vcc").click()
             # Wait for benchmark to complete (up to 35s)
-            page.wait_for_selector("#tbl-vcc-summary tbody tr:nth-child(18)", timeout=40000)
+            page.wait_for_selector(f"#tbl-vcc-summary tbody tr:nth-child({expected_rows})", timeout=40000)
             page.wait_for_timeout(1500)
             row_count = page.locator("#tbl-vcc-summary tbody tr").count()
 
         print(f"Verified VCC table row count: {row_count}")
-        assert row_count == 18, f"Expected 18 algorithm rows in VCC table, got {row_count}"
+        assert row_count == expected_rows, f"Expected {expected_rows} algorithm rows (one per registered algorithm) in VCC table, got {row_count}"
 
         # Verify algorithm names in table
         table_text = page.locator("#tbl-vcc-summary").inner_text()
         core_algos = ["VOTE", "CELLBOX", "S2G", "G2S",
                       "RIDGE_CV", "CPA_LITE", "NETDECONV", "NIR", "FAST", "ARACHNE",
-                      "CAUSALGRN", "DMDGRN", "DEEPRIG", "SFINN", "NOTEARS", "ATLASSHIFT", "BY_CHANCE"]
+                      "CAUSALGRN", "DMDGRN", "DEEPRIG", "SFINN", "NOTEARS", "ATLASSHIFT", "BY_CHANCE", "SCORE_VOTE"]
         for algo in core_algos:
             assert algo in table_text, f"Algorithm '{algo}' missing from VCC summary table!"
 
-        print("All 18 algorithms verified in summary table.")
+        print(f"All {expected_rows} algorithms verified in summary table.")
 
         # Verify Section 3: Interactive In Silico Perturbation Simulator
         target_select = page.locator("#vcc-target-select")

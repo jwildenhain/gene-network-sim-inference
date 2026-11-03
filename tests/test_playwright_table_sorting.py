@@ -186,9 +186,10 @@ def test_table_sorting():
         first_run_id = first_row.locator("td").nth(col_of("Run ID")).inner_text().strip()
         print(f"Clicking first sorted row: {first_run_id}")
         first_row.click()
-        page.wait_for_timeout(500)
 
-        # Verify selected-row highlight
+        # Verify selected-row highlight (the run's detail loads first; a large run can take more than half a second)
+        page.wait_for_function(
+            "() => document.querySelector('#tbl-history tbody tr')?.classList.contains('selected-row')", timeout=8000)
         assert "selected-row" in (first_row.get_attribute("class") or "")
 
         # Verify detail panel loaded
@@ -242,9 +243,12 @@ def test_table_sorting():
         page.wait_for_timeout(300)
         assert "sort-asc" in (sos_err_th.get_attribute("class") or "")
 
+        # find the column by its header: columns are added over time (F1 sits before Total Errors now)
+        heads = [h.replace("↕", "").strip().lower() for h in page.locator("#tbl-sos-benchmark thead th").all_inner_texts()]
+        err_col = next(i for i, h in enumerate(heads) if "total errors" in h)
         bench_errs = []
         for i in range(sos_rows.count()):
-            txt = sos_rows.nth(i).locator("td").nth(6).inner_text().strip()
+            txt = sos_rows.nth(i).locator("td").nth(err_col).inner_text().strip()
             bench_errs.append(float(txt))
         print(f"Benchmark Table Total Errors (ASC): {bench_errs}")
         assert bench_errs == sorted(bench_errs), "Benchmark table not sorted by Total Errors"
@@ -286,9 +290,11 @@ def test_table_sorting():
         page.wait_for_timeout(300)
         assert "sort-asc" in (t1_err_th.get_attribute("class") or "")
 
+        t1_heads = [h.replace("↕", "").strip().lower() for h in page.locator("#tbl-alg-comparison thead th").all_inner_texts()]
+        t1_err_col = next(i for i, h in enumerate(t1_heads) if "total errors" in h)
         t1_errs = []
         for i in range(t1_rows.count()):
-            txt = t1_rows.nth(i).locator("td").nth(6).inner_text().strip()
+            txt = t1_rows.nth(i).locator("td").nth(t1_err_col).inner_text().strip()
             t1_errs.append(float(txt))
         print(f"Tab 1 Total Errors (ASC): {t1_errs}")
         assert t1_errs == sorted(t1_errs), "Tab 1 table not sorted by Total Errors"

@@ -65,7 +65,7 @@
         --text-main: light-dark(var(--text-main-light), var(--text-main-dark));
         --text-muted: light-dark(var(--text-muted-light), var(--text-muted-dark));
         --accent-blue: light-dark(#0284c7, #38bdf8);
-        --accent-indigo: light-dark(#4f46e5, #6366f1);
+        --accent-indigo: light-dark(#4f46e5, #5558e8);
         --accent-amber: light-dark(#d97706, #f59e0b);
       }
     }
@@ -82,7 +82,7 @@
         --text-muted: var(--text-muted-dark);
         --topbar-bg: var(--topbar-bg-dark);
         --accent-blue: #38bdf8;
-        --accent-indigo: #6366f1;
+        --accent-indigo: #5558e8;
         --accent-amber: #f59e0b;
       }
     }
@@ -99,7 +99,7 @@
       --text-muted: var(--text-muted-dark);
       --topbar-bg: var(--topbar-bg-dark);
       --accent-blue: #38bdf8;
-      --accent-indigo: #6366f1;
+      --accent-indigo: #5558e8;
       --accent-amber: #f59e0b;
     }
 
@@ -287,10 +287,10 @@
     @media (prefers-reduced-motion: reduce) { .job-bar.job-bar-running > div { animation: none; } }
     .job-status { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 11px; font-weight: 700; border: 1px solid var(--border); }
     .job-status-queued { color: var(--text-muted); }
-    .job-status-running { color: var(--accent-blue); border-color: var(--accent-blue); }
-    .job-status-done { color: var(--accent-emerald); border-color: var(--accent-emerald); }
-    .job-status-failed { color: var(--accent-red); border-color: var(--accent-red); }
-    .job-status-cancelled { color: var(--accent-amber); border-color: var(--accent-amber); }
+    .job-status-running { color: var(--ink-blue); border-color: var(--accent-blue); }
+    .job-status-done { color: var(--ink-emerald); border-color: var(--accent-emerald); }
+    .job-status-failed { color: var(--ink-red); border-color: var(--accent-red); }
+    .job-status-cancelled { color: var(--ink-amber); border-color: var(--accent-amber); }
     .job-log { margin: 0; padding: 8px 10px; background: var(--bg-stage); border: 1px solid var(--border); border-radius: 6px; font-family: var(--font-mono); font-size: 11px; max-height: 180px; overflow: auto; white-space: pre-wrap; }
     .jobs-table td, .jobs-table th { vertical-align: top; }
     .jobs-actions { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -558,25 +558,25 @@
       padding: 2px 8px;
       border-radius: 999px;
       background: rgba(56, 189, 248, 0.15);
-      color: var(--accent-blue);
+      color: var(--ink-blue);
       border: 1px solid rgba(56, 189, 248, 0.35);
     }
 
     .badge-emerald {
       background: rgba(16, 185, 129, 0.15);
-      color: var(--accent-emerald);
+      color: var(--ink-emerald);
       border-color: rgba(16, 185, 129, 0.35);
     }
 
     .badge-amber {
       background: rgba(245, 158, 11, 0.15);
-      color: var(--accent-amber);
+      color: var(--ink-amber);
       border-color: rgba(245, 158, 11, 0.35);
     }
 
     .badge-purple {
       background: rgba(139, 92, 246, 0.15);
-      color: #8b5cf6;
+      color: var(--ink-purple);
       border-color: rgba(139, 92, 246, 0.35);
     }
 
@@ -595,7 +595,7 @@
     }
 
     .form-label span.val {
-      color: var(--accent-blue);
+      color: var(--ink-blue);
       font-family: var(--font-mono);
     }
 
@@ -677,7 +677,7 @@
 
     .dropdown-link:hover {
       background: var(--bg-card);
-      color: var(--accent-blue) !important;
+      color: var(--ink-blue) !important;
     }
 
     .btn-sm {
@@ -711,7 +711,7 @@
       font-size: 17px;
       font-weight: 800;
       font-family: var(--font-mono);
-      color: var(--accent-blue);
+      color: var(--ink-blue);
     }
 
     .stat-card .stat-lbl {
@@ -976,7 +976,7 @@
     .settings-pill .sp-val {
       font-size: 13.5px;
       font-weight: 700;
-      color: var(--accent-blue);
+      color: var(--ink-blue);
       font-family: var(--font-mono);
       margin-top: 2px;
     }
@@ -1050,9 +1050,84 @@
     @media (max-width: 600px) {
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
     }
+    /* Slow requests: a bar across the top of the page with what is being loaded and how long it has taken */
+    #global-load { position: fixed; top: 0; left: 0; right: 0; z-index: 10000; pointer-events: none; display: none; }
+    #global-load.on { display: block; }
+    #global-load .bar { height: 3px; background: linear-gradient(90deg, #38bdf8, #10b981, #6366f1, #38bdf8); background-size: 200% 100%;
+                        animation: shimmerProgress 1.4s linear infinite; }
+    #global-load .msg { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); max-width: calc(100vw - 24px);
+                        padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+                        overflow: hidden; text-overflow: ellipsis; background: var(--bg-card, #fff); color: var(--text-main, #0f172a);
+                        border: 1px solid var(--border, #cbd5e1); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
+    @media (prefers-reduced-motion: reduce) { #global-load .bar { animation: none; } }
+    /* ======================= Accessibility ======================= */
+    /* Text-safe inks: the accent colours are fine as fills but fail 4.5:1 as small text on the light theme. */
+    :root { --ink-blue: #075985; --ink-emerald: #065f46; --ink-amber: #92400e; --ink-pink: #9d174d; --ink-red: #b91c1c; --ink-purple: #6d28d9; --ink-cyan: #0e7490; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --ink-blue: #38bdf8; --ink-emerald: #34d399; --ink-amber: #fbbf24; --ink-pink: #f472b6; --ink-red: #f87171; --ink-purple: #a78bfa; --ink-cyan: #22d3ee; }
+    }
+    :root[data-theme="dark"] { --ink-blue: #38bdf8; --ink-emerald: #34d399; --ink-amber: #fbbf24; --ink-pink: #f472b6; --ink-red: #f87171; --ink-purple: #a78bfa; --ink-cyan: #22d3ee; }
+    :root[data-theme="light"] { --ink-blue: #075985; --ink-emerald: #065f46; --ink-amber: #92400e; --ink-pink: #9d174d; --ink-red: #b91c1c; --ink-purple: #6d28d9; --ink-cyan: #0e7490; }
+    .badge { color: var(--ink-blue); }
+    .badge-emerald { color: var(--ink-emerald); }
+    .badge-amber { color: var(--ink-amber); }
+    .badge-purple { color: var(--ink-purple); }
+    /* the same inks for text coloured with an accent literal or variable in inline styles (written or generated) */
+    [style^="color:#10b981" i], [style^="color: #10b981" i], [style*=";color:#10b981" i], [style*="; color:#10b981" i], [style*=";color: #10b981" i], [style*="; color: #10b981" i], [style^="color:var(--accent-emerald)" i], [style^="color: var(--accent-emerald)" i], [style*=";color:var(--accent-emerald)" i], [style*="; color:var(--accent-emerald)" i], [style*=";color: var(--accent-emerald)" i], [style*="; color: var(--accent-emerald)" i] { color: var(--ink-emerald) !important; }
+    [style^="color:#0284c7" i], [style^="color: #0284c7" i], [style*=";color:#0284c7" i], [style*="; color:#0284c7" i], [style*=";color: #0284c7" i], [style*="; color: #0284c7" i], [style^="color:var(--accent-blue)" i], [style^="color: var(--accent-blue)" i], [style*=";color:var(--accent-blue)" i], [style*="; color:var(--accent-blue)" i], [style*=";color: var(--accent-blue)" i], [style*="; color: var(--accent-blue)" i] { color: var(--ink-blue) !important; }
+    [style^="color:#d97706" i], [style^="color: #d97706" i], [style*=";color:#d97706" i], [style*="; color:#d97706" i], [style*=";color: #d97706" i], [style*="; color: #d97706" i], [style^="color:var(--accent-amber)" i], [style^="color: var(--accent-amber)" i], [style*=";color:var(--accent-amber)" i], [style*="; color:var(--accent-amber)" i], [style*=";color: var(--accent-amber)" i], [style*="; color: var(--accent-amber)" i] { color: var(--ink-amber) !important; }
+    [style^="color:#ec4899" i], [style^="color: #ec4899" i], [style*=";color:#ec4899" i], [style*="; color:#ec4899" i], [style*=";color: #ec4899" i], [style*="; color: #ec4899" i], [style^="color:var(--accent-pink)" i], [style^="color: var(--accent-pink)" i], [style*=";color:var(--accent-pink)" i], [style*="; color:var(--accent-pink)" i], [style*=";color: var(--accent-pink)" i], [style*="; color: var(--accent-pink)" i] { color: var(--ink-pink) !important; }
+    [style^="color:#ef4444" i], [style^="color: #ef4444" i], [style*=";color:#ef4444" i], [style*="; color:#ef4444" i], [style*=";color: #ef4444" i], [style*="; color: #ef4444" i], [style^="color:var(--accent-red)" i], [style^="color: var(--accent-red)" i], [style*=";color:var(--accent-red)" i], [style*="; color:var(--accent-red)" i], [style*=";color: var(--accent-red)" i], [style*="; color: var(--accent-red)" i] { color: var(--ink-red) !important; }
+    [style^="color:#8b5cf6" i], [style^="color: #8b5cf6" i], [style*=";color:#8b5cf6" i], [style*="; color:#8b5cf6" i], [style*=";color: #8b5cf6" i], [style*="; color: #8b5cf6" i] { color: var(--ink-purple) !important; }
+    [style^="color:#f59e0b" i], [style^="color: #f59e0b" i], [style*=";color:#f59e0b" i], [style*="; color:#f59e0b" i], [style*=";color: #f59e0b" i], [style*="; color: #f59e0b" i] { color: var(--ink-amber) !important; }
+    [style^="color:#06b6d4" i], [style^="color: #06b6d4" i], [style*=";color:#06b6d4" i], [style*="; color:#06b6d4" i], [style*=";color: #06b6d4" i], [style*="; color: #06b6d4" i] { color: var(--ink-cyan) !important; }
+    [style^="color:var(--accent-cyan" i], [style^="color: var(--accent-cyan" i], [style*=";color:var(--accent-cyan" i], [style*="; color:var(--accent-cyan" i], [style*=";color: var(--accent-cyan" i], [style*="; color: var(--accent-cyan" i] { color: var(--ink-cyan) !important; }
+    /* the same, as the browser rewrites colours that script sets */
+    [style^="color: rgb(16, 185, 129)" i], [style*="; color: rgb(16, 185, 129)" i] { color: var(--ink-emerald) !important; }
+    [style^="color: rgb(2, 132, 199)" i], [style*="; color: rgb(2, 132, 199)" i] { color: var(--ink-blue) !important; }
+    [style^="color: rgb(217, 119, 6)" i], [style*="; color: rgb(217, 119, 6)" i], [style^="color: rgb(245, 158, 11)" i], [style*="; color: rgb(245, 158, 11)" i] { color: var(--ink-amber) !important; }
+    [style^="color: rgb(236, 72, 153)" i], [style*="; color: rgb(236, 72, 153)" i] { color: var(--ink-pink) !important; }
+    [style^="color: rgb(239, 68, 68)" i], [style*="; color: rgb(239, 68, 68)" i] { color: var(--ink-red) !important; }
+    [style^="color: rgb(139, 92, 246)" i], [style*="; color: rgb(139, 92, 246)" i] { color: var(--ink-purple) !important; }
+    [style^="color: rgb(6, 182, 212)" i], [style*="; color: rgb(6, 182, 212)" i] { color: var(--ink-cyan) !important; }
+    [style^="background: rgb(139, 92, 246)" i], [style*="; background: rgb(139, 92, 246)" i] { background: #6d28d9 !important; }
+    /* white text on a purple fill */
+    [style^="background:#8b5cf6" i], [style^="background: #8b5cf6" i], [style*=";background:#8b5cf6" i], [style*="; background:#8b5cf6" i], [style*=";background: #8b5cf6" i], [style*="; background: #8b5cf6" i] { background: #6d28d9 !important; }
+    .btn-sm.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
+    .archive-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 10px 2px 4px; font-size: 12px; color: var(--text-muted); }
+    .archive-pager-buttons { display: inline-flex; gap: 6px; }
+    .archive-pager-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .archive-pager-size { display: inline-flex; align-items: center; gap: 6px; }
+    .archive-pager-size select { padding: 3px 8px; font-size: 12px; }
+
+    /* A visible keyboard focus everywhere, and a way past the navigation */
+    :focus-visible { outline: 3px solid var(--accent-indigo); outline-offset: 2px; border-radius: 3px; }
+    .nav-tab:focus-visible { outline-offset: -3px; }
+    [data-kbd-click] { cursor: pointer; }
+    .skip-link { position: absolute; left: 8px; top: -64px; z-index: 10001; padding: 9px 16px; border-radius: 7px;
+                 background: #4f46e5; color: #fff; font-weight: 700; text-decoration: none; }
+    .skip-link:focus { top: 8px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+               clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    /* Targets of at least 24 x 24 px (WCAG 2.5.8), larger on touch screens */
+    select { min-height: 28px; }
+    td a { display: inline-block; min-width: 24px; min-height: 24px; line-height: 24px; padding: 0 6px; text-align: center; }
+    @media (pointer: coarse), (max-width: 760px) {
+      .btn, .btn-sm, select, input[type="number"], input[type="text"], .nav-tab, .theme-toggle-btn { min-height: 40px; }
+      .alg-check { min-height: 40px; }
+      td a { min-width: 32px; min-height: 32px; line-height: 32px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+                               transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div id="global-load" role="progressbar" aria-busy="false" aria-label="Loading"><div class="bar"></div><div class="msg" id="global-load-msg" aria-live="polite"></div></div>
 
   <!-- Top Navigation Bar (Modernized phpIoRN global_conf.inc.php) -->
   <header class="topbar">
@@ -1066,41 +1141,41 @@
       </div>
 
       <!-- Top-Right Light/Dark Mode Toggle Button -->
-      <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="toggleColorScheme()" title="Toggle Light / Dark Mode">
+      <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="toggleColorScheme()" title="Toggle Light / Dark Mode" aria-label="Switch colour scheme">
         <span id="theme-toggle-icon">&#9728;&#65039;</span>
         <span id="theme-toggle-label">Light Mode</span>
       </button>
     </div>
 
     <nav class="nav-tabs" role="tablist">
-      <button class="nav-tab active" data-tab="tab-wizard" onclick="switchMainTab('tab-wizard')">
+      <button class="nav-tab active" data-tab="tab-wizard" id="tabbtn-tab-wizard" role="tab" aria-selected="true" aria-controls="tab-wizard" tabindex="0" onclick="switchMainTab('tab-wizard')">
         <span>1. Simulation &amp; Inference Studio (runsim.php)</span>
       </button>
-      <button class="nav-tab" data-tab="tab-sos" onclick="switchMainTab('tab-sos')">
+      <button class="nav-tab" data-tab="tab-sos" id="tabbtn-tab-sos" role="tab" aria-selected="false" aria-controls="tab-sos" tabindex="-1" onclick="switchMainTab('tab-sos')">
         <span>2. Real-World Benchmarks</span>
       </button>
-      <button class="nav-tab" data-tab="tab-history" onclick="switchMainTab('tab-history')">
+      <button class="nav-tab" data-tab="tab-history" id="tabbtn-tab-history" role="tab" aria-selected="false" aria-controls="tab-history" tabindex="-1" onclick="switchMainTab('tab-history')">
         <span>3. Previous Simulations Archive (showpre.php)</span>
       </button>
-      <button class="nav-tab" data-tab="tab-vcc" onclick="switchMainTab('tab-vcc')">
+      <button class="nav-tab" data-tab="tab-vcc" id="tabbtn-tab-vcc" role="tab" aria-selected="false" aria-controls="tab-vcc" tabindex="-1" onclick="switchMainTab('tab-vcc')">
         <span>4. Virtual Cell Challenge</span>
       </button>
-      <button class="nav-tab" data-tab="tab-figures" onclick="switchMainTab('tab-figures')">
+      <button class="nav-tab" data-tab="tab-figures" id="tabbtn-tab-figures" role="tab" aria-selected="false" aria-controls="tab-figures" tabindex="-1" onclick="switchMainTab('tab-figures')">
         <span>5. Overall Statistics</span>
       </button>
-      <button class="nav-tab" data-tab="tab-jobs" onclick="switchMainTab('tab-jobs')">
+      <button class="nav-tab" data-tab="tab-jobs" id="tabbtn-tab-jobs" role="tab" aria-selected="false" aria-controls="tab-jobs" tabindex="-1" onclick="switchMainTab('tab-jobs')">
         <span>6. Job Queue</span>
         <span class="nav-badge" id="jobs-nav-badge" hidden></span>
       </button>
     </nav>
   </header>
 
-  <main class="main-container">
+  <main class="main-container" id="main-content" tabindex="-1">
 
     <!-- ========================================================================= -->
     <!-- TAB 1: SIMULATION & REVERSE-ENGINEERING STUDIO (runsim.php 6-Step Wizard) -->
     <!-- ========================================================================= -->
-    <section id="tab-wizard" class="tab-pane active">
+    <section id="tab-wizard" class="tab-pane active" role="tabpanel" aria-labelledby="tabbtn-tab-wizard">
 
       <!-- 6-Step phpIoRN Workflow Bar -->
       <div class="wizard-bar">
@@ -1180,7 +1255,7 @@
 
       <div class="workspace-grid">
         <!-- LEFT SIDEBAR: Steps 1, 2, 5 Controls -->
-        <aside class="panel">
+        <section class="panel" aria-label="Simulation settings">
           <div class="panel-header">
             <div class="panel-title">Wizard Configuration</div>
             <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
@@ -1310,9 +1385,9 @@
           <!-- Step 5: Inference Algorithms -->
           <div class="form-group step-section" id="step-section-5" style="border-radius:8px;padding:10px 12px;margin-top:14px;background:var(--bg-card);border:1px solid var(--border);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <label class="form-label" style="margin:0;font-weight:700;">Step 5: Reverse-Engineering (18 Algorithms)</label>
+              <label class="form-label" style="margin:0;font-weight:700;">Step 5: Reverse-Engineering (<span class="alg-total">19</span> Algorithms)</label>
               <div style="display:flex;gap:6px;align-items:center;">
-                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(true)" title="Select all 18 available reverse-engineering algorithms">All (18)</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(true)" title="Select all 18 available reverse-engineering algorithms">All (<span class="alg-total">19</span>)</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(false)" title="Clear all selections">Clear</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setThesisCoreAlgorithms()" title="Select the 6 core 2004/2006 thesis algorithms (S2G, G2S, Vote, NIR, FAST, By-Chance)">Thesis Core (6)</button>
                 <span class="badge badge-sm" style="font-size:10px;">Step 5</span>
@@ -1322,6 +1397,7 @@
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="s2g" checked /> S2G (Forward AIC)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="g2s" checked /> G2S (Backward AIC)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="vote" checked /> Voting Consensus</label>
+              <label class="alg-check"><input type="checkbox" class="alg-cb" value="score_vote" checked /> Score Vote (S2G+G2S+NIR)</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="cellbox" checked /> CellBox Neural ODE</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="genie3" checked /> GENIE3 Ensemble</label>
               <label class="alg-check"><input type="checkbox" class="alg-cb" value="netdeconv" checked /> Net Deconvolution</label>
@@ -1375,7 +1451,7 @@
             </div>
             <canvas id="canvas-basal-mini" class="chart-canvas" width="290" height="125" style="width:100%;height:125px;margin-top:8px;"></canvas>
           </div>
-        </aside>
+        </section>
 
         <!-- RIGHT MAIN AREA: Steps 3, 4, 6 Visualizations -->
         <div class="right-column">
@@ -1430,6 +1506,7 @@
                 <div style="display:flex;gap:4px;align-items:center;">
                   <select id="select-infer-alg" style="width:auto;padding:4px 8px;font-size:11.5px;font-weight:700;" onchange="onSelectInferAlg(this.value)">
                     <option value="vote">Voting Ensemble</option>
+                    <option value="score_vote">Score Vote (evidence-weighted)</option>
                     <option value="s2g">S2G (Forward)</option>
                     <option value="g2s">G2S (Backward)</option>
                     <option value="cellbox">CellBox Neural ODE</option>
@@ -1559,6 +1636,7 @@
                       <th>PPV (%)</th>
                       <th>FDR (%)</th>
                       <th>Signed PPV (%)</th>
+                      <th>F1</th>
                       <th>Total Errors</th>
                     </tr>
                   </thead>
@@ -1598,7 +1676,7 @@
     <!-- ========================================================================= -->
     <!-- TAB 2: REAL-WORLD & IN SILICO BENCHMARK STUDIO (SOS, DREAM4, Perturb-seq) -->
     <!-- ========================================================================= -->
-    <section id="tab-sos" class="tab-pane">
+    <section id="tab-sos" class="tab-pane" role="tabpanel" aria-labelledby="tabbtn-tab-sos">
       <div class="panel" style="margin-bottom:16px;">
         <div id="benchmark-load-error" role="alert" style="display:none;margin-bottom:10px;padding:8px 12px;border:1px solid var(--accent-red);border-radius:8px;font-size:12px;font-weight:600;color:var(--accent-red);"></div>
         <!-- Tab 2 Animated Loading Bar -->
@@ -1665,6 +1743,7 @@
               <span style="font-size:12px;color:var(--text-muted);">Inspect Algorithm:</span>
               <select id="sos-alg-select" style="width:auto;font-weight:700;" onchange="renderSosAlgorithm(this.value)">
                 <option value="vote" selected>Voting Ensemble</option>
+                <option value="score_vote">Score Vote (evidence-weighted)</option>
                 <option value="cellbox">CellBox Neural ODE</option>
                 <option value="genie3">GENIE3 Ensemble</option>
                 <option value="s2g">S2G (Forward AIC)</option>
@@ -1826,7 +1905,7 @@
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
-              <select id="sos-gene-select" style="width:auto;padding:3px 8px;font-size:11.5px;font-weight:700;" onchange="selectSosGene(this.value, false)" title="Select active gene to inspect">
+              <select id="sos-gene-select" aria-label="Inspect gene" style="width:auto;padding:3px 8px;font-size:11.5px;font-weight:700;" onchange="selectSosGene(this.value, false)" title="Select active gene to inspect">
               </select>
               <div class="btn-group" role="group">
                 <button class="btn btn-primary btn-sm" id="btn-traj-mode-focus" onclick="setSosTrajectoryMode('focus')" title="Show dynamic trajectories & value states for selected gene">
@@ -1903,6 +1982,7 @@
                 <th>Inferred Conn / Power (%)</th>
                 <th>FDR (FP/Inf %)</th>
                 <th>Signed PPV (%)</th>
+                <th>F1</th>
                 <th>Total Errors</th>
                 <th>True Signed PPV (%)</th>
                 <th>AUPR</th>
@@ -1933,7 +2013,7 @@
     <!-- ========================================================================= -->
     <!-- TAB 5: OVERALL STATISTICS & BENCHMARK PERFORMANCE                         -->
     <!-- ========================================================================= -->
-    <section id="tab-figures" class="tab-pane">
+    <section id="tab-figures" class="tab-pane" role="tabpanel" aria-labelledby="tabbtn-tab-figures">
       <!-- Master Tab 5 Mode Switcher Banner -->
       <div class="panel" style="margin-bottom:16px;">
         <div class="panel-header" style="margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
@@ -1996,7 +2076,7 @@
           <div class="panel-header">
             <div>
               <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:8px;">
-                🏆 Systematic Benchmark Algorithm Leaderboard (18 Algorithms Evaluated)
+                🏆 Systematic Benchmark Algorithm Leaderboard (<span class="alg-total">19</span> Algorithms Evaluated)
                 <span class="badge badge-emerald">Complete Cross-Architecture Evaluation</span>
               </div>
               <div style="font-size:11.5px;color:var(--text-muted);">
@@ -2041,7 +2121,7 @@
                 Systematic benchmark evaluated across Random Erdős-Rényi, Scale-Free Barabási-Albert, and Hierarchical Modular Ravasz-Barabási topologies across all 18 algorithms.
               </div>
             </div>
-            <span class="badge" id="badge-overall-arch-count">3 Architectures &bull; 18 Algorithms</span>
+            <span class="badge" id="badge-overall-arch-count">3 Architectures &bull; <span class="alg-total">19</span> Algorithms</span>
           </div>
           <div id="overall-arch-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));gap:12px;padding:4px 0;">
             <!-- Populated dynamically by renderOverallStats() -->
@@ -2124,6 +2204,39 @@
             <span class="badge badge-blue">Runtime (CPU Seconds)</span>
           </div>
           <canvas id="canvas-overall-runtime" class="chart-canvas" width="1380" height="260" style="width:100%;height:260px;"></canvas>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 6A: F1 Score vs Network Size (all algorithms)</div>
+              <div style="font-size:11px;color:var(--text-muted);">Harmonic mean of precision and recall for every algorithm as the network grows</div>
+            </div>
+            <span class="badge badge-emerald">F1 (×100)</span>
+          </div>
+          <canvas id="canvas-overall-size-f1" class="chart-canvas" width="1380" height="300" style="width:100%;height:300px;"></canvas>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 6B: F1 Score vs Connectivity (all algorithms)</div>
+              <div style="font-size:11px;color:var(--text-muted);">F1 for every algorithm as the average number of regulators per gene (k) rises</div>
+            </div>
+            <span class="badge badge-emerald">F1 (×100)</span>
+          </div>
+          <canvas id="canvas-overall-conn-f1" class="chart-canvas" width="1380" height="300" style="width:100%;height:300px;"></canvas>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Figure 6C: F1 Score vs Measurement Noise (all algorithms)</div>
+              <div style="font-size:11px;color:var(--text-muted);">F1 for every algorithm under escalating measurement noise</div>
+            </div>
+            <span class="badge badge-emerald">F1 (×100)</span>
+          </div>
+          <canvas id="canvas-overall-noise-f1" class="chart-canvas" width="1380" height="300" style="width:100%;height:300px;"></canvas>
         </div>
       </div>
 
@@ -2278,7 +2391,7 @@
     <!-- ========================================================================= -->
     <!-- TAB 4: PREVIOUS SIMULATIONS ARCHIVE (showpre.php)                         -->
     <!-- ========================================================================= -->
-    <section id="tab-history" class="tab-pane">
+    <section id="tab-history" class="tab-pane" role="tabpanel" aria-labelledby="tabbtn-tab-history">
       <div class="panel" style="margin-bottom:16px;">
         <div class="panel-header">
           <div>
@@ -2308,6 +2421,9 @@
               <option value="overall_top15">🏆 Overall Top 15 Highest Performing Runs (N ≥ 12)</option>
             </select>
             <span id="archive-filter-count-badge" class="badge badge-emerald" style="font-size:11px;">Best 15 (N ≥ 12)</span>
+            <label class="sr-only" for="archive-search">Search runs by id</label>
+            <input id="archive-search" type="search" placeholder="Search run id…" autocomplete="off" maxlength="100"
+                   style="padding:5px 10px;font-size:12px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);width:170px;" />
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;" onclick="simulatePresetRun('responsive')" title="Simulate a standard network with clear multi-gene perturbation responses">
@@ -2396,6 +2512,7 @@
             <tbody></tbody>
           </table>
         </div>
+        <div id="archive-pager" class="archive-pager" role="navigation" aria-label="Archive pages"></div>
       </div>
 
       <!-- Detailed Run View Panel (Populated when clicking any archived run row) -->
@@ -2415,6 +2532,7 @@
             <span style="font-size:11.5px;color:var(--text-muted);">Algorithm View:</span>
             <select id="hist-detail-alg" style="width:auto;font-weight:700;padding:4px 8px;font-size:12px;" onchange="renderArchiveDetailAlg(this.value)">
               <option value="vote">Voting Ensemble</option>
+              <option value="score_vote">Score Vote (evidence-weighted)</option>
               <option value="s2g">S2G (Forward AIC)</option>
               <option value="g2s">G2S (Backward AIC)</option>
               <option value="atlasshift">AtlasShift (Empirical)</option>
@@ -2423,7 +2541,7 @@
               <option value="netdeconv">Network Deconvolution</option>
               <option value="fast">FAST (SVD Truncation)</option>
               <option value="cellbox">CellBox (Neural ODE)</option>
-              <option value="ridge">RidgeCV (L2 Inverse)</option>
+              <option value="ridge_cv">RidgeCV (L2 Inverse)</option>
               <option value="cpa_lite">CPA-Lite Autoencoder</option>
               <option value="by_chance">By-Chance (Null Model)</option>
               <option value="arachne">ARACNE (MI + DPI)</option>
@@ -2618,6 +2736,7 @@
                   <th>PPV (%)</th>
                   <th>FDR (%)</th>
                   <th>Signed PPV (%)</th>
+                  <th>F1</th>
                   <th>Total Errors</th>
                 </tr>
               </thead>
@@ -2650,7 +2769,7 @@
     <!-- ========================================================================= -->
     <!-- TAB 5: VIRTUAL CELL CHALLENGE 2026 & ATLASSHIFT COMPARATIVE BENCHMARK     -->
     <!-- ========================================================================= -->
-    <section id="tab-vcc" class="tab-pane">
+    <section id="tab-vcc" class="tab-pane" role="tabpanel" aria-labelledby="tabbtn-tab-vcc">
       <div class="panel" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(2,132,199,0.06));border:1px solid rgba(139,92,246,0.3);">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
           <div style="flex:1 1 500px;">
@@ -2663,7 +2782,7 @@
               Arc Institute Virtual Cell Challenge 2026 vs. Mechanistic Dynamical Reverse-Engineering
             </h2>
             <p style="font-size:12px;color:var(--text-muted);max-width:960px;line-height:1.5;">
-              Direct comparative benchmark comparing <strong>Empirical Cross-Atlas Perturbation Transfer</strong> (<em>AtlasShift</em> by Kaipeng Meng, Arc Institute VCC 2026) against <strong>Mechanistic Dynamical GRN Inference</strong> (<em>phpIoRN</em>: S2G, G2S, Voting Ensemble, NIR, FAST). Highlights the core architectural divergence: empirical weighted averaging across cell lines vs. causal dynamical Jacobian inversion predicting unseen Out-of-Distribution (OOD) perturbations and regulatory rewiring decay.
+              Direct comparative benchmark comparing <strong>Empirical Cross-Atlas Perturbation Transfer</strong> (<em>AtlasShift</em> by Kaipeng Meng, Arc Institute VCC 2026) against <strong>Mechanistic Dynamical GRN Inference</strong> (<em>phpIoRN</em>: S2G, G2S, Voting Ensemble, Score Vote, NIR, FAST and every other registered algorithm). Highlights the core architectural divergence: empirical weighted averaging across cell lines vs. causal dynamical Jacobian inversion predicting unseen Out-of-Distribution (OOD) perturbations and regulatory rewiring decay.
             </p>
           </div>
 
@@ -2767,6 +2886,20 @@
               <div style="font-size:16px;font-weight:800;color:#10b981;" id="vcc-ood-hill-r">--</div>
               <div style="font-size:10px;color:var(--text-muted);" id="vcc-ood-hill-off">Off-target r: --</div>
             </div>
+            <div title="Mean of the three source atlases, which do contain the held-out genes (zero-shot transfer).">
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Source-atlas average</div>
+              <div style="font-size:16px;font-weight:800;color:#10b981;" id="vcc-ood-tmean-r">--</div>
+              <div style="font-size:10px;color:var(--text-muted);" id="vcc-ood-tmean-off">Off-target r: --</div>
+            </div>
+            <div title="Cross-source consensus kept where all atlases agree, times one global scale fitted on the seen target perturbations.">
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;font-weight:700;">TransPert-style</div>
+              <div style="font-size:16px;font-weight:800;color:#10b981;" id="vcc-ood-ttrans-r">--</div>
+              <div style="font-size:10px;color:var(--text-muted);" id="vcc-ood-ttrans-off">Off-target r: --</div>
+            </div>
+          </div>
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+            Vote and AtlasShift score 0 here by construction (no row of A and no atlas observation for a held-out gene).
+            The two transfer methods read the source atlases instead; judge them by off-target r (see <code>docs/CROSS_CONTEXT_TRANSFER.md</code>).
           </div>
         </div>
 
@@ -2841,6 +2974,7 @@
                 <th>Coverage (%)</th>
                 <th>FDR (%)</th>
                 <th>Power (%)</th>
+                <th>F1</th>
                 <th>Total Errors</th>
               </tr>
             </thead>
@@ -2996,7 +3130,7 @@
     <!-- ========================================================================= -->
     <!-- TAB 6: BACKGROUND JOB QUEUE                                               -->
     <!-- ========================================================================= -->
-    <section id="tab-jobs" class="tab-pane">
+    <section id="tab-jobs" class="tab-pane" role="tabpanel" aria-labelledby="tabbtn-tab-jobs">
       <div class="panel" style="padding:16px 18px;margin-bottom:14px;">
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;">
           <div>
@@ -3169,11 +3303,11 @@
       if (scheme === 'light') {
         iconEl.innerHTML = '&#9728;&#65039;';
         lblEl.textContent = 'Light Mode';
-        if (btnEl) btnEl.title = 'Active: Light Mode (Click to switch to Dark Mode)';
+        if (btnEl) { btnEl.title = 'Active: Light Mode (Click to switch to Dark Mode)'; btnEl.setAttribute('aria-label', 'Switch to dark mode'); }
       } else {
         iconEl.innerHTML = '&#127769;';
         lblEl.textContent = 'Dark Mode';
-        if (btnEl) btnEl.title = 'Active: Dark Mode (Click to switch to Light Mode)';
+        if (btnEl) { btnEl.title = 'Active: Dark Mode (Click to switch to Light Mode)'; btnEl.setAttribute('aria-label', 'Switch to light mode'); }
       }
     }
 
@@ -3251,6 +3385,8 @@
         btn.classList.toggle('active', on);
         btn.setAttribute('role', 'tab');
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        btn.setAttribute('tabindex', on ? '0' : '-1');                 // arrow keys move between tabs
+        btn.setAttribute('aria-controls', btn.dataset.tab);
       });
       document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.toggle('active', pane.id === tabId);
@@ -3258,6 +3394,7 @@
       });
       // A newly opened tab starts at its top, not wherever the previous one was scrolled to
       if (previousTab && previousTab !== tabId) window.scrollTo(0, 0);
+      setTimeout(redrawCharts, 0);
       if (tabId === 'tab-jobs') {
         renderJobsTab();
         jobsRefresh();
@@ -3503,7 +3640,7 @@
           bMode.className = 'badge badge-emerald';
         }
         if (bDesc) {
-          bDesc.innerHTML = `Authentic biological perturbation measurements from <b>${prov.name || dsName}</b> (${prov.technology || 'Laboratory Assay'}). <b>Numerical ODE time-course simulation is bypassed</b>; all 12 reverse-engineering algorithms reconstruct causal interactions ($\\hat{A} X \\approx -U$) directly from measured observations. Simulation wizard configuration is locked.`;
+          bDesc.innerHTML = `Authentic biological perturbation measurements from <b>${prov.name || dsName}</b> (${prov.technology || 'Laboratory Assay'}). <b>Numerical ODE time-course simulation is bypassed</b>; all ${algorithmCount()} reverse-engineering algorithms reconstruct causal interactions ($\\hat{A} X \\approx -U$) directly from measured observations. Simulation wizard configuration is locked.`;
         }
 
         // 2. Grey out Step 2 Simulation Wizard Configuration
@@ -3557,7 +3694,7 @@
         }
 
         if (infoBox) {
-          infoBox.innerHTML = `⚡ <b>Real-World Wrangled Data (${dsName})</b>: 12 reverse-engineering algorithms consume the raw wrangled expression matrix directly. Numerical ODE simulation is bypassed; algorithms reconstruct causal Jacobians $\\hat{A}$ directly from experimental observations.`;
+          infoBox.innerHTML = `⚡ <b>Real-World Wrangled Data (${dsName})</b>: ${algorithmCount()} reverse-engineering algorithms consume the raw wrangled expression matrix directly. Numerical ODE simulation is bypassed; algorithms reconstruct causal Jacobians $\\hat{A}$ directly from experimental observations.`;
         }
 
       } else if (isBiophysical) {
@@ -3681,6 +3818,8 @@
     function switchToSyntheticMode() {
       const modeSelect = document.getElementById('sim-mode');
       if (modeSelect) modeSelect.value = 'insilico';
+      setSelectOrDefault('sim-topology', (document.getElementById('sim-topology') || {}).value, 'power_law');
+      setSelectOrDefault('sim-kinetics-engine', (document.getElementById('sim-kinetics-engine') || {}).value, 'hill_nonlinear');
       updateModeUI('insilico', true);
     }
 
@@ -3803,9 +3942,9 @@
       const kengine = s.kinetics_engine || (sim && sim.kinetics_engine) || 'hill_nonlinear';
 
       updateModeUI(mode, false);
-      document.getElementById('sim-topology').value = topo === 'biological_sos' ? 'power_law' : topo;
+      setSelectOrDefault('sim-topology', topo === 'biological_sos' ? 'power_law' : topo, 'power_law');
       if (document.getElementById('sim-kinetics-engine')) {
-        document.getElementById('sim-kinetics-engine').value = kengine;
+        setSelectOrDefault('sim-kinetics-engine', kengine, 'hill_nonlinear');
       }
       document.getElementById('sim-num-genes').value = n;
       document.getElementById('lbl-num-genes').textContent = String(n);
@@ -3890,7 +4029,7 @@
       return sortDir === 'asc' ? diff : -diff;
     }
 
-    function sortTable(tableId, colIndex, forceDir = null) {
+    function sortTable(tableId, colIndex, forceDir = null, indicatorOnly = false) {
       const table = document.getElementById(tableId);
       if (!table) return;
       const thead = table.querySelector('thead');
@@ -3929,6 +4068,12 @@
           }
         }
       });
+
+      // The archive list is sorted by the server when it spans several pages (the browser only has one of them)
+      if (tableId === 'tbl-history' && archiveView().totalPages > 1) {
+        if (!indicatorOnly) archiveSortChanged(colIndex, nextDir);
+        return;
+      }
 
       // Sort table rows
       const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -3985,7 +4130,7 @@
       // If this table has a recorded sort state, re-apply it to the currently present rows
       const state = TABLE_SORT_STATES[tableId];
       if (state && typeof state.colIndex === 'number') {
-        sortTable(tableId, state.colIndex, state.sortDir);
+        sortTable(tableId, state.colIndex, state.sortDir, true);
       }
     }
 
@@ -4089,6 +4234,7 @@
         return null;
       }
       seedEl.removeAttribute('aria-invalid');
+      setSelectOrDefault('sim-topology', document.getElementById('sim-topology').value, 'power_law');
       return {
         mode: document.getElementById('sim-mode').value,
         topology: document.getElementById('sim-topology').value,
@@ -4137,13 +4283,17 @@
           confirm(`${params.num_genes} genes with ${algs.length} algorithms can take many minutes, and the server handles one simulation at a time.\n\nOK: queue it as a background job and keep working.\nCancel: run it here and wait.`)) {
         return queueStudioJob(true);
       }
-      btn.disabled = true;
+      const release = beginBusy(btn);
+      const isCurrent = newestRequest('studio');
       const stopClock = startElapsed(btn, 'Simulating ODEs & resolving networks…');
       try {
         const { ok, data } = await postJson('/api/simulate', { ...params, auto_infer: true, algorithms: algs });
+        if (!isCurrent()) return;                      // superseded: a newer request owns the page now
         if (ok && data.status === 'success') {
           APP_STATE.sim = data;
           APP_STATE.inferred = data.inferred || {};
+          // a run that finishes after the user has picked another mode must not restyle the page for the old one
+          if (document.getElementById('sim-mode').value === params.mode) applyDataModeUxDistinction(data, data.loading_mode);
           renderAllSimulationViews();
           renderAllInferenceViews();
           highlightWizardStep(6);
@@ -4152,11 +4302,10 @@
         }
       } catch (e) {
         console.error(e);
-        showToast('Simulation failed: ' + e.message, 'error');
+        if (isCurrent()) showToast('Simulation failed: ' + e.message, 'error');
       } finally {
         stopClock();
-        btn.textContent = 'Simulate & Re-Engineer Network';
-        btn.disabled = false;
+        release();
       }
     }
 
@@ -4164,12 +4313,15 @@
       const btn = document.getElementById('btn-simulate-only');
       const params = collectSimParams();
       if (!params) return;
-      const label = btn.textContent;
-      btn.disabled = true;
+      const release = beginBusy(btn);
+      const isCurrent = newestRequest('studio');
       try {
         const { ok, data } = await postJson('/api/simulate', { ...params, auto_infer: false });
+        if (!isCurrent()) return;
         if (ok && data.status === 'success') {
           APP_STATE.sim = data;
+          // a run that finishes after the user has picked another mode must not restyle the page for the old one
+          if (document.getElementById('sim-mode').value === params.mode) applyDataModeUxDistinction(data, data.loading_mode);
           renderAllSimulationViews();
           highlightWizardStep(4);
         } else {
@@ -4177,10 +4329,9 @@
         }
       } catch (e) {
         console.error(e);
-        showToast('Simulation failed: ' + e.message, 'error');
+        if (isCurrent()) showToast('Simulation failed: ' + e.message, 'error');
       } finally {
-        btn.textContent = label;
-        btn.disabled = false;
+        release();
       }
     }
 
@@ -4188,11 +4339,12 @@
       const btn = document.getElementById('btn-infer-only');
       const algs = requireAlgorithms();
       if (!algs) return;
-      const label = btn.textContent;
-      btn.disabled = true;
+      const release = beginBusy(btn);
+      const isCurrent = newestRequest('studio');
       const stopClock = startElapsed(btn, 'Resolving…');
       try {
         const { ok, data } = await postJson('/api/infer', { algorithms: algs });
+        if (!isCurrent()) return;
         if (ok && data.status === 'success') {
           APP_STATE.inferred = data;
           renderAllInferenceViews();
@@ -4202,11 +4354,10 @@
         }
       } catch (e) {
         console.error(e);
-        showToast('Inference failed: ' + e.message, 'error');
+        if (isCurrent()) showToast('Inference failed: ' + e.message, 'error');
       } finally {
         stopClock();
-        btn.textContent = label;
-        btn.disabled = false;
+        release();
       }
     }
 
@@ -5568,6 +5719,7 @@
           <td>${st.ppv ?? '--'}%</td>
           <td>${st.fdr ?? '--'}%</td>
           <td>${st.signed_ppv ?? '--'}%</td>
+          <td><strong style="color:#10b981;">${(() => { const f = inf.metrics?.[alg]?.f1_score; if (f != null) return Number(f).toFixed(3); const p = (st.power ?? 0) / 100, q = (st.ppv ?? 0) / 100; return p + q > 0 ? (2 * p * q / (p + q)).toFixed(3) : '--'; })()}</strong></td>
           <td><strong style="color:var(--accent-amber);">${st.total_errors ?? '--'}</strong></td>
         `;
         tbody.appendChild(tr);
@@ -5666,6 +5818,7 @@
     // TAB 2: REAL-WORLD & IN SILICO BENCHMARK STUDIO (SOS, DREAM4, Perturb-seq)
     // ============================================================================
     async function loadSosFullStudio(datasetId = 'ecoli_sos') {
+      const isCurrent = newestRequest('benchmark');
       const loadingBar = document.getElementById('benchmark-loading-bar-container');
       const loadingText = document.getElementById('benchmark-loading-text');
       const datasetButtons = document.querySelectorAll('#tab-sos [id^="pill-ds-"], #btn-load-wrangled, #btn-load-biophysical');
@@ -5682,6 +5835,7 @@
 
         const res = await fetch(`/api/benchmark/dataset?id=${encodeURIComponent(datasetId)}`);
         const data = await res.json().catch(() => ({}));
+        if (!isCurrent()) return;                      // the user has picked another data set meanwhile
         if (!res.ok || data.status !== 'success') {
           // keep showing the previous dataset (and its active pill) and say why the switch did not happen
           console.error('Failed to load benchmark dataset:', data);
@@ -5770,7 +5924,7 @@
 
         const tbody = document.querySelector('#tbl-sos-benchmark tbody');
         tbody.innerHTML = '';
-        const order = ['vote', 'cellbox', 'genie3', 's2g', 'g2s', 'arachne', 'causalgrn', 'dmdgrn', 'deeprig', 'sfinn', 'notears', 'netdeconv', 'ridge_cv', 'cpa_lite', 'atlasshift', 'nir', 'fast', 'by_chance'];
+        const order = ['vote', 'score_vote', 'cellbox', 'genie3', 's2g', 'g2s', 'arachne', 'causalgrn', 'dmdgrn', 'deeprig', 'sfinn', 'notears', 'netdeconv', 'ridge_cv', 'cpa_lite', 'atlasshift', 'nir', 'fast', 'by_chance'];
         const allKeys = Object.keys(data.table_4_1 || {});
         const displayKeys = [...order.filter(k => allKeys.includes(k)), ...allKeys.filter(k => !order.includes(k))];
 
@@ -5792,6 +5946,7 @@
             <td><strong>${m.inferred_connections_pct}%</strong></td>
             <td>${m.fp_per_inferred_pct}%</td>
             <td>${m.inferred_sign_pct}%</td>
+            <td><strong style="color:#10b981;">${m.f1_score != null ? Number(m.f1_score).toFixed(3) : '--'}</strong></td>
             <td><strong style="color:var(--accent-amber);">${m.total_errors}</strong></td>
             <td>${m.signed_ppv != null ? (m.signed_ppv * 100).toFixed(1) + '%' : '--'}</td>
             <td>${m.aupr != null ? m.aupr.toFixed(2) : '--'}</td>
@@ -5813,6 +5968,7 @@
         console.error('Benchmark Studio error:', e);
         showBenchmarkError(`Could not load "${datasetId}": ${e.message || e}`);
       } finally {
+        if (!isCurrent()) return;                      // a newer load is still running and will clean up
         if (loadingBar) loadingBar.style.display = 'none';
         datasetButtons.forEach(b => b.disabled = false);
         document.getElementById('bench-dataset-provenance-card')?.style.removeProperty('opacity');
@@ -5831,6 +5987,7 @@
     }
 
     async function loadBenchmarkIntoStudio(loadingMode = 'wrangled_direct') {
+      const isCurrent = newestRequest('studio');
       const datasetId = APP_STATE.activeBenchmark || 'ecoli_sos';
       const loadingBar = document.getElementById('benchmark-loading-bar-container');
       const loadingText = document.getElementById('benchmark-loading-text');
@@ -5856,6 +6013,7 @@
           body: JSON.stringify({ dataset_id: datasetId, loading_mode: loadingMode }),
         });
         const data = await res.json().catch(() => ({}));
+        if (!isCurrent()) return;
         if (!res.ok || data.status !== 'success') {
           showBenchmarkError(`Could not load "${datasetId}" into the Studio: ${data.error || `server error (HTTP ${res.status})`}`);
         } else {
@@ -5919,7 +6077,7 @@
         if (loadingMode === 'biophysical_fit') {
           infoBox.innerHTML = `🔬 <b>Biophysical Parameter Estimation Mode (${name})</b>: Non-linear Hill ODE parameters (basal rates $v_i$, degradation $B_i$, Hill affinities $K_A, K_I$, cooperativity $n=2$) were estimated directly from experimental steady-state ratios and integrated numerically with Runge-Kutta.`;
         } else {
-          infoBox.innerHTML = `⚡ <b>Real-World Wrangled Data (${name})</b>: 12 reverse-engineering algorithms consume the raw wrangled expression matrix directly. Numerical ODE simulation is bypassed; algorithms reconstruct causal Jacobians $\\hat{A}$ directly from experimental observations.`;
+          infoBox.innerHTML = `⚡ <b>Real-World Wrangled Data (${name})</b>: ${algorithmCount()} reverse-engineering algorithms consume the raw wrangled expression matrix directly. Numerical ODE simulation is bypassed; algorithms reconstruct causal Jacobians $\\hat{A}$ directly from experimental observations.`;
         }
       }
     }
@@ -6535,6 +6693,7 @@
     // TAB 5: OVERALL STATISTICS & BENCHMARK PERFORMANCE
     // ============================================================================
     function switchTab5View(mode) {
+      setTimeout(redrawCharts, 50);
       const overallView = document.getElementById('tab5-view-overall');
       const histView = document.getElementById('tab5-view-historical');
       const btnOverall = document.getElementById('btn-tab5-view-overall');
@@ -6873,9 +7032,11 @@
           'atlasshift': 'AtlasShift',
           's2g': 'S2G (Forward AIC)',
           'vote': 'Voting Ensemble',
+          'score_vote': 'Score Vote (evidence)',
           'g2s': 'G2S (Backward AIC)',
           'nir': 'NIR (Multi-Reg)',
           'ridge': 'RidgeCV (L2)',
+          'ridge_cv': 'RidgeCV (L2)',
           'cellbox': 'CellBox Neural ODE',
           'netdeconv': 'Net Deconvolution',
           'fast': 'FAST (SVD)',
@@ -7038,7 +7199,7 @@
           { label: 'G2S (Backward)', data: sw.algorithms?.g2s?.power || [], color: '#d97706' },
           { label: 'NIR', data: sw.algorithms?.nir?.power || [], color: '#8b5cf6' },
           { label: 'CellBox ODE', data: sw.algorithms?.cellbox?.power || [], color: '#ec4899' },
-          { label: 'RidgeCV', data: sw.algorithms?.ridge?.power || [], color: '#06b6d4' },
+          { label: 'RidgeCV', data: sw.algorithms?.ridge_cv?.power || sw.algorithms?.ridge?.power || [], color: '#06b6d4' },
           { label: 'FAST (SVD)', data: sw.algorithms?.fast?.power || [], color: '#ef4444', dash: [4, 3] },
           { label: 'By-Chance', data: sw.algorithms?.by_chance?.power || [], color: '#64748b', dash: [3, 3] },
         ];
@@ -7095,20 +7256,25 @@
       if (data.runtime_sweep) {
         const rs = data.runtime_sweep;
         const xLabels = (rs.sizes || []).map(n => `N=${n}`);
-        const runtimeSeries = [
-          { label: 'S2G (Forward AIC)', data: rs.algorithms?.s2g || [], color: '#0284c7' },
-          { label: 'G2S (Backward AIC)', data: rs.algorithms?.g2s || [], color: '#d97706' },
-          { label: 'NIR (Multiple Reg)', data: rs.algorithms?.nir || [], color: '#8b5cf6' },
-          { label: 'Multi-Output Ridge', data: rs.algorithms?.ridge || [], color: '#06b6d4' },
-          { label: 'NOTEARS (DAG)', data: rs.algorithms?.notears || [], color: '#f59e0b', dash: [3, 2] },
-          { label: 'CellBox Neural ODE', data: rs.algorithms?.cellbox || [], color: '#ec4899' },
-          { label: 'GENIE3 (Tree Forest)', data: rs.algorithms?.genie3 || [], color: '#10b981' },
-          { label: 'FAST (SVD Inversion)', data: rs.algorithms?.fast || [], color: '#ef4444', dash: [4, 3] },
-          { label: 'DMD-GRN (Koopman)', data: rs.algorithms?.dmdgrn || [], color: '#a855f7', dash: [2, 2] },
-        ];
+        const runtimeSeries = algSeriesFromSweep(rs.algorithms, v => v);
         const allVals = runtimeSeries.flatMap(s => s.data || []);
         const maxTime = Math.max(0.5, ...allVals);
         drawMultiLineChart('canvas-overall-runtime', xLabels, runtimeSeries, 'Seconds', 0, Math.ceil(maxTime * 1.25));
+      }
+
+      // F1 of every algorithm across the three sweeps
+      const f1Pick = a => (a.f1 || []).map(v => v * 100);
+      if (data.size_sweep) {
+        drawMultiLineChart('canvas-overall-size-f1', (data.size_sweep.sizes || []).map(n => `N=${n}`),
+          algSeriesFromSweep(data.size_sweep.algorithms, f1Pick), 'F1 (×100)', 0, 100);
+      }
+      if (data.connectivity_sweep) {
+        drawMultiLineChart('canvas-overall-conn-f1', (data.connectivity_sweep.k_values || []).map(k => `k=${k}`),
+          algSeriesFromSweep(data.connectivity_sweep.algorithms, f1Pick), 'F1 (×100)', 0, 100);
+      }
+      if (data.noise_sweep) {
+        drawMultiLineChart('canvas-overall-noise-f1', (data.noise_sweep.noise_levels || []).map(x => `σ=${x}`),
+          algSeriesFromSweep(data.noise_sweep.algorithms, f1Pick), 'F1 (×100)', 0, 100);
       }
     }
 
@@ -7234,7 +7400,7 @@
     function computeLineChartHover(canvas, cfg, mx, my) {
       const W = canvas.width;
       const H = canvas.height;
-      const padTop = cfg.seriesList.length > 5 ? 42 : 28;
+      const padTop = chartPadTop(canvas, cfg, W);
       const pad = { l: 46, r: 20, t: padTop, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
@@ -7349,7 +7515,7 @@
       ctx.fillStyle = tc.stageBg;
       ctx.fillRect(0, 0, W, H);
 
-      const padTop = cfg.seriesList.length > 5 ? 42 : 28;
+      const padTop = chartPadTop(canvas, cfg, W);
       const pad = { l: 46, r: 20, t: padTop, b: 32 };
       const pw = W - pad.l - pad.r;
       const ph = H - pad.t - pad.b;
@@ -7635,6 +7801,327 @@
       }
     }
 
+    // Slow API requests show a progress bar across the top (after 0.3 s, so quick ones never flash it).
+    // The server cannot report a percentage, so the bar is indeterminate and shows what is loading and for how long.
+    (function installLoadBar() {
+      const nativeFetch = window.fetch.bind(window);
+      const LABELS = [
+        [/\/api\/benchmark\/vcc_atlasshift/, 'Computing the Virtual Cell Challenge benchmark (the first run takes about 10 s)'],
+        [/\/api\/benchmark\/sos_full|\/api\/benchmark\/dataset|\/api\/benchmark\/sos/, 'Loading the benchmark data set and scoring the algorithms'],
+        [/\/api\/benchmark\/overall_stats|\/api\/benchmark\/thesis_figures/, 'Loading the overall statistics'],
+        [/\/api\/history|\/api\/archive/, 'Loading the simulation archive'],
+        [/\/api\/simulate/, 'Simulating the network and running the algorithms'],
+        [/\/api\/infer/, 'Running the reverse-engineering algorithms'],
+        [/\/api\/trajectory/, 'Loading the time courses'],
+      ];
+      const QUIET = /\/api\/jobs|\/api\/status/;               // polled in the background: never shown
+      const pending = new Map();                                // request id -> {label, t0}
+      let seq = 0, showTimer = null, tickTimer = null;
+      const root = () => document.getElementById('global-load');
+      function render() {
+        const el = root(), msg = document.getElementById('global-load-msg');
+        if (!el || !msg) return;
+        if (!pending.size) {
+          el.classList.remove('on'); el.setAttribute('aria-busy', 'false');
+          clearInterval(tickTimer); tickTimer = null; return;
+        }
+        const oldest = [...pending.values()].sort((a, b) => a.t0 - b.t0)[0];
+        const secs = Math.floor((Date.now() - oldest.t0) / 1000);
+        msg.textContent = `${oldest.label}… ${secs} s` + (pending.size > 1 ? ` (+${pending.size - 1} more)` : '');
+        el.classList.add('on'); el.setAttribute('aria-busy', 'true');
+      }
+      function started() {
+        if (!showTimer) showTimer = setTimeout(() => {
+          showTimer = null;
+          if (pending.size) { render(); if (!tickTimer) tickTimer = setInterval(render, 500); }
+        }, 300);
+      }
+      window.fetch = function (input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (!url.includes('/api/') || QUIET.test(url)) return nativeFetch(input, init);
+        const id = ++seq, hit = LABELS.find(([re]) => re.test(url));
+        pending.set(id, { label: hit ? hit[1] : 'Loading', t0: Date.now() });
+        started();
+        const done = () => { pending.delete(id); render(); };
+        return nativeFetch(input, init).then(r => { done(); return r; }, e => { done(); throw e; });
+      };
+    })();
+
+    // Newest request wins. Whatever replaces what is on screen (a run, an opened archive run, a benchmark data set) asks
+    // ``const isCurrent = newestRequest('studio')`` before it starts and drops its response when ``isCurrent()`` is
+    // false afterwards: a slow earlier request must not draw over the one the user asked for later.
+    const REQUEST_SEQ = {};
+    function newestRequest(slot) {
+      const ticket = (REQUEST_SEQ[slot] = (REQUEST_SEQ[slot] || 0) + 1);
+      return () => ticket === REQUEST_SEQ[slot];
+    }
+    // Disables a button while any request that uses it is running; the returned function re-enables it (and restores
+    // its label) only when the last one has finished, so a superseded request cannot re-enable it under a newer one.
+    function beginBusy(btn) {
+      if (!btn._busy) btn._label = btn.textContent;
+      btn._busy = (btn._busy || 0) + 1;
+      btn.disabled = true;
+      return () => {
+        if (--btn._busy === 0) { btn.disabled = false; btn.textContent = btn._label; }
+      };
+    }
+
+    // How many algorithms the page offers (the checkboxes follow the server's registry)
+    function algorithmCount() {
+      return new Set([...document.querySelectorAll('.alg-cb')].map(c => c.value)).size || 19;
+    }
+
+    // ============================================================================
+    // ACCESSIBILITY LAYER
+    // Charts get a text alternative, clickable non-buttons get keyboard access, tables get names and header scopes and
+    // scrollable regions can be focused. Idempotent; re-run (debounced) whenever the page changes.
+    // ============================================================================
+    let _a11ySeq = 0;
+    function a11yPanelTitle(el) {
+      const panel = el.closest('.panel, .kpi-card, section');
+      const t = panel && panel.querySelector('.panel-title, h2, h3');
+      return (t ? t.textContent : '').replace(/\s+/g, ' ').trim();
+    }
+    function describeChart(canvas) {
+      if (!canvas.id) canvas.id = `a11y-canvas-${++_a11ySeq}`;
+      const cfg = canvas._chartConfig;
+      const title = a11yPanelTitle(canvas) || 'Chart';
+      canvas.setAttribute('role', 'img');
+      if (!cfg || !cfg.seriesList) {
+        if (!canvas.getAttribute('aria-label')) canvas.setAttribute('aria-label', `${title} (graphic)`);
+        return;
+      }
+      const xs = (cfg.xLabels || []).join(', ');
+      const round = v => (typeof v === 'number' && isFinite(v) ? String(+v.toFixed(2)) : String(v));
+      const rows = cfg.seriesList.map(sr => `${sr.label}: ${(sr.data || []).map(round).join(', ')}`);
+      const dataId = `${canvas.id}-data`;
+      let data = document.getElementById(dataId);
+      if (!data) {
+        data = document.createElement('div');
+        data.id = dataId; data.className = 'sr-only';
+        canvas.insertAdjacentElement('afterend', data);
+      }
+      data.textContent = `${cfg.yTitle || 'Values'} at ${xs}. ${rows.join('. ')}.`;
+      canvas.setAttribute('aria-label', `${title}. Line chart of ${cfg.yTitle || 'values'}, ${cfg.seriesList.length} series over ${xs}.`);
+      canvas.setAttribute('aria-describedby', dataId);
+    }
+    const _NATIVE_INTERACTIVE = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY', 'OPTION', 'LABEL']);
+    function enhanceAccessibility(root = document) {
+      // 1. charts
+      root.querySelectorAll('canvas').forEach(describeChart);
+      // 2. clickable elements that are not buttons or links: focusable, with a role and Enter / Space
+      root.querySelectorAll('[onclick], tbody tr, [style*="cursor:pointer"], [style*="cursor: pointer"]').forEach(el => {
+        if (_NATIVE_INTERACTIVE.has(el.tagName) || el.hasAttribute('data-kbd-click')) return;
+        if (el.closest('svg')) return;                // graph pieces (edges, arrowheads) are not tab stops; the graph is described below
+        if (!(el.hasAttribute('onclick') || typeof el.onclick === 'function')) return;
+        if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+        el.setAttribute('data-kbd-click', '1');
+        if (!el.hasAttribute('role') && el.tagName !== 'TR' && el.tagName !== 'TD') el.setAttribute('role', 'button');
+      });
+      // 2b. network graphs drawn as SVG: one image with a summary (the matrices and tables beside them give the details)
+      root.querySelectorAll('svg').forEach(svg => {
+        if (svg.closest('button, a, [role="button"]') || svg.hasAttribute('role') || svg.getAttribute('aria-hidden') === 'true') return;
+        if (svg.querySelector('[tabindex], a[href], button')) return;   // its nodes are already keyboard-reachable: not an opaque image
+        const nodes = svg.querySelectorAll('[id^="node_"]').length, edges = svg.querySelectorAll('[id^="edge_"]').length;
+        if (!nodes && !edges && svg.getBoundingClientRect().width < 60) return;     // an icon
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', `${a11yPanelTitle(svg) || 'Graph'}${nodes ? `: network graph with ${nodes} genes and ${edges} edges` : ''}`);
+      });
+      // 3. tables: header scopes and an accessible name
+      root.querySelectorAll('table').forEach(tb => {
+        tb.querySelectorAll('thead th:not([scope])').forEach(th => th.setAttribute('scope', 'col'));
+        tb.querySelectorAll('tbody th:not([scope])').forEach(th => th.setAttribute('scope', 'row'));
+        if (!tb.querySelector('caption') && !tb.hasAttribute('aria-label') && !tb.hasAttribute('aria-labelledby')) {
+          const name = a11yPanelTitle(tb) || (tb.id || '').replace(/^tbl-/, '').replace(/[-_]+/g, ' ').trim() || 'Data table';
+          tb.setAttribute('aria-label', name);
+        }
+      });
+      // 4. scrollable regions can be reached and scrolled with the keyboard
+      root.querySelectorAll('div, section, svg').forEach(el => {
+        if (el.hasAttribute('tabindex') || el === document.body || el.id === 'main-content') return;
+        if (el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1) return;
+        const cs = getComputedStyle(el);
+        if (!/(auto|scroll)/.test(cs.overflowX + cs.overflowY)) return;
+        if (el.querySelector('a[href], button, input, select, textarea, [tabindex]')) return;   // already reachable
+        el.setAttribute('tabindex', '0');
+        if (!el.hasAttribute('role')) el.setAttribute('role', 'region');
+        if (!el.hasAttribute('aria-label') && !el.hasAttribute('aria-labelledby')) el.setAttribute('aria-label', a11yPanelTitle(el) || 'Scrollable content');
+      });
+    }
+    let _a11yTimer = null;
+    function scheduleAccessibility() {
+      clearTimeout(_a11yTimer);
+      _a11yTimer = setTimeout(() => enhanceAccessibility(document), 200);
+    }
+    document.addEventListener('keydown', e => {
+      const tab = e.target.closest && e.target.closest('.nav-tab');
+      if (tab) {                                                         // arrow keys / Home / End move between the main tabs
+        const tabs = [...document.querySelectorAll('.nav-tab')];
+        let i = tabs.indexOf(tab);
+        if (e.key === 'ArrowRight') i = (i + 1) % tabs.length;
+        else if (e.key === 'ArrowLeft') i = (i - 1 + tabs.length) % tabs.length;
+        else if (e.key === 'Home') i = 0;
+        else if (e.key === 'End') i = tabs.length - 1;
+        else return;
+        e.preventDefault();
+        tabs[i].focus();
+        tabs[i].click();
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.hasAttribute && e.target.hasAttribute('data-kbd-click')) {
+        e.preventDefault();
+        e.target.click();
+      }
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabs = [...document.querySelectorAll('.nav-tab')];
+      tabs.forEach(t => {                                                // exactly one tab is in the tab order
+        t.setAttribute('tabindex', t.classList.contains('active') ? '0' : '-1');
+        t.setAttribute('aria-controls', t.dataset.tab);
+      });
+      enhanceAccessibility(document);
+      new MutationObserver(muts => {
+        if (muts.some(m => !(m.target.closest && m.target.closest('#global-load, #toast-host')))) scheduleAccessibility();
+      }).observe(document.body, { childList: true, subtree: true });
+      window.addEventListener('resize', scheduleAccessibility);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const box = document.getElementById('archive-search');
+      if (!box) return;
+      let timer = null;
+      box.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { const st = archiveView(); st.q = box.value.trim(); st.page = 1; loadHistoryTable(); }, 300);
+      });
+    });
+
+    // The algorithm counts shown in labels follow the algorithm checkboxes
+    function updateAlgorithmCounts() {
+      const n = new Set([...document.querySelectorAll('.alg-cb')].map(c => c.value)).size;
+      if (!n) return;
+      document.querySelectorAll('.alg-total').forEach(el => { el.textContent = String(n); });
+      document.querySelectorAll('button[onclick^="setAllAlgorithms(true)"]').forEach(b => {
+        b.title = b.title.replace(/\d+/, String(n));
+      });
+    }
+    document.addEventListener('DOMContentLoaded', updateAlgorithmCounts);
+
+    // The server's algorithm registry (/api/algorithms) is the list of record: algorithms it knows that this page does
+    // not list yet (added after the markup was written) get a checkbox, a menu entry and a chart colour here.
+    function algorithmColour(key) {                       // a stable colour for an algorithm without one of its own
+      let h = 0;
+      for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) % 360;
+      return `hsl(${h}, 62%, 48%)`;
+    }
+    function applyAlgorithmRegistry(list) {
+      if (!Array.isArray(list) || !list.length) return;
+      list.forEach(a => {
+        if (!ALG_UI[a.key]) ALG_UI[a.key] = [a.label, a.color || algorithmColour(a.key), a.dash || undefined];
+      });
+      // Studio checkboxes (the jobs tab builds its own list from the same registry)
+      const first = document.querySelector('.alg-cb');
+      const host = first && first.closest('label') && first.closest('label').parentElement;
+      if (host) {
+        const have = new Set([...host.querySelectorAll('.alg-cb')].map(c => c.value));
+        list.filter(a => !have.has(a.key)).forEach(a => {
+          const lab = document.createElement('label');
+          lab.className = first.closest('label').className;
+          const cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.className = 'alg-cb'; cb.value = a.key; cb.checked = true;
+          lab.append(cb, ' ' + a.label);
+          host.appendChild(lab);
+        });
+      }
+      // menus that list algorithms (a menu counts when it already offers several registered ones)
+      const keys = new Set(list.map(a => a.key));
+      document.querySelectorAll('select').forEach(sel => {
+        const present = new Set([...sel.options].map(o => o.value));
+        if ([...present].filter(v => keys.has(v)).length < 3) return;
+        list.filter(a => !present.has(a.key)).forEach(a => sel.add(new Option(a.label, a.key)));
+      });
+      updateAlgorithmCounts();
+    }
+    async function loadAlgorithmRegistry() {
+      try {
+        const r = await fetch('/api/algorithms');
+        const d = await r.json();
+        if (d && d.status === 'success') applyAlgorithmRegistry(d.algorithms);
+      } catch (e) {
+        console.warn('Algorithm list unavailable; using the one in this page', e);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadAlgorithmRegistry);
+
+    // Selects a <select> option, falling back to a default when the value is not one of its options
+    // (a benchmark run's topology name is not an in-silico option and used to leave the select blank)
+    function setSelectOrDefault(id, value, fallback) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const has = v => [...el.options].some(o => o.value === v);
+      el.value = has(value) ? value : (has(fallback) ? fallback : (el.options[0] ? el.options[0].value : ''));
+    }
+
+    // F1 from a run's metrics, else from the power (recall) and PPV (precision) percentages of its summary
+    function f1Text(metrics, st) {
+      if (metrics && metrics.f1_score != null) return Number(metrics.f1_score).toFixed(3);
+      const p = (st && st.ppv != null ? Number(st.ppv) : NaN) / 100, r = (st && st.power != null ? Number(st.power) : NaN) / 100;
+      return p + r > 0 ? (2 * p * r / (p + r)).toFixed(3) : '--';
+    }
+
+    // Chart canvases are drawn at their on-screen size (a fixed 1380 px canvas shrunk to a phone made the text ~2 px)
+    function chartLegendRows(ctx, cfg, W) {
+      ctx.font = '10px Inter, sans-serif';
+      let x = 46, rows = 1;
+      cfg.seriesList.forEach(s => {
+        const w = ctx.measureText(s.label).width + 22;
+        if (x + w > W - 20 && x > 46) { x = 46; rows++; }
+        x += w;
+      });
+      return rows;
+    }
+    function chartPadTop(canvas, cfg, W) {
+      return Math.max(28, 11 + (chartLegendRows(canvas.getContext('2d'), cfg, W) - 1) * 13 + 17);
+    }
+    function fitChartCanvas(canvas) {
+      const r = canvas.getBoundingClientRect();
+      if (!r.width) return false;                      // hidden tab: fitted when it is shown
+      const w = Math.max(260, Math.round(r.width));
+      if (canvas._baseCssHeight == null) canvas._baseCssHeight = canvas.style.height;   // the height the page asked for
+      const many = canvas._chartConfig && canvas._chartConfig.seriesList.length > 8;
+      canvas.style.height = (w < 600 && many) ? '340px' : canvas._baseCssHeight;     // taller on phones, for the wrapped legend
+      const h = Math.round(parseFloat(getComputedStyle(canvas).height)) || canvas.height;
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+      return true;
+    }
+    function redrawCharts() {
+      document.querySelectorAll('canvas').forEach(c => {
+        if (c._chartConfig && fitChartCanvas(c)) renderMultiLineChartCanvas(c, c._chartConfig, null);
+      });
+    }
+    let _chartResizeTimer = null;
+    window.addEventListener('resize', () => { clearTimeout(_chartResizeTimer); _chartResizeTimer = setTimeout(redrawCharts, 150); });
+
+    // Colours / labels for every algorithm; sweep charts plot all of the algorithms present in the data.
+    const ALG_UI = {
+      vote: ['Voting Ensemble', '#16a34a'], score_vote: ['Score Vote', '#15803d', [6, 2]], s2g: ['S2G', '#0284c7'],
+      g2s: ['G2S', '#d97706'], nir: ['NIR', '#8b5cf6'], fast: ['FAST', '#ef4444', [4, 3]], cellbox: ['CellBox', '#ec4899'],
+      genie3: ['GENIE3', '#10b981'], netdeconv: ['NetDeconv', '#0ea5e9', [2, 2]], ridge_cv: ['RidgeCV', '#06b6d4'],
+      cpa_lite: ['CPA-Lite', '#f97316'], by_chance: ['By-Chance', '#64748b', [3, 3]], arachne: ['ARACNE', '#84cc16'],
+      causalgrn: ['CausalGRN', '#e11d48'], dmdgrn: ['DMD-GRN', '#a855f7', [2, 2]], deeprig: ['DeepRIG', '#14b8a6'],
+      sfinn: ['SFINN', '#eab308'], notears: ['NOTEARS', '#f59e0b', [3, 2]], atlasshift: ['AtlasShift', '#22c55e']
+    };
+    function algSeriesFromSweep(algs, pick) {
+      const rows = Object.keys(algs || {}).map(k => ({ key: k === 'ridge' ? 'ridge_cv' : k, data: pick(algs[k]) || [] }));
+      const order = Object.keys(ALG_UI);
+      rows.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
+      return rows.map(r => {
+        const ui = ALG_UI[r.key] || [r.key.toUpperCase(), '#94a3b8'];
+        return { label: ui[0], data: r.data, color: ui[1], dash: ui[2] };
+      });
+    }
+
     function drawMultiLineChart(canvasId, xLabels, seriesList, yTitle, yMin = 40, yMax = 100) {
       const canvas = document.getElementById(canvasId);
       if (!canvas) return;
@@ -7674,7 +8161,9 @@
         });
       }
 
+      fitChartCanvas(canvas);
       renderMultiLineChartCanvas(canvas, canvas._chartConfig, null);
+      describeChart(canvas);
     }
 
     function drawFigTopology(topo) {
@@ -7893,132 +8382,122 @@
       return 1 / (1 + totErr);
     }
 
-    const MAX_ARCHIVE_ROWS = 500;
+    const ARCHIVE_SORT_KEYS = ['rank', 'run_id', 'category', 'topology', 'genes', 'k_av', 'noise', 'equilibrium', 'method', 'f1', 'power', 'specificity', 'errors', 'time'];
+    const ARCHIVE_PAGE_SIZES = [25, 50, 100, 200];
+    const ARCHIVE_BANNERS = {
+      all: 'Displaying the Best 15 Simulations for Each Dynamics Set (45 curated benchmark runs: 15 Responsive + 15 Flat + 15 Oscillating, minimum network size N ≥ 12).',
+      responsive: 'Displaying the Best 15 Responsive Dynamics Simulations (N ≥ 12, ranked by F1 score & clear multi-gene shifts).',
+      flat: 'Displaying the Best 15 Flat Levels Simulations (N ≥ 12, ranked by minimal total errors & buffered expression).',
+      oscillating: 'Displaying the Best 15 Oscillating Simulations (N ≥ 12, ranked by F1 score & persistent limit cycle dynamics).',
+      random: 'Displaying the Best 15 Random Erdős-Rényi Graph Simulations (N ≥ 12).',
+      power_law: 'Displaying the Best 15 Scale-Free / Power-Law Graph Simulations (N ≥ 12).',
+      hierarchical: 'Displaying the Best 15 Hierarchical Modular Graph Simulations (N ≥ 12).',
+      modular: 'Displaying the Best 15 Modular Preferential-Attachment Graph Simulations (N ≥ 12).',
+      overall_top15: 'Displaying the Top 15 Highest-Performing Re-Engineering Runs (N ≥ 12) across the entire database.'
+    };
+    const ARCHIVE_BANNER_DEFAULT = 'Displaying the Best 15 Simulations for each set (N ≥ 12).';
+
+    // The archive tab asks the server for one page of a ranked view at a time (see grn_sim.web.history_view): the
+    // browser no longer downloads every run with its full detail just to show a few dozen rows.
+    function archiveView() {
+      return APP_STATE.archiveView || (APP_STATE.archiveView = { page: 1, pageSize: 50, q: '', sort: null, order: 'asc', filter: null, totalPages: 1 });
+    }
+
+    async function loadArchiveSummary(force = false) {
+      try {
+        if (!force && APP_STATE.summaryByType) { renderSummaryByType(APP_STATE.summaryByType); return; }
+        const res = await fetch('/api/archive/summary_by_type');
+        const data = await res.json();
+        if (data.summary_by_type) {
+          APP_STATE.summaryByType = data.summary_by_type;
+          renderSummaryByType(data.summary_by_type);
+        }
+      } catch (e) {
+        console.error('Archive summary load error:', e);
+      }
+    }
+
+    // Sorting across pages: with more than one page the server sorts the whole result; with one page the browser sorts
+    // the rows it has (by the text shown), as it always did.
+    function archiveSortChanged(colIndex, dir) {
+      const st = archiveView();
+      st.sort = ARCHIVE_SORT_KEYS[colIndex] || null;
+      st.order = dir;
+      st.page = 1;
+      loadHistoryTable();
+    }
+
+    function renderArchivePager(view) {
+      const host = document.getElementById('archive-pager');
+      if (!host) return;
+      const st = archiveView();
+      const first = view.page <= 1, last = view.page >= view.total_pages;
+      host.innerHTML = `
+        <span id="archive-pager-status" role="status" aria-live="polite">${view.total ? `Rows ${view.first_row}–${view.last_row} of ${view.total}` : 'No runs match'} · Page ${view.page} of ${view.total_pages}</span>
+        <span class="archive-pager-buttons">
+          <button type="button" class="btn btn-secondary btn-sm" data-page="1" aria-label="First page" ${first ? 'disabled' : ''}>« First</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-page="${view.page - 1}" aria-label="Previous page" ${first ? 'disabled' : ''}>‹ Prev</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-page="${view.page + 1}" aria-label="Next page" ${last ? 'disabled' : ''}>Next ›</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-page="${view.total_pages}" aria-label="Last page" ${last ? 'disabled' : ''}>Last »</button>
+        </span>
+        <label class="archive-pager-size">Rows per page
+          <select id="archive-page-size">${ARCHIVE_PAGE_SIZES.map(n => `<option value="${n}" ${n === st.pageSize ? 'selected' : ''}>${n}</option>`).join('')}</select>
+        </label>`;
+      host.querySelectorAll('button[data-page]').forEach(b => {
+        b.onclick = () => { st.page = Number(b.dataset.page); loadHistoryTable(); };
+      });
+      host.querySelector('#archive-page-size').onchange = ev => { st.pageSize = Number(ev.target.value); st.page = 1; loadHistoryTable(); };
+    }
 
     async function loadHistoryTable(forceRefresh = false) {
+      const isCurrent = newestRequest('archive-list');
       try {
-        let data = APP_STATE.cachedHistoryPayload;
-        if (!data || forceRefresh) {
-          const res = await fetch('/api/history');
-          data = await res.json();
-          APP_STATE.cachedHistoryPayload = data;
-        }
+        const st = archiveView();
+        const filterEl = document.getElementById('archive-filter-type');
+        const currentFilter = (filterEl ? filterEl.value : APP_STATE.archiveFilterType) || 'all';
+        if (st.filter !== null && st.filter !== currentFilter) st.page = 1;      // a different view starts on its first page
+        st.filter = currentFilter;
+        APP_STATE.archiveFilterType = currentFilter;
+
+        const qs = new URLSearchParams({ set: currentFilter, page: String(st.page), page_size: String(st.pageSize) });
+        if (st.q) qs.set('q', st.q);
+        if (st.sort) { qs.set('sort', st.sort); qs.set('order', st.order); }
+        const res = await fetch('/api/history?' + qs);
+        const data = await res.json();
+        if (!isCurrent()) return;                                               // a newer request owns the table now
         const tbody = document.querySelector('#tbl-history tbody');
-        if (!tbody || !data.history) return;
+        if (!tbody || !res.ok || !data.history) {
+          if (!res.ok) showToast('Could not load the archive: ' + (data.error || `HTTP ${res.status}`), 'error');
+          return;
+        }
+        const view = data.view;
+        st.page = view.page;
+        st.totalPages = view.total_pages;
         tbody.innerHTML = '';
 
         const dbBadge = document.getElementById('db-status-badge');
         if (dbBadge && data.database) {
           dbBadge.textContent = `SQLite rgn_db (${data.database.nw_rows} nw / ${data.database.alg_rows} alg rows)`;
         }
-
-        if (data.summary_by_type) {
-          APP_STATE.summaryByType = data.summary_by_type;
-          renderSummaryByType(data.summary_by_type);
-        }
+        loadArchiveSummary(forceRefresh);                                       // statistics by type, fetched once and cached
 
         const activeRunId = (APP_STATE.archiveDetail && APP_STATE.archiveDetail.run_id) || data.active_run_id;
-        const filterEl = document.getElementById('archive-filter-type');
-        const currentFilter = (filterEl ? filterEl.value : APP_STATE.archiveFilterType) || 'all';
-        APP_STATE.archiveFilterType = currentFilter;
+        const visibleRows = data.history.map(h => ({ ...h, f1Score: Number(h.f1_score), rType: h.response_type, topo: h.topology }));
+        const everything = currentFilter === 'everything';
 
-        // 1. Annotate each run with its calculated F1 score and normalized category
-        data.history.forEach(h => {
-          h.f1Score = computeEntryF1(h);
-          h.rType = h.response_type || (h.oscillating ? 'oscillating' : 'responsive');
-          h.topo = h.topology || 'random';
-        });
-
-        // 2. Group runs by dynamics category and by topology to establish set rankings
-        const dynamicsSets = { responsive: [], flat: [], oscillating: [] };
-        const topoSets = { random: [], power_law: [], hierarchical: [], modular: [] };
-
-        data.history.forEach(h => {
-          if (dynamicsSets[h.rType]) dynamicsSets[h.rType].push(h);
-          if (topoSets[h.topo]) topoSets[h.topo].push(h);
-        });
-
-        // Helper to sort and rank strictly within a set (top 15, minimum network size N >= 12)
-        function sortAndRankSet(arr, setName) {
-          const eligible = (arr || []).filter(item => Number(item.num_genes || 0) >= 12);
-          const sorted = [...eligible].sort((a, b) => {
-            if (b.f1Score !== a.f1Score) return b.f1Score - a.f1Score;
-            const errA = Number(a.best_total_errors ?? 99);
-            const errB = Number(b.best_total_errors ?? 99);
-            if (errA !== errB) return errA - errB;
-            return Number(b.best_power_pct ?? 0) - Number(a.best_power_pct ?? 0);
-          });
-          return sorted.slice(0, 15).map((item, idx) => ({
-            ...item,
-            rankInSet: idx + 1,
-            setName: setName,
-          }));
-        }
-
-        const rankedResponsive = sortAndRankSet(dynamicsSets.responsive, 'Responsive');
-        const rankedFlat = sortAndRankSet(dynamicsSets.flat, 'Flat Levels');
-        const rankedOscillating = sortAndRankSet(dynamicsSets.oscillating, 'Oscillating');
-        const rankedRandom = sortAndRankSet(topoSets.random, 'Random Topo');
-        const rankedPowerLaw = sortAndRankSet(topoSets.power_law, 'Scale-Free Topo');
-        const rankedHierarchical = sortAndRankSet(topoSets.hierarchical, 'Hierarchical Topo');
-        const rankedModular = sortAndRankSet(topoSets.modular, 'Modular Topo');
-
-        // All runs sorted for overall top 15 (minimum network size N >= 12)
-        const allSorted = [...data.history];
-        const rankedOverall = sortAndRankSet(allSorted, 'Overall Best');
-
-        // 3. Determine the visible subset (strictly restricted to best 15 for each set with N >= 12)
-        let visibleRows = [];
-        let bannerSetText = '';
-
-        if (currentFilter === 'all') {
-          // Curated benchmark corpus: Best 15 for each of the 3 dynamics categories (45 runs total, N >= 12)
-          visibleRows = [...rankedResponsive, ...rankedFlat, ...rankedOscillating];
-          bannerSetText = 'Displaying the Best 15 Simulations for Each Dynamics Set (45 curated benchmark runs: 15 Responsive + 15 Flat + 15 Oscillating, minimum network size N ≥ 12).';
-        } else if (currentFilter === 'responsive') {
-          visibleRows = rankedResponsive;
-          bannerSetText = 'Displaying the Best 15 Responsive Dynamics Simulations (N ≥ 12, ranked by F1 score & clear multi-gene shifts).';
-        } else if (currentFilter === 'flat') {
-          visibleRows = rankedFlat;
-          bannerSetText = 'Displaying the Best 15 Flat Levels Simulations (N ≥ 12, ranked by minimal total errors & buffered expression).';
-        } else if (currentFilter === 'oscillating') {
-          visibleRows = rankedOscillating;
-          bannerSetText = 'Displaying the Best 15 Oscillating Simulations (N ≥ 12, ranked by F1 score & persistent limit cycle dynamics).';
-        } else if (currentFilter === 'random') {
-          visibleRows = rankedRandom;
-          bannerSetText = 'Displaying the Best 15 Random Erdős-Rényi Graph Simulations (N ≥ 12).';
-        } else if (currentFilter === 'power_law') {
-          visibleRows = rankedPowerLaw;
-          bannerSetText = 'Displaying the Best 15 Scale-Free / Power-Law Graph Simulations (N ≥ 12).';
-        } else if (currentFilter === 'hierarchical') {
-          visibleRows = rankedHierarchical;
-          bannerSetText = 'Displaying the Best 15 Hierarchical Modular Graph Simulations (N ≥ 12).';
-        } else if (currentFilter === 'everything') {
-          // Unranked, in archive order (newest first); capped so a very large archive cannot freeze the page
-          visibleRows = data.history.slice(0, MAX_ARCHIVE_ROWS).map(h => ({ ...h, rankInSet: null, setName: 'All runs' }));
-          bannerSetText = `Displaying every run in the archive, newest first${data.history.length > MAX_ARCHIVE_ROWS ? ` (the newest ${MAX_ARCHIVE_ROWS} of ${data.history.length})` : ''}. Sort any column header to reorder.`;
-        } else if (currentFilter === 'modular') {
-          visibleRows = rankedModular;
-          bannerSetText = 'Displaying the Best 15 Modular Preferential-Attachment Graph Simulations (N ≥ 12).';
-        } else if (currentFilter === 'overall_top15') {
-          visibleRows = rankedOverall;
-          bannerSetText = 'Displaying the Top 15 Highest-Performing Re-Engineering Runs (N ≥ 12) across the entire database.';
-        } else {
-          visibleRows = [...rankedResponsive, ...rankedFlat, ...rankedOscillating];
-          bannerSetText = 'Displaying the Best 15 Simulations for each set (N ≥ 12).';
-        }
-
-        // 4. Update banner and badge
+        // Banner and badge
+        const bannerText = everything
+          ? `Displaying every run in the archive, newest first${view.total_pages > 1 ? ` (page ${view.page} of ${view.total_pages})` : ''}.`
+          : (ARCHIVE_BANNERS[currentFilter] || ARCHIVE_BANNER_DEFAULT);
         const bannerEl = document.getElementById('archive-best15-banner-text');
-        if (bannerEl) bannerEl.textContent = bannerSetText;
+        if (bannerEl) bannerEl.textContent = bannerText;
         const bannerSubEl = document.getElementById('archive-best15-banner-sub');
-        if (bannerSubEl) bannerSubEl.textContent = currentFilter === 'everything'
-          ? `Showing ${visibleRows.length} of ${data.history.length} runs in the archive.`
-          : `Showing ${visibleRows.length} curated of ${data.history.length} runs in this list (the archive database counts ${data.database ? data.database.nw_rows : '?'} networks, including benchmark sweeps).`;
-
+        if (bannerSubEl) bannerSubEl.textContent = everything
+          ? `Showing ${view.total ? `${view.first_row}–${view.last_row}` : 0} of ${view.total} runs in the archive.`
+          : `Showing ${view.total} curated of ${view.runs_in_list} runs in this list (the archive database counts ${data.database ? data.database.nw_rows : '?'} networks, including benchmark sweeps).`;
         const filterBadge = document.getElementById('archive-filter-count-badge');
         if (filterBadge) {
-          filterBadge.textContent = currentFilter === 'everything' ? `Showing ${visibleRows.length} Runs` : `Showing ${visibleRows.length} Curated Runs`;
+          filterBadge.textContent = everything ? `Showing ${view.total} Runs` : `Showing ${view.total} Curated Runs`;
           filterBadge.className = 'badge badge-emerald';
         }
 
@@ -8079,6 +8558,7 @@
           `;
           tbody.appendChild(tr);
         });
+        renderArchivePager(view);
         makeTableSortable('tbl-history');
 
         // Automatically load the first visible run into the Tab 4 Detailed Run Inspector if none loaded yet
@@ -8091,9 +8571,11 @@
     }
 
     async function selectArchiveRun(runId, switchToStudio = false) {
+      const isCurrent = newestRequest('studio');
       try {
         const res = await fetch(`/api/history/load?run_id=${encodeURIComponent(runId)}`);
         const data = await res.json();
+        if (!isCurrent()) return;                      // another run or archive entry was asked for since
         if (data.status !== 'success') {
           showToast(`Could not open ${runId}: ${data.error || 'unknown error'}`, 'error');
           return;
@@ -8193,6 +8675,15 @@
         if (metrics[a].total_errors < metrics[bestAlg].total_errors) bestAlg = a;
       });
 
+      // The menu offers every algorithm of this run, whatever the page's own list says (older runs name RidgeCV "ridge",
+      // and an algorithm added later may be in a run before the page has heard of it)
+      const detailSel = document.getElementById('hist-detail-alg');
+      if (detailSel) {
+        algs.forEach(a => {
+          if (![...detailSel.options].some(o => o.value === a)) detailSel.add(new Option(ALG_UI[a] ? ALG_UI[a][0] : a.toUpperCase(), a));
+        });
+      }
+
       // Populate All-Algorithms Table in Archive Detail Panel
       const tbody = document.querySelector('#tbl-hist-alg-comparison tbody');
       tbody.innerHTML = '';
@@ -8209,6 +8700,7 @@
           <td>${st.ppv ?? '--'}%</td>
           <td>${st.fdr ?? '--'}%</td>
           <td>${st.signed_ppv ?? '--'}%</td>
+          <td><strong style="color:#10b981;">${f1Text(inf.metrics && inf.metrics[alg], st)}</strong></td>
           <td><strong style="color:var(--accent-amber);">${st.total_errors ?? '--'}</strong></td>
         `;
         tbody.appendChild(tr);
@@ -8853,7 +9345,7 @@
     function renderVccBenchmarkUI(data) {
       if (!data) return;
 
-      // 1. All 18 Algorithms Table
+      // 1. All algorithms table
       const tbody = document.querySelector('#tbl-vcc-summary tbody');
       if (tbody && data.summary_table) {
         tbody.innerHTML = '';
@@ -8879,6 +9371,7 @@
             <td><strong>${row.coverage_pct}%</strong></td>
             <td><span style="color:${row.fdr_pct > 60 ? 'var(--accent-pink)' : 'var(--text-main)'};">${row.fdr_pct}%</span></td>
             <td><span style="color:#10b981;font-weight:700;">${row.power_pct}%</span></td>
+            <td><strong>${f1Text({ f1_score: row.f1_score }, { ppv: 100 - row.fdr_pct, power: row.power_pct })}</strong></td>
             <td><strong style="color:var(--accent-amber);">${row.total_errors}</strong></td>
           `;
           tbody.appendChild(tr);
@@ -8910,6 +9403,15 @@
         const elA = document.getElementById('vcc-ood-atlas-r');
         if (elA) elA.textContent = `r = ${ood.atlasshift.pearson_r.toFixed(3)}`;
       }
+
+      // Cross-context transfer methods (OOD card)
+      [['tmean', 'atlas_mean'], ['ttrans', 'transpert_style']].forEach(([id, key]) => {
+        const m = ood && ood.transfer && ood.transfer[key];
+        const r = document.getElementById(`vcc-ood-${id}-r`);
+        const off = document.getElementById(`vcc-ood-${id}-off`);
+        if (r) r.textContent = m ? `r = ${m.pearson_r.toFixed(3)}` : '--';
+        if (off) off.textContent = m ? `Off-target r: ${m.offtarget_r.toFixed(3)}` : 'Off-target r: --';
+      });
 
       // Hill search (model-matched structure search + Hill refit) in both cards
       [['seen', seen], ['ood', ood]].forEach(([tag, block]) => {

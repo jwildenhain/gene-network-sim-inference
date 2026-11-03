@@ -1,7 +1,13 @@
 """Shared fixtures for the browser tests: the real web handler on a free port, and headless Chromium."""
 
-import atexit
 import os
+
+# One BLAS thread, set before any test module imports NumPy: OpenBLAS's thread pool and fork() deadlock the process pools
+# the algorithms use (see src/grn_sim/__init__.py). A value exported by the caller wins.
+for _var in ("OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")
+
+import atexit
 import shutil
 import tempfile
 import threading

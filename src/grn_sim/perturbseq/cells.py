@@ -298,12 +298,9 @@ def simulate_cells(
     """
     cfg = config or CellConfig()
     cfg.validate()
-    try:
-        from threadpoolctl import threadpool_limits
-    except ImportError:  # pragma: no cover - threadpoolctl ships with scikit-learn
-        return _simulate_cells(network, screen, cells_per_condition, n_control_cells, cfg, seed, solver)
+    from grn_sim.inference._native import blas_limit
     # On a many-core machine under load, 64 BLAS threads make each 500x500 dense solve ~30x slower than 1-8.
-    with threadpool_limits(limits=cfg.blas_threads):
+    with blas_limit(cfg.blas_threads, user_api=None):
         return _simulate_cells(network, screen, cells_per_condition, n_control_cells, cfg, seed, solver)
 
 

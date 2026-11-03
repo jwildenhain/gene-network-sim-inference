@@ -11,7 +11,7 @@ The sets below were measured on networks with known topology (cyclic and acyclic
 configurations of the studio, the benchmark studio and the parameter sweep: an algorithm is listed when its
 predictions match T.T clearly better than T (at least 10 points more true positives and 1.3 times as many).
 Algorithms that match T, or match both about equally, are not listed and are taken as T[regulator, target].
-GENIE3, CausalGRN and DeepRIG fill row i from the evidence for target i (W[i, j] = regulator j -> target i), so
+GENIE3, CausalGRN, DeepRIG and SFINN fill row i from the evidence for target i (W[i, j] = regulator j -> target i), so
 they are A[target, regulator] by construction on every data model; GENIE3's importances are close to symmetric on
 additive data and on large scale-free networks, so the measurement alone does not separate its orientations there.
 ``tests/test_inference_orientation.py`` re-checks the main entries.
@@ -30,11 +30,11 @@ DATA_MODELS = (HILL, ADDITIVE_GARDNER, ADDITIVE_PHYSICAL)
 _ALIASES = {"ridge": "ridge_cv"}
 
 # A[target, regulator] by construction, whatever the data.
-_TARGET_ROW_ALGORITHMS = frozenset({"genie3", "causalgrn", "deeprig"})
+_TARGET_ROW_ALGORITHMS = frozenset({"genie3", "causalgrn", "deeprig", "sfinn"})
 
 # Estimate A[target, regulator] on additive data whatever the sign convention (ridge_cv solves A X = -U row by row
 # like NIR and FAST; its dense predictions match both orientations about equally, so it is listed by construction).
-_ADDITIVE_TARGET_REGULATOR = frozenset({"s2g", "g2s", "vote", "nir", "fast", "cellbox", "ridge_cv"}) | _TARGET_ROW_ALGORITHMS
+_ADDITIVE_TARGET_REGULATOR = frozenset({"s2g", "g2s", "vote", "score_vote", "nir", "fast", "cellbox", "ridge_cv"}) | _TARGET_ROW_ALGORITHMS
 
 TARGET_REGULATOR_OUTPUT: Dict[str, FrozenSet[str]] = {
     HILL: _TARGET_ROW_ALGORITHMS,
@@ -48,6 +48,39 @@ ORIENTATION_FREE = frozenset({"by_chance"})
 
 # Algorithms whose regulator-input fit (``perturbation_mode="regulator"``) returns T[regulator, target].
 REGULATOR_INPUT_ALGORITHMS = frozenset({"nir", "fast", "ridge_cv", "cellbox"})
+
+
+def declare_output_orientation(
+    algorithm: str,
+    *,
+    target_row: bool = False,
+    additive_target_regulator: bool = False,
+    regulator_input: bool = False,
+    orientation_free: bool = False,
+) -> None:
+    """
+    Declares how a newly registered algorithm orients its output, so scoring needs no edit here (called by
+    ``grn_sim.inference.registry.register``):
+
+    * ``target_row``: A[target, regulator] by construction on every data model (GENIE3-style);
+    * ``additive_target_regulator``: A[target, regulator] on additive data (the Gardner family), T[regulator, target]
+      on Hill data;
+    * ``regulator_input``: its ``perturbation_mode="regulator"`` fit returns T[regulator, target];
+    * ``orientation_free``: random baselines, left as returned.
+    """
+    global _TARGET_ROW_ALGORITHMS, _ADDITIVE_TARGET_REGULATOR, ORIENTATION_FREE, REGULATOR_INPUT_ALGORITHMS
+    if target_row:
+        _TARGET_ROW_ALGORITHMS = _TARGET_ROW_ALGORITHMS | {algorithm}
+    if target_row or additive_target_regulator:
+        _ADDITIVE_TARGET_REGULATOR = _ADDITIVE_TARGET_REGULATOR | {algorithm}
+    if regulator_input:
+        REGULATOR_INPUT_ALGORITHMS = REGULATOR_INPUT_ALGORITHMS | {algorithm}
+    if orientation_free:
+        ORIENTATION_FREE = ORIENTATION_FREE | {algorithm}
+    # the dict is shared with importers, so it is updated in place
+    TARGET_REGULATOR_OUTPUT[HILL] = _TARGET_ROW_ALGORITHMS
+    TARGET_REGULATOR_OUTPUT[ADDITIVE_GARDNER] = _ADDITIVE_TARGET_REGULATOR | {"notears"}
+    TARGET_REGULATOR_OUTPUT[ADDITIVE_PHYSICAL] = _ADDITIVE_TARGET_REGULATOR
 
 
 def output_is_target_regulator(algorithm: str, data_model: str, perturbation_mode: str = "additive") -> bool:
