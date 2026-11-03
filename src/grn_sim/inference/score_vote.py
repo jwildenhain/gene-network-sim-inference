@@ -81,11 +81,11 @@ class ScoreVote(BaseInferenceAlgorithm):
     def _target_scores(payload, i: int):
         """Signed z of every candidate regulator of target ``i`` in each member's regression (None: not a candidate)."""
         regs, supports, y_list, des_list = payload
-        cand = sorted(set().union(*[set(np.flatnonzero(s[:, i])) for s in supports]))
+        cand = sorted({int(j) for s in supports for j in np.flatnonzero(s[:, i])})
         out = []
         for m, support in enumerate(supports):
-            sm = list(np.flatnonzero(support[:, i]))
-            out.append({int(j): _signed_z(y_list[m](i), des_list[m], sm, j) for j in cand})
+            sm = [int(j) for j in np.flatnonzero(support[:, i])]
+            out.append({j: _signed_z(y_list[m](i), des_list[m], sm, j) for j in cand})
         return out
 
     def score(self, X: np.ndarray, U: np.ndarray, results: List[InferenceResult]) -> Tuple[np.ndarray, float]:
