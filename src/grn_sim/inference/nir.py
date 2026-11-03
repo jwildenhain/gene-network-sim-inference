@@ -167,7 +167,7 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
                 try:
                     inv = solver(ZZt[sel] + reg_eye)
                     coef = np.einsum("ck,ckl->cl", uZ[sel], inv)
-                    ok = np.arange(sel.size, dtype=np.intp)
+                    ok: np.ndarray = np.arange(sel.size, dtype=np.intp)
                 except (np.linalg.LinAlgError, ValueError):             # a singular set: go one at a time
                     coef = np.zeros((sel.size, k1))
                     ok_list = []
