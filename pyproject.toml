@@ -68,6 +68,7 @@ grn_sim = ["py.typed", "web/static/*", "data/*", "data/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]          # tests import helpers from each other (from tests.x import ...)
 # Tests marked live_server need a web studio that is already running ($GRN_SIM_URL, default http://localhost:8085)
 # and they write screenshots; run them on purpose with:  pytest -m live_server
 addopts = "-m 'not live_server'"
@@ -86,6 +87,7 @@ ignore = ["E501", "B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]          # re-exports
+"src/grn_sim/__init__.py" = ["F401", "E402"]   # the BLAS thread limit must be set before the imports below it
 "tests/*" = ["E402"]              # tests import after setting up sys.path / environment
 "scripts/*" = ["E402"]
 

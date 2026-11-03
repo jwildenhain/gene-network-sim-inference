@@ -1,5 +1,4 @@
 """The page lists an algorithm that was registered after its markup was written."""
-import pytest
 
 from grn_sim.inference import registry
 from tests.test_algorithm_registry import _EveryOtherEdge

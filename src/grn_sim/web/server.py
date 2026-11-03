@@ -94,7 +94,6 @@ from grn_sim.web.database import (
     load_all_history_from_db,
     load_run_from_db,
     get_db_stats,
-    get_summary_statistics_by_type,
 )
 from grn_sim.simulator.response_dynamics import classify_perturbation_response
 from grn_sim.web import jobs as _jobs
@@ -903,7 +902,6 @@ def _execute_inference(selected_algs: List[str],
     cur_mode = str(CURRENT_STATE.get("mode") or "")
     cur_engine = (CURRENT_STATE.get("settings") or {}).get("kinetics_engine", "hill_nonlinear")
     use_reg = (not is_sos) and (not cur_mode.startswith("benchmark_")) and cur_engine in ("hill_nonlinear", "perturb_seq_counts")
-    pm = "regulator" if use_reg else "additive"
 
     build_ctx = algorithm_registry.BuildContext(k_est=k_est, use_reg=use_reg, is_sos=is_sos)
     alg_runners = {a: algorithm_registry.build(a, build_ctx) for a in selected_algs if algorithm_registry.is_registered(a)}

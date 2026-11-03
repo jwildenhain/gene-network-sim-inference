@@ -61,7 +61,9 @@ def test_infer_rejects_bad_algorithm_lists_and_keeps_results(app_url, body):
     status, resp = _post(app_url + "/api/infer", body)
     assert status == 400 and "error" in resp
     after = _state(app_url)
-    inferred = lambda s: sorted(((s.get("inferred") or s.get("inferred_results") or {}).get("metrics") or {}))
+    def inferred(s):
+        return sorted((s.get("inferred") or s.get("inferred_results") or {}).get("metrics") or {})
+
     assert inferred(before) == inferred(after) == ["s2g", "vote"]               # results were not wiped
 
 

@@ -1,5 +1,4 @@
 """Heavy requests arriving together must not deadlock the server (threadpoolctl library walk vs Numba compile)."""
-import json
 import threading
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed

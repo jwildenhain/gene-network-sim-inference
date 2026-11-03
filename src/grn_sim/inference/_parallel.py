@@ -3,7 +3,7 @@
 import multiprocessing as mp
 import os
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 from grn_sim.inference._native import NATIVE_LOCK
 
