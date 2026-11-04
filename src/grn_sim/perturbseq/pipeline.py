@@ -6,6 +6,8 @@ statistics (stage 4). Shared by the CLI (``grn-sim perturbseq``), the studio API
 from __future__ import annotations
 
 import time
+
+import numpy as np
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -61,9 +63,15 @@ def run_screen(
     gene_names: Optional[List[str]] = None,
     guide_efficiency_mean: Optional[float] = None,
     seed: Optional[int] = 0,
+    genes: Optional[List[int]] = None,
+    n_perturbed: Optional[int] = None,
 ) -> ScreenRun:
     """
     Runs the screen on ``network``.
+
+    ``genes`` / ``n_perturbed``: a partial screen. ``genes`` lists the perturbed gene indices; ``n_perturbed`` draws that
+    many at random (seeded). Default: every gene is perturbed once. The other genes are measured but never targeted
+    (use ``grn_sim.evaluation.partial_screen`` for the scoring of such screens).
 
     ``cell_model``: ``"lna"`` / ``"sde"`` (stage-2 cells) or ``"legacy"`` (independent Gamma-Poisson cells around
     each condition mean, no guides). ``measurement`` applies the stage-3 droplet model to stage-2 cells (doublets,
@@ -73,13 +81,19 @@ def run_screen(
         raise ValueError(f"cell_model must be one of {CELL_MODELS}, got {cell_model!r}")
     if cells_per_condition < 1:
         raise ValueError("cells_per_condition must be >= 1")
+    if genes is None and n_perturbed is not None:
+        if not 1 <= int(n_perturbed) <= network.n:
+            raise ValueError("n_perturbed must be between 1 and the number of genes")
+        genes = sorted(int(g) for g in np.random.default_rng(int(seed or 0) + 7919).choice(
+            network.n, size=int(n_perturbed), replace=False))
     settings = {"mode": mode, "pairs": int(pairs or 0), "cells_per_condition": int(cells_per_condition),
                 "n_control_cells": None if n_control_cells is None else int(n_control_cells),
                 "cell_model": cell_model, "measurement": bool(measurement), "n_genes": int(network.n),
-                "seed": seed, "guide_efficiency_mean": guide_efficiency_mean}
+                "seed": seed, "guide_efficiency_mean": guide_efficiency_mean,
+                "n_perturbed": network.n if genes is None else len(genes)}
     seconds: Dict[str, float] = {}
     t = time.time()
-    screen = simulate_conditions(network, mode=mode, pairs=pairs or None, gene_names=gene_names, seed=seed)
+    screen = simulate_conditions(network, mode=mode, genes=genes, pairs=pairs or None, gene_names=gene_names, seed=seed)
     seconds["screen"] = round(time.time() - t, 2)
     seed_i = int(seed or 0)
     if cell_model == "legacy":

@@ -57,13 +57,14 @@ def test_inspre_edge_penalty_moves_the_support_towards_the_prior():
     assert compute_aupr(prior, guided, ignore_diagonal=True) >= compute_aupr(prior, base, ignore_diagonal=True)
 
 
-def test_unperturbed_genes_get_zero_rows_and_columns():
+def test_unperturbed_genes_are_scored_as_targets_but_never_as_regulators():
     G, X, U = linear_screen()
     keep = np.arange(0, 30, 2)
     res = InspreAlgorithm(k_interactions=3).fit(X[:, keep], U[:, keep])
     unp = np.setdiff1d(np.arange(30), keep)
-    assert not res.A_est[unp].any() and not res.A_est[:, unp].any()
-    assert res.diagnostics["nodes"] == len(keep)
+    assert not res.A_est[unp].any()                 # a gene that was never perturbed cannot be a regulator
+    assert res.A_est[np.ix_(keep, unp)].any()       # but its response is explained by the perturbed genes
+    assert res.diagnostics["nodes"] == len(keep) and res.diagnostics["unperturbed_genes_scored"] == len(unp)
 
 
 def test_baselines_run_and_have_the_documented_orientation():
@@ -239,3 +240,61 @@ def test_simulating_a_screen_leaves_blas_on_one_thread(small_screen):
     _native.warm_up()
     controller = _native._controller()
     assert all(lib.num_threads == 1 for lib in controller.select(user_api="blas").lib_controllers)
+
+
+def _leaf_network(p=15, q=25, seed=0, sigma=0.0):
+    """Perturbed block P (cyclic, stable) feeding unperturbed leaves Q; X is n x p (one column per perturbed gene)."""
+    rng = np.random.default_rng(seed)
+    n = p + q
+    G = np.zeros((n, n))
+    G[:p, :p] = (rng.random((p, p)) < 0.15) * rng.normal(size=(p, p)) * 0.5
+    np.fill_diagonal(G, 0)
+    G[:p, p:] = (rng.random((p, q)) < 0.12) * rng.normal(size=(p, q)) * 0.7
+    r = max(abs(np.linalg.eigvals(G[:p, :p])))
+    G[:p, :p] *= min(1.0, 0.7 / r)
+    T = np.linalg.inv(np.eye(n) - G)
+    d = rng.uniform(0.5, 1.0, p)
+    X = np.stack([-d[a] * T[a, :] for a in range(p)], axis=1) + rng.normal(scale=sigma, size=(n, p))
+    U = np.zeros((n, p))
+    U[np.arange(p), np.arange(p)] = -d
+    return G, X, U, p, n
+
+
+def test_partial_screen_inspre_recovers_edges_to_unperturbed_genes():
+    from grn_sim.evaluation.metrics import compute_aupr
+    G, X, U, p, n = _leaf_network()
+    S = np.abs(InspreAlgorithm(3).fit(X, U).A_est)
+    block_b = np.zeros((n, n), dtype=bool)
+    block_b[:p, p:] = True
+    assert compute_aupr(G[block_b] != 0, S[block_b]) > 0.99
+    assert not S[p:].any()                          # a never-perturbed gene is not scored as a regulator
+
+
+@pytest.mark.parametrize("key", ["s2g", "g2s", "nir", "ridge_cv"])
+def test_partial_adapter_scores_both_blocks(key):
+    from grn_sim.evaluation.metrics import compute_aupr
+    from grn_sim.inference.partial import PartialAdapter
+    G, X, U, p, n = _leaf_network(seed=1, sigma=0.01)
+    algo = registry.build(key, registry.BuildContext(k_est=3, use_reg=False))
+    S = np.abs(PartialAdapter(algo, key).fit(X, U).A_est)
+    a, b = np.zeros((n, n), dtype=bool), np.zeros((n, n), dtype=bool)
+    a[:p, :p] = True
+    np.fill_diagonal(a, False)
+    b[:p, p:] = True
+    assert S.shape == (n, n) and not S[p:].any()
+    assert compute_aupr(G[a] != 0, S[a]) > 3 * (G[a] != 0).mean()
+    assert compute_aupr(G[b] != 0, S[b]) > 3 * (G[b] != 0).mean()
+
+
+def test_run_screen_partial_option_and_scoring():
+    from grn_sim.evaluation.partial_screen import evaluate_partial, perturbed_genes
+    from grn_sim.perturbseq.pipeline import build_network, run_screen
+    run = run_screen(build_network("replogle_like", 60, seed=1), mode="knockdown", cells_per_condition=30, n_perturbed=12, seed=1)
+    assert len(perturbed_genes(run.screen)) == 12 and run.settings["n_perturbed"] == 12
+    truth = np.abs(run.screen.adjacency).astype(float)
+    m = evaluate_partial(run.screen, truth)             # the truth as score: both blocks perfect
+    assert m["aupr_A"] > 0.99 and m["aupr_B"] > 0.99 and m["scored_A"] == 1 and m["scored_B"] == 1
+    zero = evaluate_partial(run.screen, np.zeros_like(truth))
+    assert zero["scored_B"] == 0 and abs(zero["aupr_B"] - zero["base_B"]) < 0.1
+    with pytest.raises(ValueError):
+        run_screen(build_network("replogle_like", 30, seed=1), n_perturbed=0)

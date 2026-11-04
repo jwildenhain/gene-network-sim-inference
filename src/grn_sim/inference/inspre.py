@@ -187,6 +187,7 @@ def fit_inspre(
                                 entry_factors=ef)   # polish
         diag.update(lam=float(np.exp(mid)), iterations=it)
     G = direct_effects(V)
+    diag["V"] = V
     diag["spectral_radius"] = spectral_radius(G)
     diag["unstable"] = bool(diag["spectral_radius"] >= 1.0)    # the method assumes stable feedback (radius < 1)
     diag["edges"] = int(np.count_nonzero(G))
@@ -252,7 +253,14 @@ class InspreAlgorithm(BaseInferenceAlgorithm):
             G, diag = fit_inspre(R_nodes, target_edges=int(self.density_factor * k * p), lam=self.lam, weights=w,
                                  edge_penalty=edge_penalty, entry_weights=entry_w)
             A[np.ix_(genes, genes)] = G
+            V = diag.pop("V")
             diagnostics.update(diag)
+            rest = np.setdiff1d(np.arange(n), genes)
+            if len(rest):
+                # unperturbed genes as leaves: the direct effect of node b on gene j is (V R_unperturbed)[b, j],
+                # since R_nodes = Dg (I - G)^-1 gives (I - G) = V Dg and the total effects on j are Dg T D_j
+                A[np.ix_(genes, rest)] = V @ R[:, rest]
+                diagnostics["unperturbed_genes_scored"] = int(len(rest))
         adj = np.zeros((n, n), dtype=int)
         for r in range(n):                                   # the k largest targets of every regulator
             mags = np.abs(A[r])
