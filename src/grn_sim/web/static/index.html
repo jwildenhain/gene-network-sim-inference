@@ -2406,7 +2406,7 @@
 
         <!-- Perturbation Dynamics Category Filter Bar & Fast Simulation Triggers -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 16px 0;padding:10px 14px;background:var(--bg-elevated, rgba(255,255,255,0.03));border:1px solid var(--border-color);border-radius:6px;gap:12px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <span style="font-weight:700;font-size:12px;color:var(--text-primary);letter-spacing:0.3px;">CURATED VIEW:</span>
             <select id="archive-filter-type" style="padding:5px 12px;font-size:12px;font-weight:600;border-radius:5px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);" onchange="filterArchiveByType(this.value)">
               <option value="all">🌟 Best 15 for Each Dynamics Set (Curated N ≥ 12 Benchmark Corpus)</option>
@@ -2422,8 +2422,10 @@
             </select>
             <span id="archive-filter-count-badge" class="badge badge-emerald" style="font-size:11px;">Best 15 (N ≥ 12)</span>
             <label class="sr-only" for="archive-search">Search runs by id</label>
-            <input id="archive-search" type="search" placeholder="Search run id…" autocomplete="off" maxlength="100"
-                   style="padding:5px 10px;font-size:12px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);width:170px;" />
+            <input id="archive-search" type="search" placeholder="Run id, e.g. iorn-0059" autocomplete="off" maxlength="100"
+                   aria-describedby="archive-search-hint" title="Matches any part of a run id, ignoring case"
+                   style="padding:5px 10px;font-size:12px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);width:190px;" />
+            <span id="archive-search-hint" style="font-size:11px;color:var(--text-muted);">searches the runs of the chosen view; any part of a run id: <code>iorn-005930</code> (studio run), <code>iorn-osc…</code> / <code>iorn-flt…</code> (presets), <code>sweep-…</code> (parameter sweep)</span>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;" onclick="simulatePresetRun('responsive')" title="Simulate a standard network with clear multi-gene perturbation responses">
@@ -2467,6 +2469,7 @@
             </div>
             <button class="btn btn-sm btn-secondary" onclick="toggleAlgBreakdownTable()">Close</button>
           </div>
+          <p id="archive-alg-scope" role="status" aria-live="polite" style="margin:0 0 8px 0;font-size:11.5px;color:var(--text-muted);"></p>
           <div style="overflow-x:auto;">
             <table class="data-table" id="tbl-dynamics-alg-comparison" style="font-size:11px;">
               <thead>
@@ -8433,7 +8436,7 @@
       const st = archiveView();
       const first = view.page <= 1, last = view.page >= view.total_pages;
       host.innerHTML = `
-        <span id="archive-pager-status" role="status" aria-live="polite">${view.total ? `Rows ${view.first_row}–${view.last_row} of ${view.total}` : 'No runs match'} · Page ${view.page} of ${view.total_pages}</span>
+        <span id="archive-pager-status" role="status" aria-live="polite">${view.total ? `Rows ${view.first_row}–${view.last_row} of ${view.total}` : (view.q ? `No run id in this list contains “${view.q}”${view.set === 'everything' ? '' : ' — the search covers only the runs of the chosen view; choose “All runs” to search the whole archive'}` : 'No runs match')} · Page ${view.page} of ${view.total_pages}</span>
         <span class="archive-pager-buttons">
           <button type="button" class="btn btn-secondary btn-sm" data-page="1" aria-label="First page" ${first ? 'disabled' : ''}>« First</button>
           <button type="button" class="btn btn-secondary btn-sm" data-page="${view.page - 1}" aria-label="Previous page" ${first ? 'disabled' : ''}>‹ Prev</button>
@@ -8480,6 +8483,7 @@
           dbBadge.textContent = `SQLite rgn_db (${data.database.nw_rows} nw / ${data.database.alg_rows} alg rows)`;
         }
         loadArchiveSummary(forceRefresh);                                       // statistics by type, fetched once and cached
+        loadAlgorithmComparison();                                              // algorithm table for the runs listed here
 
         const activeRunId = (APP_STATE.archiveDetail && APP_STATE.archiveDetail.run_id) || data.active_run_id;
         const visibleRows = data.history.map(h => ({ ...h, f1Score: Number(h.f1_score), rType: h.response_type, topo: h.topology }));
@@ -9969,35 +9973,62 @@
         `;
         container.appendChild(card);
       });
+    }
 
-      // Populate comparative breakdown table
-      const compTbody = document.querySelector('#tbl-dynamics-alg-comparison tbody');
-      if (compTbody) {
-        compTbody.innerHTML = '';
-        ['responsive', 'flat', 'oscillating'].forEach(catKey => {
-          const c = cats[catKey];
-          if (!c || !c.algorithms) return;
-          const algs = Object.keys(c.algorithms);
-          algs.sort((a, b) => c.algorithms[a].avg_total_errors - c.algorithms[b].avg_total_errors);
-          algs.forEach(algId => {
-            const a = c.algorithms[algId];
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td><span class="badge ${c.badge_class}">${c.badge_icon} ${c.label.split(' ')[0]}</span></td>
-              <td><strong style="color:var(--accent-blue);">${algId.toUpperCase()}</strong></td>
-              <td>${a.runs_count}</td>
-              <td style="font-weight:700;color:var(--accent-amber);">${a.avg_total_errors}</td>
-              <td>${a.avg_precision_pct}%</td>
-              <td>${a.avg_spec_pct}%</td>
-              <td>${a.avg_sens_pct}%</td>
-              <td style="font-weight:600;">${a.avg_f1}</td>
-              <td>${a.avg_signed_ppv_pct}%</td>
-            `;
-            compTbody.appendChild(tr);
-          });
-        });
-        makeTableSortable('tbl-dynamics-alg-comparison');
+    // The comparative algorithm table covers exactly the runs the archive table lists (curated view + id search), so it
+    // follows the active filter; the category cards above keep describing the whole archive.
+    async function loadAlgorithmComparison() {
+      const isCurrent = newestRequest('archive-compare');
+      const st = archiveView();
+      const qs = new URLSearchParams({ set: st.filter || APP_STATE.archiveFilterType || 'all' });
+      if (st.q) qs.set('q', st.q);
+      try {
+        const res = await fetch('/api/archive/algorithm_comparison?' + qs);
+        const data = await res.json();
+        if (!isCurrent()) return;
+        if (!res.ok) { showToast('Could not load the algorithm comparison: ' + (data.error || `HTTP ${res.status}`), 'error'); return; }
+        renderAlgorithmComparison(data);
+      } catch (e) {
+        console.error('Algorithm comparison load error:', e);
       }
+    }
+
+    function renderAlgorithmComparison(data) {
+      const cats = (data.summary && data.summary.categories) || {};
+      const scope = document.getElementById('archive-alg-scope');
+      if (scope) {
+        const sel = document.getElementById('archive-filter-type');
+        const label = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : data.set;
+        scope.textContent = data.runs
+          ? `Averages over the ${data.runs} run${data.runs === 1 ? '' : 's'} in the current list: ${label}${data.q ? `, run id containing “${data.q}”` : ''}.`
+          : `No runs in the current list (${label}${data.q ? `, run id containing “${data.q}”` : ''}), so there is nothing to compare.`;
+      }
+      const compTbody = document.querySelector('#tbl-dynamics-alg-comparison tbody');
+      if (!compTbody) return;
+      compTbody.innerHTML = '';
+      ['responsive', 'flat', 'oscillating'].forEach(catKey => {
+        const c = cats[catKey];
+        if (!c || !c.algorithms) return;
+        const algs = Object.keys(c.algorithms);
+        algs.sort((a, b) => c.algorithms[a].avg_total_errors - c.algorithms[b].avg_total_errors);
+        algs.forEach(algId => {
+          const a = c.algorithms[algId];
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><span class="badge ${c.badge_class}">${c.badge_icon} ${c.label.split(' ')[0]}</span></td>
+            <td><strong style="color:var(--accent-blue);">${algId.toUpperCase()}</strong></td>
+            <td>${a.runs_count}</td>
+            <td style="font-weight:700;color:var(--accent-amber);">${a.avg_total_errors}</td>
+            <td>${a.avg_precision_pct}%</td>
+            <td>${a.avg_spec_pct}%</td>
+            <td>${a.avg_sens_pct}%</td>
+            <td style="font-weight:600;">${a.avg_f1}</td>
+            <td>${a.avg_signed_ppv_pct}%</td>
+          `;
+          compTbody.appendChild(tr);
+        });
+      });
+      makeTableSortable('tbl-dynamics-alg-comparison');
     }
 
 

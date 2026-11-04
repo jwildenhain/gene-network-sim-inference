@@ -84,6 +84,7 @@ class ArchiveView:
         self.sets["overall_top15"] = _rank(self.rows, "Overall Best")
         self.sets["all"] = [r for key, _ in _DYNAMICS for r in self.sets[key]]
         self.summary: Optional[Dict[str, Any]] = None                   # filled on first use
+        self.comparisons: Dict[Tuple[str, str], Dict[str, Any]] = {}    # algorithm comparison per (set, search text)
 
 
 def _sort_value(row: Dict[str, Any], key: str) -> Any:
@@ -130,12 +131,18 @@ def parse_params(query: Dict[str, List[str]]) -> Dict[str, Any]:
     return {"set": set_name, "page": page, "page_size": page_size, "sort": sort, "order": order, "q": text}
 
 
-def page_of(view: ArchiveView, params: Dict[str, Any]) -> Dict[str, Any]:
-    """One page of ``view`` for validated ``params``: the rows and where they sit in the whole result."""
+def matching_rows(view: ArchiveView, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The rows of the chosen set whose run id contains the search text (case-insensitive), before sorting and paging."""
     rows = view.sets[params["set"]]
     if params["q"]:
         needle = params["q"].lower()
         rows = [r for r in rows if needle in str(r["run_id"]).lower()]
+    return rows
+
+
+def page_of(view: ArchiveView, params: Dict[str, Any]) -> Dict[str, Any]:
+    """One page of ``view`` for validated ``params``: the rows and where they sit in the whole result."""
+    rows = matching_rows(view, params)
     if params["sort"]:
         key, desc = params["sort"], params["order"] == "desc"
         present = [r for r in rows if _sort_value(r, key) is not None]
@@ -176,6 +183,27 @@ def get_view() -> ArchiveView:
             _CACHE["view"] = ArchiveView(db.load_all_history_from_db())
             _CACHE["key"] = key
         return _CACHE["view"]
+
+
+def get_comparison(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Per-category algorithm statistics (the same figures as ``get_summary``) over exactly the runs the archive table lists
+    for ``params`` (its set and search text), so the comparison follows the active filter. Cached per archive version.
+    """
+    view = get_view()
+    key = (params["set"], params["q"])
+    with _LOCK:
+        hit = view.comparisons.get(key)
+    if hit is not None:
+        return hit
+    ids = [r["run_id"] for r in matching_rows(view, params)]
+    stats = db.get_summary_statistics_by_type(run_ids=ids)
+    out = {"set": params["set"], "q": params["q"], "runs": len(ids), "summary": stats}
+    with _LOCK:
+        if len(view.comparisons) >= 64:                       # bounded: search text is user input
+            view.comparisons.pop(next(iter(view.comparisons)))
+        view.comparisons[key] = out
+    return out
 
 
 def get_summary() -> Dict[str, Any]:
