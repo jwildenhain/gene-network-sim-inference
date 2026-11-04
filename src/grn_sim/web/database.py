@@ -9,7 +9,7 @@ import json
 import os
 import sqlite3
 import tempfile
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from grn_sim.paths import archive_db_path
 
@@ -326,13 +326,15 @@ def get_db_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
         conn.close()
 
 
-def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, Any]:
+def get_summary_statistics_by_type(db_path: Optional[str] = None, run_ids: Optional[Iterable[str]] = None) -> Dict[str, Any]:
     """
     Computes aggregated summary statistics across all runs in `nw` and `alg`,
     grouped by perturbation response category:
     1. 'responsive': Clear / several perturbations visible (steady state reached, max_amp >= 0.05).
     2. 'flat': Flat levels for each gene with no visible perturbation (steady state, max_amp < 0.05).
     3. 'oscillating': Limit cycle or non-convergent dynamical trajectories (steady state not reached).
+
+    With ``run_ids`` only those runs are counted (the Archive tab's algorithm comparison follows the rows it lists).
     """
     import numpy as np
 
@@ -379,6 +381,9 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None) -> Dict[str, A
             """
         )
         nw_rows = cur.fetchall()
+        if run_ids is not None:
+            wanted = set(run_ids)
+            nw_rows = [r for r in nw_rows if r[0] in wanted]
         result["total_simulations"] = len(nw_rows)
         if not nw_rows:
             return result

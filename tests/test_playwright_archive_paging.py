@@ -104,10 +104,10 @@ def test_search_narrows_the_whole_archive_and_clearing_restores_it(archive, brow
     page.wait_for_function("document.querySelector('#archive-pager-status').innerText.includes('of 1 ')", timeout=15000)
     assert _run_ids(page) == [target] and "Page 1 of 1" in _status(page)
     page.fill("#archive-search", "no-such-run")
-    page.wait_for_function("document.querySelector('#archive-pager-status').innerText.includes('No runs match')", timeout=15000)
-    assert page.locator("#tbl-history tbody tr").count() == 0
+    page.wait_for_function("document.querySelector('#archive-pager-status').innerText.includes('No run id')", timeout=15000)
+    assert "no-such-run" in _status(page) and page.locator("#tbl-history tbody tr").count() == 0
     page.fill("#archive-search", "")
-    page.wait_for_function("document.querySelector('#archive-pager-status').innerText.includes('Page 1 of') && !document.querySelector('#archive-pager-status').innerText.includes('No runs')", timeout=15000)
+    page.wait_for_function("document.querySelector('#archive-pager-status').innerText.includes('Page 1 of') && !document.querySelector('#archive-pager-status').innerText.includes('No run')", timeout=15000)
     assert len(_run_ids(page)) == 3
     page.close()
 

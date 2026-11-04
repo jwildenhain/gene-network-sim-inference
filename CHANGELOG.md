@@ -13,6 +13,13 @@ versioning once it leaves 0.x.
   are cached against the archive file's version.
 
 ### Fixed
+- **Archive: the algorithm comparison follows the active filter.** It always averaged the whole archive whatever the curated
+  view or id search showed; it now covers exactly the runs the table lists (`/api/archive/algorithm_comparison?set=&q=`) and
+  says which ones ("Averages over the 15 runs in the current list: ..."). The category cards above it still describe the
+  whole archive.
+- **Archive: the id search says what an id is.** The box shows an example (`iorn-0059`) and a hint (`iorn-005930` studio runs,
+  `iorn-osc...` / `iorn-flt...` presets, `sweep-...` parameter sweeps; any part, case-insensitive), and an empty result
+  names the search text and, in a curated view, points to "All runs" for searching the whole archive.
 - **Server hang under concurrent requests.** OpenBLAS's thread pool and `fork()` deadlocked the process pools (G2S, S2G,
   GENIE3, ...) when several request threads computed at once: six concurrent G2S fits hung in one run of three. The package
   now sets `OPENBLAS_NUM_THREADS=1` / `MKL_NUM_THREADS=1` at import (before NumPy loads; your own value wins), the

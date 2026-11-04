@@ -2893,6 +2893,18 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             }).encode("utf-8"))
             return
 
+        elif path == "/api/archive/algorithm_comparison":
+            # Algorithm statistics per dynamics category over the runs the archive table lists for ``set`` and ``q``
+            try:
+                params = history_view.parse_params(query)
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"status": "success", **history_view.get_comparison(params)}).encode("utf-8"))
+            return
+
         elif path == "/api/archive/summary_by_type":
             self._set_headers(200)
             self.wfile.write(json.dumps({

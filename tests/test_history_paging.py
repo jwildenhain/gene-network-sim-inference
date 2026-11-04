@@ -200,3 +200,66 @@ def test_a_new_run_shows_up_in_the_paged_view(seeded):
     assert page["history"][0]["run_id"] == run_id                                               # newest first, cache invalidated
     found = json.loads(_get(app_url + f"/api/history?set=everything&q={run_id}")[1])
     assert [r["run_id"] for r in found["history"]] == [run_id]
+
+
+# ---- algorithm comparison follows the listed runs ------------------------------------------------------------------------
+def _json(url):
+    return json.loads(_get(url)[1])
+
+
+def _comparison(app_url, query):
+    return _json(app_url + "/api/archive/algorithm_comparison?" + query)
+
+
+def _counts(payload):
+    """Runs behind each algorithm row of the comparison, per category."""
+    return {c: [a["runs_count"] for a in v["algorithms"].values()] for c, v in payload["summary"]["categories"].items()}
+
+
+def test_summary_statistics_can_be_limited_to_some_runs(seeded):
+    ids = [r["run_id"] for r in _json(seeded + "/api/history?set=everything&page_size=2")["history"]]
+    both = db.get_summary_statistics_by_type(run_ids=ids)
+    one = db.get_summary_statistics_by_type(run_ids=ids[:1])
+    nothing = db.get_summary_statistics_by_type(run_ids=[])
+    assert both["total_simulations"] == 2 and one["total_simulations"] == 1 and nothing["total_simulations"] == 0
+    assert all(n == 1 for counts in _counts({"summary": one}).values() for n in counts)
+    assert not any(_counts({"summary": nothing}).values())
+
+
+def test_the_comparison_covers_exactly_the_runs_of_the_view(seeded):
+    everything = _comparison(seeded, "set=everything")
+    assert everything["runs"] == _json(seeded + "/api/history?set=everything&page_size=1")["view"]["total"]
+    for view in ("all", "flat", "responsive", "overall_top15"):
+        listed = _json(seeded + f"/api/history?set={view}&page_size=200")["view"]["total"]
+        payload = _comparison(seeded, f"set={view}")
+        assert payload["runs"] == listed
+        assert payload["summary"]["total_simulations"] == listed
+        assert all(n <= listed for counts in _counts(payload).values() for n in counts)
+
+
+def test_the_comparison_follows_the_id_search(seeded):
+    ids = [r["run_id"] for r in _json(seeded + "/api/history?set=everything&page_size=3")["history"]]
+    one = _comparison(seeded, f"set=everything&q={ids[0]}")
+    assert one["runs"] >= 1 and one["q"] == ids[0]
+    assert all(n <= one["runs"] for counts in _counts(one).values() for n in counts)
+    none = _comparison(seeded, "set=everything&q=no-such-run-anywhere")
+    assert none["runs"] == 0 and not any(_counts(none).values())
+
+
+def test_the_comparison_refuses_bad_parameters(seeded):
+    for query in ("set=nonsense", "q=" + "x" * 101):
+        status, body = _get(seeded + "/api/archive/algorithm_comparison?" + query)
+        assert status == 400 and "error" in json.loads(body)
+
+
+def test_the_comparison_is_cached_per_set_and_search_text(monkeypatch):
+    view = _view([_entry(i, f1=0.5 + i / 100) for i in range(4)])
+    calls = []
+    monkeypatch.setattr(hv, "get_view", lambda: view)
+    monkeypatch.setattr(db, "get_summary_statistics_by_type", lambda **kw: calls.append(kw) or {"categories": {}})
+    params = hv.parse_params({"set": ["everything"], "q": ["run-00"]})
+    first = hv.get_comparison(params)
+    assert hv.get_comparison(params) is first and len(calls) == 1
+    assert first["runs"] == 4 and sorted(calls[0]["run_ids"]) == [f"run-{i:03d}" for i in range(4)]
+    hv.get_comparison(hv.parse_params({"set": ["everything"], "q": ["run-001"]}))
+    assert len(calls) == 2
