@@ -52,7 +52,7 @@ def build_methods(skip: List[str]) -> Dict[str, Callable[[Any, Any], np.ndarray]
         "grnboost_lite": legacy(lambda: GRNBoostLite(K)),
         "s2g": legacy(SimpleToGeneral),
         "nir": legacy(lambda: NIRAlgorithm(k_interactions=K)),
-        "ridge_cv (default, no self)": legacy(lambda: KaggleMultiOutputRidge(k_interactions=K)),
+        "ridge_cv (self excluded)": legacy(lambda: KaggleMultiOutputRidge(k_interactions=K, allow_self_regulation=False)),
         "ridge_cv (self allowed)": legacy(lambda: KaggleMultiOutputRidge(k_interactions=K, allow_self_regulation=True)),
         "g2s (loo)": legacy(lambda: GeneralToSpecific(drop_rule="loo", max_interactions=2 * K)),
     }

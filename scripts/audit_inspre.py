@@ -36,7 +36,7 @@ def main():
     algos = {
         "inspre": (lambda: InspreAlgorithm(k_interactions=k), False),
         "nir K=3": (lambda: NIRAlgorithm(k_interactions=k), True),
-        "ridge_cv (default: no self)": (lambda: KaggleMultiOutputRidge(k_interactions=k), True),
+        "ridge_cv (self excluded)": (lambda: KaggleMultiOutputRidge(k_interactions=k, allow_self_regulation=False), True),
         "ridge_cv (self allowed)": (lambda: KaggleMultiOutputRidge(k_interactions=k, allow_self_regulation=True), True),
         "g2s (loo)": (lambda: GeneralToSpecific(drop_rule="loo"), True),
         "s2g": (lambda: SimpleToGeneral(), True),

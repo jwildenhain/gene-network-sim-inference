@@ -31,8 +31,9 @@ Findings (verified by these runs):
    perturbed gene's own term is the largest part of the equation and cannot be fitted, so the spike in `-U_i` leaks into other
    regressors. With `allow_self_regulation=True` it reaches 0.86 noise-free. The registry's Hill-mode ridge goes through
    `regulator_input_fit`, which has no self term by design, so the studio's Hill runs are not affected; additive/linear runs and
-   anyone calling `KaggleMultiOutputRidge().fit(X, U)` directly are. Not changed here (the registry configuration is part of the
-   archive's results); decide whether the additive default should be flipped.
+   anyone calling `KaggleMultiOutputRidge().fit(X, U)` directly are. **Changed 2026-11-04:** the additive default now includes the own-gene term (`allow_self_regulation=None` -> True in additive fits, False in
+   the regulator-input fit; the diagonal of `A_est` stays 0, the own term is a nuisance regressor). Archived ridge_cv runs fitted in additive mode
+   before this change were near random and are not rescored.
 2. When the data are exactly invertible, S2G and RidgeCV(self) are close to inspre; inspre's gain is **noise handling**, not a different
    estimand, and it needs no K. NIR with a fixed K loses recall on the extra (indirect) entries; G2S's AIC with `loo` is the weakest.
 3. G2S/NIR/S2G cost grows steeply with genes; inspre needs one Cholesky: 500 genes in seconds.

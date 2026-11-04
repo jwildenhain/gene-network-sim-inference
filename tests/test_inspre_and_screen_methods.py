@@ -185,3 +185,15 @@ def test_cell_level_methods_run_on_a_screen(small_screen):
         assert metrics["aupr_direct"] > metrics["base_direct"]         # better than picking pairs at random
     truth = sb.evaluate_scores(run.screen, sb.score_with_algorithm(MeanDifference(3), sb.screen_inputs(run, "truth")))
     assert truth["aupr_total"] > 0.99                                  # mean difference ranks total effects perfectly
+
+
+def test_ridge_cv_additive_default_includes_the_own_gene_term():
+    from grn_sim.inference.ridge_cv import KaggleMultiOutputRidge
+    G, X, U = linear_screen(n=40, seed=1)
+    default = KaggleMultiOutputRidge(k_interactions=3).fit(X, U).A_est.T
+    no_self = KaggleMultiOutputRidge(k_interactions=3, allow_self_regulation=False).fit(X, U).A_est.T
+    assert compute_aupr(G != 0, default, ignore_diagonal=True) > 0.7
+    assert compute_aupr(G != 0, no_self, ignore_diagonal=True) < 0.2
+    # the regulator-input model has no self term: the default there is unchanged
+    reg = KaggleMultiOutputRidge(k_interactions=3, perturbation_mode="regulator")
+    assert reg.allow_self_regulation is None

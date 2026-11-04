@@ -26,7 +26,7 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         threshold: float = 0.05,
         cv: int = 5,
         perturbation_mode: str = "additive",
-        allow_self_regulation: bool = False,
+        allow_self_regulation: Optional[bool] = None,
         adaptive_k: bool = False,
         stability_boots: int = 0,
         stability_freq: float = 0.5,
@@ -40,6 +40,8 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         self.threshold = threshold
         self.cv = cv
         self.perturbation_mode = perturbation_mode.lower().strip()
+        # None: the perturbed gene's own term is a regressor in the additive model (A X = -U needs it; without it the
+        # fit is near random, see docs/INFERENCE_GAP_ANALYSIS.md) and is left out in the regulator-input model
         self.allow_self_regulation = allow_self_regulation
         self.adaptive_k = adaptive_k
         self.stability_boots = stability_boots
@@ -102,6 +104,8 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
 
         pert_mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
         if pert_mode == "regulator":
+            kwargs.setdefault("allow_self_regulation", False if self.allow_self_regulation is None
+                              else self.allow_self_regulation)
             return regulator_input_fit(self, X_mat, U_mat, **kwargs)
 
         N, M = X_mat.shape
@@ -110,7 +114,8 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         if K is not None:
             K = max(1, min(int(K), N - 1))
         thresh = float(kwargs.get("threshold", self.threshold))
-        allow_self = bool(kwargs.get("allow_self_regulation", self.allow_self_regulation))
+        allow_self = kwargs.get("allow_self_regulation", self.allow_self_regulation)
+        allow_self = True if allow_self is None else bool(allow_self)
 
         A_est = np.zeros((N, N), dtype=float)
         best_alphas = []
@@ -123,8 +128,8 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
             for idx, reg in enumerate(reg_idx):
                 A_est[i, reg] = coefs[idx]
 
-        if not allow_self:
-            np.fill_diagonal(A_est, 0.0)
+        self_term = np.diag(A_est).copy()
+        np.fill_diagonal(A_est, 0.0)         # the own-gene term is a nuisance regressor, not a self-loop
 
         # Discretization
         adj_pred = np.zeros((N, N), dtype=int)
@@ -147,5 +152,5 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
             A_est=A_est,
             adjacency_pred=adj_pred,
             time_elapsed=elapsed,
-            diagnostics={"mean_alpha": float(np.mean(best_alphas))},
+            diagnostics={"mean_alpha": float(np.mean(best_alphas)), "mean_self_term": float(np.mean(self_term))},
         )
