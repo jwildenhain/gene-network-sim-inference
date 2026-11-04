@@ -1,0 +1,1 @@
+{"genes": 1000, "cells_per_condition": null, "screen_seconds": 54.4, "inspre": {"seconds": 66.09, "rss_gb": 0.48}, "mean_difference": {"seconds": 0.11, "rss_gb": 0.48}, "pearson": {"seconds": 0.23, "rss_gb": 0.48}, "gene_features": {"seconds": 0.08, "rss_gb": 0.48}, "grnboost_lite": {"seconds": 68.32, "rss_gb": 0.48}, "consensus": {"seconds": 0.69, "rss_gb": 0.53}}
