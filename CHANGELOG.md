@@ -6,6 +6,13 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Changed
+- **CellBox can run on a GPU.** `CellBoxNeuralODE(device="auto"|"cpu"|"cuda")` (default `auto`, or the `GRN_SIM_DEVICE`
+  environment variable): `auto` uses a usable CUDA GPU for networks of at least 300 genes and the CPU otherwise, `cuda`
+  fails with a clear error when there is no GPU, and an `auto` run whose GPU step fails (for example out of memory) finishes on
+  the CPU and says so in `diagnostics["gpu_fallback"]`. The fit reports `diagnostics["device"]`. Measured on an RTX 5080:
+  0.4 s instead of 35-40 s for 2000 genes and 0.2 s instead of 2 s for 500 genes, with the same network (weights are drawn on
+  the CPU, so a seeded run starts identically on either device). The Docker image installs the CPU build of PyTorch, so it stays on
+  the CPU unless you build it with a CUDA PyTorch and run it with `--gpus all`.
 - **Archive tab is paged.** It no longer downloads the whole history (3.3 MB, 3.6 s for 340 runs): `/api/history` accepts
   `set`, `page`, `page_size`, `sort`, `order` and `q` and returns one page of slim rows (about 20 KB), ranked, sorted and
   searched on the server, so sorting a column orders the whole archive, not only the visible page. The tab has a pager, a page
