@@ -2055,6 +2055,7 @@ def _parse_cells_per_condition(query: Dict[str, List[str]]) -> int:
 
 
 MAX_PERTURB_SEQ_PAIRS = 2000
+MAX_PERTURB_SEQ_PERTURBED = 20000                 # partial screen: perturbed genes (0 = every gene)
 
 
 PERTURB_SEQ_CELL_MODELS = ("lna", "sde", "legacy")
@@ -2074,7 +2075,14 @@ def _parse_perturb_seq_extras(query: Dict[str, List[str]]) -> Dict[str, Any]:
     controls = int(controls_raw) if controls_raw else None
     if controls is not None and not 0 <= controls <= MAX_PERTURB_SEQ_CONTROLS:
         raise ValueError(f"controls must be in [0, {MAX_PERTURB_SEQ_CONTROLS}], got {controls}")
-    return {"preset": preset, "measurement": measurement, "n_control_cells": controls}
+    perturbed = int(query.get("perturbed", ["0"])[0] or 0)
+    if not 0 <= perturbed <= MAX_PERTURB_SEQ_PERTURBED:
+        raise ValueError(f"perturbed must be in [0, {MAX_PERTURB_SEQ_PERTURBED}] (0 = every gene), got {perturbed}")
+    selection = str(query.get("selection", ["effective"])[0]).strip().lower()
+    if selection not in ("effective", "random"):
+        raise ValueError(f"selection must be 'effective' or 'random', got {selection!r}")
+    return {"preset": preset, "measurement": measurement, "n_control_cells": controls, "perturbed": perturbed,
+            "selection": selection}
 
 
 def _perturb_seq_run(
@@ -2086,6 +2094,8 @@ def _perturb_seq_run(
     preset: str = "current",
     measurement: bool = True,
     n_control_cells: Optional[int] = None,
+    perturbed: int = 0,
+    selection: str = "effective",
 ) -> Any:
     """Runs (or reuses) the Perturb-seq pipeline on the run's network or on a preset network of the same size."""
     from grn_sim.perturbseq.calibration import PRESETS
@@ -2096,7 +2106,7 @@ def _perturb_seq_run(
         raise LookupError("the Perturb-seq pipeline needs a simulated network (run a simulation first)")
     seed = int(target_state.get("seed", 42) or 42)
     key = (target_state.get("run_id"), mode, int(n_pairs), noise_model, int(cells_per_condition), preset,
-           bool(measurement), n_control_cells, seed)
+           bool(measurement), n_control_cells, seed, int(perturbed), selection if perturbed else "")
     if key in _PERTURB_SEQ_CACHE:
         return _PERTURB_SEQ_CACHE[key]
     if preset == "current":
@@ -2113,7 +2123,8 @@ def _perturb_seq_run(
         efficiency = PRESETS[preset].guide_efficiency_mean
     run = run_screen(net, mode=mode, pairs=n_pairs or None, cells_per_condition=cells_per_condition,
                      n_control_cells=n_control_cells, cell_model=noise_model, measurement=measurement,
-                     gene_names=names, guide_efficiency_mean=efficiency, seed=seed)
+                     gene_names=names, guide_efficiency_mean=efficiency, seed=seed,
+                     n_perturbed=int(perturbed) or None, perturbed_selection=selection)
     while len(_PERTURB_SEQ_CACHE) >= 2:
         _PERTURB_SEQ_CACHE.pop(next(iter(_PERTURB_SEQ_CACHE)))
     _PERTURB_SEQ_CACHE[key] = run
@@ -2129,6 +2140,8 @@ def _perturb_seq_realism_payload(
     preset: str,
     measurement: bool,
     n_control_cells: Optional[int],
+    perturbed: int = 0,
+    selection: str = "effective",
 ) -> Dict[str, Any]:
     """Realism report of the run's Perturb-seq screen against the genome-scale targets (JSON-ready)."""
     target_state = CURRENT_STATE
@@ -2139,14 +2152,18 @@ def _perturb_seq_realism_payload(
     if perturbation_mode == "input":
         raise ValueError("the realism report is for knockdown / knockout screens")
     run = _perturb_seq_run(target_state, perturbation_mode, n_pairs, noise_model, cells_per_condition,
-                           preset=preset, measurement=measurement, n_control_cells=n_control_cells)
+                           preset=preset, measurement=measurement, n_control_cells=n_control_cells,
+                           perturbed=perturbed, selection=selection)
     result = run.realism()
     stats = {k: (None if not np.isfinite(v) else float(v)) for k, v in result["statistics"].items()}
     rows = [{k: (None if isinstance(v, float) and not np.isfinite(v) else v) for k, v in r.items()}
             for r in result["report"]]
-    return {"status": "success", "run_id": target_state.get("run_id"), "score": result["score"], "report": rows,
-            "statistics": stats, "settings": result["settings"], "seconds": result["seconds"],
-            "n_cells": int(run.adata.n_obs), "n_genes": int(run.adata.n_vars)}
+    payload = {"status": "success", "run_id": target_state.get("run_id"), "score": result["score"], "report": rows,
+               "statistics": stats, "settings": result["settings"], "seconds": result["seconds"],
+               "n_cells": int(run.adata.n_obs), "n_genes": int(run.adata.n_vars)}
+    if "design" in result:                       # partial screen: its own statistics categories
+        payload["design"] = json.loads(json.dumps(result["design"], default=float))
+    return payload
 
 
 def _parse_perturb_seq_options(query: Dict[str, List[str]]) -> Tuple[str, int, str]:
@@ -2175,6 +2192,8 @@ def _build_perturb_seq_h5ad_bytes(
     preset: str = "current",
     measurement: bool = True,
     n_control_cells: Optional[int] = None,
+    perturbed: int = 0,
+    selection: str = "effective",
 ) -> Tuple[bytes, str]:
     """
     Generates a single-cell Perturb-seq AnnData .h5ad file (default 400 cells/condition, VCC layout).
@@ -2201,9 +2220,12 @@ def _build_perturb_seq_h5ad_bytes(
 
     if perturbation_mode != "input" and isinstance(network, GeneNetwork):
         run = _perturb_seq_run(target_state, perturbation_mode, n_pairs, noise_model, cells_per_condition,
-                               preset=preset, measurement=measurement, n_control_cells=n_control_cells)
+                               preset=preset, measurement=measurement, n_control_cells=n_control_cells,
+                               perturbed=perturbed, selection=selection)
         actual_run_id = target_state.get("run_id") or "vcc_perturb_seq"
         suffix = f"{perturbation_mode}{f'_{n_pairs}pairs' if n_pairs else ''}_{noise_model}"
+        if perturbed:
+            suffix += f"_{run.design.label()}"
         if preset != "current":
             suffix += f"_{preset}"
         return _write_h5ad_bytes(run.adata, f"{actual_run_id}_perturb_seq_{suffix}_{cells_per_condition}cells")
@@ -2823,7 +2845,8 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 extras = _parse_perturb_seq_extras(query)
                 payload = _perturb_seq_realism_payload(query.get("run_id", [None])[0], cells, pmode, n_pairs, noise,
                                                        extras["preset"], extras["measurement"],
-                                                       extras["n_control_cells"])
+                                                       extras["n_control_cells"], extras["perturbed"],
+                                                       extras["selection"])
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))

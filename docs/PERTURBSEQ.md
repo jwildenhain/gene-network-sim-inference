@@ -73,6 +73,35 @@ bidirectional share. Genome-scale screens combine low density with ~98.5% mediat
 thousands of genes; below that size the two cannot both be met. Statistics of networks much smaller than 500 genes
 are not comparable with the targets.
 
+## Partial screens (a few perturbed genes, all genes measured)
+
+A genome-scale screen perturbs a few hundred genes and measures thousands. `ScreenDesign` (`perturbseq/design.py`) separates
+*which genes are perturbed* from how the screen is generated:
+
+```python
+run = run_screen(net, n_perturbed=30)                              # 30 effective genes (default selection)
+run = run_screen(net, n_perturbed=30, perturbed_selection="random")
+run = run_screen(net, genes=[3, 17, 42])                           # explicit list
+```
+CLI: `grn-sim perturbseq --genes 500 --perturbed 30 --selection effective`. API / studio: `?perturbed=30&selection=effective`
+(*Perturbed genes* and *Selection* in the Perturb-seq panel; 0 = every gene).
+
+- **Selection.** `effective` (default) draws the genes at random among those whose knockdown moves other genes in the simulated
+  network (a noise-free single-knockdown screen of the whole network gives the `effective` label; one extra pass over all genes).
+  If the network has fewer effective genes than requested, all of them are used and the shortfall is reported
+  (`selection_info["shortfall"]`, the CLI and the studio say so). `random` draws among all genes.
+- **Statistics category.** A partial screen has its own statistics (`run.realism()["design"]["categories"]`, shown below the
+  realism table in the studio): `design` (perturbed genes, effective share, shortfall), `identifiability` (how many true edges have
+  a perturbed regulator at all: P->P, P->Q, from unperturbed genes), `coverage` (unperturbed genes that respond, perturbations per
+  responding gene), `blocks` (effect density and mediated share for P->P and P->Q). With `effective` selection the genome-scale
+  statistics that the selection shifts (`fraction_with_phenotype`, `affected_pair_density`, `bidirectional_share`,
+  `top5pct_perturbation_effect_share`) are still reported but marked `comparable = False` and left out of the score.
+- **Output.** All genes are in `X`; `adata.uns["screen_design"]` records the design and the perturbed genes. 500 genes with 30
+  effective perturbed genes: about 12% of the true edges have a perturbed regulator and can be identified from interventions.
+- **Algorithms.** `registry.describe()` lists `partial: native | adapter` per algorithm and `registry.build_partial(key)` wraps the
+  ones that need `PartialAdapter`; scoring per block is `grn_sim.evaluation.partial_screen`. Measured results:
+  `docs/partial_screen_benchmark_500genes.md`, `docs/INFERENCE_GAP_ANALYSIS.md`.
+
 ## Notes and limits
 
 - `lna` is the default cell model; it is accurate for well-expressed genes. `sde` is exact but much slower, and

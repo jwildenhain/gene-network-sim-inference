@@ -116,6 +116,8 @@ def main() -> None:
     ap.add_argument("--genes", type=int, default=500)
     ap.add_argument("--perturbed", type=int, nargs="+", default=[30, 100])
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--selection", choices=["random", "effective"], default="random",
+                    help="how the perturbed genes are chosen (the published tables used random)")
     ap.add_argument("--cells", type=int, default=100)
     ap.add_argument("--budget", type=int, default=240, help="seconds per fit")
     ap.add_argument("--out", default=None)
@@ -126,7 +128,7 @@ def main() -> None:
         for seed in range(1, a.seeds + 1):
             t = time.time()
             run = run_screen(build_network("replogle_like", a.genes, seed=seed), mode="knockdown",
-                             cells_per_condition=a.cells, n_perturbed=m, seed=seed)
+                             cells_per_condition=a.cells, n_perturbed=m, perturbed_selection=a.selection, seed=seed)
             ace = sb.screen_inputs(run, "cells", seed, min_cells=max(10, a.cells // 5))
             X, U = ace.to_xu()
             print(f"m={m} seed={seed}: screen {time.time() - t:.0f}s, X {X.shape}, effective nodes "

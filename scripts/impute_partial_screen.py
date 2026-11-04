@@ -69,6 +69,8 @@ def main() -> None:
     ap.add_argument("--genes", type=int, default=150)
     ap.add_argument("--perturbed", type=int, default=30)
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--selection", choices=["random", "effective"], default="random",
+                    help="how the perturbed genes are chosen (the published tables used random)")
     ap.add_argument("--cells", type=int, default=40)
     ap.add_argument("--rewire", type=float, nargs="+", default=[0.0, 0.3])
     ap.add_argument("--source-noise", type=float, default=0.05)
@@ -91,7 +93,7 @@ def main() -> None:
             target = copy.deepcopy(base)
             if rew > 0:
                 _rewire_edges(target, rew, rng, shift=1)
-            run = run_screen(target, mode="knockdown", cells_per_condition=a.cells, n_perturbed=a.perturbed, seed=seed)
+            run = run_screen(target, mode="knockdown", cells_per_condition=a.cells, n_perturbed=a.perturbed, perturbed_selection=a.selection, seed=seed)
             full = run_screen(target, mode="knockdown", cells_per_condition=a.cells, seed=seed)
             adj = run.screen.adjacency
             P = perturbed_genes(run.screen)

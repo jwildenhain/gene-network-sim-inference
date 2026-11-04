@@ -2942,6 +2942,15 @@
             <label>Double KOs
               <input type="number" id="ps-pairs" value="0" min="0" max="2000" style="width:100%;font-size:11px;padding:3px;" />
             </label>
+            <label title="Partial screen: perturb only this many genes (0 = every gene); all genes are measured">Perturbed genes (0 = all)
+              <input type="number" id="ps-perturbed" value="0" min="0" max="20000" style="width:100%;font-size:11px;padding:3px;" />
+            </label>
+            <label title="How the perturbed genes are chosen in a partial screen">Selection
+              <select id="ps-selection" style="width:100%;font-size:11px;padding:3px;">
+                <option value="effective" selected>Effective genes</option>
+                <option value="random">Random genes</option>
+              </select>
+            </label>
             <label>Cells / perturbation
               <input type="number" id="ps-cells" value="100" min="1" max="2000" style="width:100%;font-size:11px;padding:3px;" />
             </label>
@@ -5472,6 +5481,8 @@
         noise: v('ps-noise').value,
         preset: v('ps-preset').value,
         pairs: String(Math.max(0, parseInt(v('ps-pairs').value) || 0)),
+        perturbed: String(Math.max(0, parseInt(v('ps-perturbed').value) || 0)),
+        selection: v('ps-selection').value,
         cells_per_condition: String(Math.max(1, parseInt(v('ps-cells').value) || 100)),
         measurement: v('ps-measurement').checked ? '1' : '0',
       });
@@ -5527,9 +5538,25 @@
             <td title="${r.note || ''} — ${r.source || ''}">${r.statistic.replace(/_/g, ' ')}</td>
             <td style="text-align:right;font-family:monospace;">${fmt(r.value)}</td>
             <td style="text-align:right;font-family:monospace;color:var(--text-muted);">${fmt(r.target_low)}–${fmt(r.target_high)}</td>
-            <td style="text-align:center;font-weight:700;color:${r.within ? '#10b981' : '#ef4444'};">${r.within ? '✓' : '✗'}</td>
+            <td style="text-align:center;font-weight:700;color:${r.comparable === false ? 'var(--text-muted)' : (r.within ? '#10b981' : '#ef4444')};"
+                title="${r.comparable === false ? 'not scored: the perturbed genes were selected by effect' : ''}">${r.comparable === false ? 'n/a' : (r.within ? '✓' : '✗')}</td>
           </tr>`).join('');
-        const n = data.report.filter(r => r.within).length;
+        const scored = data.report.filter(r => r.comparable !== false);
+        const n = scored.filter(r => r.within).length;
+        let designHtml = '';
+        if (data.design && data.design.categories) {
+          const sel = data.design.selection || {};
+          const note = sel.shortfall ? ` (${sel.shortfall} fewer than the ${sel.n_requested} requested: only ${sel.n_effective_available} effective genes)` : '';
+          const cats = Object.entries(data.design.categories).map(([cat, stats]) => `
+            <div style="margin-top:6px;"><b>${cat}</b></div>
+            <table style="width:100%;font-size:10.5px;border-collapse:collapse;" class="ps-design-table" data-category="${cat}">
+              ${Object.entries(stats).map(([k, val]) => `<tr><td>${k.replace(/_/g, ' ')}</td><td style="text-align:right;font-family:monospace;">${fmt(val)}</td></tr>`).join('')}
+            </table>`).join('');
+          designHtml = `<div id="ps-design" style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">
+            <div style="font-size:11px;font-weight:700;">Partial screen: ${sel.n_selected} of ${data.n_genes} genes perturbed (${sel.rule})${note}</div>
+            <div style="font-size:10.5px;color:var(--text-muted);">Own statistics categories: what the screen can identify at all, not a comparison with genome-scale targets.</div>
+            ${cats}</div>`;
+        }
         box.innerHTML = `
           <table style="width:100%;font-size:10.5px;border-collapse:collapse;" id="ps-realism-table">
             <thead><tr style="color:var(--text-muted);text-align:left;">
@@ -5538,9 +5565,9 @@
             <tbody>${rows}</tbody>
           </table>
           <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">
-            ${n}/${data.report.length} inside the genome-scale Perturb-seq targets (score ${data.score.toFixed(2)}; 0 = all inside).
+            ${n}/${scored.length} inside the genome-scale Perturb-seq targets (score ${data.score.toFixed(2)}; 0 = all inside).
             ${data.n_genes} genes, ${data.n_cells} cells. Targets are calibrated for screens of 500+ genes.
-          </div>`;
+          </div>${designHtml}`;
         const secs = Object.values(data.seconds || {}).reduce((a, b) => a + b, 0);
         setPerturbSeqBusy(false, `Report ready (${secs.toFixed(1)} s)`);
       } catch (e) {

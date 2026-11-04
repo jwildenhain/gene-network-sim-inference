@@ -57,6 +57,9 @@ class AlgorithmSpec:
     # structure comparison. ``response_unsupported`` names the reason A_est cannot serve as a Jacobian.
     response_sign: Optional[float] = None
     response_unsupported: str = ""
+    # partial screens (m perturbed genes of n measured): "native" = fits (X, U) with fewer columns than genes as it is,
+    # "adapter" = needs grn_sim.inference.partial.PartialAdapter (fit on the perturbed block, extended to the others)
+    partial: str = "native"
     extra: Dict[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -114,6 +117,16 @@ def build(key: str, ctx: Optional[BuildContext] = None) -> BaseInferenceAlgorith
     return get(key).build(ctx or BuildContext())
 
 
+def build_partial(key: str, ctx: Optional[BuildContext] = None) -> BaseInferenceAlgorithm:
+    """The algorithm ready for a partial screen: wrapped in a ``PartialAdapter`` when its spec says so. The adapter's output is
+    ``A_est[regulator, target]`` over all genes (already oriented); a native algorithm's output follows its own orientation."""
+    algo = build(key, ctx)
+    if get(key).partial == "adapter":
+        from grn_sim.inference.partial import PartialAdapter
+        return PartialAdapter(algo, key)
+    return algo
+
+
 def build_all(ctx: Optional[BuildContext] = None, only: Optional[Sequence[str]] = None) -> Dict[str, BaseInferenceAlgorithm]:
     ctx = ctx or BuildContext()
     return {s.key: s.build(ctx) for s in specs() if only is None or s.key in only}
@@ -123,7 +136,7 @@ def describe() -> List[Dict[str, object]]:
     """What the page needs to list the algorithms (served by /api/algorithms)."""
     return [{"key": s.key, "label": s.label, "long_name": s.long_name, "paradigm": s.paradigm, "badge": s.badge,
              "color": s.color, "dash": list(s.dash) if s.dash else None, "core": s.core, "order": s.order,
-             "regulator_input": bool(s.uses_regulator_model)} for s in specs()]
+             "regulator_input": bool(s.uses_regulator_model), "partial": s.partial} for s in specs()]
 
 
 def sweep_metadata() -> Dict[str, Dict[str, str]]:
@@ -236,7 +249,9 @@ def _register_builtin() -> None:
                       "Gene-level Feature Baseline (hubness only)", "Pair-agnostic Baseline", "Hubness Control",
                       "#d6d3d1", (1, 4)),
     ]
+    needs_adapter = {"s2g", "g2s", "vote", "score_vote", "ridge_cv", "fast", "netdeconv"}   # measured: grn_sim/docs/partial_screen_*
     for i, spec in enumerate(builtin):
+        spec.partial = "adapter" if spec.key in needs_adapter else "native"
         spec.order = 10 * (i + 1)
         register(spec, replace=True)
 

@@ -289,7 +289,8 @@ def test_partial_adapter_scores_both_blocks(key):
 def test_run_screen_partial_option_and_scoring():
     from grn_sim.evaluation.partial_screen import evaluate_partial, perturbed_genes
     from grn_sim.perturbseq.pipeline import build_network, run_screen
-    run = run_screen(build_network("replogle_like", 60, seed=1), mode="knockdown", cells_per_condition=30, n_perturbed=12, seed=1)
+    run = run_screen(build_network("replogle_like", 60, seed=1), mode="knockdown", cells_per_condition=30, n_perturbed=12,
+                     perturbed_selection="random", seed=1)
     assert len(perturbed_genes(run.screen)) == 12 and run.settings["n_perturbed"] == 12
     truth = np.abs(run.screen.adjacency).astype(float)
     m = evaluate_partial(run.screen, truth)             # the truth as score: both blocks perfect
@@ -297,7 +298,7 @@ def test_run_screen_partial_option_and_scoring():
     zero = evaluate_partial(run.screen, np.zeros_like(truth))
     assert zero["scored_B"] == 0 and abs(zero["aupr_B"] - zero["base_B"]) < 0.1
     with pytest.raises(ValueError):
-        run_screen(build_network("replogle_like", 30, seed=1), n_perturbed=0)
+        run_screen(build_network("replogle_like", 30, seed=1), n_perturbed=999)
 
 
 @pytest.mark.parametrize("name", ["sfinn", "atlasshift"])

@@ -15,6 +15,7 @@ from grn_sim.core.network import GeneNetwork
 from grn_sim.perturbseq.calibration import PRESETS
 from grn_sim.perturbseq.cells import CellConfig, CellPopulation, simulate_cells
 from grn_sim.perturbseq.conditions import ConditionScreen, simulate_conditions
+from grn_sim.perturbseq.design import ScreenDesign, select_perturbed
 from grn_sim.perturbseq.export import population_to_anndata, screen_to_anndata
 from grn_sim.perturbseq.measurement import MeasurementConfig
 from grn_sim.perturbseq.realism import observed_statistics, realism_report, realism_score, truth_statistics
@@ -31,6 +32,8 @@ class ScreenRun:
     adata: Any
     settings: Dict[str, Any]
     seconds: Dict[str, float] = field(default_factory=dict)
+    design: ScreenDesign = field(default_factory=ScreenDesign.full)
+    selection_info: Dict[str, Any] = field(default_factory=dict)
 
     def realism(self, phenotype_test: str = "hotelling") -> Dict[str, Any]:
         """Ground-truth + observed statistics and the report rows against the genome-scale targets."""
@@ -39,10 +42,31 @@ class ScreenRun:
         if self.population is not None:
             stats.update(observed_statistics(self.adata, phenotype_test=phenotype_test,
                                              seed=int(self.settings.get("seed") or 0)))
-        rows = realism_report(stats)
+        partial = self.design.is_partial
+        rows = realism_report(stats, partial_selection=partial and self.design.selection == "effective")
         self.seconds["statistics"] = round(time.time() - t, 2)
-        return {"statistics": stats, "report": rows, "score": realism_score(rows), "settings": self.settings,
-                "seconds": dict(self.seconds)}
+        out = {"statistics": stats, "report": rows, "score": realism_score(rows), "settings": self.settings,
+               "seconds": dict(self.seconds)}
+        if partial:
+            from grn_sim.perturbseq.partial_stats import design_statistics
+            out["design"] = {"describe": self.design.describe(), "selection": dict(self.selection_info),
+                             "categories": design_statistics(self.screen, self.selection_info)}
+        return out
+
+
+def _stamp_design(adata: Any, design: ScreenDesign, info: Dict[str, Any], screen: ConditionScreen) -> None:
+    """Records the screen design in ``adata.uns['screen_design']`` (scalars and arrays only, so it survives an h5ad round trip)."""
+    perturbed = sorted({c[0] for c in screen.conditions if len(c) == 1})
+    adata.uns["screen_design"] = {
+        "kind": design.kind,
+        "label": design.label(),
+        "selection_rule": str(info.get("rule", "full")),
+        "n_perturbed": int(len(perturbed)),
+        "n_requested": int(info.get("n_requested", len(perturbed))),
+        "shortfall": int(info.get("shortfall", 0)),
+        "perturbed_genes": np.asarray([screen.gene_names[g] for g in perturbed], dtype=object),
+        "perturbed_gene_index": np.asarray(perturbed, dtype=int),
+    }
 
 
 def build_network(preset: str, n_genes: int, seed: Optional[int] = None) -> GeneNetwork:
@@ -65,13 +89,17 @@ def run_screen(
     seed: Optional[int] = 0,
     genes: Optional[List[int]] = None,
     n_perturbed: Optional[int] = None,
+    perturbed_selection: str = "effective",
+    design: Optional[ScreenDesign] = None,
 ) -> ScreenRun:
     """
     Runs the screen on ``network``.
 
-    ``genes`` / ``n_perturbed``: a partial screen. ``genes`` lists the perturbed gene indices; ``n_perturbed`` draws that
-    many at random (seeded). Default: every gene is perturbed once. The other genes are measured but never targeted
-    (use ``grn_sim.evaluation.partial_screen`` for the scoring of such screens).
+    Design: by default every gene is perturbed once. ``design`` (a :class:`ScreenDesign`) or the shortcuts ``n_perturbed`` /
+    ``genes`` make a *partial* screen: only those genes are perturbed, all genes are measured. ``n_perturbed`` picks that many
+    genes by ``perturbed_selection``: ``"effective"`` (default; genes whose knockdown moves other genes in this network) or
+    ``"random"``; ``genes`` lists the indices explicitly. Partial screens report their own statistics category
+    (``ScreenRun.realism()["design"]``) and are scored per block (``grn_sim.evaluation.partial_screen``).
 
     ``cell_model``: ``"lna"`` / ``"sde"`` (stage-2 cells) or ``"legacy"`` (independent Gamma-Poisson cells around
     each condition mean, no guides). ``measurement`` applies the stage-3 droplet model to stage-2 cells (doublets,
@@ -81,16 +109,18 @@ def run_screen(
         raise ValueError(f"cell_model must be one of {CELL_MODELS}, got {cell_model!r}")
     if cells_per_condition < 1:
         raise ValueError("cells_per_condition must be >= 1")
-    if genes is None and n_perturbed is not None:
-        if not 1 <= int(n_perturbed) <= network.n:
-            raise ValueError("n_perturbed must be between 1 and the number of genes")
-        genes = sorted(int(g) for g in np.random.default_rng(int(seed or 0) + 7919).choice(
-            network.n, size=int(n_perturbed), replace=False))
+    if design is None:
+        design = ScreenDesign.from_options(n_perturbed, perturbed_selection, genes)
+    genes, selection_info = select_perturbed(network, design, mode=mode, seed=seed)
+    if design.is_partial and not genes:
+        raise ValueError("this network has no effective genes to perturb (no knockdown moves another gene)")
     settings = {"mode": mode, "pairs": int(pairs or 0), "cells_per_condition": int(cells_per_condition),
                 "n_control_cells": None if n_control_cells is None else int(n_control_cells),
                 "cell_model": cell_model, "measurement": bool(measurement), "n_genes": int(network.n),
                 "seed": seed, "guide_efficiency_mean": guide_efficiency_mean,
-                "n_perturbed": network.n if genes is None else len(genes)}
+                "n_perturbed": network.n if genes is None else len(genes), "design": design.label(),
+                "perturbed_selection": selection_info.get("rule"), "perturbed_selection_shortfall": selection_info.get("shortfall", 0),
+                "perturbed_genes": None if genes is None else [int(g) for g in genes]}
     seconds: Dict[str, float] = {}
     t = time.time()
     screen = simulate_conditions(network, mode=mode, genes=genes, pairs=pairs or None, gene_names=gene_names, seed=seed)
@@ -100,7 +130,8 @@ def run_screen(
         t = time.time()
         adata = screen_to_anndata(screen, cells_per_condition=cells_per_condition, seed=seed_i)
         seconds["cells"] = round(time.time() - t, 2)
-        return ScreenRun(screen, None, adata, settings, seconds)
+        _stamp_design(adata, design, selection_info, screen)
+        return ScreenRun(screen, None, adata, settings, seconds, design, selection_info)
     cfg_kwargs: Dict[str, Any] = {"noise_model": cell_model}
     if guide_efficiency_mean is not None:
         cfg_kwargs["guide_efficiency_mean"] = float(guide_efficiency_mean)
@@ -112,4 +143,5 @@ def run_screen(
     adata = population_to_anndata(population, screen, seed=seed_i + 2,
                                   measurement=MeasurementConfig() if measurement else None)
     seconds["measurement"] = round(time.time() - t, 2)
-    return ScreenRun(screen, population, adata, settings, seconds)
+    _stamp_design(adata, design, selection_info, screen)
+    return ScreenRun(screen, population, adata, settings, seconds, design, selection_info)

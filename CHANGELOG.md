@@ -3,6 +3,21 @@
 All notable changes. The format follows [Keep a Changelog](https://keepachangelog.com/); the project uses semantic
 versioning once it leaves 0.x.
 
+
+## Unreleased - partial screens
+
+- Partial Perturb-seq screens: `ScreenDesign`, `run_screen(n_perturbed=, perturbed_selection=, genes=)`, `grn-sim perturbseq --perturbed N
+  --selection effective|random`, `?perturbed=&selection=` on the studio API, panel fields. Effective-gene selection from the simulated
+  network, shortfall reporting, own statistics categories (design, identifiability, coverage, blocks), selection-biased realism
+  statistics marked not comparable. `adata.uns["screen_design"]`.
+- Algorithms for partial screens: `PartialAdapter`, `registry.build_partial`, `partial` capability in `registry.describe()`; inspre,
+  SFINN, AtlasShift and CellBox accept fewer perturbation columns than genes.
+- New: inspre, mean difference, Pearson, GRNBoost-lite, gene-level features, bicycle-lite, DOTEARS-lite, calibrated ACE estimates,
+  consensus, direct/total-effect screen benchmark, prior-quality experiment (docs/INFERENCE_GAP_ANALYSIS.md).
+- Fixed: RidgeCV in additive mode now includes the own-gene term (it scored at the random level); CellBox rescales its inputs
+  (AUPR 0.03-0.06 -> 0.45-0.60 on 100-gene screens); the cell simulator no longer raises the BLAS thread count (forked process pools
+  could deadlock afterwards).
+
 ## [Unreleased]
 
 ### Changed

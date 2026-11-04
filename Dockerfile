@@ -21,10 +21,13 @@ COPY src/ ./src/
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir ".[dev]"
 
-# Run the unit and benchmark tests during the build, against the installed package
+# Run the unit and benchmark tests during the build, against the installed package (the default). On a shared machine build with
+#   docker compose build --build-arg RUN_TESTS=0
+# and run the same suite pinned to some cores afterwards:  docker run --cpuset-cpus 0-7 --entrypoint "" <image> pytest -p no:cacheprovider --ignore-glob="*playwright*"
+ARG RUN_TESTS=1
 COPY scripts/ ./scripts/
 COPY tests/ ./tests/
-RUN pytest -v -p no:cacheprovider --ignore-glob="*playwright*"
+RUN if [ "$RUN_TESTS" = "1" ]; then pytest -v -p no:cacheprovider --ignore-glob="*playwright*"; else echo "tests skipped in the build (RUN_TESTS=$RUN_TESTS)"; fi
 
 # Everything the studio writes (simulation archive, exports, downloads) lives in /app/data: mount a volume there
 ENV GRN_SIM_HOME=/app/data

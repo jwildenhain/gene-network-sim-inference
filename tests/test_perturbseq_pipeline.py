@@ -86,6 +86,7 @@ def test_server_extras_defaults():
     from grn_sim.web import server
 
     extras = server._parse_perturb_seq_extras({})
-    assert extras == {"preset": "current", "measurement": True, "n_control_cells": None}
+    assert extras == {"preset": "current", "measurement": True, "n_control_cells": None, "perturbed": 0,
+                      "selection": "effective"}
     assert server._parse_perturb_seq_extras({"measurement": ["0"]})["measurement"] is False
     assert set(server.PERTURB_SEQ_PRESETS) == {"current", "replogle_like", "thesis"}

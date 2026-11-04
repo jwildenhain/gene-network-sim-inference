@@ -55,6 +55,12 @@ TARGETS: Dict[str, Target] = {
 }
 
 
+# Statistics whose genome-scale targets assume that the perturbed genes are *all* genes (or a random sample): under a partial
+# screen with effective-gene selection they are shifted by the selection itself and are reported but not scored.
+NOT_COMPARABLE_UNDER_PARTIAL = frozenset({"fraction_with_phenotype", "affected_pair_density", "bidirectional_share",
+                                          "top5pct_perturbation_effect_share"})
+
+
 # --- ground-truth statistics ------------------------------------------------------------------------
 
 def truth_statistics(screen: ConditionScreen, effect_threshold: Optional[float] = None) -> Dict[str, float]:
@@ -275,8 +281,13 @@ def observed_statistics(
 
 # --- report -----------------------------------------------------------------------------------------
 
-def realism_report(statistics: Dict[str, float], targets: Optional[Dict[str, Target]] = None) -> List[Dict[str, Any]]:
-    """One row per target statistic present in ``statistics``: value, target range, whether it is inside."""
+def realism_report(statistics: Dict[str, float], targets: Optional[Dict[str, Target]] = None,
+                   partial_selection: bool = False) -> List[Dict[str, Any]]:
+    """
+    One row per target statistic present in ``statistics``: value, target range, whether it is inside. With
+    ``partial_selection`` (a partial screen whose perturbed genes were chosen by effect) the statistics in
+    :data:`NOT_COMPARABLE_UNDER_PARTIAL` get ``comparable = False`` and do not count towards the score.
+    """
     targets = TARGETS if targets is None else targets
     rows = []
     for name, t in targets.items():
@@ -286,19 +297,20 @@ def realism_report(statistics: Dict[str, float], targets: Optional[Dict[str, Tar
         inside = bool(np.isfinite(v) and t.low <= v <= t.high)
         distance = 0.0 if inside else (float("inf") if not np.isfinite(v)
                                         else min(abs(v - t.low), abs(v - t.high)) / max(t.high - t.low, 1e-9))
+        comparable = not (partial_selection and name in NOT_COMPARABLE_UNDER_PARTIAL)
         rows.append({"statistic": name, "value": v, "target_low": t.low, "target_high": t.high, "within": inside,
-                     "distance": distance, "source": t.source, "note": t.note})
+                     "distance": distance, "source": t.source, "note": t.note, "comparable": comparable})
     return rows
 
 
 def realism_score(rows: Sequence[Dict[str, Any]]) -> float:
     """Sum of range-normalised distances outside the targets (0 = every statistic inside its range)."""
-    return float(sum(min(r["distance"], 10.0) for r in rows))
+    return float(sum(min(r["distance"], 10.0) for r in rows if r.get("comparable", True)))
 
 
 def format_report(rows: Sequence[Dict[str, Any]]) -> str:
     lines = [f"{'statistic':38s} {'simulated':>10s}  {'target':>15s}  ok"]
     for r in rows:
-        lines.append(f"{r['statistic']:38s} {r['value']:10.3f}  {r['target_low']:6.3f}-{r['target_high']:<7.3f}  "
-                     f"{'yes' if r['within'] else 'NO'}")
+        flag = "n/a (selected genes)" if not r.get("comparable", True) else ("yes" if r["within"] else "NO")
+        lines.append(f"{r['statistic']:38s} {r['value']:10.3f}  {r['target_low']:6.3f}-{r['target_high']:<7.3f}  {flag}")
     return "\n".join(lines)

@@ -105,7 +105,13 @@ def cmd_perturbseq(args):
         net, mode=args.mode, pairs=args.pairs, cells_per_condition=args.cells, n_control_cells=args.controls,
         cell_model=args.noise, measurement=not args.no_measurement, seed=args.seed,
         guide_efficiency_mean=PRESETS[args.preset].guide_efficiency_mean,
+        n_perturbed=args.perturbed or None, perturbed_selection=args.selection,
     )
+    if run.design.is_partial:
+        sel = run.selection_info
+        print(f"Partial screen: {sel['n_selected']} of {args.genes} genes perturbed ({sel['rule']} selection"
+              + (f", {sel['shortfall']} fewer than the {sel['n_requested']} requested: the network has only "
+                 f"{sel['n_effective_available']} effective genes" if sel.get("shortfall") else "") + ")")
     print(f"Simulated {run.adata.n_obs} cells x {run.adata.n_vars} genes  {run.seconds}")
     if args.out:
         run.adata.write_h5ad(args.out, compression="gzip")
@@ -115,6 +121,12 @@ def cmd_perturbseq(args):
         print("\n--- Realism vs genome-scale Perturb-seq targets (score 0 = all inside) ---")
         print(format_report(result["report"]))
         print(f"score {result['score']:.2f}")
+        if "design" in result:
+            print("\n--- Partial-screen statistics (own categories; not compared with genome-scale targets) ---")
+            for category, stats in result["design"]["categories"].items():
+                print(f"[{category}]")
+                for name, value in stats.items():
+                    print(f"  {name:55s} {value:10.3f}")
         if args.report:
             with open(args.report, "w") as fh:
                 json.dump(result, fh, indent=2, default=float)
@@ -150,6 +162,10 @@ def main():
                       help="Network regime (default replogle_like)")
     p_ps.add_argument("--mode", default="knockdown", choices=["knockdown", "knockout", "input"])
     p_ps.add_argument("--pairs", type=int, default=0, help="Random double perturbations")
+    p_ps.add_argument("--perturbed", type=int, default=0,
+                      help="Partial screen: perturb only this many genes (0 = every gene); all genes are measured")
+    p_ps.add_argument("--selection", default="effective", choices=["effective", "random"],
+                      help="How the perturbed genes are chosen: effective (their knockdown moves other genes) or random")
     p_ps.add_argument("--cells", type=int, default=100, help="Cells per perturbation")
     p_ps.add_argument("--controls", type=int, default=None, help="Non-targeting cells (default: --cells)")
     p_ps.add_argument("--noise", default="lna", choices=["lna", "sde", "legacy"], help="Cell noise model")
