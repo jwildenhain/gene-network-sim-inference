@@ -147,6 +147,9 @@ def _register_builtin() -> None:
     from grn_sim.inference.fast_svd import FastSVD
     from grn_sim.inference.g2s import GeneralToSpecific
     from grn_sim.inference.genie3 import GENIE3Algorithm
+    from grn_sim.inference.inspre import InspreAlgorithm
+    from grn_sim.inference.interventional_baselines import (GeneFeatureBaseline, GRNBoostLite, MeanDifference,
+                                                            PearsonCorrelation)
     from grn_sim.inference.network_deconv import NetworkDeconvolution
     from grn_sim.inference.nir import NIRAlgorithm
     from grn_sim.inference.notears import NOTEARSAlgorithm
@@ -218,6 +221,20 @@ def _register_builtin() -> None:
                       "Shared Factor & Integrated NN", "Neighborhood GCN+FNN", "#eab308", target_row=True),
         AlgorithmSpec("notears", "NOTEARS (DAG)", lambda c: NOTEARSAlgorithm(k_interactions=k_if_reg(c)), "NOTEARS",
                       "Differentiable Acyclic DAG", "Continuous DAG Optimization", "#f59e0b", (3, 2)),
+        AlgorithmSpec("inspre", "inspre (sparse inverse)", lambda c: InspreAlgorithm(k_interactions=c.k_est),
+                      "inspre (Sparse Inversion of the Response Matrix)", "Sparse Inversion of Total Effects",
+                      "Cyclic Total-to-Direct", "#0d9488", (5, 2)),
+        AlgorithmSpec("mean_difference", "Mean Difference", lambda c: MeanDifference(k_interactions=c.k_est),
+                      "Mean Difference (control vs perturbed)", "Interventional Contrast Baseline",
+                      "Total-Effect Baseline", "#78716c", (2, 4)),
+        AlgorithmSpec("pearson", "Pearson |r|", lambda c: PearsonCorrelation(k_interactions=c.k_est),
+                      "Pearson Correlation", "Co-expression Baseline", "Correlation Baseline", "#a8a29e", (2, 4)),
+        AlgorithmSpec("grnboost", "GRNBoost-lite", lambda c: GRNBoostLite(k_interactions=c.k_est, seed=c.seed),
+                      "GRNBoost (gradient-boosted importances)", "Boosted Tree Importance", "Boosted Trees", "#65a30d",
+                      target_row=True),
+        AlgorithmSpec("gene_features", "Gene-level features", lambda c: GeneFeatureBaseline(k_interactions=c.k_est),
+                      "Gene-level Feature Baseline (hubness only)", "Pair-agnostic Baseline", "Hubness Control",
+                      "#d6d3d1", (1, 4)),
     ]
     for i, spec in enumerate(builtin):
         spec.order = 10 * (i + 1)
