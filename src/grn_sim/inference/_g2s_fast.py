@@ -219,15 +219,18 @@ _KERNEL: Dict[str, Any] = {}
 def _hh_kernel():
     """numba-compiled ``_hh_drop_py`` or ``None`` (numba missing or GRN_SIM_G2S_NUMBA=0)."""
     if "fn" not in _KERNEL:
-        fn = None
-        if os.environ.get("GRN_SIM_G2S_NUMBA", "1") != "0":
-            try:
-                import numba
-                fn = numba.njit(cache=False, nogil=True, fastmath={"reassoc", "contract"})(_hh_drop_py)
-                fn(np.eye(3), 3, np.ones(3), 1, np.empty(2), np.empty(2))   # compile now (before forking workers)
-            except Exception:  # pragma: no cover - numba missing or broken
+        from grn_sim.inference._native import NATIVE_LOCK
+        with NATIVE_LOCK:                                   # compiling loads native modules: never beside a library walk
+            if "fn" not in _KERNEL:
                 fn = None
-        _KERNEL["fn"] = fn
+                if os.environ.get("GRN_SIM_G2S_NUMBA", "1") != "0":
+                    try:
+                        import numba
+                        fn = numba.njit(cache=False, nogil=True, fastmath={"reassoc", "contract"})(_hh_drop_py)
+                        fn(np.eye(3), 3, np.ones(3), 1, np.empty(2), np.empty(2))   # compile now (before forking workers)
+                    except Exception:  # pragma: no cover - numba missing or broken
+                        fn = None
+                _KERNEL["fn"] = fn
     return _KERNEL["fn"]
 
 
@@ -813,10 +816,12 @@ def solve_genes(
     _hh_kernel()                      # compile once in the parent; forked workers inherit it
     ctx = mp.get_context("fork")
     parts = []
-    with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx, initializer=_worker_init,
-                             initargs=(basis, Y, params, starts)) as ex:
-        for part in ex.map(_worker_run, chunks):
-            parts.extend(part)
+    from grn_sim.inference._native import NATIVE_LOCK
+    with NATIVE_LOCK:                 # no other thread loads native libraries while this one forks (see _native.py)
+        with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx, initializer=_worker_init,
+                                 initargs=(basis, Y, params, starts)) as ex:
+            for part in ex.map(_worker_run, chunks):
+                parts.extend(part)
     # Final least squares in the parent with one BLAS thread (as the serial backend runs), so near-zero
     # coefficients do not depend on the backend - only after the pool is gone (see GeneralToSpecific._solve_all).
     with _one_blas_thread():
@@ -827,10 +832,6 @@ def solve_genes(
 
 @contextmanager
 def _one_blas_thread() -> Iterator[None]:
-    try:
-        from threadpoolctl import threadpool_limits
-    except Exception:  # pragma: no cover - threadpoolctl missing
-        yield
-        return
-    with threadpool_limits(limits=1, user_api="blas"):
+    from grn_sim.inference._native import blas_limit
+    with blas_limit(1):
         yield

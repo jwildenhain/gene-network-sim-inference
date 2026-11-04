@@ -122,7 +122,7 @@ def test_tab_content_is_populated(page):
 
     go(page, "tab-vcc")
     page.wait_for_selector("#tbl-vcc-summary tbody tr", timeout=60000)
-    assert page.locator("#tbl-vcc-summary tbody tr").count() == 18
+    assert page.locator("#tbl-vcc-summary tbody tr").count() == page.evaluate("fetch('/api/algorithms').then(r => r.json()).then(d => d.algorithms.length)")
 
     go(page, "tab-figures")
     page.wait_for_function("document.querySelectorAll('#tab-figures table tbody tr').length > 3", timeout=60000)
@@ -484,7 +484,7 @@ def test_virtual_cell_challenge_tab_responds_to_its_controls(page):
 
     page.select_option("#vcc-cell-line", "0.30")
     page.wait_for_function("APP_STATE.vccData && APP_STATE.vccData.parameters.target_rewire_fraction === 0.3", timeout=120000)
-    assert page.locator("#tbl-vcc-summary tbody tr").count() == 18
+    assert page.locator("#tbl-vcc-summary tbody tr").count() == page.evaluate("fetch('/api/algorithms').then(r => r.json()).then(d => d.algorithms.length)")
     assert not page.locator("#vcc-load-error").is_visible()
     assert_healthy(page)
 

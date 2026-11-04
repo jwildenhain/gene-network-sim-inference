@@ -11,6 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# One BLAS thread, set before anything loads NumPy (the tests below included): OpenBLAS's thread pool and fork() deadlock the process pools (see src/grn_sim/__init__.py)
+ENV OPENBLAS_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+
 # Install the package the way any user would (the wheel carries the web page and the bundled data), not in editable mode.
 COPY pyproject.toml README.md SPECIFICATION.md ./
 COPY src/ ./src/

@@ -8,6 +8,7 @@ import time
 from typing import Optional, List, Tuple
 import numpy as np
 
+from grn_sim.inference._parallel import default_n_jobs, map_indices
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 
 
@@ -28,8 +29,10 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         matlab_mode: bool = True,
         penalty_weight: float = 1.0,
         min_r2_improvement: float = 0.0,
+        n_jobs: Optional[int] = None,
     ):
         super().__init__(name="s2g")
+        self.n_jobs = n_jobs
         self.criterion = criterion.lower()
         self.max_interactions = max_interactions
         self.normalize_bases = normalize_bases
@@ -160,6 +163,18 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         final_a = np.linalg.pinv(Xb) @ y
         return np.array(ind, dtype=int), final_a
 
+    def _solve_payload(self, payload, i: int):
+        X_f, U_f, penalty_w, min_r2 = payload
+        return self._solve_gene(i, X_f, U_f, penalty_w, min_r2)
+
+    def _solve_gene(self, i, X_f, U_f, penalty_w, min_r2):
+        y = U_f[i, :].copy()
+        if np.all(np.abs(y) < 1e-15):
+            y = X_f[i, :].copy()
+        if self.matlab_mode:
+            return self._getvar(y, X_f, penalty_weight=penalty_w, min_r2_improvement=min_r2)
+        return self._getvar(-y, X_f.T, penalty_weight=penalty_w, min_r2_improvement=min_r2)
+
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
         Fits the interaction matrix matching s2g.m / s2g_and_g2s.m:
@@ -178,20 +193,15 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
         penalty_w = float(kwargs.get("penalty_weight", self.penalty_weight))
         min_r2 = float(kwargs.get("min_r2_improvement", self.min_r2_improvement))
 
-        for i in range(n):
-            y = U_f[i, :].copy()
-            if np.all(np.abs(y) < 1e-15):
-                y = X_f[i, :].copy()
+        n_jobs = self.n_jobs if self.n_jobs is not None else default_n_jobs(cap=6)   # wall time plateaus at ~6 workers
+        results = map_indices(self._solve_payload, (X_f, U_f, penalty_w, min_r2), n, n_jobs)
 
-            if self.matlab_mode:
-                indices, coeffs = self._getvar(y, X_f, penalty_weight=penalty_w, min_r2_improvement=min_r2)
-                for idx, c in zip(indices, coeffs):
-                    if abs(c) > self.threshold:
+        for i, (indices, coeffs) in enumerate(results):
+            for idx, c in zip(indices, coeffs):
+                if abs(c) > self.threshold:
+                    if self.matlab_mode:
                         A_est[idx, i] = c
-            else:
-                indices, coeffs = self._getvar(-y, X_f.T, penalty_weight=penalty_w, min_r2_improvement=min_r2)
-                for idx, c in zip(indices, coeffs):
-                    if abs(c) > self.threshold:
+                    else:
                         A_est[i, idx] = c
 
         adj = np.zeros((n, n), dtype=int)

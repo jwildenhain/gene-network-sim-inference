@@ -14,7 +14,7 @@ import pytest
 
 pytest.importorskip("playwright.sync_api")
 
-from grn_sim.benchmarks.vcc_benchmark import run_vcc_comparative_benchmark  # noqa: E402
+from grn_sim.benchmarks.vcc_benchmark import response_models, run_vcc_comparative_benchmark  # noqa: E402
 
 VCC_PATH = "/api/benchmark/vcc_atlasshift"
 
@@ -88,10 +88,11 @@ def open_vcc(browser, app_url):
 
 
 def use_linear_method(vp):
-    """The Hill refit is the default response method; the 8 linear response models appear after switching."""
-    vp.page.wait_for_function("document.querySelectorAll('#vcc-model-select option').length > 8")
+    """The Hill refit is the default response method; the linear response models appear after switching."""
+    n_linear = len(response_models())
+    vp.page.wait_for_function(f"document.querySelectorAll('#vcc-model-select option').length > {n_linear}")
     vp.page.select_option("#vcc-method-select", "linear")
-    vp.page.wait_for_function("document.querySelectorAll('#vcc-model-select option').length === 8")
+    vp.page.wait_for_function(f"document.querySelectorAll('#vcc-model-select option').length === {n_linear}")
 
 
 def test_compare_model_options_come_from_the_payload(open_vcc, payload_a):
@@ -202,10 +203,14 @@ def test_theme_toggle_repaints_all_vcc_canvases(open_vcc, payload_a):
 def test_purple_badges_are_styled(open_vcc, payload_a):
     vp = open_vcc(lambda route, q: fulfil(route, payload_a))
     vp.wait_for_table()
-    color = vp.page.evaluate(
-        "getComputedStyle(document.querySelector('#tab-vcc .badge-purple')).color"
-    )
-    assert color == "rgb(139, 92, 246)"
+    # styled in the theme's purple text ink (a darker purple on the light theme so that it holds 4.5:1), not the default text colour
+    color, want, plain = vp.page.evaluate("""() => {
+        const probe = document.createElement('span'); probe.style.color = 'var(--ink-purple)'; document.body.appendChild(probe);
+        const want = getComputedStyle(probe).color; probe.remove();
+        return [getComputedStyle(document.querySelector('#tab-vcc .badge-purple')).color, want,
+                getComputedStyle(document.querySelector('#tab-vcc .panel-title')).color];
+    }""")
+    assert color == want and color != plain
 
 
 # --- Hill refit method, held-out table and perturbation mode ------------------------------------------------
@@ -304,7 +309,7 @@ def test_the_transfer_models_have_rows_in_the_held_out_table_and_the_note_explai
 def test_switching_between_all_three_methods_keeps_the_comparator_working(open_vcc, payload_a):
     vp = open_vcc(lambda route, q: fulfil(route, payload_a))
     vp.page.wait_for_function("document.querySelectorAll('#vcc-model-select option').length > 8")
-    for method, expected in (("transfer", 4), ("linear", 8), ("hill", len(payload_a["parameters"]["hill_models"]))):
+    for method, expected in (("transfer", 4), ("linear", len(response_models())), ("hill", len(payload_a["parameters"]["hill_models"]))):
         vp.page.select_option("#vcc-method-select", method)
         vp.page.wait_for_function(f"document.querySelectorAll('#vcc-model-select option').length === {expected}")
         assert vp.page.inner_text("#vcc-target-model-r").startswith("r = ")

@@ -62,15 +62,20 @@ def test_overall_stats_and_best15_restricted_archive():
         assert not page.is_visible("#tab5-view-historical"), "Historical gallery view must be hidden by default"
 
         # Verify KPI Cards
+        stats = page.evaluate("fetch('/api/benchmark/overall_stats').then(r => r.json())")
         kpi_total = page.locator("#kpi-overall-total-runs").inner_text().strip()
         kpi_alg = page.locator("#kpi-overall-alg-evals").inner_text().strip()
         kpi_top = page.locator("#kpi-overall-top-alg").inner_text().strip()
         kpi_single = page.locator("#kpi-overall-best-single").inner_text().strip()
         print(f"KPIs: Total={kpi_total}, AlgEvals={kpi_alg}, Top={kpi_top}, BestSingle={kpi_single}")
         assert int(kpi_total) >= 40, f"Expected >= 40 runs, found {kpi_total}"
-        assert "1,242" in kpi_alg or "1242" in kpi_alg or "1,080" in kpi_alg or "1080" in kpi_alg or "720" in kpi_alg, f"Expected alg evals, got '{kpi_alg}'"
-        assert "AtlasShift" in kpi_top, f"Expected 'AtlasShift' in top, got '{kpi_top}'"
-        assert "Simple-to-General" in kpi_single or "S2G" in kpi_single, f"Expected S2G in best single, got '{kpi_single}'"
+        expected_evals = int(stats["total_sweep_runs"]) * int(stats["algorithms_evaluated_count"])
+        assert int(kpi_alg.replace(",", "").strip()) == expected_evals, f"Expected {expected_evals} alg evals (runs x algorithms), got '{kpi_alg}'"
+        top_name = stats["algorithm_leaderboard"][0]["algorithm_name"].split(" (")[0]
+        assert top_name.lower() in kpi_top.lower(), f"Expected the leaderboard's top algorithm '{top_name}' in top, got '{kpi_top}'"
+        best_single = next(r for r in stats["algorithm_leaderboard"] if r["algorithm_key"] not in ("vote", "score_vote"))
+        assert best_single["algorithm_name"].split(" (")[0].lower() in kpi_single.lower(), \
+            f"Expected the best single algorithm '{best_single['algorithm_name']}', got '{kpi_single}'"
 
         # Verify Architecture Cross-Comparison Cards (Random, Scale-Free, Hierarchical Modular)
         arch_cards = page.locator("#overall-arch-cards-grid .kpi-card")
@@ -78,16 +83,16 @@ def test_overall_stats_and_best15_restricted_archive():
         print(f"Architecture cards found: {arch_count}")
         assert arch_count == 3, f"Expected 3 architecture cards (Random, Scale-Free, Hierarchical), found {arch_count}"
 
-        # Verify Leaderboard Table (All 18 Algorithms)
+        # Verify Leaderboard Table (every evaluated algorithm)
         lb_rows = page.locator("#tbl-overall-leaderboard tbody tr")
         lb_count = lb_rows.count()
         print(f"Leaderboard rows found: {lb_count}")
-        assert lb_count == 18, f"Expected 18 algorithms in leaderboard, found {lb_count}"
+        assert lb_count == int(stats["algorithms_evaluated_count"]), f"Expected {stats['algorithms_evaluated_count']} algorithms in leaderboard, found {lb_count}"
 
-        # Row 1 must be AtlasShift (Empirical)
+        # Row 1 must be the leaderboard's top algorithm
         first_row_text = lb_rows.first.inner_text()
         print(f"Leaderboard #1: {first_row_text}")
-        assert "AtlasShift" in first_row_text
+        assert stats["algorithm_leaderboard"][0]["algorithm_name"].split(" (")[0].lower() in first_row_text.lower()
         assert "#1" in first_row_text
 
         # Verify Canvases
@@ -288,10 +293,11 @@ def test_overall_stats_and_best15_restricted_archive():
         assert page.is_visible("#canvas-hist-pert-timecourse")
         assert page.is_visible("#canvas-hist-pert-matrix")
 
-        # Verify all 18 algorithms are available in the inspector dropdown
+        # Verify every algorithm of the run is available in the inspector dropdown
         alg_options = page.locator("#hist-detail-alg option")
         print(f"Algorithm options in Tab 3 detail selector: {alg_options.count()}")
-        assert alg_options.count() == 18, f"Expected 18 algorithms in detail selector, got {alg_options.count()}"
+        run_algs = page.locator("#tbl-hist-alg-comparison tbody tr").count()
+        assert alg_options.count() == run_algs >= 18, f"Expected all {run_algs} algorithms of the run (>= 18) in the detail selector, got {alg_options.count()}"
 
         # Toggle to 3x3 Shift Bar Grid
         print("Testing 3x3 Shift Bar Grid toggle...")

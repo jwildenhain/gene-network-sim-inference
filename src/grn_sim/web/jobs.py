@@ -29,7 +29,7 @@ import threading
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Callable, Deque, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Deque, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 QUEUED, RUNNING, DONE, FAILED, CANCELLED = "queued", "running", "done", "failed", "cancelled"
 ACTIVE = (QUEUED, RUNNING)
@@ -152,13 +152,13 @@ InferFn = Callable[[str, List[str], JobContext], Dict[str, Any]]
 
 
 class JobManager:
-    def __init__(self, generate: GenerateFn, infer: InferFn, known_algorithms: Iterable[str],
+    def __init__(self, generate: GenerateFn, infer: InferFn, known_algorithms: Union[Iterable[str], Callable[[], Iterable[str]]],
                  validate_params: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
                  can_infer: Optional[Callable[[str], bool]] = None,
                  max_active: int = 200, keep_finished: int = 100, store_path: Optional[Path] = None):
         self._generate = generate
         self._infer = infer
-        self._known = tuple(known_algorithms)
+        self._known_source = known_algorithms          # a callable is asked each time, so later registrations count
         self._validate_params = validate_params
         self._can_infer = can_infer
         self._max_active = max_active
@@ -280,6 +280,11 @@ class JobManager:
             self._ensure_worker()
             self._wake.notify()
             return jobs
+
+    @property
+    def _known(self) -> Tuple[str, ...]:
+        src = self._known_source
+        return tuple(src() if callable(src) else src)
 
     def _clean_algorithms(self, algs: Any) -> List[str]:
         if algs is None:

@@ -39,6 +39,8 @@ from grn_sim.inference.dmdgrn import DMDGRNAlgorithm
 from grn_sim.inference.deeprig import DeepRIGAlgorithm
 from grn_sim.inference.sfinn import SFINNAlgorithm
 from grn_sim.inference.notears import NOTEARSAlgorithm
+from grn_sim.inference.score_vote import ScoreVote
+from grn_sim.inference import registry as algorithm_registry
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.inference.orientation import HILL, orient_prediction
 from grn_sim.benchmarks.cross_context import TRANSFER_BY_KEY, TRANSFER_PREDICTORS, TransferData, predict_matrix
@@ -73,8 +75,9 @@ class ResponseModel(NamedTuple):
 
 # DMD-GRN solves A X = -U; NIR/Ridge are fit on -U; S2G/G2S/Vote on +U. CellBox is listed with +1 but
 # learns near-zero weights at the default training budget, so its sign is not meaningful.
-RESPONSE_MODELS: List[ResponseModel] = [
+_BUILTIN_RESPONSE_MODELS: List[ResponseModel] = [
     ResponseModel("vote", "Voting Ensemble (Consensus)", 1.0),
+    ResponseModel("score_vote", "Score Vote (evidence-weighted)", 1.0),
     ResponseModel("cellbox", "CellBox Neural ODE", 1.0),
     ResponseModel("s2g", "S2G (Forward AIC)", 1.0),
     ResponseModel("g2s", "G2S (Backward AIC)", 1.0),
@@ -84,7 +87,20 @@ RESPONSE_MODELS: List[ResponseModel] = [
     ResponseModel("nir", "NIR (Gardner SVD)", 1.0),
     ResponseModel("dmdgrn", "DMD-GRN (Koopman)", -1.0),
 ]
-RESPONSE_SIGN: Dict[str, float] = {m.key: m.sign for m in RESPONSE_MODELS}
+
+
+def response_models() -> List[ResponseModel]:
+    """The built-in response models plus any registered algorithm that declares a ``response_sign``."""
+    models = list(_BUILTIN_RESPONSE_MODELS)
+    have = {m.key for m in models}
+    for spec in algorithm_registry.specs():
+        if spec.response_sign is not None and spec.key not in have:
+            models.append(ResponseModel(spec.key, spec.label, float(spec.response_sign), spec.response_unsupported))
+    return models
+
+
+def _response_sign(key: str) -> float:
+    return {m.key: m.sign for m in response_models()}[key]
 
 # Regulators kept per target when an algorithm's score matrix is turned into a structure for the Hill refit.
 HILL_STRUCTURE_Q = 2
@@ -103,8 +119,9 @@ EXTRA_LABELS: Dict[str, str] = {
 }
 
 # Every algorithm in the summary table, in display order, with its paradigm label.
-ALGORITHMS: List[Tuple[str, str]] = [
+_BUILTIN_ALGORITHMS: List[Tuple[str, str]] = [
     ("vote", "Mechanistic Dynamical GRN (Consensus Voting)"),
+    ("score_vote", "Mechanistic Dynamical GRN (Evidence Voting)"),
     ("cellbox", "Mechanistic Dynamical GRN (Neural ODE)"),
     ("s2g", "Mechanistic Dynamical GRN (Forward AIC)"),
     ("g2s", "Mechanistic Dynamical GRN (Backward AIC)"),
@@ -125,6 +142,30 @@ ALGORITHMS: List[Tuple[str, str]] = [
 ]
 
 
+def algorithms() -> List[Tuple[str, str]]:
+    """Every algorithm of the summary table in display order: the built-in ones, then any registered later."""
+    listed = {key for key, _ in _BUILTIN_ALGORITHMS}
+    return list(_BUILTIN_ALGORITHMS) + [(s.key, s.paradigm) for s in algorithm_registry.specs() if s.key not in listed]
+
+
+def __getattr__(name: str):
+    """``ALGORITHMS`` / ``RESPONSE_MODELS`` / ``RESPONSE_SIGN`` stay importable and always reflect the registry."""
+    if name == "ALGORITHMS":
+        return algorithms()
+    if name == "RESPONSE_MODELS":
+        return response_models()
+    if name == "RESPONSE_SIGN":
+        return {m.key: m.sign for m in response_models()}
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def fit_input_sign(key: str) -> float:
+    """Sign of the perturbation matrix an algorithm is fitted on (-1 for the legacy NIR / FAST / Ridge convention)."""
+    if algorithm_registry.is_registered(key):
+        return -1.0 if algorithm_registry.get(key).negate_u_in_additive else 1.0
+    return FIT_INPUT_SIGN.get(key, 1.0)
+
+
 class HillModel(NamedTuple):
     """One entry of the structure -> Hill refit comparison. ``kind``: algorithm | search | reference."""
     key: str
@@ -134,10 +175,11 @@ class HillModel(NamedTuple):
 
 def hill_models() -> List[HillModel]:
     """All predictors of the Hill method, in display order: the model-matched search, every algorithm, the references."""
-    labels = {m.key: m.label for m in RESPONSE_MODELS}
+    labels = {s.key: s.label for s in algorithm_registry.specs()}          # registered algorithms without a label of their own here
+    labels.update({m.key: m.label for m in response_models()})
     labels.update(EXTRA_LABELS)
     models = [HillModel("hill_fs", "Hill forward search (model-matched structure)", "search")]
-    models += [HillModel(key, f"{labels.get(key, key.upper())} structure", "algorithm") for key, _ in ALGORITHMS if key != "atlasshift"]
+    models += [HillModel(key, f"{labels.get(key, key.upper())} structure", "algorithm") for key, _ in algorithms() if key != "atlasshift"]
     models += [
         HillModel("null", "Mean-profile null (no structure)", "reference"),
         HillModel("self_prior", "Target-gene prior (own gene only, from the design)", "reference"),
@@ -247,11 +289,12 @@ def _rewire_edges(network: GeneNetwork, fraction: float, rng: np.random.Generato
 
 
 def _build_runners(k_est: int) -> Dict[str, Any]:
-    """Fresh instances of every reverse-engineering algorithm except AtlasShift."""
+    """Fresh instances of every reverse-engineering algorithm except AtlasShift (registered ones included)."""
     s2g = SimpleToGeneral()
     g2s = GeneralToSpecific()
-    return {
+    runners = {
         "vote": VotingEnsemble(s2g=s2g, g2s=g2s),
+        "score_vote": ScoreVote(s2g=s2g, g2s=g2s, k_interactions=k_est),
         "s2g": s2g,
         "g2s": g2s,
         "cellbox": CellBoxNeuralODE(epochs=40),
@@ -269,6 +312,11 @@ def _build_runners(k_est: int) -> Dict[str, Any]:
         "notears": NOTEARSAlgorithm(),
         "by_chance": ByChance(k_interactions=k_est),
     }
+    ctx = algorithm_registry.BuildContext(k_est=k_est, use_reg=False)
+    for spec in algorithm_registry.specs():       # an algorithm registered later takes part without an edit here
+        if spec.key != "atlasshift":
+            runners.setdefault(spec.key, spec.build(ctx))
+    return runners
 
 
 def _response_operator(A_est: np.ndarray, sign: float) -> Tuple[Optional[np.ndarray], str]:
@@ -314,7 +362,7 @@ def _hill_held_out_responses(
         except Exception as exc:  # one failing refit must not take down the whole benchmark
             unavailable[key] = f"Hill refit failed: {exc}"
 
-    for key, _ in ALGORITHMS:
+    for key, _ in algorithms():
         if key == "atlasshift":
             continue
         if key in fit_failures:
@@ -473,7 +521,7 @@ def run_vcc_comparative_benchmark(
         if name == "atlasshift":
             res = res_atlas
         else:
-            res = runner.fit(X_tgt, FIT_INPUT_SIGN.get(name, 1.0) * U_tgt)
+            res = runner.fit(X_tgt, fit_input_sign(name) * U_tgt)
         full_fits[name] = res
         # scored against T[regulator, target]; algorithms differ in output orientation
         fit_mode = str(res.diagnostics.get("perturbation_mode", "additive"))
@@ -481,7 +529,7 @@ def run_vcc_comparative_benchmark(
 
     # Summary table formatted for display (rows follow the ALGORITHMS order)
     summary_table = []
-    for key, paradigm in ALGORITHMS:
+    for key, paradigm in algorithms():
         m = eval_dict[key]
         summary_table.append({
             "algorithm": key.upper(),
@@ -490,6 +538,7 @@ def run_vcc_comparative_benchmark(
             "false_positives_pct": round(m.false_positives_pct, 1),
             "power_pct": round(m.inferred_connections_pct, 1),
             "fdr_pct": round(m.fp_per_inferred_pct, 1),
+            "f1_score": round(float(m.f1_score), 3),
             "total_errors": int(m.total_errors),
         })
 
@@ -516,13 +565,13 @@ def run_vcc_comparative_benchmark(
     fit_failures: Dict[str, str] = {}
     for key, runner in _build_runners(k_est).items():
         try:
-            held_fits[key] = runner.fit(X_train, FIT_INPUT_SIGN.get(key, 1.0) * U_train)
+            held_fits[key] = runner.fit(X_train, fit_input_sign(key) * U_train)
         except Exception as exc:  # one failing model must not take down the whole benchmark
             fit_failures[key] = f"fit failed on held-out data: {exc}"
 
     response_ops: Dict[str, np.ndarray] = {}
     unavailable: Dict[str, str] = {}
-    for model in RESPONSE_MODELS:
+    for model in response_models():
         if model.unsupported:
             unavailable[model.key] = model.unsupported
         elif model.key in fit_failures:
@@ -649,7 +698,7 @@ def run_vcc_comparative_benchmark(
         }
 
     response_table = [table_row("linear", m.key, m.label, "algorithm", m.key in response_ops, unavailable.get(m.key, ""))
-                      for m in RESPONSE_MODELS]
+                      for m in response_models()]
     response_table += [table_row("hill", m.key, m.label, m.kind, m.key in hill_responses, hill_unavailable.get(m.key, ""))
                        for m in hill_catalog]
     response_table += [
@@ -720,7 +769,7 @@ def run_vcc_comparative_benchmark(
         "pseudobulk_r": [],
     }
     sweep_ops = {
-        key: _response_operator(full_fits[name].A_est, RESPONSE_SIGN[name])[0]
+        key: _response_operator(full_fits[name].A_est, _response_sign(name))[0]
         for key, name in (("mechanistic_r", "vote"), ("cellbox_r", "cellbox"), ("ridge_r", "ridge_cv"))
     }
     atlas_pred = np.mean([exp_s.X for _, exp_s in source_experiments], axis=0)
@@ -782,7 +831,7 @@ def run_vcc_comparative_benchmark(
             "unseen_ood_targets": n_unseen,
             "response_models": [
                 {"key": m.key, "label": m.label, "available": m.key in response_ops, "reason": unavailable.get(m.key, "")}
-                for m in RESPONSE_MODELS
+                for m in response_models()
             ],
             "hill_models": [
                 {"key": m.key, "label": m.label, "kind": m.kind, "available": m.key in hill_responses,
@@ -805,6 +854,7 @@ def run_vcc_comparative_benchmark(
             "atlasshift": avg_seen_atlas,
             "hill_search": split_means("hill", "hill_fs")[0],
             "null": split_means("hill", "null")[0],
+            "transfer": {k: split_means("transfer", k)[0] for k in transfer_responses},
         },
         "out_of_distribution": {
             "mechanistic": avg_ood_vote,
@@ -812,6 +862,7 @@ def run_vcc_comparative_benchmark(
             "hill_search": split_means("hill", "hill_fs")[1],
             "null": split_means("hill", "null")[1],
             "oracle": split_means("hill", "oracle")[1],
+            "transfer": {k: split_means("transfer", k)[1] for k in transfer_responses},
         },
         "rewire_decay": rewire_decay,
         "target_profiles": target_profiles,

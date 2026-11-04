@@ -30,9 +30,13 @@ from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.experiment import PerturbationSimulator, SimulationExperiment
 from grn_sim.inference.s2g import SimpleToGeneral
 from grn_sim.inference.g2s import GeneralToSpecific
+from grn_sim.perturbseq.pipeline import build_network as build_perturbseq_network
 from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
+from grn_sim.inference.score_vote import ScoreVote
+from grn_sim.inference import registry as algorithm_registry
+from grn_sim.web import history_view
 from grn_sim.inference.by_chance import ByChance
 from grn_sim.inference.atlasshift import AtlasShift
 from grn_sim.inference.cellbox import CellBoxNeuralODE
@@ -90,7 +94,6 @@ from grn_sim.web.database import (
     load_all_history_from_db,
     load_run_from_db,
     get_db_stats,
-    get_summary_statistics_by_type,
 )
 from grn_sim.simulator.response_dynamics import classify_perturbation_response
 from grn_sim.web import jobs as _jobs
@@ -99,6 +102,13 @@ from grn_sim.web import jobs as _jobs
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Multi-threaded HTTP server for concurrent simulation and inference requests."""
     daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        # The one-time native work (BLAS controller, Numba kernel) happens here, before any request thread exists:
+        # two threads doing it at once can deadlock the process (see grn_sim.inference._native).
+        from grn_sim.inference._native import warm_up
+        warm_up()
+        super().__init__(*args, **kwargs)
 
 
 _CLIENT_GONE = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
@@ -647,14 +657,19 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             # Number of modules: explicit "subdiv", else ~1 module per 10 genes (2..8; Perturb-seq-calibrated
             # networks have 5-10 modules).
             eff_subdiv = int(params["subdiv"]) if "subdiv" in params else int(np.clip(num_genes // 10, 2, 8))
-        network = GeneNetwork.create(
-            n=num_genes,
-            k_av=k_av,
-            net_type=net_type,
-            ratio=act_ratio,
-            subdiv=eff_subdiv,
-            seed=seed,
-        )
+        calibration_preset = params.get("calibration_preset")
+        if calibration_preset:
+            # Perturb-seq calibrated network (anchored kinetics): reaches a steady state at genome-like sizes
+            network = build_perturbseq_network(str(calibration_preset), num_genes, seed=seed)
+        else:
+            network = GeneNetwork.create(
+                n=num_genes,
+                k_av=k_av,
+                net_type=net_type,
+                ratio=act_ratio,
+                subdiv=eff_subdiv,
+                seed=seed,
+            )
 
         if dynamics_preset == "oscillating":
             # Genuine odd-cycle negative feedback repressilator core ensuring sustained limit cycles
@@ -887,28 +902,9 @@ def _execute_inference(selected_algs: List[str],
     cur_mode = str(CURRENT_STATE.get("mode") or "")
     cur_engine = (CURRENT_STATE.get("settings") or {}).get("kinetics_engine", "hill_nonlinear")
     use_reg = (not is_sos) and (not cur_mode.startswith("benchmark_")) and cur_engine in ("hill_nonlinear", "perturb_seq_counts")
-    pm = "regulator" if use_reg else "additive"
 
-    alg_runners = {
-        "s2g": SimpleToGeneral(),
-        "g2s": GeneralToSpecific(max_interactions=2 * k_est if use_reg else None),
-        "vote": VotingEnsemble(extra_members=[NIRAlgorithm(k_interactions=k_est, perturbation_mode="regulator", adaptive_k=True)]) if use_reg else VotingEnsemble(),
-        "nir": NIRAlgorithm(k_interactions=k_est, perturbation_mode=pm, adaptive_k=use_reg),
-        "fast": FastSVD(k_interactions=k_est, add_diagonal_identity=is_sos, perturbation_mode=pm, adaptive_k=use_reg),
-        "by_chance": ByChance(k_interactions=k_est, seed=42),
-        "atlasshift": AtlasShift(de_threshold=0.15),
-        "cellbox": CellBoxNeuralODE(epochs=70, perturbation_mode=pm),
-        "genie3": GENIE3Algorithm(n_estimators=40),
-        "netdeconv": NetworkDeconvolution(),
-        "ridge_cv": KaggleMultiOutputRidge(k_interactions=k_est if use_reg else None, perturbation_mode=pm),
-        "cpa_lite": CPALite(epochs=40),
-        "arachne": AracneAlgorithm(k_interactions=k_est if use_reg else None),
-        "causalgrn": CausalGRNAlgorithm(k_interactions=k_est if use_reg else None),
-        "dmdgrn": DMDGRNAlgorithm(k_interactions=k_est if use_reg else None),
-        "deeprig": DeepRIGAlgorithm(k_interactions=k_est if use_reg else None),
-        "sfinn": SFINNAlgorithm(k_interactions=k_est if use_reg else None),
-        "notears": NOTEARSAlgorithm(k_interactions=k_est if use_reg else None),
-    }
+    build_ctx = algorithm_registry.BuildContext(k_est=k_est, use_reg=use_reg, is_sos=is_sos)
+    alg_runners = {a: algorithm_registry.build(a, build_ctx) for a in selected_algs if algorithm_registry.is_registered(a)}
 
     prev = previous or {}
     metrics_dict = dict(prev.get("metrics") or {})
@@ -922,13 +918,15 @@ def _execute_inference(selected_algs: List[str],
     pred_matrices = dict(prev.get("pred_matrices") or {})
 
     runnable = [a for a in selected_algs if a in alg_runners]
+    if not runnable:
+        raise ValueError(f"no known algorithm in {list(selected_algs)!r}; nothing was run and the stored results are unchanged")
     for position, alg in enumerate(runnable):
         if on_algorithm is not None:
             on_algorithm(alg, position, len(runnable))
         if alg in alg_runners:
             t0 = time.perf_counter()
             # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3, fast_modified, and ridge_cv
-            U_input = U if (use_reg or is_sos or alg not in ("nir", "fast", "ridge_cv")) else (-U)
+            U_input = U if (use_reg or is_sos or not algorithm_registry.get(alg).negate_u_in_additive) else (-U)
             res = alg_runners[alg].fit(X, U_input)
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
             # predictions in the orientation of true_matrix (algorithms differ, see grn_sim.inference.orientation)
@@ -954,7 +952,7 @@ def _execute_inference(selected_algs: List[str],
                 "signed_ppv": round(m.signed_ppv, 3),
                 "signed_true_positives": m.signed_true_positives,
                 "aupr": round(compute_aupr(true_matrix, A_est), 3),
-                "perturbation_model": "regulator_input" if use_reg and alg in ("nir", "fast", "ridge_cv", "cellbox", "vote") else "additive",
+                "perturbation_model": "regulator_input" if use_reg and algorithm_registry.get(alg).uses_regulator_model else "additive",
                 "true_positives": m.true_positives,
                 "false_positives": m.false_positives,
                 "true_negatives": m.true_negatives,
@@ -1355,6 +1353,7 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
 
     algs = {
         "vote": VotingEnsemble(),
+        "score_vote": ScoreVote(s2g=SimpleToGeneral(), g2s=GeneralToSpecific(), k_interactions=k_conn),
         "s2g": SimpleToGeneral(),
         "g2s": GeneralToSpecific(),
         "cellbox": CellBoxNeuralODE(epochs=45),
@@ -1374,6 +1373,10 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         "notears": NOTEARSAlgorithm(k_interactions=k_conn),
     }
 
+    studio_ctx = algorithm_registry.BuildContext(k_est=k_conn, use_reg=False, is_sos=is_sos)
+    for spec in algorithm_registry.specs():            # algorithms registered later take part without an edit here
+        algs.setdefault(spec.key, spec.build(studio_ctx))
+
     table_4_1 = {}
     tmp_statmat = {}
     cmats = {}
@@ -1383,7 +1386,8 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     svgs_neato = {}
 
     for alg_name, runner in algs.items():
-        U_in = U if (is_sos or alg_name not in ("nir", "fast", "ridge_cv")) else (-U)
+        negate = algorithm_registry.is_registered(alg_name) and algorithm_registry.get(alg_name).negate_u_in_additive
+        U_in = U if (is_sos or not negate) else (-U)
         res = runner.fit(X, U_in)
         # predictions in the orientation of A_true (algorithms differ, see grn_sim.inference.orientation)
         pred = orient_prediction(alg_name, res.adjacency_pred, data_model, truth_tr)
@@ -2320,15 +2324,22 @@ def _bootstrap_initial_simulation():
 
 
 # --- Parameter validation and the background job queue ------------------------------------------------------------
-KNOWN_ALGORITHMS = (
-    "s2g", "g2s", "vote", "nir", "fast", "by_chance", "atlasshift", "cellbox", "genie3", "netdeconv", "ridge_cv",
-    "cpa_lite", "arachne", "causalgrn", "dmdgrn", "deeprig", "sfinn", "notears",
-)
+KNOWN_ALGORITHMS = tuple(algorithm_registry.keys())      # the built-ins; use known_algorithms() for the live list
+
+
+def known_algorithms() -> List[str]:
+    """Every registered algorithm key (algorithms registered after start-up included)."""
+    return algorithm_registry.keys()
 SIM_TOPOLOGIES = ("power_law", "random", "hierarchical", "modular")
 SIM_KINETICS = ("hill_nonlinear", "cellbox_neural_ode", "linear_jacobian", "perturb_seq_counts")
 SIM_PRESETS = ("responsive", "flat", "oscillating")
-MAX_SIM_GENES = 500
+MAX_SIM_GENES = 2000
 MAX_SEED = 2 ** 32 - 1
+
+
+def _perturbseq_presets() -> Tuple[str, ...]:
+    from grn_sim.perturbseq.calibration import PRESETS
+    return tuple(PRESETS)
 
 
 def _validate_sim_params(params: Dict[str, Any], strict: bool = False) -> Dict[str, Any]:
@@ -2359,12 +2370,58 @@ def _validate_sim_params(params: Dict[str, Any], strict: bool = False) -> Dict[s
     is_benchmark = bool(out.get("dataset_id")) or str(out.get("mode", "insilico")).startswith(("benchmark_", "sos"))
     if not is_benchmark:
         number("num_genes", 6, MAX_SIM_GENES, integer=True)
+    if out.get("calibration_preset") in ("", None):
+        out.pop("calibration_preset", None)
+    elif out["calibration_preset"] not in _perturbseq_presets():
+        raise ValueError(f"calibration_preset must be one of {', '.join(sorted(_perturbseq_presets()))}, "
+                         f"got {out['calibration_preset']!r}")
+    for key in ("topology", "kinetics_engine", "dynamics_preset"):
+        if out.get(key) == "":
+            out.pop(key)                                     # blank means "not given", like the numbers
     if strict:
         for key, allowed in (("topology", SIM_TOPOLOGIES), ("kinetics_engine", SIM_KINETICS),
                              ("dynamics_preset", SIM_PRESETS)):
             if out.get(key) is not None and out[key] not in allowed:
                 raise ValueError(f"{key} must be one of {', '.join(allowed)}, got {out[key]!r}")
     return out
+
+
+def _validate_sim_request(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    ``_validate_sim_params`` for the /api/simulate endpoint: names are checked too (a misspelt topology used to be
+    stored in the run's settings although the simulator had used its default), except for benchmark / SOS requests,
+    which carry dataset-specific names.
+    """
+    is_benchmark = bool(params.get("dataset_id")) or str(params.get("mode", "insilico")).startswith(("benchmark_", "sos"))
+    return _validate_sim_params(params, strict=not is_benchmark)
+
+
+DEFAULT_ALGORITHMS = ["s2g", "g2s", "vote", "nir", "fast", "by_chance"]            # what a request without a list runs
+_ALGORITHM_ALIASES = {"ridge": "ridge_cv"}
+
+
+def _clean_algorithm_list(value: Any, default: Optional[List[str]] = None) -> List[str]:
+    """
+    The algorithm keys of an inference request: missing means ``default``; otherwise a non-empty list (or one key) of
+    known names, de-duplicated in order. Raises ValueError for an empty list or an unknown name, so an empty or
+    misspelt selection cannot replace a run's stored results with nothing.
+    """
+    if value is None:
+        return list(default if default is not None else DEFAULT_ALGORITHMS)
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, (list, tuple)):
+        raise ValueError("algorithms must be a list of algorithm keys")
+    cleaned: List[str] = []
+    for item in value:
+        key = _ALGORITHM_ALIASES.get(item, item) if isinstance(item, str) else item
+        if key not in known_algorithms():
+            raise ValueError(f"unknown algorithm {item!r}; choose from {', '.join(known_algorithms())}")
+        if key not in cleaned:
+            cleaned.append(key)
+    if not cleaned:
+        raise ValueError("algorithms must name at least one algorithm")
+    return cleaned
 
 
 def _job_generate(params: Dict[str, Any], ctx: "_jobs.JobContext") -> Dict[str, Any]:
@@ -2419,7 +2476,7 @@ def _job_can_infer(run_id: str) -> bool:
 JOB_MANAGER = _jobs.JobManager(
     generate=_job_generate,
     infer=_job_infer,
-    known_algorithms=KNOWN_ALGORITHMS,
+    known_algorithms=known_algorithms,
     validate_params=lambda p: _validate_sim_params(p, strict=True),
     can_infer=_job_can_infer,
     keep_finished=10,  # the last ten finished jobs stay listed (and survive a restart) as quick links to their runs
@@ -2504,6 +2561,14 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             else:
                 self._set_headers(404, "text/plain")
                 self.wfile.write(b"index.html not found")
+            return
+
+        elif path == "/api/algorithms":
+            self._set_headers(200)
+            self.wfile.write(json.dumps({
+                "status": "success", "algorithms": algorithm_registry.describe(),
+                "defaults": DEFAULT_ALGORITHMS, "core": algorithm_registry.core_keys(),
+            }).encode("utf-8"))
             return
 
         elif path == "/api/status":
@@ -2795,6 +2860,26 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             return
 
         elif path == "/api/history":
+            # With ``set`` / ``page`` / ``page_size`` / ``sort`` / ``order`` / ``q``: one page of slim rows of a ranked
+            # view (see grn_sim.web.history_view). Without any of them: every run with its full detail, as before.
+            if any(k in query for k in ("set", "page", "page_size", "sort", "order", "q")):
+                try:
+                    params = history_view.parse_params(query)
+                except ValueError as e:
+                    self._set_headers(400)
+                    self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                    return
+                view = history_view.get_view()
+                if view.history:
+                    SIMULATION_HISTORY[:] = view.history
+                self._set_headers(200)
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "active_run_id": CURRENT_STATE.get("run_id"),
+                    "database": get_db_stats(),
+                    **history_view.page_of(view, params),
+                }).encode("utf-8"))
+                return
             db_history = load_all_history_from_db()
             if db_history:
                 SIMULATION_HISTORY[:] = db_history  # one atomic swap: readers never see an empty list
@@ -2804,7 +2889,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 "active_run_id": CURRENT_STATE.get("run_id"),
                 "database": get_db_stats(),
                 "history": SIMULATION_HISTORY,
-                "summary_by_type": get_summary_statistics_by_type(),
+                "summary_by_type": history_view.get_summary(),
             }).encode("utf-8"))
             return
 
@@ -2814,7 +2899,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 "status": "success",
                 "active_run_id": CURRENT_STATE.get("run_id"),
                 "database": get_db_stats(),
-                "summary_by_type": get_summary_statistics_by_type(),
+                "summary_by_type": history_view.get_summary(),
             }).encode("utf-8"))
             return
 
@@ -2899,7 +2984,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             self._set_headers(200)
             self.wfile.write(json.dumps({
                 "status": "success", "jobs": JOB_MANAGER.list(), "counts": JOB_MANAGER.counts(),
-                "algorithms": list(KNOWN_ALGORITHMS),
+                "algorithms": known_algorithms(),
             }).encode("utf-8"))
             return
 
@@ -2937,7 +3022,8 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": busy}).encode("utf-8"))
                 return
             try:
-                params = _validate_sim_params(params)
+                params = _validate_sim_request(params)
+                algs_for_infer = _clean_algorithm_list(params.get('algorithms')) if params.get('auto_infer', False) else None
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
@@ -2945,8 +3031,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
             try:
                 resp = _execute_simulation(params)
                 if params.get("auto_infer", False):
-                    algs = params.get("algorithms", ["s2g", "g2s", "vote", "nir", "fast", "by_chance"])
-                    resp["inferred"] = _execute_inference(algs)
+                    resp["inferred"] = _execute_inference(algs_for_infer)
                 self._set_headers(200)
                 self.wfile.write(json.dumps(resp).encode("utf-8"))
             except Exception as e:
@@ -2985,9 +3070,12 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 return
 
             try:
-                selected_algs = params.get("algorithms", ["s2g", "g2s", "vote", "nir", "fast", "by_chance"])
-                if isinstance(selected_algs, str):
-                    selected_algs = [selected_algs]
+                selected_algs = _clean_algorithm_list(params.get("algorithms"))
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            try:
                 resp = _execute_inference(selected_algs)
                 self._set_headers(200)
                 self.wfile.write(json.dumps(resp).encode("utf-8"))

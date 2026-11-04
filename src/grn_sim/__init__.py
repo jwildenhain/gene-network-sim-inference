@@ -6,6 +6,16 @@ Reverse engineered from the Bachelor of Honours Thesis:
 by Jan Wildenhain (2004/2005).
 """
 
+import os as _os
+
+# OpenBLAS's thread pool and fork() do not mix. The algorithms fork process pools and the web server runs them from several
+# request threads; a fork while the BLAS thread pool exists can leave the child, and the parent waiting for it, stuck
+# forever (reproduced: six concurrent G2S fits hung in one run of three; with one BLAS thread, 8 of 8 finished, 3x
+# faster). The many small solves here also run best on one thread. This must happen before NumPy loads, so it is set at
+# the top of the package; a value you set yourself (environment variable) wins.
+for _var in ("OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    _os.environ.setdefault(_var, "1")
+
 __version__ = "0.1.0"
 __author__ = "Jan Wildenhain"
 

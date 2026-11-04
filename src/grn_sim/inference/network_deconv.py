@@ -89,12 +89,14 @@ class NetworkDeconvolution(BaseInferenceAlgorithm):
         # Discretize
         adj_pred = np.zeros((N, N), dtype=int)
         if K is not None:
-            for i in range(N):
-                mags = np.abs(A_est[i, :])
-                top_idx = np.argsort(mags)[-K:]
-                for reg in top_idx:
+            # Top-K regulators per target gene (column of the regulator-by-target matrix); the threshold is relative
+            # to the largest weight, as in the global branch.
+            max_mag = np.max(np.abs(A_est)) if np.max(np.abs(A_est)) > 0 else 1.0
+            for j in range(N):
+                mags = np.abs(A_est[:, j]) / max_mag
+                for reg in np.argsort(mags)[-K:]:
                     if mags[reg] >= thresh:
-                        adj_pred[i, reg] = int(np.sign(A_est[i, reg]))
+                        adj_pred[reg, j] = int(np.sign(A_est[reg, j]))
         else:
             max_mag = np.max(np.abs(A_est)) if np.max(np.abs(A_est)) > 0 else 1.0
             norm_A = A_est / max_mag
