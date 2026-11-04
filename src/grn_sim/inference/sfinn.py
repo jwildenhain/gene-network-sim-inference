@@ -72,7 +72,17 @@ class SFINNAlgorithm(BaseInferenceAlgorithm):
         if K is not None:
             K = max(1, min(int(K), N - 1))
 
-        if use_prep:
+        partial = M != N or bool(np.any(np.all(np.abs(U_mat) < 1e-15, axis=0)))
+        if partial:
+            # Partial screen (fewer perturbation columns than genes): the sensitivity of every gene to each perturbed gene is
+            # the column of X divided by that gene's own perturbation; columns of genes that were never perturbed stay 0.
+            from grn_sim.inference.partial import square_subproblem
+            P, cols, _, _ = square_subproblem(X_mat, U_mat)
+            u = np.where(np.abs(U_mat[P, cols]) < 1e-12, 1e-12, U_mat[P, cols])
+            S_dir = np.zeros((N, N))
+            S_dir[:, P] = -X_mat[:, cols] / u[None, :]                   # = -X pinv(U) for a diagonal U
+            X_feats = X_mat - np.median(X_mat, axis=1, keepdims=True)
+        elif use_prep:
             prep = default_preprocessor.prepare(X_mat, U_mat, **kwargs)
             X_feats = prep.Delta_X
             S_dir = prep.sensitivity_mat
@@ -111,5 +121,6 @@ class SFINNAlgorithm(BaseInferenceAlgorithm):
             diagnostics={
                 "total_reconstructed_edges": int(np.sum(adj_pred != 0)),
                 "use_data_prep": use_prep,
+                "partial_screen": partial,
             },
         )

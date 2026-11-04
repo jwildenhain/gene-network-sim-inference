@@ -34,6 +34,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         envelope: str = "tanh",
         adaptive_fallback: bool = True,
         perturbation_mode: str = "additive",
+        auto_scale: bool = True,
     ):
         super().__init__(name="cellbox")
         self.l1_reg = l1_reg
@@ -44,6 +45,10 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         self.envelope = envelope
         self.adaptive_fallback = adaptive_fallback
         self.perturbation_mode = perturbation_mode.lower().strip()
+        # The tanh envelope assumes responses of order 1. Log fold changes of a screen are ~0.1: the network then sits in the
+        # linear part of tanh and learns nothing useful (AUPR at the random level on 100-500 genes). Scaling X and U by
+        # the same factor (1 / std of X) keeps the model (W is fitted to the scaled data) and fixes it.
+        self.auto_scale = auto_scale
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
@@ -52,6 +57,10 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         if kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip() == "regulator":
             return regulator_input_fit(self, X_mat, U_mat, **kwargs)
         N, M = X_mat.shape
+        if bool(kwargs.get("auto_scale", self.auto_scale)):
+            sd = float(np.std(X_mat))
+            if sd > 1e-12:
+                X_mat, U_mat = X_mat / sd, U_mat / sd
 
         l1 = float(kwargs.get("l1_reg", self.l1_reg))
         l2 = float(kwargs.get("l2_reg", self.l2_reg))
@@ -63,6 +72,9 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
                 raise ImportError("PyTorch is not installed")
             A_est, diagnostics = self._fit_torch(X_mat, U_mat, l1, l2, max_epochs)
         except ImportError:  # not installed, or installed but not importable: use the SciPy optimiser
+            if N * N > 40000:
+                raise RuntimeError(f"CellBox without PyTorch uses finite-difference gradients over N*N parameters: "
+                                   f"{N} genes is too many (install torch, or use at most 200 genes)")
             A_est, diagnostics = self._fit_scipy(X_mat, U_mat, l1, l2)
 
         # Remove diagonal self-loops

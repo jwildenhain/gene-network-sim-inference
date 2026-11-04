@@ -196,9 +196,18 @@ class AtlasShift(BaseInferenceAlgorithm):
         U_arr = np.real(U).astype(float)
         n, m = X_arr.shape
 
-        # If external sources are registered, fuse them with current X
+        # Which gene does each column perturb? (U has one non-zero row per column; a column without one is skipped.)
+        perturbed = [int(np.argmax(np.abs(U_arr[:, c]))) if np.abs(U_arr[:, c]).max() > 1e-15 else -1 for c in range(m)]
+        identity = perturbed == list(range(m)) or all(g < 0 for g in perturbed)
+
+        # If external sources are registered, fuse them with current X. A source with one column per gene is read at the
+        # perturbed gene of each column, so partial screens (m < n perturbed genes) fuse the right columns.
         if self.sources:
-            all_X = [s["X"] for s in self.sources] + [X_arr]
+            def at_columns(S: np.ndarray) -> np.ndarray:
+                if identity or S.shape[1] != n:
+                    return S
+                return np.stack([S[:, g] if g >= 0 else np.zeros(n) for g in perturbed], axis=1)
+            all_X = [at_columns(s["X"]) for s in self.sources] + [X_arr]
             all_W = [s["weight"] for s in self.sources] + [2.0]
             eff = self.fuse_source_effects(all_X, all_W)
         else:
@@ -210,11 +219,13 @@ class AtlasShift(BaseInferenceAlgorithm):
         # To populate A_est: A_est = -U * pinv(X) or thresholded differential expression:
         # Here we construct continuous interaction strength proportional to effect:
         A_est = np.zeros((n, n), dtype=float)
-        for j in range(min(n, m)):
-            # Regulator j was perturbed: response of all genes i is in column j
-            # Target i is affected by regulator j
-            u_j = U_arr[j, j] if j < U_arr.shape[0] and j < U_arr.shape[1] and U_arr[j, j] != 0 else 1.0
-            A_est[j, :] = eff[:, j] / u_j
+        for c in range(m):
+            j = c if identity else perturbed[c]
+            if j < 0 or j >= n:
+                continue
+            # Regulator j was perturbed: response of all genes i is in column c
+            u_j = U_arr[j, c] if U_arr[j, c] != 0 else 1.0
+            A_est[j, :] = eff[:, c] / u_j
 
         # Do not allow artificial self-loops from direct perturbation
         np.fill_diagonal(A_est, 0.0)

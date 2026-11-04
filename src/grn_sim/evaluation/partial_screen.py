@@ -52,3 +52,24 @@ def evaluate_partial(screen: Any, S: np.ndarray) -> Dict[str, float]:
         out[f"scored_{name}"] = float(np.count_nonzero(Sm) > 0)
     out["aupr_balanced"] = 0.5 * (out["aupr_A"] + out["aupr_B"])
     return out
+
+
+def evaluate_four_blocks(adjacency: np.ndarray, perturbed: np.ndarray, S: np.ndarray) -> Dict[str, float]:
+    """
+    AUPR per block of ``S[regulator, target]`` against ``adjacency`` (direct truth): A = P->P, B = P->Q, C = Q->P, D = Q->Q
+    (P perturbed, Q unperturbed in the *target* context). Blocks C and D need a regulator that was never perturbed there:
+    only a method that fills in the missing perturbations (cross-context transfer) can score them.
+    """
+    n = adjacency.shape[0]
+    inP = np.zeros(n, dtype=bool)
+    inP[np.asarray(perturbed, dtype=int)] = True
+    truth = np.asarray(adjacency) != 0
+    S = np.abs(np.real(np.asarray(S, dtype=float)))
+    eye = np.eye(n, dtype=bool)
+    out: Dict[str, float] = {}
+    for name, (rows, cols) in {"A": (inP, inP), "B": (inP, ~inP), "C": (~inP, inP), "D": (~inP, ~inP)}.items():
+        mask = rows[:, None] & cols[None, :] & ~eye
+        out[f"aupr_{name}"] = compute_aupr(truth[mask], S[mask])
+        out[f"base_{name}"] = float(truth[mask].mean())
+    out["aupr_all"] = compute_aupr(truth[~eye], S[~eye])
+    return out

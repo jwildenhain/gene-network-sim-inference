@@ -26,14 +26,18 @@ import numpy as np
 from grn_sim.evaluation import screen_benchmark as sb
 from grn_sim.evaluation.partial_screen import evaluate_partial
 from grn_sim.inference import orientation, registry
-from grn_sim.inference.partial import PartialAdapter
+from grn_sim.evaluation.partial_screen import perturbed_genes
+from grn_sim.inference.bicycle_lite import BicycleLite
+from grn_sim.inference.dotears import DOTEARSLite
+from grn_sim.inference.interventional_consensus import rank_normalise
+from grn_sim.inference.partial import PartialAdapter, extend_node_graph
 from grn_sim.perturbseq.pipeline import build_network, run_screen
 
 K = 3
 # algorithms whose A_est is a steady-state Jacobian (A X = -U): the adapter applies to them
 JACOBIAN_LIKE = ["s2g", "g2s", "vote", "score_vote", "nir", "fast", "ridge_cv", "dmdgrn", "cellbox", "netdeconv"]
 NEW_PARTIAL = {"inspre"}          # fits partial screens by itself
-SKIP = {"atlasshift"}             # needs cross-atlas data, not an inference method on one screen
+SKIP: set = set()
 
 
 class Budget(Exception):
@@ -67,6 +71,45 @@ def run_one(key: str, mode: str, X: np.ndarray, U: np.ndarray, budget: int) -> D
     return {"status": "ok", "seconds": round(time.perf_counter() - t, 2), "S": S}
 
 
+def block_consensus(mats: Dict[str, np.ndarray], P: np.ndarray) -> np.ndarray:
+    """Rank-average of S matrices, ranked within each block (P->P and P->unperturbed) so the blocks' scales do not mix."""
+    n = next(iter(mats.values())).shape[0]
+    inP = np.zeros(n, dtype=bool)
+    inP[P] = True
+    out = np.zeros((n, n))
+    for tgt in (inP, ~inP):
+        mask = inP[:, None] & tgt[None, :] & ~np.eye(n, dtype=bool)
+        acc = np.zeros((n, n))
+        for S in mats.values():
+            R = np.zeros((n, n))
+            vals = np.abs(S)[mask]
+            from scipy.stats import rankdata
+            R[mask] = (rankdata(vals) - 1.0) / max(len(vals) - 1, 1)
+            acc += R
+        out[mask] = acc[mask] / len(mats)
+    return out
+
+
+def run_cell_level(name: str, ace: Any, run: Any, budget: int) -> Dict[str, Any]:
+    """bicycle-lite and DOTEARS-lite need the cell-level ACE estimate (and the counts for DOTEARS); both fit the perturbed block
+    only and are extended to the unperturbed genes with ``extend_node_graph``."""
+    t = time.perf_counter()
+    _alarm(budget)
+    try:
+        if name == "bicycle_lite":
+            res = BicycleLite(K, lam=30, cov_weight=0.05).fit_ace(ace, alpha=None)
+        else:
+            res = DOTEARSLite(K, lam=0.003).fit_adata(run.adata, ace, alpha=None)
+        S = np.abs(extend_node_graph(res.A_est, ace))
+    except Budget:
+        return {"status": f"over {budget}s"}
+    except Exception as exc:
+        return {"status": "error: " + repr(exc)[:70]}
+    finally:
+        signal.alarm(0)
+    return {"status": "ok", "seconds": round(time.perf_counter() - t, 2), "S": S}
+
+
 def main() -> None:
     warnings.filterwarnings("ignore")
     ap = argparse.ArgumentParser()
@@ -88,6 +131,8 @@ def main() -> None:
             X, U = ace.to_xu()
             print(f"m={m} seed={seed}: screen {time.time() - t:.0f}s, X {X.shape}, effective nodes "
                   f"{int((np.abs(ace.own_z) >= 2).sum())}", flush=True)
+            kept: Dict[Any, np.ndarray] = {}
+            P = perturbed_genes(run.screen)
             for key in registry.keys():
                 if key in SKIP:
                     continue
@@ -103,10 +148,32 @@ def main() -> None:
                     if r["status"] == "ok":
                         row["seconds"] = r["seconds"]
                         row.update(evaluate_partial(run.screen, r["S"]))
+                    if r["status"] == "ok":
+                        kept[(key, mode)] = r["S"]
                     rows.append(row)
                     print(f"   {key:16} {mode:8} {r['status'][:40]:40} "
                           + (f"A {row['aupr_A']:.3f} B {row['aupr_B']:.3f} {r['seconds']:.1f}s" if r["status"] == "ok" else ""),
                           flush=True)
+            for name in ("bicycle_lite", "dotears_lite"):
+                r = {"status": f"over {a.budget}s (not retried)"} if (name, "native", m) in timed_out else run_cell_level(name, ace, run, a.budget)
+                if r["status"].startswith("over"):
+                    timed_out.add((name, "native", m))
+                row = {"perturbed": m, "seed": seed, "method": name, "mode": "native", "status": r["status"]}
+                if r["status"] == "ok":
+                    kept[(name, "native")] = r["S"]
+                    row["seconds"] = r["seconds"]
+                    row.update(evaluate_partial(run.screen, r["S"]))
+                rows.append(row)
+                print(f"   {name:16} native   {r['status'][:40]:40} "
+                      + (f"A {row['aupr_A']:.3f} B {row['aupr_B']:.3f} {r['seconds']:.1f}s" if r["status"] == "ok" else ""), flush=True)
+            members = {k[0]: v for k, v in kept.items() if k[0] in ("inspre", "mean_difference", "bicycle_lite", "dotears_lite")}
+            if len(members) >= 3:
+                S = block_consensus(members, P)
+                row = {"perturbed": m, "seed": seed, "method": "consensus(" + "+".join(sorted(members)) + ")", "mode": "native",
+                       "status": "ok", "seconds": 0.0}
+                row.update(evaluate_partial(run.screen, S))
+                rows.append(row)
+                print(f"   consensus        native   ok                                       A {row['aupr_A']:.3f} B {row['aupr_B']:.3f}", flush=True)
     if a.out:
         json.dump(rows, open(a.out, "w"), indent=1)
     for m in a.perturbed:

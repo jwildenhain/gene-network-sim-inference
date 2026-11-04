@@ -125,3 +125,28 @@ class PartialAdapter(BaseInferenceAlgorithm):
         diag.update(perturbed_genes=int(len(P)), adapted_from=self.key,
                     unperturbed_extension="row solver" if solver is not None else "inverse of the perturbed block")
         return InferenceResult(self.name, S, adj, time.time() - t0, diag)
+
+
+def extend_node_graph(A: np.ndarray, ace: Any, min_own_z: float = 2.0) -> np.ndarray:
+    """
+    Scores edges from perturbed genes to unperturbed genes for a method that returns direct effects ``A`` (n x n, only the
+    perturbed-gene block filled; ``A[a, b]`` = direct effect a -> b), e.g. bicycle-lite or DOTEARS-lite.
+
+    With T = (I - G)^-1 on the perturbed block and R = lfc / own (effect of node a on gene j relative to its own effect),
+    the direct effects onto an unperturbed gene j are ``D = (I - G) diag(diag T) R[:, j]`` (the same identity as inspre's
+    ``V R`` with ``V = (I - G) Dg^-1`` and ``Dg = diag(1 / diag T)``). ``ace`` is an ACEEstimate.
+    """
+    nodes = np.asarray(ace.nodes, dtype=int)
+    n = A.shape[0]
+    p = len(nodes)
+    G = np.real(A[np.ix_(nodes, nodes)]).copy()
+    np.fill_diagonal(G, 0.0)
+    R, w = ace.normalised(min_own_z)
+    rest = np.setdiff1d(np.arange(n), nodes)
+    try:
+        T = np.linalg.inv(np.eye(p) - G)
+    except np.linalg.LinAlgError:
+        return A
+    out = np.real(A).copy()
+    out[np.ix_(nodes, rest)] = (np.eye(p) - G) @ (np.diag(np.diag(T)) @ R[:, rest])
+    return out

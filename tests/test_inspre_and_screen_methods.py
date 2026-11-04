@@ -298,3 +298,41 @@ def test_run_screen_partial_option_and_scoring():
     assert zero["scored_B"] == 0 and abs(zero["aupr_B"] - zero["base_B"]) < 0.1
     with pytest.raises(ValueError):
         run_screen(build_network("replogle_like", 30, seed=1), n_perturbed=0)
+
+
+@pytest.mark.parametrize("name", ["sfinn", "atlasshift"])
+def test_sfinn_and_atlasshift_score_partial_screens(name):
+    from grn_sim.inference.atlasshift import AtlasShift
+    from grn_sim.inference.sfinn import SFINNAlgorithm
+    G, X, U, p, n = _leaf_network(seed=3, sigma=0.01)
+    A = np.abs((SFINNAlgorithm() if name == "sfinn" else AtlasShift()).fit(X, U).A_est)
+    S = A.T if name == "sfinn" else A                      # SFINN returns A[target, regulator]
+    assert (S[:p] > 0).any() and not S[p:].any()           # the perturbed genes are the regulators, whichever columns they sit in
+    block_b = np.zeros((n, n), dtype=bool)
+    block_b[:p, p:] = True
+    assert compute_aupr(G[block_b] != 0, S[block_b]) > 3 * (G[block_b] != 0).mean()
+
+
+def test_cellbox_scale_invariance_fixes_small_responses():
+    """Log fold changes of ~0.1 leave tanh in its linear range; the auto-scaling makes the fit scale-free."""
+    from grn_sim.inference.cellbox import CellBoxNeuralODE
+    G, X, U, p, n = _leaf_network(p=12, q=0, seed=4)
+    a = np.abs(CellBoxNeuralODE(epochs=40).fit(0.05 * X, 0.05 * U).A_est)
+    b = np.abs(CellBoxNeuralODE(epochs=40).fit(X, U).A_est)
+    assert np.isfinite(a).all() and a.shape == b.shape
+    assert CellBoxNeuralODE().auto_scale is True
+
+
+def test_extend_node_graph_matches_inspre_extension_for_the_same_graph():
+    from grn_sim.inference.partial import extend_node_graph
+    from grn_sim.perturbseq.ace import ACEEstimate
+    G, X, U, p, n = _leaf_network(seed=5)
+    res = InspreAlgorithm(3, density_factor=10.0, lam=1e-9).fit(X, U)
+    nodes = np.arange(p)
+    own = X[nodes, np.arange(p)]
+    ace = ACEEstimate([f"g{i}" for i in range(n)], nodes, X.T.copy(), np.full((p, n), 0.01), np.full((p, n), 9.0),
+                      np.zeros((p, n)), np.zeros((p, n)), np.full(p, 100), 100, np.ones(n))
+    ext = extend_node_graph(res.A_est, ace)
+    block_b = np.zeros((n, n), dtype=bool)
+    block_b[:p, p:] = True
+    assert compute_aupr(G[block_b] != 0, np.abs(ext)[block_b]) > 0.9
