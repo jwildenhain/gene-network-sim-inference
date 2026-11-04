@@ -85,7 +85,7 @@ class _Problem:
 
 
 class BicycleLite(BaseInferenceAlgorithm):
-    def __init__(self, k_interactions: int = 3, lam: float = 5.0, candidates_per_node: int = 12,
+    def __init__(self, k_interactions: int = 3, lam: float = 5.0, candidates_per_node: Optional[int] = 12,
                  cov_weight: float = 1.0, max_iter: int = 120, density_factor: float = 2.0):
         super().__init__(name="bicycle_lite")
         self.k_interactions = k_interactions
@@ -125,9 +125,12 @@ class BicycleLite(BaseInferenceAlgorithm):
             G0n = G0[np.ix_(genes, genes)] if p < n else G0
             score = np.abs(ins._solve(n, genes, R, w, k=k * 4).A_est)[np.ix_(genes, genes)]
             cand = np.zeros((p, p), dtype=bool)
-            for a in range(p):
-                top = np.argsort(-score[a])[: self.candidates_per_node]
-                cand[a, top[score[a, top] > 0]] = True
+            if self.candidates_per_node is None:         # no restriction: every pair is a free parameter
+                cand[:] = True
+            else:
+                for a in range(p):
+                    top = np.argsort(-score[a])[: self.candidates_per_node]
+                    cand[a, top[score[a, top] > 0]] = True
             np.fill_diagonal(cand, False)
             cand |= (G0n != 0)
             r0 = spectral_radius(G0n)

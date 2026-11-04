@@ -62,6 +62,15 @@ def ace_from_xu(X: np.ndarray, U: np.ndarray, min_own_effect: float = 1e-8) -> T
     return genes, R, own
 
 
+def _entry_factors(R: np.ndarray, entry_weights: np.ndarray) -> tuple:
+    """(rho, per-column Cholesky factors, diag of the squared weights) for entry-weighted ADMM; reusable across lambdas."""
+    p = R.shape[0]
+    ew2 = np.asarray(entry_weights, dtype=float) ** 2
+    rho = float(max(np.mean([np.sum((R * R) * ew2[:, [j]]) for j in range(min(p, 20))]) / max(p, 1), 1e-6))
+    cfs = [cho_factor((R.T * ew2[:, j]) @ R + rho * np.eye(p), lower=True, check_finite=False) for j in range(p)]
+    return rho, cfs, np.diag(ew2).copy()
+
+
 def inspre_solve(
     R: np.ndarray,
     lam: float,
@@ -71,10 +80,15 @@ def inspre_solve(
     max_iter: int = 300,
     tol: float = 1e-4,
     warm: Optional[Tuple[np.ndarray, np.ndarray]] = None,
+    entry_weights: Optional[np.ndarray] = None,
+    entry_factors: Optional[tuple] = None,
 ) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray], int]:
     """
     ADMM for a sparse V with R V ~ I (R square). ``weights`` (p,) are per-row weights (default 1), ``edge_penalty``
-    an optional (p, p) matrix scaling the L1 penalty of each off-diagonal entry. Returns ``(V, (V, Z), iterations)``;
+    an optional (p, p) matrix scaling the L1 penalty of each off-diagonal entry, ``entry_weights`` an optional (p, p)
+    matrix of weights for every entry of R (the original package's inverse-variance weighting). Entry weights need one
+    factorisation per column (cost ~p^4 per solve, p^3 memory): use for a few hundred nodes at most; ``weights`` is the
+    cheap alternative. Returns ``(V, (V, Z), iterations)``;
     pass the second item as ``warm`` to continue from it (used along a lambda path).
     """
     R = np.asarray(R, dtype=float)
@@ -82,16 +96,25 @@ def inspre_solve(
     w2 = np.ones(p) if weights is None else np.asarray(weights, dtype=float) ** 2
     RtW = R.T * w2                                   # R^T W^2
     RtR = RtW @ R
-    if rho is None:
-        rho = float(max(np.trace(RtR) / max(p, 1), 1e-6))
-    cf = cho_factor(RtR + rho * np.eye(p), lower=True, check_finite=False)
+    cfs = None
+    if entry_weights is not None or entry_factors is not None:
+        rho, cfs, diag_w2 = entry_factors if entry_factors is not None else _entry_factors(R, entry_weights)
+    else:
+        if rho is None:
+            rho = float(max(np.trace(RtR) / max(p, 1), 1e-6))
+        cf = cho_factor(RtR + rho * np.eye(p), lower=True, check_finite=False)
     pen = np.full((p, p), float(lam)) if edge_penalty is None else float(lam) * np.asarray(edge_penalty, dtype=float)
     thr = pen / rho
     np.fill_diagonal(thr, 0.0)
     V, Z = (np.eye(p), np.zeros((p, p))) if warm is None else (warm[0].copy(), warm[1].copy())
     it = 0
     for it in range(1, max_iter + 1):
-        Uk = cho_solve(cf, RtW + rho * (V - Z), check_finite=False)
+        if cfs is not None:
+            Uk = np.empty((p, p))
+            for j in range(p):
+                Uk[:, j] = cho_solve(cfs[j], diag_w2[j] * R[j, :] + rho * (V[:, j] - Z[:, j]), check_finite=False)
+        else:
+            Uk = cho_solve(cf, RtW + rho * (V - Z), check_finite=False)
         T = Uk + Z
         V_new = np.sign(T) * np.maximum(np.abs(T) - thr, 0.0)     # diagonal: threshold 0 -> unpenalised
         Z = Z + Uk - V_new
@@ -125,6 +148,7 @@ def fit_inspre(
     edge_penalty: Optional[np.ndarray] = None,
     max_iter: int = 300,
     path_steps: int = 14,
+    entry_weights: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
     Direct-effect matrix G from the node-by-node response matrix R. With ``lam`` fixed, one solve; otherwise lambda
@@ -132,8 +156,10 @@ def fit_inspre(
     """
     p = R.shape[0]
     diag: Dict[str, Any] = {}
+    ef = _entry_factors(R, entry_weights) if entry_weights is not None else None
+    diag["entry_weights"] = ef is not None
     if lam is not None:
-        V, _, it = inspre_solve(R, lam, weights, edge_penalty, max_iter=max_iter)
+        V, _, it = inspre_solve(R, lam, weights, edge_penalty, max_iter=max_iter, entry_factors=ef)
         diag.update(lam=float(lam), iterations=it)
     else:
         if target_edges is None:
@@ -147,7 +173,8 @@ def fit_inspre(
         it = 0
         for _ in range(path_steps):
             mid = 0.5 * (lo + hi)
-            Vm, warm, it = inspre_solve(R, float(np.exp(mid)), weights, edge_penalty, max_iter=max_iter, warm=warm)
+            Vm, warm, it = inspre_solve(R, float(np.exp(mid)), weights, edge_penalty, max_iter=min(max_iter, 60), warm=warm,
+                                      entry_factors=ef)
             nnz = int(np.count_nonzero(Vm - np.diag(np.diag(Vm))))
             V = Vm
             if nnz > target_edges:
@@ -156,9 +183,12 @@ def fit_inspre(
                 hi = mid
             if abs(nnz - target_edges) <= max(1, int(0.05 * target_edges)):
                 break
+        V, _, it = inspre_solve(R, float(np.exp(mid)), weights, edge_penalty, max_iter=max_iter, warm=warm,
+                                entry_factors=ef)   # polish
         diag.update(lam=float(np.exp(mid)), iterations=it)
     G = direct_effects(V)
     diag["spectral_radius"] = spectral_radius(G)
+    diag["unstable"] = bool(diag["spectral_radius"] >= 1.0)    # the method assumes stable feedback (radius < 1)
     diag["edges"] = int(np.count_nonzero(G))
     return G, diag
 
@@ -194,7 +224,8 @@ class InspreAlgorithm(BaseInferenceAlgorithm):
             w = np.minimum(a / max(float(np.median(a[a > 0])) if np.any(a > 0) else 1.0, 1e-12), 1.0)
         return self._solve(np.asarray(X).shape[0], genes, R, w, **kwargs)
 
-    def fit_ace(self, ace: Any, alpha: Optional[float] = 0.05, min_own_z: float = 2.0, **kwargs) -> InferenceResult:
+    def fit_ace(self, ace: Any, alpha: Optional[float] = 0.05, min_own_z: float = 2.0, entry_weights: bool = False,
+                **kwargs) -> InferenceResult:
         """
         inspre on a calibrated ACE estimate (:class:`grn_sim.perturbseq.ace.ACEEstimate`): effects that are not
         significant at BH level ``alpha`` are set to 0 (``None`` keeps all), each node is weighted by the strength of
@@ -202,6 +233,8 @@ class InspreAlgorithm(BaseInferenceAlgorithm):
         """
         est = ace.denoised(alpha) if alpha is not None else ace
         R, w = est.normalised(min_own_z)
+        if entry_weights:
+            kwargs["entry_weights"] = est.entry_weights(min_own_z)[:, est.nodes]
         return self._solve(est.lfc.shape[1], est.nodes, R, w, **kwargs)
 
     def _solve(self, n: int, genes: np.ndarray, R: np.ndarray, w: Optional[np.ndarray], **kwargs) -> InferenceResult:
@@ -210,13 +243,14 @@ class InspreAlgorithm(BaseInferenceAlgorithm):
         p = len(genes)
         R_nodes = R[:, genes] if p else R
         edge_penalty = kwargs.get("edge_penalty")
+        entry_w = kwargs.get("entry_weights")
         if edge_penalty is not None:
             edge_penalty = np.asarray(edge_penalty, dtype=float)[np.ix_(genes, genes)]
         A = np.zeros((n, n))
         diagnostics: Dict[str, Any] = {"nodes": int(p), "perturbed_fraction": float(p / max(n, 1))}
         if p >= 3:
             G, diag = fit_inspre(R_nodes, target_edges=int(self.density_factor * k * p), lam=self.lam, weights=w,
-                                 edge_penalty=edge_penalty)
+                                 edge_penalty=edge_penalty, entry_weights=entry_w)
             A[np.ix_(genes, genes)] = G
             diagnostics.update(diag)
         adj = np.zeros((n, n), dtype=int)

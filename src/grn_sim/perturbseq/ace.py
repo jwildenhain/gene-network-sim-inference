@@ -65,6 +65,17 @@ class ACEEstimate:
         w[ok] = np.minimum(zc / max(float(np.median(zc)) if zc.size else 1.0, 1e-9), 1.0)
         return R, w
 
+    def entry_weights(self, min_own_z: float = 2.0, cap: float = 3.0) -> np.ndarray:
+        """
+        (p, n) inverse-standard-error weights of the entries of ``normalised()``'s R (R[a, j] has standard error about
+        se[a, j] / |own[a]|), scaled to a median of 1 and capped at ``cap``; 0 for nodes without a detectable on-target effect.
+        """
+        ok = np.abs(self.own_z) >= min_own_z
+        w = np.zeros_like(self.lfc)
+        w[ok] = np.abs(self.own[ok, None]) / self.se[ok]
+        med = float(np.median(w[ok])) if ok.any() else 1.0
+        return np.minimum(w / max(med, 1e-12), cap)
+
     def to_xu(self) -> Tuple[np.ndarray, np.ndarray]:
         """The repository's (X, U) pair: X[:, c] the response to node c, U with the node's own response on the diagonal."""
         n = self.lfc.shape[1]
@@ -144,6 +155,7 @@ def estimate_ace(
     n_null_groups: int = 100,
     use_called_guide: bool = False,
     seed: int = 0,
+    test: str = "welch",
 ) -> ACEEstimate:
     """
     Effects of every single-gene perturbation in ``adata`` against its non-targeting cells.
@@ -151,7 +163,14 @@ def estimate_ace(
     ``use_called_guide`` takes the perturbation from the guide the pipeline *called* (``assigned_guide``, only cells with
     ``assignment_status == 'single'``; guide ``GENE_g1`` -> gene ``GENE``) instead of the true label, which is how a real
     analysis sees the data. Double perturbations (names containing ``+``) are skipped.
+
+    ``test``: ``"welch"`` (default; Welch z calibrated on non-targeting pseudo-perturbations, fast at any size) or
+    ``"ks"`` (two-sample Kolmogorov-Smirnov p-value of every node-gene pair against all controls, as in the CausalBench
+    winner Betterboost; distribution-free so no calibration is needed, but one test per pair: ~1 ms each, minutes at
+    500 x 500). The effect size and its standard error are the same in both; only z, p and q come from the test.
     """
+    if test not in ("welch", "ks"):
+        raise ValueError("test must be 'welch' or 'ks'")
     rng = np.random.default_rng(seed)
     names = list(gene_names) if gene_names is not None else [str(g) for g in adata.var_names]
     index = {g: i for i, g in enumerate(names)}
@@ -209,6 +228,17 @@ def estimate_ace(
     null_scale = np.minimum(np.maximum(null_scale, 0.5), 3.0)
     z = (lfc / se) / null_scale[None, :]
     pval = 2.0 * (1.0 - ndtr(np.abs(z)))
+    if test == "ks":
+        from scipy.stats import ks_2samp, norm
+        starts = np.concatenate([[0], np.cumsum(np.bincount(grp, minlength=p))])
+        order_cells = np.argsort(grp, kind="stable")
+        Yp_sorted = Y[cells_p][order_cells]
+        pval = np.ones((p, n))
+        for a in range(p):
+            block = Yp_sorted[starts[a]:starts[a + 1]]
+            for j in range(n):
+                pval[a, j] = ks_2samp(block[:, j], Yc[:, j]).pvalue
+        z = np.sign(lfc) * norm.isf(np.clip(pval, 1e-300, 1.0) / 2.0)
     mask = np.ones_like(pval, dtype=bool)
     mask[np.arange(p), nodes] = False
     qval = _bh(pval, mask)
@@ -218,7 +248,7 @@ def estimate_ace(
     Yc0 = Yc.astype(np.float64) - m0
     cov = (Yp.T @ Yp + Yc0.T @ Yc0) / max(len(cells_p) + n0 - p - 1, 1)
     return ACEEstimate(names, nodes, lfc, se, z, pval, qval, cnt.astype(int), int(n0), null_scale,
-                       cov=cov, n_cov=int(len(cells_p) + n0))
+                       method="ks" if test == "ks" else "welch_nt_calibrated", cov=cov, n_cov=int(len(cells_p) + n0))
 
 
 def truth_ace(screen: Any) -> ACEEstimate:

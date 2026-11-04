@@ -60,7 +60,7 @@ class CellConfig:
     sde_dt: float = 0.02
     sde_time: float = 15.0
     n_control_guides: int = 4                 # distinct non-targeting guides for the control cells
-    blas_threads: Optional[int] = 8           # cap for BLAS threads (dense LAPACK oversubscribes on many cores)
+    blas_threads: Optional[int] = None        # BLAS threads while simulating; None keeps the process limit (1, see grn_sim/__init__)
 
     def validate(self) -> None:
         if self.noise_model not in NOISE_MODELS:

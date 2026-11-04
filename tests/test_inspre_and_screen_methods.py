@@ -197,3 +197,45 @@ def test_ridge_cv_additive_default_includes_the_own_gene_term():
     # the regulator-input model has no self term: the default there is unchanged
     reg = KaggleMultiOutputRidge(k_interactions=3, perturbation_mode="regulator")
     assert reg.allow_self_regulation is None
+
+
+def test_inspre_entry_weights_option_matches_unweighted_when_weights_are_one():
+    from grn_sim.inference.inspre import fit_inspre
+    G, X, U = linear_screen(n=20, seed=4, sigma=0.02)
+    _, R, _ = ace_from_xu(X, U)
+    plain, _ = fit_inspre(R, target_edges=60)
+    weighted, d = fit_inspre(R, target_edges=60, entry_weights=np.ones_like(R))
+    assert d["entry_weights"]
+    assert compute_aupr(G != 0, weighted, ignore_diagonal=True) >= compute_aupr(G != 0, plain, ignore_diagonal=True) - 0.1
+
+
+def test_dense_candidate_option_and_ks_test_run(small_screen):
+    from grn_sim.evaluation import screen_benchmark as sb
+    from grn_sim.inference.bicycle_lite import BicycleLite
+    from grn_sim.perturbseq.ace import estimate_ace
+    run = small_screen
+    ace = sb.screen_inputs(run, "cells", 0).denoised(0.05)
+    res = BicycleLite(3, max_iter=10, candidates_per_node=None).fit_ace(ace)
+    assert res.diagnostics["candidates"] >= 30 * 29 * 0.9
+    ks = estimate_ace(run.adata, gene_names=list(run.screen.gene_names), use_called_guide=True, test="ks")
+    assert ks.method == "ks" and ((ks.qvalue >= 0) & (ks.qvalue <= 1)).all()
+    with pytest.raises(ValueError):
+        estimate_ace(run.adata, test="nope")
+
+
+def test_heldout_prediction_runs_and_reports_all_predictors(small_screen):
+    from grn_sim.evaluation import screen_benchmark as sb
+    from grn_sim.evaluation.heldout_prediction import heldout_prediction
+    ace = sb.screen_inputs(small_screen, "cells", 0)
+    res = heldout_prediction(ace, folds=3)
+    assert {"r_observed_inspre", "r_observed_mean_profile", "r_observed_neighbour", "n_heldout"} <= set(res)
+    assert all(-1.0 <= v <= 1.0 for k, v in res.items() if k.startswith("r_"))
+
+
+def test_simulating_a_screen_leaves_blas_on_one_thread(small_screen):
+    """A raised BLAS thread count creates OpenBLAS's thread pool for good, and forking process pools beside it can hang
+    (seen: G2S pool workers stuck in blas_thread_init after a screen had been simulated)."""
+    from grn_sim.inference import _native
+    _native.warm_up()
+    controller = _native._controller()
+    assert all(lib.num_threads == 1 for lib in controller.select(user_api="blas").lib_controllers)

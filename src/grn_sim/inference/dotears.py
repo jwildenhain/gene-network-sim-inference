@@ -12,7 +12,7 @@ h(W) = tr(exp(W o W)) - p = 0, as in NOTEARS, with two changes that matter for p
   swamped by a noisy one, the failure of plain NOTEARS (whose loss assumes equal variances).
 
 It is a DAG model: feedback loops in the truth cannot be represented and cost it accuracy. Free entries of W are limited
-to the strongest inspre candidates (``candidates_per_node``), which also keeps the exponential in the constraint cheap
+to the strongest inspre candidates (``candidates_per_node``; ``None`` frees every pair), which also keeps the exponential in the constraint cheap
 (cubic in the number of perturbed genes: practical to a few hundred). The loss is the mean over cells.
 """
 
@@ -58,7 +58,7 @@ def dotears_statistics(adata: Any, ace: Any, perturbation_key: str = "perturbati
 
 
 class DOTEARSLite(BaseInferenceAlgorithm):
-    def __init__(self, k_interactions: int = 3, lam: float = 0.02, candidates_per_node: int = 12,
+    def __init__(self, k_interactions: int = 3, lam: float = 0.02, candidates_per_node: Optional[int] = 12,
                  max_outer: int = 8, h_tol: float = 1e-7, density_factor: float = 2.0):
         super().__init__(name="dotears_lite")
         self.k_interactions = k_interactions
@@ -87,9 +87,12 @@ class DOTEARSLite(BaseInferenceAlgorithm):
         ins = InspreAlgorithm(k_interactions=k, density_factor=self.density_factor)
         score = np.abs(ins._solve(n, genes, R, ok.astype(float), k=k * 4).A_est)[np.ix_(genes, genes)]
         cand = np.zeros((p, p), dtype=bool)
-        for a in range(p):
-            top = np.argsort(-score[a])[: self.candidates_per_node]
-            cand[a, top[score[a, top] > 0]] = True
+        if self.candidates_per_node is None:             # no restriction: every pair is a free parameter
+            cand[:] = True
+        else:
+            for a in range(p):
+                top = np.argsort(-score[a])[: self.candidates_per_node]
+                cand[a, top[score[a, top] > 0]] = True
         np.fill_diagonal(cand, False)
         m = p * p
         # per-gene (target) second moments: S_j = S_total - S_node(j), N_j = N - n_node(j); the genes here are the nodes
