@@ -7029,7 +7029,8 @@
         const elTopAlg = document.getElementById('kpi-overall-top-alg');
         if (elTopAlg) elTopAlg.textContent = lb[0].algorithm_name;
         const elBestSingle = document.getElementById('kpi-overall-best-single');
-        const bestMech = lb.find(x => x.algorithm_key !== 'atlasshift' && x.algorithm_key !== 'vote') || lb[1] || lb[0];
+        // "Top Mechanistic Method": not the empirical AtlasShift transfer and not a consensus of other methods (vote, score_vote)
+        const bestMech = lb.find(x => !['atlasshift', 'vote', 'score_vote'].includes(x.algorithm_key)) || lb[1] || lb[0];
         if (elBestSingle && bestMech) elBestSingle.textContent = bestMech.algorithm_name;
       }
 

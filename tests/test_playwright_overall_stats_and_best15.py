@@ -73,7 +73,9 @@ def test_overall_stats_and_best15_restricted_archive():
         assert int(kpi_alg.replace(",", "").strip()) == expected_evals, f"Expected {expected_evals} alg evals (runs x algorithms), got '{kpi_alg}'"
         top_name = stats["algorithm_leaderboard"][0]["algorithm_name"].split(" (")[0]
         assert top_name.lower() in kpi_top.lower(), f"Expected the leaderboard's top algorithm '{top_name}' in top, got '{kpi_top}'"
-        best_single = next(r for r in stats["algorithm_leaderboard"] if r["algorithm_key"] not in ("vote", "score_vote"))
+        # the tile is "Top Mechanistic Method": neither the empirical AtlasShift transfer nor a consensus of other methods
+        best_single = next(r for r in stats["algorithm_leaderboard"]
+                           if r["algorithm_key"] not in ("atlasshift", "vote", "score_vote"))
         assert best_single["algorithm_name"].split(" (")[0].lower() in kpi_single.lower(), \
             f"Expected the best single algorithm '{best_single['algorithm_name']}', got '{kpi_single}'"
 
