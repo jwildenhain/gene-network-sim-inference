@@ -2,7 +2,6 @@
 import json
 import sys
 
-import numpy as np
 import pytest
 
 from grn_sim.perturbseq.design import ScreenDesign, select_perturbed

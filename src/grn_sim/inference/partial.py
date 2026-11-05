@@ -29,20 +29,19 @@ extension internally (``D = V R_unperturbed``), and its ``fit`` handles partial 
 from __future__ import annotations
 
 import time
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 
 from grn_sim.inference import orientation
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
-from grn_sim.inference.inspre import ace_from_xu
 
 
 def square_subproblem(X: np.ndarray, U: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """``(P, cols, X_PP, U_PP)``: the perturbed genes, the column of each, and the square problem they define."""
     X = np.real(np.asarray(X, dtype=float))
     U = np.real(np.asarray(U, dtype=float))
-    seen = {}
+    seen: Dict[int, int] = {}
     for c in range(U.shape[1]):
         col = np.abs(U[:, c])
         if col.max() > 1e-15:

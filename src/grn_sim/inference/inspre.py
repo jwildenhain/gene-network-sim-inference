@@ -24,7 +24,7 @@ response of each node to its own perturbation); genes without a perturbation col
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 from scipy.linalg import cho_factor, cho_solve
@@ -108,7 +108,7 @@ def inspre_solve(
     np.fill_diagonal(thr, 0.0)
     V, Z = (np.eye(p), np.zeros((p, p))) if warm is None else (warm[0].copy(), warm[1].copy())
     it = 0
-    for it in range(1, max_iter + 1):
+    for it in range(1, max_iter + 1):  # noqa: B007  (`it` is returned after the loop)
         if cfs is not None:
             Uk = np.empty((p, p))
             for j in range(p):

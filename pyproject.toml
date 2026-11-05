@@ -89,7 +89,7 @@ ignore = ["E501", "B905"]
 "__init__.py" = ["F401"]          # re-exports
 "src/grn_sim/__init__.py" = ["F401", "E402"]   # the BLAS thread limit must be set before the imports below it
 "tests/*" = ["E402"]              # tests import after setting up sys.path / environment
-"scripts/*" = ["E402"]
+"scripts/*" = ["E402", "E731", "B023", "B007"]   # analysis scripts: throwaway lambdas / closures inside loops
 
 [tool.mypy]
 python_version = "3.9"

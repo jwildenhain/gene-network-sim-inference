@@ -19,7 +19,7 @@ import json
 import signal
 import time
 import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -29,7 +29,6 @@ from grn_sim.inference import orientation, registry
 from grn_sim.evaluation.partial_screen import perturbed_genes
 from grn_sim.inference.bicycle_lite import BicycleLite
 from grn_sim.inference.dotears import DOTEARSLite
-from grn_sim.inference.interventional_consensus import rank_normalise
 from grn_sim.inference.partial import PartialAdapter, extend_node_graph
 from grn_sim.perturbseq.pipeline import build_network, run_screen
 

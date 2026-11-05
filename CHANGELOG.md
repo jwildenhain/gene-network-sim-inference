@@ -6,6 +6,8 @@ versioning once it leaves 0.x.
 
 ## Unreleased - partial screens
 
+- Documentation: one page per algorithm in `docs/algorithms/` (generated from `inference/descriptions.py`, checked by a test), a docs index
+  (`docs/README.md`), result files moved to `docs/results/`.
 - Partial Perturb-seq screens: `ScreenDesign`, `run_screen(n_perturbed=, perturbed_selection=, genes=)`, `grn-sim perturbseq --perturbed N
   --selection effective|random`, `?perturbed=&selection=` on the studio API, panel fields. Effective-gene selection from the simulated
   network, shortfall reporting, own statistics categories (design, identifiability, coverage, blocks), selection-biased realism

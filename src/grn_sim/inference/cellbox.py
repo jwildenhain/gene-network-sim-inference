@@ -74,7 +74,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         except ImportError:  # not installed, or installed but not importable: use the SciPy optimiser
             if N * N > 40000:
                 raise RuntimeError(f"CellBox without PyTorch uses finite-difference gradients over N*N parameters: "
-                                   f"{N} genes is too many (install torch, or use at most 200 genes)")
+                                   f"{N} genes is too many (install torch, or use at most 200 genes)") from None
             A_est, diagnostics = self._fit_scipy(X_mat, U_mat, l1, l2)
 
         # Remove diagonal self-loops

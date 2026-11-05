@@ -287,7 +287,14 @@ An exhaustive audit of the complete platform was conducted across all 5 user int
 * **Noise & Biological Variability Models (`do_biovariability.m`, `error_model.m`)**:
   * Biological variability across $M$ replicates ($\zeta \sim \mathcal{N}(0, \sigma_b^2)$) and Gaussian measurement noise ($\epsilon \sim \mathcal{N}(0, \sigma_m^2)$).
 
-### 2. Network Inference & Reverse Engineering Algorithms (18 Functional Paradigms)
+### 2. Network Inference & Reverse Engineering Algorithms (24 registered algorithms)
+
+> **Catalogue:** one short page per algorithm (idea, input/output orientation, partial-screen support, what was measured here) is in
+> [`docs/algorithms/`](docs/algorithms/README.md). Since the first version it has gained **inspre** (sparse inversion of the
+> response matrix), mean-difference / Pearson / GRNBoost-lite / gene-level baselines, and the experimental bicycle-lite, DOTEARS-lite
+> and a rank consensus. How they compare, and what a method needs to beat, is in
+> [`docs/INFERENCE_GAP_ANALYSIS.md`](docs/INFERENCE_GAP_ANALYSIS.md). The list below describes the original 18.
+
 * **S2G (Simple-to-General — `s2g.m` / `getvar.m`)**:
   * Column-normalized basis regression ($B = X / \|X_j\|_2$) with swap replacement loop (`getanother`), minimizing the MDL log-error penalty $C(k) = N \ln(\overline{E^2}) + k \ln(N)$.
 * **G2S (General-to-Specific — `g2s.m` / `gen2spec.m`)**:
@@ -396,6 +403,13 @@ When loading a real-world benchmark into Tab 1, users can choose between two dis
     - **Persistent Oscillations / Limit Cycles**: **3 runs** (2.3%)
 * **Thesis & Paper Figures Gallery (Dual Engine, Tab 5)**:
   Tab 5 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `src/grn_sim/data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
+
+### 4b. Partial Perturb-seq screens
+
+A genome-scale screen perturbs a few hundred genes and measures thousands. `run_screen(net, n_perturbed=30)` (CLI
+`--perturbed 30`, studio *Perturbed genes*) perturbs 30 genes chosen among those whose knockdown moves other genes in the simulated
+network (or at random) and measures all of them; the screen has its own statistics categories (identifiability, coverage, blocks)
+and is scored per block (perturbed → perturbed, perturbed → unperturbed). Details: [`docs/PERTURBSEQ.md`](docs/PERTURBSEQ.md).
 
 ### 5. Single-Cell Perturb-seq Generation & Arc Institute Virtual Cell Challenge (VCC 2026)
 

@@ -100,7 +100,7 @@ CLI: `grn-sim perturbseq --genes 500 --perturbed 30 --selection effective`. API 
   effective perturbed genes: about 12% of the true edges have a perturbed regulator and can be identified from interventions.
 - **Algorithms.** `registry.describe()` lists `partial: native | adapter` per algorithm and `registry.build_partial(key)` wraps the
   ones that need `PartialAdapter`; scoring per block is `grn_sim.evaluation.partial_screen`. Measured results:
-  `docs/partial_screen_benchmark_500genes.md`, `docs/INFERENCE_GAP_ANALYSIS.md`.
+  `docs/results/partial_screen_benchmark_500genes.md`, `docs/INFERENCE_GAP_ANALYSIS.md`.
 
 ## Notes and limits
 

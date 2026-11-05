@@ -2,7 +2,7 @@
 
 Branch `feat/inspre-and-interventional-baselines`. Numbers: 100-gene `replogle_like` networks, knockdown screens, 40 cells per
 perturbation, LNA cells + measurement artefacts, 4 seeds (mean ± sd; the sd is large, treat differences below ~0.1 as ties).
-Reproduce: `scripts/audit_inspre.py`, `scripts/benchmark_screen_methods.py [--prior]`. Raw rows: `docs/screen_*_100genes.json`.
+Reproduce: `scripts/audit_inspre.py`, `scripts/benchmark_screen_methods.py [--prior]`. Raw rows: `docs/results/screen_*_100genes.json`.
 
 ## 1. Audit: what G2S, NIR and RidgeCV do relative to inspre
 
@@ -112,7 +112,7 @@ prior pairs; mean difference: score x2 on prior pairs. AUPR on direct edges (mea
 
 | earlier caveat | now | evidence |
 |---|---|---|
-| bicycle-lite / DOTEARS-lite restricted to inspre candidates | **optional**: `candidates_per_node=None` frees every pair | DOTEARS-lite 0.245 -> **0.409** (sd 0.03), bicycle-lite 0.273 -> 0.286; 1.5x slower (`docs/screen_ablation_100genes.md`) |
+| bicycle-lite / DOTEARS-lite restricted to inspre candidates | **optional**: `candidates_per_node=None` frees every pair | DOTEARS-lite 0.245 -> **0.409** (sd 0.03), bicycle-lite 0.273 -> 0.286; 1.5x slower (`docs/results/screen_ablation_100genes.md`) |
 | inspre weights per node only | **optional**: `fit_ace(..., entry_weights=True)` (inverse-variance weight for every entry; ~p^4, use for a few hundred nodes) | 0.298 -> 0.310, within noise, 12x slower: left off |
 | calibrated Welch test is not SCEPTRE | **optional KS test**: `estimate_ace(..., test="ks")`; full SCEPTRE (negative-binomial regression + conditional resampling) is **not** implemented | KS 0.249 vs Welch 0.298 direct AUPR in inspre (one preset, 3 seeds) |
 | held-out-perturbation prediction vs additive/linear baselines missing | **done**: `evaluation/heldout_prediction.py`, `scripts/heldout_benchmark.py` | Hidden single perturbations are *not predictable from the structure*: r = 0.03 (inspre) vs 0.07 (mean profile) vs -0.06 (neighbour heuristic). Expected: the hidden node's outgoing effects are only visible when it is perturbed. On the simulator's double perturbations the additive prediction already has r = 0.98 with the truth, so a linear structure cannot beat additive there (consistent with Ahlmann-Eltze) |
@@ -121,7 +121,7 @@ prior pairs; mean difference: score x2 on prior pairs. AUPR on direct edges (mea
 | only 100 genes | **partly**: run time to 1000 genes measured (section 7); accuracy at 250-500 genes with cells **not** measured | - |
 | studio ran an old image | **done**: image rebuilt and container replaced (section 8) | - |
 
-Sweep (direct AUPR, 100 genes, 3 seeds, denoised ACE; `docs/screen_condition_sweep_100genes.md`):
+Sweep (direct AUPR, 100 genes, 3 seeds, denoised ACE; `docs/results/screen_condition_sweep_100genes.md`):
 
 | cells / perturbation | guide efficiency | inspre | mean diff | S2G | NIR | RidgeCV (self) |
 |---|---|---|---|---|---|---|
@@ -135,7 +135,7 @@ Sweep (direct AUPR, 100 genes, 3 seeds, denoised ACE; `docs/screen_condition_swe
 Cells per perturbation and knockdown strength matter more than the choice of method: every method roughly doubles from 20 to 100 cells and halves
 from efficiency 0.92 to 0.5; inspre and RidgeCV(self) gain most from more cells, S2G is best at low depth, and at weak knockdown (0.5) all are at 0.1-0.16.
 
-## 6. All benchmark datasets (`scripts/benchmark_all_datasets.py`, `docs/all_datasets_benchmark.json`)
+## 6. All benchmark datasets (`scripts/benchmark_all_datasets.py`, `docs/results/all_datasets_benchmark.json`)
 
 Five datasets have a ground truth; the 105-gene Norman matrix has none (timing and agreement only). Edges, AUPR in T[regulator, target].
 **Only `ecoli_sos` and `norman_2019_real_16tf` are measured data (9 and 16 genes); `dream4_10gene`, `replogle_2022_p53` and `norman_2019_tf16` are
@@ -155,7 +155,7 @@ assumption is violated); the result is flagged `unstable` in the diagnostics.
 
 ## 7. Run time and memory (`scripts/scaling_benchmark.py`, one core per fit unless noted)
 
-Seconds, knockdown screens with 60 cells per perturbation (all nodes with a detectable knockdown); `docs/scaling_benchmark_60cells.jsonl`. Screen simulation itself: 8 / 30 / 97 s at 100 / 250 / 500 genes.
+Seconds, knockdown screens with 60 cells per perturbation (all nodes with a detectable knockdown); `docs/results/scaling_benchmark_60cells.jsonl`. Screen simulation itself: 8 / 30 / 97 s at 100 / 250 / 500 genes.
 
 | genes | ACE estimate | inspre | mean diff / Pearson / gene features | GRNBoost-lite | bicycle-lite (40 iterations) | DOTEARS-lite (2 rounds) | peak RSS |
 |---|---|---|---|---|---|---|---|
@@ -186,3 +186,36 @@ Reproduction: 4 of 6 runs hung before the fix, 0 of 6 after; regression test `te
 - All results are from this simulator (Hill kinetics, LNA cells); published methods' real-data behaviour is not tested here.
 - 4 seeds, sd 0.04-0.11 on most cells; the consensus gain and the S2G-vs-inspre ordering on noisy input are within 1-2 sd.
 - The Dockerised studio (port 8085) runs an old image and was not touched; the new algorithms appear in the registry/API after a rebuild.
+
+
+## 11. Partial screens, imputation and the added algorithms (2026-11-05)
+
+Partial screens (m perturbed genes of n measured, `docs/PERTURBSEQ.md`) were scored per block: A = edges among the perturbed genes,
+B = edges from a perturbed gene to an unperturbed one. 500 genes, 100 cells per perturbation, 3 seeds, genes picked at random
+(`docs/results/partial_screen_benchmark_500genes.md`; AUPR, random level 0.003-0.006):
+
+| method (mode) | 30 perturbed A / B | 100 perturbed A / B |
+|---|---|---|
+| mean difference (native) | 0.41 / 0.35 | 0.33 / 0.30 |
+| inspre (native) | 0.53 / 0.22 | 0.28 / 0.28 |
+| NIR (native) | 0.27 / 0.29 | 0.37 / 0.33 |
+| CellBox (native, inputs rescaled) | 0.52 / 0.25 | 0.15 / 0.03 |
+| consensus of inspre, mean difference, bicycle-lite, DOTEARS-lite | 0.36 / 0.23 | 0.48 / 0.27 |
+| S2G (adapted) | 0.21 / 0.14 | 0.27 / 0.24 |
+| RidgeCV (adapted) | 0.36 / 0.20 | 0.24 / 0.17 |
+| SFINN (native, fixed for partial data) | 0.27 / 0.19 | 0.23 / 0.20 |
+| AtlasShift (native, column mapping fixed) | 0.18 / 0.12 | 0.20 / 0.16 |
+
+- All but CPA-Lite (and NOTEARS and gene-level features at 100 perturbed) are far above the by-chance level on at least one block; several
+  (FAST, RidgeCV native, adapted CellBox and NetDeconv) only score the perturbed block, and the response-only methods (Pearson, ARACNE,
+  GENIE3, DMD-GRN) are strong on B and near chance on A. B is scored against direct edges, but mediated effects correlate with them.
+- **Predicting the missing perturbations** needs other contexts: from the partial screen alone it is not possible (a hidden gene's outgoing
+  effects are only visible when it is perturbed; leave-one-out r = 0.03). Filling the missing columns with the mean of three source contexts
+  (`scripts/impute_partial_screen.py`, same noise as the target) lets every method score edges whose regulator was never perturbed (0.22-0.70
+  against a random level of 0.02) but did not improve the observed blocks and hurt when the target's network differed from the sources
+  (30% rewired: inspre 0.22 -> 0.09 among perturbed genes). Transfer alone (algorithm on the pooled sources) was often as good as using the
+  target's data, partly because it pools three screens (`docs/results/impute_partial_screen_same_noise_sources.md`).
+- **CellBox** was at the random level (AUPR 0.03-0.06) because its tanh envelope was fed log fold changes of ~0.1; rescaling the inputs by
+  1/std gives 0.45-0.60 on 100-gene screens. The registry default changed accordingly (the archive was not rescored).
+- Run time at 500 genes is in section 7; bicycle-lite and DOTEARS-lite only fit the perturbed block on a partial screen (about 1 s at 100
+  perturbed genes), so partial screens make them practical.

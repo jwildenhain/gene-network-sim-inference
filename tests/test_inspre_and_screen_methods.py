@@ -330,7 +330,6 @@ def test_extend_node_graph_matches_inspre_extension_for_the_same_graph():
     G, X, U, p, n = _leaf_network(seed=5)
     res = InspreAlgorithm(3, density_factor=10.0, lam=1e-9).fit(X, U)
     nodes = np.arange(p)
-    own = X[nodes, np.arange(p)]
     ace = ACEEstimate([f"g{i}" for i in range(n)], nodes, X.T.copy(), np.full((p, n), 0.01), np.full((p, n), 9.0),
                       np.zeros((p, n)), np.zeros((p, n)), np.full(p, 100), 100, np.ones(n))
     ext = extend_node_graph(res.A_est, ace)

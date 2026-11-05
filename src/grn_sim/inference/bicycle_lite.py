@@ -24,7 +24,7 @@ pooled covariance (``estimate_ace`` provides it); without it only the mean term 
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import numpy as np
 from scipy.linalg import solve_continuous_lyapunov
@@ -40,14 +40,15 @@ class _Problem:
         self.lfc, self.se2, self.ok = lfc, se ** 2, node_ok
         self.cov, self.n_cov, self.cov_weight = cov, n_cov, cov_weight
         self.p, self.n = lfc.shape
+        self.nodes = np.arange(self.p)            # row a of ``lfc`` is the perturbation of gene nodes[a] (square problem: itself)
 
     def value_grad(self, G: np.ndarray, log_d: np.ndarray, log_tau: np.ndarray):
-        p, n = self.p, self.n
-        I = np.eye(n)
-        M = I - G.T
+        n = self.n
+        eye = np.eye(n)
+        M = eye - G.T
         if np.min(np.linalg.eigvals(M).real) < 0.02:               # unstable feedback: outside the model
             return 1e12, np.zeros_like(G), np.zeros(n), np.zeros(n)
-        T = np.linalg.inv(I - G)                                    # T[a, b] = total effect a -> b
+        T = np.linalg.inv(eye - G)                                    # T[a, b] = total effect a -> b
         Tn = T[self.nodes]                                          # (p, n)
         W = self.ok[:, None] / self.se2
         num = np.sum(W * self.lfc * Tn, axis=1)

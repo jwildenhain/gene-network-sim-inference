@@ -1,7 +1,7 @@
 """
 Benchmark of network-inference methods on simulated Perturb-seq screens, against direct and total-effect truth.
 
-    python scripts/benchmark_screen_methods.py --genes 100 --cells 40 --seeds 5 --out docs/screen_method_benchmark.json
+    python scripts/benchmark_screen_methods.py --genes 100 --cells 40 --seeds 5 --out docs/results/screen_method_benchmark_100genes.json
     python scripts/benchmark_screen_methods.py --genes 100 --cells 40 --seeds 5 --prior      # prior-quality experiment
 
 Per seed a ``replogle_like`` network is built, a knockdown screen simulated (LNA cells, measurement artefacts), and every

@@ -1,5 +1,5 @@
 """
-DOTEARS-style interventional DAG learning (Squires et al. 2023 build on NOTEARS; Zheng et al. 2018).
+DOTEARS-style interventional DAG learning (an interventional extension of NOTEARS; NOTEARS: Zheng et al., NeurIPS 2018).
 
 A linear structural model  y_j = sum_i W[i, j] y_i + e_j  with a differentiable acyclicity constraint
 h(W) = tr(exp(W o W)) - p = 0, as in NOTEARS, with two changes that matter for perturbation screens:
@@ -113,8 +113,11 @@ class DOTEARSLite(BaseInferenceAlgorithm):
             g = ((SW - col) / (s2 * N_j)[:, None]).T          # d/dW[:, j]
             return val, g, ss / N_j
 
-        for outer in range(self.max_outer):
-            def f(x):
+        rounds = 0
+        for _ in range(self.max_outer):
+            rounds += 1
+
+            def f(x, sig2=sig2, alpha_l=alpha_l, rho=rho):          # bound now: the next round changes them
                 Wm = x[:m].reshape(p, p) - x[m:].reshape(p, p)
                 val, g, _ = loss_grad(Wm, sig2)
                 E = expm(Wm * Wm)
@@ -146,6 +149,6 @@ class DOTEARSLite(BaseInferenceAlgorithm):
             for c in top:
                 if mags[c] > 1e-6:
                     adj[r, c] = int(np.sign(A[r, c]))
-        diag: Dict[str, Any] = {"nodes": int(p), "acyclicity_h": h, "outer_rounds": outer + 1,
+        diag: Dict[str, Any] = {"nodes": int(p), "acyclicity_h": h, "outer_rounds": rounds,
                                 "edges": int(np.count_nonzero(np.abs(W) > 1e-6)), "candidates": int(cand.sum())}
         return InferenceResult(self.name, A, adj, time.time() - t0, diag)

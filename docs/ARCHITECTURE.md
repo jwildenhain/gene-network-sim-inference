@@ -1,7 +1,7 @@
 # Architecture
 
 GRN-Sim has three jobs: **simulate** perturbation experiments on gene regulatory networks, **infer** the network back
-from the data with 18 algorithms, and **evaluate** the result (against the truth, or on real benchmarks). A web studio
+from the data with 24 registered algorithms ([`docs/algorithms/`](algorithms/README.md)), and **evaluate** the result (against the truth, or on real benchmarks). A web studio
 (`grn-sim web`) wraps all three. This page is the map; the mathematics is in [`SPECIFICATION.md`](../SPECIFICATION.md).
 
 ## Layout
@@ -11,8 +11,13 @@ src/grn_sim/
 ├── paths.py            where bundled data lives and where the package writes (see "Files and paths")
 ├── core/               GeneNetwork (topology + kinetic parameters), topology generators (random, scale-free, hierarchical)
 ├── simulator/          Hill kinetics, ODE solver, PerturbationSimulator, alternative engines, Perturb-seq counts, response classes
-├── inference/          BaseInferenceAlgorithm + 18 algorithms (S2G, G2S, NIR, FAST, Vote, CellBox, GENIE3, NOTEARS, AtlasShift, ...)
-├── evaluation/         confusion matrices, coverage / FDR / power, 9-state classification (BenchmarkMetrics)
+├── inference/          BaseInferenceAlgorithm + 24 registered algorithms (registry.py: one `register` call each), the partial-screen
+│                       adapter (partial.py), inspre, baselines, and the experimental bicycle-lite / DOTEARS-lite / consensus;
+│                       descriptions.py holds the one-paragraph description of each (docs/algorithms/ is generated from it)
+├── perturbseq/         Perturb-seq generator: conditions, cells, measurement, realism, calibration; design.py (full or partial
+│                       screens, effective-gene selection), partial_stats.py (their statistics), ace.py (effect estimates + FDR)
+├── evaluation/         confusion matrices, coverage / FDR / power, 9-state classification (BenchmarkMetrics); screen_benchmark.py
+│                       (direct vs total-effect truth), partial_screen.py (per-block scoring), prior_experiment.py, heldout_prediction.py
 ├── benchmarks/         SOS pathway, dataset registry + provenance, Virtual Cell Challenge benchmark, held-out prediction, sweeps
 ├── visualization/      graph export (DOT / SVG / JSON) and the built-in layered layout used without Graphviz
 ├── agents/             small multi-agent simulate -> infer -> evaluate loop (CLI: grn-sim multi-agent)
@@ -72,8 +77,13 @@ Expensive results (benchmark studios, the Virtual Cell Challenge benchmark) are 
 ## Extending
 
 - **A new inference algorithm:** subclass `BaseInferenceAlgorithm`, return an `InferenceResult` from `fit(X, U)`, export it
-  in `inference/__init__.py`, add it to `benchmarks/vcc_benchmark.py` (`ALGORITHMS`, `_build_runners`) and to the
-  algorithm lists in `web/server.py`, and test the contract (shapes, determinism, no use of masked columns).
+  in `inference/__init__.py`, and add one `register(AlgorithmSpec(...))` in `inference/registry.py` (set its output orientation
+  and its `partial` capability: `native`, or `adapter` when it needs `PartialAdapter`). Add its description to
+  `inference/descriptions.py` and run `python scripts/generate_algorithm_docs.py` (`tests/test_algorithm_docs.py` fails until
+  both exist). The studio, job queue, sweep and scoring read the registry; test the contract (shapes, determinism, orientation).
+- **A new screen design:** extend `perturbseq/design.py` (`ScreenDesign`, `select_perturbed`), give it statistics in
+  `perturbseq/partial_stats.py`-style categories, a scoring function in `evaluation/`, and its options in the CLI, the server's
+  `_parse_perturb_seq_extras` and the Perturb-seq panel.
 - **A new benchmark dataset:** add it to `benchmarks/benchmark_datasets.py` and `provenance.py`, ship the file under
   `src/grn_sim/data/`, and add a provenance entry (source, license, processing).
 - **A new endpoint or UI panel:** route in `web/server.py`, render in `static/index.html`, and cover both: a server test
@@ -84,5 +94,5 @@ Expensive results (benchmark studios, the Virtual Cell Challenge benchmark) are 
 - `web/server.py` (about 2,400 lines) and `static/index.html` (about 8,700 lines) are single files; the natural split is
   by tab (studio, real-world benchmarks, archive, Virtual Cell Challenge, statistics). Tests reach into
   `server.CURRENT_STATE` and friends, so a split needs the shared state moved to its own module first.
-- The list of algorithms is spelled out in four places (server, VCC benchmark, parameter sweep, CLI); a registry
-  (`key -> class, label, defaults`) would remove the duplication.
+- `benchmarks/vcc_benchmark.py` still keeps its own display order and labels next to the registry (`_BUILTIN_ALGORITHMS`,
+  `EXTRA_LABELS`); the registry is the source of truth for everything else.

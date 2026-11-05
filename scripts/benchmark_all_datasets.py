@@ -2,7 +2,7 @@
 Runs the new algorithms (and S2G / NIR / RidgeCV / GENIE3 for reference) on every benchmark dataset of the studio,
 scores them in T[regulator, target] orientation, and times every fit.
 
-    python scripts/benchmark_all_datasets.py [--out docs/all_datasets_benchmark.json]
+    python scripts/benchmark_all_datasets.py [--out docs/results/all_datasets_benchmark.json]
 
 Datasets without a ground truth (the 105-gene Norman response matrix) are run for time and for agreement with the other
 methods only (rank correlation of the top edges), not scored.
