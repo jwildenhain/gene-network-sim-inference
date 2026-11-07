@@ -809,6 +809,14 @@
       background: var(--bg-stage);
     }
 
+    /* modules drawn instead of hundreds of genes (see COLLAPSED GRAPH ENGINE) */
+    .graph-stage:has(.cg-wrap) { height: 470px; }
+    .cg-wrap { display: flex; flex-direction: column; width: 100%; height: 100%; }
+    .cg-info { flex: 0 0 auto; padding: 6px 10px; font-size: 11.5px; color: var(--text-muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .cg-wrap .cg-svg { flex: 1 1 auto; min-height: 0; }
+    .cg-node:hover circle { filter: brightness(0.95); stroke-width: 3.5; }
+    .studio-loading-fill { height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #38bdf8, #10b981, #6366f1, #38bdf8); background-size: 200% 100%; animation: shimmerProgress 1.4s infinite linear; transition: width 0.35s ease; }
+
     /* "Choose your view" bar shared by every network panel */
     .graph-view-bar {
       display: flex;
@@ -1455,6 +1463,17 @@
 
         <!-- RIGHT MAIN AREA: Steps 3, 4, 6 Visualizations -->
         <div class="right-column">
+
+          <!-- Loading bar for a network opened from the job queue or the archive (shown only while a large one loads) -->
+          <div id="studio-loading" class="benchmark-loading-bar-container" style="display:none;" role="status" aria-live="polite">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);margin-bottom:6px;gap:10px;">
+              <span style="display:flex;align-items:center;gap:6px;"><span class="spinner-inline"></span><span id="studio-loading-text">Loading network...</span></span>
+              <span id="studio-loading-pct" style="font-weight:700;color:var(--accent-blue);font-size:11px;"></span>
+            </div>
+            <div class="progress-track" style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;position:relative;">
+              <div id="studio-loading-fill" class="studio-loading-fill"></div>
+            </div>
+          </div>
 
           <!-- ROW 1: Step 3 Ground Truth Network & Step 6 9-State Reconstructed Differential Graph -->
           <div class="two-col-grid">
@@ -4621,7 +4640,10 @@
         if (!btn) return;
         const { act, id, run } = btn.dataset;
         if (act === 'cancel') cancelJob(id);
-        else if (act === 'open') selectArchiveRun(run, true);
+        else if (act === 'open') {
+          const job = JOBS.list.find(j => j.run_id === run);
+          selectArchiveRun(run, true, Number(job && job.summary && job.summary.num_genes) || 0);
+        }
         else if (act === 'infer') {
           const sel = document.getElementById('jobs-infer-target');
           sel.value = run ? `run:${run}` : `job:${id}`;
@@ -4687,19 +4709,14 @@
 
       const nodeSel = document.getElementById('quick-node-select');
       const pertSel = document.getElementById('select-pert-gene');
-      nodeSel.innerHTML = '';
-      pertSel.innerHTML = '';
-      (sim.gene_names || []).forEach((g, idx) => {
-        nodeSel.innerHTML += `<option value="${idx}">${g}</option>`;
-        pertSel.innerHTML += `<option value="${idx}">Perturb ${g} (Exp #${idx + 1})</option>`;
-      });
+      // built as one string: appending to innerHTML per option is quadratic for hundreds of genes and thousands of edges
+      const geneNames = sim.gene_names || [];
+      nodeSel.innerHTML = geneNames.map((g, idx) => `<option value="${idx}">${g}</option>`).join('');
+      pertSel.innerHTML = geneNames.map((g, idx) => `<option value="${idx}">Perturb ${g} (Exp #${idx + 1})</option>`).join('');
 
       const edgeSel = document.getElementById('quick-edge-select');
-      edgeSel.innerHTML = '<option value="">-- Select Edge --</option>';
-      (sim.edge_list || []).forEach(e => {
-        const sym = e.sign > 0 ? '+' : '-';
-        edgeSel.innerHTML += `<option value="${e.key}">${e.source} → ${e.target} (${sym})</option>`;
-      });
+      edgeSel.innerHTML = '<option value="">-- Select Edge --</option>'
+        + (sim.edge_list || []).map(e => `<option value="${e.key}">${e.source} → ${e.target} (${e.sign > 0 ? '+' : '-'})</option>`).join('');
 
       computeNodePositions(sim.num_genes);
       renderGraphPanel('gt');
@@ -4711,6 +4728,413 @@
       updatePerturbationPanelHeader();
       drawPerturbationTimeCourse(0);
       drawExpressionHeatmap(sim.X, sim.gene_names);
+    }
+
+    // ============================================================================
+    // COLLAPSED GRAPH ENGINE
+    // Graphviz and the canvas painter cannot draw hundreds of nodes legibly, so a network with more than
+    // COLLAPSE_MAX_NODES genes is drawn as at most that many "modules" (gene groups found by greedy modularity
+    // merging). Clicking a module opens its genes (its 24 best-connected genes and one "others" node).
+    // The three views use their own layouts: Force Canvas = circle, Hierarchical = layered | grid, Spring = force.
+    // ============================================================================
+    const COLLAPSE_MAX_NODES = 25;
+    const COLLAPSE_VIEW_W = 600;
+    const COLLAPSE_VIEW_H = 480;
+    const CLUSTER_CACHE = new WeakMap();
+
+    function graphIsCollapsed(graph) {
+      return Boolean(graph && graph.nodes && graph.nodes.length > COLLAPSE_MAX_NODES);
+    }
+
+    // Groups the genes of `graph` into at most `maxClusters` modules. Returns {clusters:[{id,members,hubs,internal}], of:[cluster id per gene]}.
+    function clusterGraph(graph, maxClusters = COLLAPSE_MAX_NODES) {
+      const cached = CLUSTER_CACHE.get(graph);
+      if (cached && cached.max === maxClusters) return cached.result;
+      const n = graph.nodes.length;
+      const degree = new Array(n).fill(0);
+      const pairWeight = new Map();     // undirected "a,b" (a<b) -> number of links
+      graph.links.forEach(l => {
+        const a = l.source_idx;
+        const b = l.target_idx;
+        if (a == null || b == null || a === b || a >= n || b >= n) return;
+        degree[a]++; degree[b]++;
+        const key = a < b ? `${a},${b}` : `${b},${a}`;
+        pairWeight.set(key, (pairWeight.get(key) || 0) + 1);
+      });
+
+      const members = Array.from({ length: n }, (_, i) => [i]);
+      const alive = new Set(members.keys());
+      const adj = Array.from({ length: n }, () => new Map());   // cluster -> (cluster -> weight)
+      const deg = degree.slice();
+      let totalEdges = 0;
+      pairWeight.forEach((w, key) => {
+        const [a, b] = key.split(',').map(Number);
+        adj[a].set(b, w); adj[b].set(a, w);
+        totalEdges += w;
+      });
+      const m = Math.max(totalEdges, 1);
+      const sizeCap = Math.max(2, Math.ceil(2.5 * n / maxClusters));
+
+      const merge = (a, b) => {          // folds cluster b into a
+        adj[a].delete(b);
+        adj[b].delete(a);
+        adj[b].forEach((w, c) => {
+          adj[a].set(c, (adj[a].get(c) || 0) + w);
+          adj[c].set(a, (adj[c].get(a) || 0) + w);
+          adj[c].delete(b);
+        });
+        adj[b].clear();
+        members[a] = members[a].concat(members[b]);
+        members[b] = [];
+        deg[a] += deg[b];
+        alive.delete(b);
+      };
+      const bestPair = (capped) => {
+        let best = null;
+        let bestGain = -Infinity;
+        alive.forEach(a => {
+          adj[a].forEach((w, b) => {
+            if (b <= a) return;
+            if (capped && members[a].length + members[b].length > sizeCap) return;
+            const gain = w / m - (deg[a] * deg[b]) / (2 * m * m);
+            if (gain > bestGain) { bestGain = gain; best = [a, b]; }
+          });
+        });
+        return best;
+      };
+
+      while (alive.size > maxClusters) {
+        const pair = bestPair(true) || bestPair(false);
+        if (pair) { merge(pair[0], pair[1]); continue; }
+        // no links left between modules: join the two smallest
+        const bySize = [...alive].sort((a, b) => members[a].length - members[b].length || a - b);
+        merge(bySize[1], bySize[0]);
+      }
+
+      const of = new Array(n).fill(0);
+      const ordered = [...alive].sort((a, b) => members[b].length - members[a].length || a - b);
+      ordered.forEach((cid, k) => members[cid].forEach(g => { of[g] = k; }));
+      const clusters = ordered.map((cid, k) => {
+        const mem = members[cid].slice().sort((a, b) => degree[b] - degree[a] || a - b);
+        return { id: k, members: mem, hubs: mem.slice(0, 3), internal: 0 };
+      });
+      graph.links.forEach(l => {
+        if (l.source_idx != null && l.target_idx != null && of[l.source_idx] === of[l.target_idx]) clusters[of[l.source_idx]].internal++;
+      });
+      const result = { clusters, of };
+      CLUSTER_CACHE.set(graph, { max: maxClusters, result });
+      return result;
+    }
+
+    function linkLook(l) {
+      const color = l.color || (l.sign > 0 ? '#10b981' : '#ef4444');
+      const arrow = l.arrowhead || (l.sign > 0 ? 'normal' : 'tee');
+      return { color, arrow, style: l.style || 'solid' };
+    }
+
+    // ---- layouts: every function returns [{x,y}] in the unit square --------------------------------------------
+    function layoutCircle(n) {
+      return Array.from({ length: n }, (_, i) => {
+        const a = (2 * Math.PI * i) / Math.max(n, 1) - Math.PI / 2;
+        return { x: 0.5 + 0.42 * Math.cos(a), y: 0.5 + 0.40 * Math.sin(a) };
+      });
+    }
+
+    function layoutForce(n, edges) {
+      const pos = layoutCircle(n).map((p, i) => ({ x: p.x + 0.03 * Math.sin(i * 12.9898), y: p.y + 0.03 * Math.cos(i * 78.233) }));
+      if (n < 2) return pos.map(() => ({ x: 0.5, y: 0.5 }));
+      const k = 0.85 * Math.sqrt(1 / n);
+      const rounds = 300;
+      for (let it = 0; it < rounds; it++) {
+        const t = 0.12 * (1 - it / rounds) + 0.004;
+        const dx = new Array(n).fill(0);
+        const dy = new Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            let vx = pos[i].x - pos[j].x;
+            let vy = pos[i].y - pos[j].y;
+            const d = Math.max(Math.hypot(vx, vy), 1e-3);
+            const f = (k * k) / d;
+            vx /= d; vy /= d;
+            dx[i] += vx * f; dy[i] += vy * f;
+            dx[j] -= vx * f; dy[j] -= vy * f;
+          }
+        }
+        edges.forEach(([a, b, w]) => {
+          const vx = pos[a].x - pos[b].x;
+          const vy = pos[a].y - pos[b].y;
+          const d = Math.max(Math.hypot(vx, vy), 1e-3);
+          const f = ((d * d) / k) * Math.min(1 + Math.log2(w || 1), 3);
+          dx[a] -= (vx / d) * f; dy[a] -= (vy / d) * f;
+          dx[b] += (vx / d) * f; dy[b] += (vy / d) * f;
+        });
+        for (let i = 0; i < n; i++) {
+          dx[i] -= (pos[i].x - 0.5) * 0.6;       // gravity keeps unconnected modules on the page
+          dy[i] -= (pos[i].y - 0.5) * 0.6;
+          const d = Math.max(Math.hypot(dx[i], dy[i]), 1e-9);
+          const step = Math.min(d, t);
+          pos[i].x += (dx[i] / d) * step;
+          pos[i].y += (dy[i] / d) * step;
+        }
+      }
+      return fitUnit(pos);
+    }
+
+    function fitUnit(pos, pad = 0.08) {
+      const xs = pos.map(p => p.x);
+      const ys = pos.map(p => p.y);
+      const x0 = Math.min(...xs); const x1 = Math.max(...xs);
+      const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+      return pos.map(p => ({
+        x: pad + (1 - 2 * pad) * (x1 > x0 ? (p.x - x0) / (x1 - x0) : 0.5),
+        y: pad + (1 - 2 * pad) * (y1 > y0 ? (p.y - y0) / (y1 - y0) : 0.5),
+      }));
+    }
+
+    // regulators above targets: back edges are ignored, rows by longest path, order in a row by barycentre sweeps
+    function layerNodes(n, edges) {
+      const out = Array.from({ length: n }, () => []);
+      const indeg = new Array(n).fill(0);
+      edges.forEach(([a, b]) => { if (a !== b) { out[a].push(b); indeg[b]++; } });
+      const state = new Array(n).fill(0);
+      const dag = Array.from({ length: n }, () => []);
+      const post = [];
+      const visit = (v) => {
+        state[v] = 1;
+        out[v].forEach(w => {
+          if (state[w] === 1) return;            // back edge of a cycle
+          dag[v].push(w);
+          if (state[w] === 0) visit(w);
+        });
+        state[v] = 2;
+        post.push(v);
+      };
+      [...Array(n).keys()].sort((a, b) => indeg[a] - indeg[b] || a - b).forEach(v => { if (!state[v]) visit(v); });
+      const layer = new Array(n).fill(0);
+      for (let i = post.length - 1; i >= 0; i--) {
+        const v = post[i];
+        dag[v].forEach(w => { layer[w] = Math.max(layer[w], layer[v] + 1); });
+      }
+      return { layer, dag };
+    }
+
+    function layoutLayered(n, edges) {
+      const { layer } = layerNodes(n, edges);
+      const rows = [];
+      layer.forEach((l, v) => { (rows[l] = rows[l] || []).push(v); });
+      const slot = new Array(n).fill(0);
+      rows.forEach(r => r.forEach((v, i) => { slot[v] = i; }));
+      const nbrs = Array.from({ length: n }, () => []);
+      edges.forEach(([a, b]) => { if (a !== b) { nbrs[a].push(b); nbrs[b].push(a); } });
+      for (let sweep = 0; sweep < 6; sweep++) {
+        const order = sweep % 2 ? [...rows.keys()].reverse() : [...rows.keys()];
+        order.forEach(li => {
+          const r = rows[li];
+          const bary = new Map(r.map(v => {
+            const fixed = nbrs[v].filter(w => layer[w] !== li && (sweep % 2 ? layer[w] > li : layer[w] < li));
+            return [v, fixed.length ? fixed.reduce((s, w) => s + slot[w] / Math.max(rows[layer[w]].length, 1), 0) / fixed.length : slot[v] / Math.max(r.length, 1)];
+          }));
+          r.sort((a, b) => bary.get(a) - bary.get(b) || a - b);
+          r.forEach((v, i) => { slot[v] = i; });
+        });
+      }
+      const L = rows.length;
+      return Array.from({ length: n }, (_, v) => {
+        const r = rows[layer[v]];
+        return { x: (slot[v] + 1) / (r.length + 1), y: L > 1 ? 0.08 + 0.84 * layer[v] / (L - 1) : 0.5 };
+      });
+    }
+
+    function layoutGrid(n, edges) {
+      const { layer } = layerNodes(n, edges);
+      const order = [...Array(n).keys()].sort((a, b) => layer[a] - layer[b] || a - b);
+      const cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.7)));
+      const rowsN = Math.ceil(n / cols);
+      const pos = new Array(n);
+      order.forEach((v, i) => {
+        const r = Math.floor(i / cols);
+        const c = i % cols;
+        pos[v] = { x: (c + 1 + (r % 2 ? 0.5 : 0)) / (cols + 1.5), y: (r + 0.7) / (rowsN + 0.4) };
+      });
+      return pos;
+    }
+
+    function collapsedLayout(view, n, edges) {
+      if (view === 'hier') return currentHierLayout() === 'grid' ? layoutGrid(n, edges) : layoutLayered(n, edges);
+      if (view === 'spring') return layoutForce(n, edges);
+      return layoutCircle(n);
+    }
+
+    // ---- scenes ---------------------------------------------------------------------------------------------
+    // overview: one node per module, one bundle per (from, to, look); detail: the genes of one module
+    function collapsedOverviewScene(graph, basis) {
+      const cl = clusterGraph(basis);
+      const nodes = cl.clusters.map(c => {
+        const names = c.hubs.map(g => graph.nodes[g].label);
+        return {
+          key: c.id, label: `M${c.id + 1}`, sub: `${c.members.length} genes`,
+          r: 11 + 3.2 * Math.sqrt(c.members.length), members: c.members,
+          title: `Module M${c.id + 1}: ${c.members.length} genes, ${c.internal} links inside. Best connected: ${names.join(', ')}. Click to open.`,
+        };
+      });
+      const bundles = new Map();
+      graph.links.forEach(l => {
+        const a = cl.of[l.source_idx];
+        const b = cl.of[l.target_idx];
+        if (a == null || b == null || a === b) return;
+        const look = linkLook(l);
+        const key = `${a}>${b}|${look.color}|${look.arrow}|${look.style}`;
+        const cur = bundles.get(key) || { from: a, to: b, count: 0, ...look };
+        cur.count++;
+        bundles.set(key, cur);
+      });
+      return { nodes, bundles: [...bundles.values()], overview: true, clusters: cl };
+    }
+
+    function collapsedDetailScene(graph, basis, clusterId) {
+      const cl = clusterGraph(basis);
+      const cluster = cl.clusters[clusterId];
+      if (!cluster) return null;
+      const keep = cluster.members.slice(0, COLLAPSE_MAX_NODES - 1);
+      const rest = cluster.members.slice(COLLAPSE_MAX_NODES - 1);
+      const slot = new Map(keep.map((g, i) => [g, i]));
+      const nodes = keep.map(g => ({ key: g, label: graph.nodes[g].label, r: 17, gene: g, title: `${graph.nodes[g].label}: click to inspect` }));
+      const restIdx = rest.length ? nodes.length : -1;
+      if (rest.length) {
+        nodes.push({ key: 'rest', label: `+${rest.length}`, sub: 'others', r: 20, rest: true, title: `${rest.length} more genes of this module are not drawn` });
+        rest.forEach(g => slot.set(g, restIdx));
+      }
+      const bundles = new Map();
+      let leaving = 0;
+      graph.links.forEach(l => {
+        const aIn = slot.has(l.source_idx);
+        const bIn = slot.has(l.target_idx);
+        if (aIn !== bIn) { leaving++; return; }
+        if (!aIn) return;
+        const a = slot.get(l.source_idx);
+        const b = slot.get(l.target_idx);
+        if (a === b) return;
+        const look = linkLook(l);
+        const key = `${a}>${b}|${look.color}|${look.arrow}|${look.style}`;
+        const cur = bundles.get(key) || { from: a, to: b, count: 0, ...look };
+        cur.count++;
+        bundles.set(key, cur);
+      });
+      return { nodes, bundles: [...bundles.values()], overview: false, cluster, leaving, hidden: rest.length };
+    }
+
+    // ---- SVG drawing ----------------------------------------------------------------------------------------
+    function collapsedSvg(scene, view, selectedGene) {
+      const W = COLLAPSE_VIEW_W;
+      const H = COLLAPSE_VIEW_H;
+      const n = scene.nodes.length;
+      const pairs = new Map();
+      scene.bundles.forEach(b => {
+        const key = `${b.from}>${b.to}`;
+        pairs.set(key, (pairs.get(key) || 0) + b.count);
+      });
+      const layoutEdges = [...pairs.entries()].map(([k, w]) => [...k.split('>').map(Number), w]);
+      const unit = collapsedLayout(view, n, layoutEdges);
+      const padX = 52;
+      const padY = 44;
+      const pos = unit.map(p => ({ x: padX + p.x * (W - 2 * padX), y: padY + p.y * (H - 2 * padY) }));
+
+      // bundles of one pair of nodes fan out so that opposite directions and different looks never overlap
+      const groups = new Map();
+      scene.bundles.forEach(b => {
+        const key = b.from < b.to ? `${b.from}|${b.to}` : `${b.to}|${b.from}`;
+        (groups.get(key) || groups.set(key, []).get(key)).push(b);
+      });
+      const markers = new Map();
+      const marker = (color, arrow) => {
+        const key = `${color}|${arrow}`;
+        if (!markers.has(key)) markers.set(key, { id: `cm${markers.size}`, color, arrow });
+        return markers.get(key).id;
+      };
+      let edgeSvg = '';
+      groups.forEach(list => {
+        list.sort((p, q) => (p.from - q.from) || (p.color < q.color ? -1 : 1));
+        list.forEach((b, i) => {
+          const lo = Math.min(b.from, b.to);
+          const hi = Math.max(b.from, b.to);
+          const A = pos[b.from];
+          const B = pos[b.to];
+          const cx0 = (pos[lo].x + pos[hi].x) / 2;
+          const cy0 = (pos[lo].y + pos[hi].y) / 2;
+          const len = Math.max(Math.hypot(pos[hi].x - pos[lo].x, pos[hi].y - pos[lo].y), 1);
+          const nx = -(pos[hi].y - pos[lo].y) / len;
+          const ny = (pos[hi].x - pos[lo].x) / len;
+          const off = (i - (list.length - 1) / 2) * 22;
+          const C = { x: cx0 + nx * off, y: cy0 + ny * off };
+          const toward = (P, r, Q) => {
+            const d = Math.max(Math.hypot(Q.x - P.x, Q.y - P.y), 1);
+            return { x: P.x + (Q.x - P.x) / d * r, y: P.y + (Q.y - P.y) / d * r };
+          };
+          const s = toward(A, scene.nodes[b.from].r + 2, C);
+          const e = toward(B, scene.nodes[b.to].r + 4, C);
+          const width = scene.overview ? Math.min(1.3 + 1.3 * Math.log2(1 + b.count), 7) : 1.8;
+          const dash = b.style === 'dashed' ? '7 4' : (b.style === 'dotted' ? '2.5 4' : '');
+          const mid = { x: 0.25 * s.x + 0.5 * C.x + 0.25 * e.x, y: 0.25 * s.y + 0.5 * C.y + 0.25 * e.y };
+          const arrowKind = b.arrow === 'tee' ? 'tee' : (b.arrow === 'none' ? 'none' : 'normal');
+          edgeSvg += `<g class="cg-edge"><title>${jobEsc(`${scene.nodes[b.from].label} → ${scene.nodes[b.to].label}: ${b.count} link${b.count === 1 ? '' : 's'}`)}</title>`
+            + `<path d="M${s.x.toFixed(1)},${s.y.toFixed(1)} Q${C.x.toFixed(1)},${C.y.toFixed(1)} ${e.x.toFixed(1)},${e.y.toFixed(1)}" fill="none" stroke="${b.color}" stroke-width="${width.toFixed(1)}" stroke-opacity="0.85"${dash ? ` stroke-dasharray="${dash}"` : ''}${arrowKind === 'none' ? '' : ` marker-end="url(#${marker(b.color, arrowKind)})"`}/>`
+            + (scene.overview && b.count > 1 ? `<text x="${mid.x.toFixed(1)}" y="${(mid.y - 4).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${b.color}" stroke="var(--bg-stage)" stroke-width="3" paint-order="stroke">${b.count}</text>` : '')
+            + '</g>';
+        });
+      });
+
+      let nodeSvg = '';
+      scene.nodes.forEach((nd, i) => {
+        const p = pos[i];
+        const selected = scene.overview ? (selectedGene >= 0 && nd.members.includes(selectedGene)) : nd.gene === selectedGene;
+        const clickable = scene.overview || nd.gene != null;
+        const fs = scene.overview ? 13 : (nd.label.length > 6 ? 9.5 : 11.5);
+        nodeSvg += `<g class="cg-node" data-key="${jobEsc(nd.key)}" style="cursor:${clickable ? 'pointer' : 'default'};">`
+          + `<title>${jobEsc(nd.title)}</title>`
+          + `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${nd.r.toFixed(1)}" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="${selected ? 4 : 2}"${nd.rest ? ' stroke-dasharray="4 3"' : ''}/>`
+          + `<text x="${p.x.toFixed(1)}" y="${(p.y + (nd.sub ? -2 : 0)).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" fill="var(--text-main)">${jobEsc(nd.label)}</text>`
+          + (nd.sub ? `<text x="${p.x.toFixed(1)}" y="${(p.y + 11).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="var(--text-muted)">${jobEsc(nd.sub)}</text>` : '')
+          + '</g>';
+      });
+
+      const defs = [...markers.values()].map(m => m.arrow === 'tee'
+        ? `<marker id="${m.id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><line x1="8" y1="0" x2="8" y2="10" stroke="${m.color}" stroke-width="2.6"/></marker>`
+        : `<marker id="${m.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${m.color}"/></marker>`).join('');
+      return `<svg class="cg-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Collapsed network graph"><defs>${defs}</defs>${edgeSvg}${nodeSvg}</svg>`;
+    }
+
+    function renderCollapsedPanel(p, host, data) {
+      const graph = data.graph;
+      const basisGraph = (p.clusterBasis && p.clusterBasis()) || graph;
+      const basis = basisGraph && basisGraph.nodes && basisGraph.nodes.length === graph.nodes.length ? basisGraph : graph;
+      if (p.collapsedBasis !== basis) { p.focus = null; p.collapsedBasis = basis; }
+      const cl = clusterGraph(basis);
+      if (p.focus != null && !cl.clusters[p.focus]) p.focus = null;
+      const scene = p.focus == null ? collapsedOverviewScene(graph, basis) : collapsedDetailScene(graph, basis, p.focus);
+      const selected = p.selectedIdx ? p.selectedIdx() : -1;
+      const nGenes = graph.nodes.length;
+      const info = scene.overview
+        ? `<b>${nGenes} genes</b> in <b>${cl.clusters.length} modules</b> &middot; circle = genes, line number = links &middot; click a module to open it`
+        : `<button type="button" class="btn btn-secondary btn-sm" data-cg-back="1">&larr; All modules</button> <b>Module M${p.focus + 1}</b> &middot; ${scene.cluster.members.length} genes`
+          + (scene.hidden ? ` (best connected ${COLLAPSE_MAX_NODES - 1} drawn, ${scene.hidden} in the "others" node)` : '')
+          + ` &middot; ${scene.leaving} links go to other modules`;
+      host.style.display = 'block';
+      host.style.padding = '0';
+      host.style.overflow = 'hidden';
+      host.innerHTML = `<div class="cg-wrap"><div class="cg-info">${info}</div>${collapsedSvg(scene, p.view, selected)}</div>`;
+      host.querySelectorAll('.cg-node').forEach(g => g.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const key = g.dataset.key;
+        if (scene.overview) {
+          p.focus = Number(key);
+          renderGraphPanel(p.id);
+        } else if (key !== 'rest' && p.onNodeClick) {
+          const gene = Number(key);
+          p.onNodeClick(graph.nodes[gene].label, gene);
+        }
+      }));
+      const back = host.querySelector('[data-cg-back]');
+      if (back) back.addEventListener('click', () => { p.focus = null; renderGraphPanel(p.id); });
     }
 
     // ============================================================================
@@ -4879,8 +5303,10 @@
 
       syncGraphBar(id);
 
+      // a network of more than COLLAPSE_MAX_NODES genes is drawn as modules, in one SVG host whatever the view
+      const collapsed = p.view !== 'source' && graphIsCollapsed(data.graph);
       // only the host of the current view is shown; SVG hosts of the other views are emptied so nothing is duplicated
-      const shown = p.hosts[p.view];
+      const shown = collapsed ? p.hosts.hier : p.hosts[p.view];
       new Set(Object.values(p.hosts)).forEach(hostId => {
         const el = document.getElementById(hostId);
         if (!el) return;
@@ -4890,7 +5316,11 @@
       const host = document.getElementById(shown);
       if (!host) return;
 
-      if (p.view === 'canvas') {
+      if (collapsed) {
+        p.positions = null;
+        renderCollapsedPanel(p, host, data);
+      } else if (p.view === 'canvas') {
+        host.style.padding = '';
         p.graph = data.graph || null;
         if (p.drawCanvas) {
           p.drawCanvas(host, data.graph);
@@ -4902,6 +5332,8 @@
       } else if (p.view === 'source') {
         host.textContent = data.source || '';
       } else {
+        host.style.padding = '';
+        host.style.overflow = '';
         host.innerHTML = p.view === 'hier' ? pickHierSvg(data.hier, data.hierGrid) : (data.spring || '');
         if (p.onNodeClick) attachSvgNodeInteractivity(shown, p.onNodeClick);
       }
@@ -4936,6 +5368,7 @@
         spring: APP_STATE.sim.svg_spring, source: APP_STATE.sim.dot_hierarchical,
       },
       drawCanvas: () => drawGroundTruthCanvas(),
+      selectedIdx: () => APP_STATE.selectedNodeIdx,
       onNodeClick: (geneName, idx) => inspectNode(idx, true),
     });
 
@@ -4955,6 +5388,8 @@
         };
       },
       drawCanvas: (canvas, graph) => draw9StateComparisonCanvas(graph),
+      selectedIdx: () => APP_STATE.selectedNodeIdx,
+      clusterBasis: () => APP_STATE.sim && APP_STATE.sim.graph,
       onNodeClick: (geneName, idx) => inspectNode(idx, true),
     });
 
@@ -4975,6 +5410,7 @@
       id: 'sos_diff', barId: 'sos-diff-views', stageId: 'sos-diff-stage',
       views: ['canvas', 'hier', 'spring'], defaultView: 'hier', genericCanvasClick: true,
       hosts: { canvas: 'sos-diff-canvas', hier: 'sos-diff-svg', spring: 'sos-diff-svg' },
+      clusterBasis: () => APP_STATE.sosData && APP_STATE.sosData.true_graph,
       data: () => {
         const d = APP_STATE.sosData;
         const alg = APP_STATE.sosAlg;
@@ -5004,6 +5440,7 @@
       id: 'hist_diff', barId: 'hist-diff-views', stageId: 'hist-diff-svg-stage',
       views: ['canvas', 'hier', 'spring'], defaultView: 'hier',
       hosts: { canvas: 'hist-diff-canvas', hier: 'hist-diff-svg', spring: 'hist-diff-svg' },
+      clusterBasis: () => APP_STATE.archiveDetail && APP_STATE.archiveDetail.graph,
       data: () => {
         const inf = APP_STATE.archiveDetail && APP_STATE.archiveDetail.inferred;
         const alg = APP_STATE.archiveActiveAlg;
@@ -8602,16 +9039,55 @@
       }
     }
 
-    async function selectArchiveRun(runId, switchToStudio = false) {
+    // Progress bar at the top of the Studio results. Shown at once when the network is known to be large,
+    // otherwise only if the load is still running after 300 ms. Each call to step() lets the browser paint first.
+    const STUDIO_LOADING = {
+      timer: null,
+      begin(text, large) {
+        this.end();
+        this.text = text;
+        this.pct = 0;
+        const show = () => { this.timer = null; this.paint(); const el = document.getElementById('studio-loading'); if (el) el.style.display = 'block'; };
+        if (large) show(); else this.timer = setTimeout(show, 300);
+      },
+      paint() {
+        const t = document.getElementById('studio-loading-text');
+        const f = document.getElementById('studio-loading-fill');
+        const p = document.getElementById('studio-loading-pct');
+        if (t) t.textContent = this.text;
+        if (f) f.style.width = this.pct + '%';
+        if (p) p.textContent = this.pct + '%';
+      },
+      async step(pct, text) {
+        this.pct = pct;
+        this.text = text;
+        this.paint();
+        await new Promise(r => setTimeout(r, 30));
+      },
+      end() {
+        clearTimeout(this.timer);
+        this.timer = null;
+        const el = document.getElementById('studio-loading');
+        if (el) el.style.display = 'none';
+      },
+    };
+
+    async function selectArchiveRun(runId, switchToStudio = false, sizeHint = 0) {
       const isCurrent = newestRequest('studio');
+      if (switchToStudio) switchMainTab('tab-wizard');   // show the loading bar where the network will appear
+      STUDIO_LOADING.begin(`Loading ${runId}${sizeHint ? ` (${sizeHint} genes)` : ''}...`, sizeHint > 60);
+      await STUDIO_LOADING.step(8, `Fetching ${runId} from the archive...`);
       try {
         const res = await fetch(`/api/history/load?run_id=${encodeURIComponent(runId)}`);
+        await STUDIO_LOADING.step(45, 'Reading the network...');
         const data = await res.json();
         if (!isCurrent()) return;                      // another run or archive entry was asked for since
         if (data.status !== 'success') {
           showToast(`Could not open ${runId}: ${data.error || 'unknown error'}`, 'error');
           return;
         }
+        await STUDIO_LOADING.step(60, `Drawing ${data.num_genes || ''} genes and ${data.total_edges ?? ''} edges...`);
+        if (!isCurrent()) return;
 
         // Update both the Archive Detail View and the Studio State + Settings
         APP_STATE.archiveDetail = data;
@@ -8621,6 +9097,8 @@
         // Populate Wizard sidebar settings with this run's exact parameters
         applySettingsToForm(data.settings, data);
         renderAllSimulationViews();
+        await STUDIO_LOADING.step(85, 'Drawing the inference results...');
+        if (!isCurrent()) return;
         if (APP_STATE.inferred && APP_STATE.inferred.metrics) {
           renderAllInferenceViews();
         }
@@ -8634,11 +9112,12 @@
         // Populate Tab 4 Detailed Inspector
         renderArchiveDetailPanel(data);
 
-        if (switchToStudio) {
-          switchMainTab('tab-wizard');
-        }
+        await STUDIO_LOADING.step(100, 'Done');
       } catch (e) {
         console.error('Error loading archived run:', e);
+        showToast(`Could not open ${runId}: ${e.message || e}`, 'error');
+      } finally {
+        if (isCurrent()) STUDIO_LOADING.end();
       }
     }
 
