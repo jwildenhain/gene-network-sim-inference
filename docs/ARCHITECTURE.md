@@ -2,7 +2,7 @@
 
 GRN-Sim has three jobs: **simulate** perturbation experiments on gene regulatory networks, **infer** the network back
 from the data with 24 registered algorithms ([`docs/algorithms/`](algorithms/README.md)), and **evaluate** the result (against the truth, or on real benchmarks). A web studio
-(`grn-sim web`) wraps all three. This page is the map; the mathematics is in [`SPECIFICATION.md`](../SPECIFICATION.md).
+(`grn-sim web`) wraps all three. This page is the map; the mathematics is in [`SPECIFICATION.md`](../SPECIFICATION.md) and every simulation option is listed in [`SIMULATION_OPTIONS.md`](SIMULATION_OPTIONS.md).
 
 ## Layout
 

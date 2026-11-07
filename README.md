@@ -411,6 +411,8 @@ A genome-scale screen perturbs a few hundred genes and measures thousands. `run_
 network (or at random) and measures all of them; the screen has its own statistics categories (identifiability, coverage, blocks)
 and is scored per block (perturbed → perturbed, perturbed → unperturbed). Details: [`docs/PERTURBSEQ.md`](docs/PERTURBSEQ.md).
 
+Every simulation option (Studio, Virtual Cell Challenge, Perturb-seq) is listed in [`docs/SIMULATION_OPTIONS.md`](docs/SIMULATION_OPTIONS.md); an illustrated slide deck on the tool, the simulators and each algorithm is in [`docs/slides/index.html`](docs/slides/index.html) (open it in a browser).
+
 ### 5. Single-Cell Perturb-seq Generation & Arc Institute Virtual Cell Challenge (VCC 2026)
 
 #### 4.1 Single-Cell Perturb-seq Generation Mode Using the phpIoRN ODE Simulator

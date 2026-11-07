@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRN-Sim: simulations and algorithms</title>
+<link rel="stylesheet" href="katex/katex.min.css">
+<style>
+  :root {
+    --bg: #f4f6fa; --panel: #ffffff; --ink: #0f172a; --muted: #52607a; --line: #d5dbe6;
+    --blue: #0b6fb8; --blue-soft: #e0effa; --green: #0e9f6e; --red: #d6403f; --amber: #b7791f; --violet: #6d4fd1;
+    --code: #eef2f8; --shadow: 0 10px 30px rgba(15, 23, 42, .08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1020; --panel: #121a2e; --ink: #e8eefc; --muted: #9db0d0; --line: #27324d;
+      --blue: #4aa8f0; --blue-soft: #14304a; --green: #2fd39a; --red: #ff6b6a; --amber: #f2b650; --violet: #a28bff;
+      --code: #1a2440; --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1020; --panel: #121a2e; --ink: #e8eefc; --muted: #9db0d0; --line: #27324d;
+    --blue: #4aa8f0; --blue-soft: #14304a; --green: #2fd39a; --red: #ff6b6a; --amber: #f2b650; --violet: #a28bff;
+    --code: #1a2440; --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif; }
+  #deck { position: fixed; inset: 0 0 38px 0; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .slide { display: none; width: min(1280px, 100%); height: min(760px, 100%); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 34px 44px; overflow: auto; }
+  .slide.active { display: flex; flex-direction: column; animation: rise .25s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 42px; margin: 0 0 8px; letter-spacing: -.02em; }
+  h2 { font-size: 28px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .kicker { color: var(--blue); font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 6px; }
+  .lead { color: var(--muted); font-size: 16px; margin: 4px 0 14px; max-width: 980px; line-height: 1.5; }
+  .cols { display: grid; gap: 22px; flex: 1; min-height: 0; align-items: start; align-content: start; }
+  .c2 { grid-template-columns: 1fr 1fr; } .c3 { grid-template-columns: repeat(3, 1fr); } .c4 { grid-template-columns: repeat(4, 1fr); }
+  .c21 { grid-template-columns: 1.15fr .85fr; } .c12 { grid-template-columns: .85fr 1.15fr; }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--bg); font-size: 14px; line-height: 1.5; }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .topo p { margin: 4px 0; font-size: 13px; }
+  .card .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--blue-soft); color: var(--blue); margin-right: 4px; }
+  .card .tag.g { background: rgba(14,159,110,.15); color: var(--green); } .card .tag.a { background: rgba(183,121,31,.16); color: var(--amber); }
+  .card .tag.v { background: rgba(109,79,209,.16); color: var(--violet); } .card .tag.r { background: rgba(214,64,63,.14); color: var(--red); }
+  .math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", Georgia, serif; font-size: 17px; background: var(--code);
+    border-radius: 8px; padding: 8px 12px; margin: 6px 0; overflow-x: auto; white-space: nowrap; }
+  .math.small { font-size: 15px; }
+  .math.code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; white-space: pre; }
+  .math .katex { font-size: 1.08em; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .92em; background: var(--code); padding: 1px 5px; border-radius: 5px; }
+  ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; line-height: 1.45; font-size: 14.5px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font-family: inherit; fill: var(--ink); }
+  .muted { color: var(--muted); } .small { font-size: 13px; }
+  .note { border-left: 4px solid var(--amber); background: rgba(183,121,31,.1); padding: 8px 12px; border-radius: 6px; font-size: 13.5px; margin-top: 8px; }
+  .good { border-left-color: var(--green); background: rgba(14,159,110,.1); }
+  .ctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; margin: 6px 0; }
+  .ctl label { display: flex; gap: 6px; align-items: center; }
+  button.pill { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 4px 10px; border-radius: 99px; cursor: pointer; font-size: 12.5px; }
+  button.pill.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; height: 38px; display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    background: var(--panel); border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  #bar .track { flex: 1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  #bar .fill { height: 100%; width: 0; background: var(--blue); transition: width .2s; }
+  #bar button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+  #overview { position: fixed; inset: 0; background: var(--bg); z-index: 10; padding: 24px; overflow: auto; display: none; }
+  #overview.show { display: block; }
+  #overview .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  #overview a { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 12px; color: var(--ink); text-decoration: none; font-size: 13px; }
+  #overview a b { color: var(--blue); margin-right: 6px; }
+  .cyg { width: 100%; height: 180px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); }
+  .topo { display: grid; grid-template-columns: 1.75fr 1fr; gap: 14px; align-items: start; }
+  .cystat { font-size: 11.5px; margin-bottom: 6px; }
+  .flow { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap; }
+  .flow .step { flex: 1 1 130px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); font-size: 13.5px; }
+  .flow .step b { display: block; color: var(--blue); margin-bottom: 2px; }
+  .flow .arrow { align-self: center; font-size: 22px; color: var(--muted); }
+  .cols > *, .flow .step { min-width: 0; }
+  .math { max-width: 100%; }
+  .math[data-tex] { white-space: normal; }
+  .math.code { overflow-x: auto; }
+  @media (max-width: 1100px) { .c3, .c4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 900px) { .c2, .c3, .c4, .c21, .c12 { grid-template-columns: 1fr; } .slide { padding: 20px; } h1 { font-size: 30px; } }
+  @media print {
+    #bar, #overview { display: none !important; } #deck { position: static; display: block; padding: 0; }
+    .slide { display: flex !important; width: 100%; height: auto; min-height: 90vh; break-after: page; box-shadow: none; border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="deck">
+
+<!-- 1 -->
+<section class="slide" data-title="GRN-Sim">
+  <div class="kicker">GRN-Sim / phpIoRN</div>
+  <h1>Simulate a gene network, perturb it, then try to recover it</h1>
+  <p class="lead">A workbench for reverse-engineering gene regulatory networks from perturbation experiments, with ground truth you control. This deck explains the tool, each way it can simulate data, and what is distinct about each of its 24 inference algorithms.</p>
+  <div class="cols c3" style="margin-top:6px">
+    <div class="card"><h3>1 &middot; Simulate</h3>Hill-kinetics ODE networks, four topologies, four dynamics engines, three response regimes, single-cell Perturb-seq screens.</div>
+    <div class="card"><h3>2 &middot; Infer</h3>24 registered algorithms from the thesis family (S2G, G2S, NIR, FAST) to causal, tree, neural and transfer methods.</div>
+    <div class="card"><h3>3 &middot; Evaluate</h3>Edge recovery against the truth, held-out perturbation prediction, rewiring sensitivity, and real benchmarks (E. coli SOS, Norman, DREAM4).</div>
+  </div>
+  <p class="muted small" style="margin-top:auto">Keys: &larr; &rarr; move &middot; O overview &middot; T theme &middot; Print to PDF gives one slide per page. Text sources: docs/SIMULATION_OPTIONS.md, docs/algorithms/, SPECIFICATION.md.</p>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-title="The studio and its tabs">
+  <div class="kicker">The tool</div>
+  <h2>Six tabs, one pipeline</h2>
+  <p class="lead">The web studio (<code>grn-sim web</code>) wraps simulation, inference and evaluation. Everything it simulates is archived with its ground truth.</p>
+  <div class="cols c2">
+    <table>
+      <tr><th>Tab</th><th>What it does</th></tr>
+      <tr><td><b>1 Simulation &amp; Inference Studio</b></td><td>Build one network, perturb it, run algorithms, inspect nodes and edges</td></tr>
+      <tr><td><b>2 Real-World Benchmarks</b></td><td>E. coli SOS, DREAM4, Norman 2019, Replogle 2022 with measured data</td></tr>
+      <tr><td><b>3 Previous Simulations Archive</b></td><td>SQLite history of every run and its scores</td></tr>
+      <tr><td><b>4 Virtual Cell Challenge</b></td><td>Multi-context study: held-out perturbations, rewiring, epistasis, Perturb-seq export</td></tr>
+      <tr><td><b>5 Overall Statistics</b></td><td>Algorithm leaderboard over the archive</td></tr>
+      <tr><td><b>6 Job Queue</b></td><td>Background generate / infer jobs, one at a time, with progress and cancel</td></tr>
+    </table>
+    <div>
+      <svg viewBox="0 0 520 250" role="img" aria-label="Pipeline">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="currentColor"/></marker></defs>
+        <g fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--muted)">
+          <rect x="10" y="20" width="130" height="60" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/>
+          <rect x="195" y="20" width="130" height="60" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/>
+          <rect x="380" y="20" width="130" height="60" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/>
+          <path d="M140,50 H193" marker-end="url(#ar)"/><path d="M325,50 H378" marker-end="url(#ar)"/>
+          <rect x="195" y="140" width="130" height="60" rx="12" fill="var(--code)"/>
+          <path d="M75,80 V170 H193" marker-end="url(#ar)"/><path d="M445,80 V170 H327" marker-end="url(#ar)"/>
+        </g>
+        <g text-anchor="middle" font-size="14" font-weight="700">
+          <text x="75" y="46">Network</text><text x="75" y="64" font-weight="400" font-size="12">T, kinetics</text>
+          <text x="260" y="46">Experiments</text><text x="260" y="64" font-weight="400" font-size="12">X, U</text>
+          <text x="445" y="46">Algorithm</text><text x="445" y="64" font-weight="400" font-size="12">A_est, adjacency</text>
+          <text x="260" y="166">Score vs truth</text><text x="260" y="184" font-weight="400" font-size="12">coverage, FDR, F1</text>
+        </g>
+      </svg>
+      <div class="note good">The truth <code>T[regulator, target] &isin; {-1, 0, +1}</code> never leaves the simulator, so every algorithm is scored exactly, and every run can be reproduced from its seed.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-title="The data: X and U">
+  <div class="kicker">The data</div>
+  <h2>What an experiment produces: two square matrices</h2>
+  <p class="lead">Each gene is perturbed once. Column <i>j</i> of <b>X</b> is the whole network's steady-state response to perturbing gene <i>j</i>; <b>U</b> records what was done.</p>
+  <div class="cols c21">
+    <div>
+      <div class="math" data-tex="X_{ij}=\dfrac{x_i^{\text{pert }j}}{x_i^{\text{ref}}}-1\qquad U_{ij}=p_j\,\delta_{ij}"></div>
+      <p class="small">Linearising around the reference steady state gives the equation every thesis-family algorithm inverts:</p>
+      <div class="math" data-tex="A X=-U\;\Rightarrow\;\min_A \lVert A X+U\rVert_F^2"></div>
+      <ul>
+        <li><b>A</b> is the Jacobian: its sparsity pattern and signs are the network to recover.</li>
+        <li>Fewer columns than genes is a <i>partial screen</i> (only some genes perturbed).</li>
+        <li>Orientation differs between algorithms; <code>grn_sim.inference.orientation</code> normalises it before scoring.</li>
+      </ul>
+    </div>
+    <svg viewBox="0 0 400 270" role="img" aria-label="Matrix X and U">
+      <g font-size="12" text-anchor="middle">
+        <text x="95" y="18" font-weight="700">X (genes &times; perturbations)</text>
+        <text x="305" y="18" font-weight="700">U</text>
+      </g>
+      <g id="mx"></g>
+      <g font-size="11" fill="currentColor" style="color:var(--muted)"><text x="20" y="214">column j = response profile when gene j is perturbed</text>
+        <text x="20" y="232">green = up, red = down, grey = unchanged</text><text x="260" y="178">diagonal: one per run</text></g>
+    </svg>
+      <script>
+      (function () {
+        var g = document.getElementById('mx'), n = 6, c = 28, ox = 20, oy = 28, out = '';
+        var vals = [[ -.8,.1,0,.3,0,0],[.5,-.8,.2,0,-.1,0],[.3,.4,-.8,0,0,.2],[0,-.3,-.5,-.8,.4,0],[-.4,0,0,.3,-.8,0],[0,0,.1,.5,0,-.8]];
+        for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+          var v = vals[i][j], col = v > 0 ? 'var(--green)' : (v < 0 ? 'var(--red)' : 'var(--line)');
+          out += '<rect x="' + (ox + j * c) + '" y="' + (oy + i * c) + '" width="' + (c - 2) + '" height="' + (c - 2) + '" rx="4" fill="' + col + '" opacity="' + (v === 0 ? .35 : Math.min(1, .35 + Math.abs(v))) + '"/>';
+          var u = i === j ? '#0b6fb8' : 'var(--line)';
+          out += '<rect x="' + (260 + j * 22) + '" y="' + (oy + i * 22) + '" width="20" height="20" rx="3" fill="' + u + '" opacity="' + (i === j ? .85 : .35) + '"/>';
+        }
+        g.innerHTML = out;
+      })();
+    </script>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-title="Hill kinetics">
+  <div class="kicker">The simulator core</div>
+  <h2>Each gene is an ODE with Hill-saturated regulation</h2>
+  <p class="lead">Production of gene <i>i</i> is a basal rate multiplied by saturating terms from its activators and inhibitors; degradation is first order.</p>
+  <div class="cols c2">
+    <div>
+      <div class="math small" data-tex="\dfrac{dx_i}{dt}=s_i(\mathbf{x})-b_i x_i"></div>
+      <div class="math small" data-tex="s_i=v_i\prod_{j\in\mathrm{Inh}}\dfrac{K_I^{m}}{I_j^{m}+K_I^{m}}\prod_{k\in\mathrm{Act}}\Big[1+\dfrac{A_k^{m}}{A_k^{m}+K_A^{m}}\Big]+u_i"></div>
+      <ul>
+        <li><b>v</b> basal rate, <b>b</b> degradation, <b>K</b> half-saturation, <b>m</b> Hill coefficient (cooperativity).</li>
+        <li>Activators raise production up to 2&times;; inhibitors cut it towards 0.</li>
+        <li>Thesis defaults: v &asymp; 1.05, b &asymp; 0.75, K 1-2.5, m 1-6.</li>
+        <li>Silent edges: if K is far from the regulator's level the term is flat and the edge cannot be seen in data. Calibrated presets anchor K to the steady state to avoid this.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="ctl">
+        <label>K <input id="hk" type="range" min="0.5" max="4" step="0.1" value="1.5"><span id="hkv">1.5</span></label>
+        <label>m <input id="hm" type="range" min="1" max="6" step="0.5" value="2"><span id="hmv">2</span></label>
+      </div>
+      <svg id="hillsvg" viewBox="0 0 440 292" role="img" aria-label="Hill curves"></svg>
+      <p class="small muted">Drag K and m: a steeper curve (larger m) switches sharply near K; a regulator whose level sits on a flat part transmits almost nothing.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var k = document.getElementById('hk'), m = document.getElementById('hm'), s = document.getElementById('hillsvg');
+      function draw() {
+        var K = +k.value, M = +m.value, W = 440, H = 292, L = 44, B = 40, T = 14, R = 12, pw = W - L - R, ph = H - T - B;
+        document.getElementById('hkv').textContent = K; document.getElementById('hmv').textContent = M;
+        function X(x) { return L + x / 5 * pw; } function Y(y) { return T + (1 - y / 2) * ph; }
+        var act = '', inh = '';
+        for (var i = 0; i <= 100; i++) {
+          var x = i / 100 * 5, xm = Math.pow(x, M), km = Math.pow(K, M);
+          act += (i ? 'L' : 'M') + X(x) + ',' + Y(1 + xm / (xm + km));
+          inh += (i ? 'L' : 'M') + X(x) + ',' + Y(km / (xm + km));
+        }
+        var grid = '';
+        for (var g = 0; g <= 5; g++) grid += '<line x1="' + X(g) + '" x2="' + X(g) + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="var(--line)"/><text x="' + X(g) + '" y="' + (T + ph + 14) + '" font-size="11" text-anchor="middle">' + g + '</text>';
+        [0, 1, 2].forEach(function (g) { grid += '<line y1="' + Y(g) + '" y2="' + Y(g) + '" x1="' + L + '" x2="' + (W - R) + '" stroke="var(--line)"/><text x="' + (L - 8) + '" y="' + (Y(g) + 4) + '" font-size="11" text-anchor="end">' + g + '</text>'; });
+        s.innerHTML = grid + '<line x1="' + X(K) + '" x2="' + X(K) + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="var(--amber)" stroke-dasharray="4 3"/>'
+          + '<path d="' + act + '" fill="none" stroke="var(--green)" stroke-width="2.5"/><path d="' + inh + '" fill="none" stroke="var(--red)" stroke-width="2.5"/>'
+          + '<text x="' + (L + 10) + '" y="' + (Y(1.78)) + '" font-size="12" style="fill:var(--green)">activator factor</text>'
+          + '<text x="' + (L + 10) + '" y="' + (Y(.22)) + '" font-size="12" style="fill:var(--red)">inhibitor factor</text>'
+          + '<text x="' + (L + pw / 2) + '" y="' + (H - 8) + '" font-size="11" text-anchor="middle">regulator concentration</text>';
+      }
+      k.oninput = m.oninput = draw; draw();
+    })();
+  </script>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-title="How a perturbation propagates">
+  <div class="kicker">Interdependencies</div>
+  <h2>Perturb one gene, watch the network settle</h2>
+  <p class="lead">Dependencies are not drawn from a correlation model. They come from the ODEs: the change in one gene alters the production of its targets, which alter theirs, until a new steady state. Try it on this 6-gene network (a tiny Hill simulator running in your browser).</p>
+  <div class="cols c2">
+    <div>
+      <div class="ctl" id="pgenes"></div>
+      <div class="ctl"><span class="muted">mode</span>
+        <button class="pill on" data-mode="input">input (+1 to regulator input)</button>
+        <button class="pill" data-mode="knockdown">knockdown (&minus;80% production)</button></div>
+      <svg id="propsvg" viewBox="0 0 440 280" role="img" aria-label="Network propagation"></svg>
+    </div>
+    <div>
+      <svg id="barsvg" viewBox="0 0 440 280" role="img" aria-label="Responses"></svg>
+      <p class="small muted">Bars show X<sub>i</sub> = x<sub>i</sub>/x<sub>ref</sub> &minus; 1. Green edges activate, red edges inhibit. In <b>input</b> mode the perturbed gene's own level stays put (only its targets see the change); in <b>knockdown</b> it drops first. G6 responds although nothing touches it directly: that indirect effect is what the inference algorithms have to see through.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var n = 6, names = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6'];
+      var edges = [[0, 1, 1], [1, 2, 1], [2, 3, -1], [0, 4, -1], [4, 3, 1], [3, 5, 1]];
+      var pos = [[50, 140], [140, 60], [250, 60], [330, 140], [140, 220], [410, 140]];
+      var v = 1.05, b = .75, K = 1.5, m = 2, mode = 'input', sel = 0;
+      function steady(j, active) {
+        var x = new Array(n).fill(1), u = new Array(n).fill(0), sc = new Array(n).fill(1);
+        if (active) { if (mode === 'input') u[j] = 1; else sc[j] = .2; }
+        for (var t = 0; t < 6000; t++) {
+          var nx = x.slice();
+          for (var i = 0; i < n; i++) {
+            var prod = v * sc[i];
+            edges.forEach(function (e) {
+              if (e[1] !== i) return;
+              var r = Math.max(x[e[0]] + u[e[0]], 1e-9), rm = Math.pow(r, m), km = Math.pow(K, m);
+              prod *= e[2] > 0 ? 1 + rm / (rm + km) : km / (rm + km);
+            });
+            nx[i] = x[i] + .02 * (prod - b * x[i]);
+          }
+          x = nx;
+        }
+        return x;
+      }
+      function draw() {
+        var ref = steady(0, false), p = steady(sel, true), X = p.map(function (y, i) { return y / ref[i] - 1; });
+        var o = '<defs><marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="context-stroke"/></marker></defs>';
+        edges.forEach(function (e) {
+          var a = pos[e[0]], c = pos[e[1]], dx = c[0] - a[0], dy = c[1] - a[1], d = Math.hypot(dx, dy), r = 22;
+          o += '<line x1="' + (a[0] + dx / d * r) + '" y1="' + (a[1] + dy / d * r) + '" x2="' + (c[0] - dx / d * (r + 4)) + '" y2="' + (c[1] - dy / d * (r + 4)) + '" stroke="' + (e[2] > 0 ? 'var(--green)' : 'var(--red)') + '" stroke-width="2.4" marker-end="url(#pa)"/>';
+        });
+        pos.forEach(function (q, i) {
+          var ch = Math.min(1, Math.abs(X[i]) / .6), col = X[i] >= 0 ? '14,159,110' : '214,64,63';
+          o += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="22" fill="rgba(' + col + ',' + (.12 + .7 * ch) + ')" stroke="' + (i === sel ? 'var(--amber)' : 'var(--blue)') + '" stroke-width="' + (i === sel ? 4 : 2) + '"/>'
+            + '<text x="' + q[0] + '" y="' + (q[1] + 5) + '" font-size="14" font-weight="700" text-anchor="middle">' + names[i] + '</text>';
+        });
+        document.getElementById('propsvg').innerHTML = o;
+        var bs = '', bw = 44, base = 135, sc = 100;
+        var mx = Math.max.apply(null, X.map(Math.abs).concat([.2]));
+        bs += '<line x1="20" x2="420" y1="' + base + '" y2="' + base + '" stroke="var(--muted)"/>';
+        X.forEach(function (val, i) {
+          var h = val / mx * 100, x0 = 30 + i * 66;
+          bs += '<rect x="' + x0 + '" y="' + (h >= 0 ? base - h : base) + '" width="' + bw + '" height="' + Math.max(Math.abs(h), 1) + '" rx="4" fill="' + (val >= 0 ? 'var(--green)' : 'var(--red)') + '"/>'
+            + '<text x="' + (x0 + bw / 2) + '" y="' + (h >= 0 ? base - h - 6 : base - h + 14) + '" font-size="11.5" text-anchor="middle">' + (val >= 0 ? '+' : '') + val.toFixed(2) + '</text>'
+            + '<text x="' + (x0 + bw / 2) + '" y="272" font-size="13" font-weight="700" text-anchor="middle">' + names[i] + '</text>';
+        });
+        bs += '<text x="20" y="16" font-size="12">Response X when ' + names[sel] + ' is perturbed (' + mode + ')</text>';
+        document.getElementById('barsvg').innerHTML = bs;
+        document.querySelectorAll('#pgenes button').forEach(function (bt, i) { bt.classList.toggle('on', i === sel); });
+      }
+      var host = document.getElementById('pgenes');
+      host.innerHTML = '<span class="muted">perturb</span>' + names.map(function (g, i) { return '<button class="pill" data-g="' + i + '">' + g + '</button>'; }).join('');
+      host.onclick = function (e) { var t = e.target.closest('button[data-g]'); if (t) { sel = +t.dataset.g; draw(); } };
+      document.querySelectorAll('[data-mode]').forEach(function (bt) {
+        bt.onclick = function () { mode = bt.dataset.mode; document.querySelectorAll('[data-mode]').forEach(function (o) { o.classList.toggle('on', o === bt); }); draw(); };
+      });
+      draw();
+    })();
+  </script>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-title="Perturbation modes">
+  <div class="kicker">Simulation option</div>
+  <h2>Three ways to perturb a gene</h2>
+  <div class="cols c3">
+    <div class="card"><span class="tag">default</span><h3>input</h3>
+      <p>Adds <code>perturbation_factor</code> to gene <i>j</i>'s concentration <i>as seen by its regulators</i> (the thesis "tagged mRNA" device).</p>
+      <div class="math small" data-tex="A_j=x_j+P_j"></div>
+      <p class="small muted">Gene <i>j</i>'s own dynamics stay untouched, so regressions do not mistake the perturbation for self-regulation. <code>U[j,j] = +p</code>. Used by the Studio and VCC "Activation".</p></div>
+    <div class="card"><span class="tag g">CRISPRi-like</span><h3>knockdown</h3>
+      <p>Scales gene <i>j</i>'s production by <code>1 &minus; e</code>; default e = 0.8, with optional per-gene scatter (<code>efficiency_spread</code>).</p>
+      <div class="math small" data-tex="s_j\to(1-e)\,s_j"></div>
+      <p class="small muted"><code>U[j,j] = &minus;e</code>. The target's own drop dominates its profile, so score on off-target genes (<code>offtarget_r</code>).</p></div>
+    <div class="card"><span class="tag a">complete loss</span><h3>knockout</h3>
+      <p>Production set to zero (efficiency 1).</p>
+      <div class="math small" data-tex="s_j\to 0"></div>
+      <p class="small muted"><code>U[j,j] = &minus;1</code>. In single-cell screens, biallelic loss (80%) versus half dose is modelled per cell.</p></div>
+  </div>
+  <div class="note">The Studio uses <b>input</b>; the VCC tab lets you choose input or knockdown; the Perturb-seq pipeline offers all three.</div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-title="Topologies">
+  <div class="kicker">Simulation option &middot; <code>topology</code></div>
+  <h2>Four network topologies</h2>
+  <p class="lead">Mean connectivity <code>k_av</code> sets the edge count (<code>ceil(k_av&middot;n)</code>); <code>act_ratio</code> sets the activating share. The topology sets who connects to whom.</p>
+  <div class="cols c2" style="gap:14px">
+    <div class="card topo"><div class="cyg" id="t-rand"></div><div><h3>random</h3>
+      <p class="small"><b>Poisson degrees</b> (Erd&#337;s-R&eacute;nyi): one random regulator per gene, then random extra edges. No hubs, no structure.</p><div class="cystat" id="t-rand-stat"></div></div></div>
+    <div class="card topo"><div class="cyg" id="t-pl"></div><div><h3>power_law</h3>
+      <p class="small"><b>Scale-free</b>: links go to nodes in proportion to their degree, so a few hubs dominate. Hubs centred, low-degree genes outside.</p><div class="cystat" id="t-pl-stat"></div></div></div>
+    <div class="card topo"><div class="cyg" id="t-h"></div><div><h3>hierarchical</h3>
+      <p class="small">A small scale-free block <b>cloned</b> <code>subdiv</code> times, plus cross-block edges. Identical blocks, drawn top-down (regulators above targets).</p><div class="cystat" id="t-h-stat"></div></div></div>
+    <div class="card topo"><div class="cyg" id="t-m"></div><div><h3>modular</h3>
+      <p class="small"><code>1+Poisson(k_av&minus;1)</code> regulators per gene, 85% from its own module. Dense modules, few bridges: the Perturb-seq regime.</p><div class="cystat" id="t-m-stat"></div></div></div>
+  </div>
+  <script src="vendor/cytoscape.min.js"></script>
+  <script>
+    // Each figure is a generated sample (20 genes, k_av 1.8, 60% activating) built with the rules of grn_sim.core.topology.
+    // Seeds are chosen by a structural score, layouts by search: force layout (best of 40 starts), concentric by degree
+    // with ring-order search, layered blocks and modules placed on a grid by trying all 24 permutations. The criterion is
+    // the number of edge crossings plus node/edge collisions. Drawn with Cytoscape.js using preset positions.
+    (function () {
+      if (!window.cytoscape) return;
+      var N = 20, KAV = 1.8, RATIO = .6, TARGET = Math.ceil(KAV * N), BW = 380, BH = 190;
+      function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+      function pick(r, w) { var tot = w.reduce(function (x, y) { return x + y; }, 0), t = r() * tot, c = 0; for (var i = 0; i < w.length; i++) { c += w[i]; if (c >= t) return i; } return w.length - 1; }
+      function poisson(r, lam) { var L = Math.exp(-lam), k = 0, p = 1; do { k++; p *= r(); } while (p > L); return k - 1; }
+      function Net() { this.e = {}; this.list = []; }
+      Net.prototype.add = function (a, b, r) { if (a === b || this.e[a + '>' + b]) return false; this.e[a + '>' + b] = 1; this.list.push([a, b, r() < RATIO ? 1 : -1]); return true; };
+
+      // ---- generators (rules of core/topology.py) ----
+      function genRandom(r) { var g = new Net(); for (var i = 0; i < N; i++) g.add(Math.floor(r() * N), i, r);
+        while (g.list.length < TARGET) g.add(Math.floor(r() * N), Math.floor(r() * N), r); return { g: g, module: null }; }
+      function prefer(g, r, dk, target, ok) { var guard = 0; while (g.list.length < target && guard++ < 5000) { var a = pick(r, dk), b = pick(r, dk); if ((!ok || ok(a, b)) && g.add(a, b, r)) { dk[a]++; dk[b]++; } } }
+      function genPower(r) { var g = new Net(), dk = new Array(N).fill(1);
+        for (var i = 0; i < N; i++) { var s, guard = 0; do { s = pick(r, dk); } while (s === i && guard++ < 50); if (g.add(s, i, r)) dk[s]++; }
+        prefer(g, r, dk, TARGET); return { g: g, module: null }; }
+      function genHier(r) { var S = 4, M = N / S, g = new Net(), dk = new Array(N).fill(1), base = new Net(), bd = new Array(M).fill(1);
+        for (var i = 0; i < M; i++) { var s = pick(r, bd); if (base.add(s, i, r)) bd[s]++; }
+        var guard = 0; while (base.list.length < 6 && guard++ < 200) { var a = pick(r, bd), b = pick(r, bd); if (base.add(a, b, r)) { bd[a]++; bd[b]++; } }
+        var module = []; for (var k = 0; k < S; k++) { for (var m = 0; m < M; m++) module[k * M + m] = k;
+          base.list.forEach(function (e) { g.e[(k * M + e[0]) + '>' + (k * M + e[1])] = 1; g.list.push([k * M + e[0], k * M + e[1], e[2]]); dk[k * M + e[0]]++; dk[k * M + e[1]]++; }); }
+        prefer(g, r, dk, TARGET, function (a, b) { return module[a] !== module[b]; }); return { g: g, module: module, base: base.list, M: M }; }
+      function genModular(r) { var K = 4, g = new Net(), module = [], out = new Array(N).fill(0); for (var i = 0; i < N; i++) module[i] = i % K;
+        for (var t = 0; t < N; t++) { var nreg = Math.min(1 + poisson(r, KAV - 1), N - 1);
+          for (var q = 0; q < nreg; q++) { var tries = 0, a;
+            do { var own = r() < .85, cand = []; for (var j = 0; j < N; j++) if (j !== t && (module[j] === module[t]) === own) cand.push(j);
+              if (!cand.length) cand = [(t + 1) % N]; a = cand[pick(r, cand.map(function (j) { return out[j] + .5; }))]; tries++; } while (g.e[a + '>' + t] && tries < 20);
+            if (g.add(a, t, r)) out[a]++; } }
+        return { g: g, module: module }; }
+
+      // ---- structural measures ----
+      function degrees(list) { var d = new Array(N).fill(0); list.forEach(function (e) { d[e[0]]++; d[e[1]]++; }); return d; }
+      function connected(list) { var p = []; for (var i = 0; i < N; i++) p[i] = i; function f(x) { while (p[x] !== x) x = p[x] = p[p[x]]; return x; }
+        list.forEach(function (e) { p[f(e[0])] = f(e[1]); }); var root = f(0); for (i = 1; i < N; i++) if (f(i) !== root) return false; return true; }
+      function modularity(list, module) { var m = list.length, d = degrees(list), inside = {}, tot = {}; list.forEach(function (e) { if (module[e[0]] === module[e[1]]) inside[module[e[0]]] = (inside[module[e[0]]] || 0) + 1; });
+        for (var i = 0; i < N; i++) tot[module[i]] = (tot[module[i]] || 0) + d[i]; var q = 0; Object.keys(tot).forEach(function (c) { q += (inside[c] || 0) / m - Math.pow(tot[c] / (2 * m), 2); }); return q; }
+      function seedSearch(build, score, tries) { var best = null; for (var sd = 1; sd <= tries; sd++) { var res = build(rng(sd * 7919)); if (!connected(res.g.list)) continue; var sc = score(res); if (!best || sc > best.score) best = { res: res, score: sc, seed: sd }; } return best; }
+      var SEEDS = {
+        rand: function () { return seedSearch(genRandom, function (x) { var d = degrees(x.g.list); return -Math.abs(Math.max.apply(null, d) - 6) - 0.2 * Math.abs(Math.min.apply(null, d) - 2); }, 150); },
+        pl: function () { return seedSearch(genPower, function (x) { var d = degrees(x.g.list).sort(function (a, b) { return b - a; }); return d[0] + .5 * d[1] - .1 * d[N - 1]; }, 150); },
+        hier: function () { return seedSearch(genHier, function (x) { return -x.g.list.filter(function (e) { return x.module[e[0]] !== x.module[e[1]]; }).length; }, 60); },
+        mod: function () { return seedSearch(genModular, function (x) { return modularity(x.g.list, x.module) - .02 * Math.abs(x.g.list.length - TARGET); }, 150); }
+      };
+
+      // ---- layout quality: edge crossings and collisions of straight edges in the BW x BH box ----
+      function seg(a, b, c, d) { function o(p, q, r) { return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]); }
+        return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0; }
+      function dpt(p, a, b) { var dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); }
+      function quality(pos, list, rad) { var q = 0, i, j;
+        for (i = 0; i < list.length; i++) for (j = i + 1; j < list.length; j++) { var e = list[i], f = list[j]; if (e[0] === f[0] || e[0] === f[1] || e[1] === f[0] || e[1] === f[1]) continue; if (seg(pos[e[0]], pos[e[1]], pos[f[0]], pos[f[1]])) q += 1; }
+        for (i = 0; i < list.length; i++) for (j = 0; j < N; j++) { if (j === list[i][0] || j === list[i][1]) continue; if (dpt(pos[j], pos[list[i][0]], pos[list[i][1]]) < rad[j] + 1.5) q += 3; }
+        for (i = 0; i < N; i++) for (j = i + 1; j < N; j++) if (Math.hypot(pos[i][0] - pos[j][0], pos[i][1] - pos[j][1]) < rad[i] + rad[j] + 2) q += 25;
+        return q; }
+      function radii(list) { return degrees(list).map(function (d) { return 3.5 + Math.min(7, d * .9); }); }
+
+      // ---- layout algorithms ----
+      function forceLayout(ids, list, r, w, h) { var n = ids.length, idx = {}; ids.forEach(function (v, i) { idx[v] = i; });
+        var pos = ids.map(function () { return [w * (.1 + .8 * r()), h * (.1 + .8 * r())]; }), k = .75 * Math.sqrt(w * h / n);
+        var es = list.filter(function (e) { return e[0] in idx && e[1] in idx; }).map(function (e) { return [idx[e[0]], idx[e[1]]]; });
+        for (var it = 0; it < 320; it++) { var T = (w / 8) * (1 - it / 320) + .3, dx = pos.map(function () { return 0; }), dy = dx.slice(), i, j;
+          for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) { var vx = pos[i][0] - pos[j][0], vy = pos[i][1] - pos[j][1], d = Math.max(Math.hypot(vx, vy), .01), f = k * k / d; dx[i] += vx / d * f; dy[i] += vy / d * f; dx[j] -= vx / d * f; dy[j] -= vy / d * f; }
+          es.forEach(function (e) { var vx = pos[e[0]][0] - pos[e[1]][0], vy = pos[e[0]][1] - pos[e[1]][1], d = Math.max(Math.hypot(vx, vy), .01), f = d * d / k; dx[e[0]] -= vx / d * f; dy[e[0]] -= vy / d * f; dx[e[1]] += vx / d * f; dy[e[1]] += vy / d * f; });
+          for (i = 0; i < n; i++) { dx[i] -= (pos[i][0] - w / 2) * .12; dy[i] -= (pos[i][1] - h / 2) * .12; var m = Math.max(Math.hypot(dx[i], dy[i]), .01), st = Math.min(m, T); pos[i][0] += dx[i] / m * st; pos[i][1] += dy[i] / m * st; } }
+        return fit(pos, w, h, 12); }
+      function fit(pos, w, h, pad) { var xs = pos.map(function (p) { return p[0]; }), ys = pos.map(function (p) { return p[1]; }), x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+        return pos.map(function (p) { return [pad + (w - 2 * pad) * (x1 > x0 ? (p[0] - x0) / (x1 - x0) : .5), pad + (h - 2 * pad) * (y1 > y0 ? (p[1] - y0) / (y1 - y0) : .5)]; }); }
+      function bestForce(list, rad) { var ids = [], i; for (i = 0; i < N; i++) ids.push(i), 0; var best = null;
+        for (var t = 0; t < 40; t++) { var pos = forceLayout(ids, list, rng(500 + t), BW, BH), q = quality(pos, list, rad); if (!best || q < best.q) best = { pos: pos, q: q }; } return best; }
+      function concentric(list, rad) { var d = degrees(list), order = d.map(function (x, i) { return i; }).sort(function (a, b) { return d[b] - d[a] || a - b; });
+        var hub = order[0], ring1 = order.slice(1).filter(function (v) { return d[v] >= 4; }), ring2 = order.slice(1).filter(function (v) { return d[v] < 4; });
+        var cx = BW / 2, cy = BH / 2, best = null, nb = {}; list.forEach(function (e) { (nb[e[0]] = nb[e[0]] || []).push(e[1]); (nb[e[1]] = nb[e[1]] || []).push(e[0]); });
+        function ang(i, n, off) { return off + 2 * Math.PI * i / n; }
+        for (var t = 0; t < 400; t++) { var r = rng(900 + t), perm = ring1.slice().sort(function () { return r() - .5; }), pos = []; pos[hub] = [cx, cy];
+          perm.forEach(function (v, i) { var a = ang(i, perm.length, t * .31); pos[v] = [cx + BW * .21 * Math.cos(a), cy + BH * .24 * Math.sin(a)]; });
+          // outer ring: sort by the circular mean angle of inner neighbours, then spread evenly (rotate to the best offset)
+          var want = ring2.map(function (v) { var sx = 0, sy = 0, c = 0; (nb[v] || []).forEach(function (u) { if (pos[u] && u !== hub) { sx += pos[u][0] - cx; sy += pos[u][1] - cy; c++; } }); return { v: v, a: c ? Math.atan2(sy, sx) : r() * 6.28 }; }).sort(function (x, y) { return x.a - y.a; });
+          want.forEach(function (o, i) { var a = ang(i, want.length, t * .17); pos[o.v] = [cx + BW * .44 * Math.cos(a), cy + BH * .45 * Math.sin(a)]; });
+          var q = quality(pos, list, rad); if (!best || q < best.q) best = { pos: pos, q: q }; }
+        return best; }
+      // blocks (hierarchical copies or modules) in a 2x2 grid; all 24 assignments of blocks to cells are tried
+      function perms(a) { if (a.length <= 1) return [a]; var out = []; a.forEach(function (x, i) { perms(a.slice(0, i).concat(a.slice(i + 1))).forEach(function (p) { out.push([x].concat(p)); }); }); return out; }
+      function layeredBlock(M, base, w, h) { var out = [], indeg = new Array(M).fill(0), adj = [], i; for (i = 0; i < M; i++) adj[i] = [];
+        base.forEach(function (e) { if (e[0] !== e[1]) { adj[e[0]].push(e[1]); indeg[e[1]]++; } });
+        var state = new Array(M).fill(0), post = [], dag = []; for (i = 0; i < M; i++) dag[i] = [];
+        function visit(v) { state[v] = 1; adj[v].forEach(function (u) { if (state[u] === 1) return; dag[v].push(u); if (!state[u]) visit(u); }); state[v] = 2; post.push(v); }
+        [].concat(Array.apply(null, Array(M)).map(function (_, k) { return k; })).sort(function (a, b) { return indeg[a] - indeg[b] || a - b; }).forEach(function (v) { if (!state[v]) visit(v); });
+        var layer = new Array(M).fill(0); for (i = post.length - 1; i >= 0; i--) dag[post[i]].forEach(function (u) { layer[u] = Math.max(layer[u], layer[post[i]] + 1); });
+        var L = Math.max.apply(null, layer) + 1, rows = []; layer.forEach(function (l, v) { (rows[l] = rows[l] || []).push(v); });
+        rows.forEach(function (row, l) { row.forEach(function (v, k) { out[v] = [row.length > 1 ? w * (.1 + .8 * k / (row.length - 1)) : w / 2, L > 1 ? 10 + (h - 20) * l / (L - 1) : h / 2]; }); }); return out; }
+      function gridCells(row) { if (row) { var cw = BW / 4; return [0, 1, 2, 3].map(function (k) { return { x: k * cw, y: 0, w: cw, h: BH }; }); } var w = BW / 2, h = BH / 2; return [[0, 0], [w, 0], [0, h], [w, h]].map(function (c) { return { x: c[0], y: c[1], w: w, h: h }; }); }
+      function placeBlocks(list, module, localPos, rad, row) { var cells = gridCells(row), best = null;
+        perms([0, 1, 2, 3]).forEach(function (pm) { var pos = [];
+          for (var v = 0; v < N; v++) { var c = cells[pm[module[v]]], lp = localPos[v]; pos[v] = row ? [c.x + 14 + (c.w - 28) * lp[0] / localPos.W, BH * .32 + BH * .42 * lp[1] / localPos.H] : [c.x + 12 + (c.w - 24) * lp[0] / localPos.W, c.y + 10 + (c.h - 20) * lp[1] / localPos.H]; }
+          var q = quality(pos, list, rad); if (!best || q < best.q) best = { pos: pos, q: q, perm: pm }; });
+        return best; }
+      function layoutHier(res, rad) { var M = res.M, lay = layeredBlock(M, res.base, 100, 100), local = []; for (var v = 0; v < N; v++) local[v] = lay[v % M]; local.W = 100; local.H = 100; return placeBlocks(res.g.list, res.module, local, rad, false); }
+      function layoutModular(res, rad) { var local = [], K = 4; local.W = 100; local.H = 100;
+        for (var k = 0; k < K; k++) { var ids = []; for (var v = 0; v < N; v++) if (res.module[v] === k) ids.push(v); var bestL = null;
+          for (var t = 0; t < 30; t++) { var lp = forceLayout(ids, res.g.list, rng(70 + t + k * 100), 100, 100), pos = lp.map(function (p) { return p; }), ok = 0, q = 0, i, j;
+            for (i = 0; i < ids.length; i++) for (j = i + 1; j < ids.length; j++) q -= Math.min(Math.hypot(pos[i][0] - pos[j][0], pos[i][1] - pos[j][1]), 40);
+            if (!bestL || q < bestL.q) bestL = { q: q, lp: lp }; }
+          ids.forEach(function (v, i) { local[v] = bestL.lp[i]; }); }
+        return placeBlocks(res.g.list, res.module, local, rad); }
+
+      var built = {}, REPORT = window.__topologyReport = {};
+      function colors() { var cs = getComputedStyle(document.documentElement), v = function (n) { return cs.getPropertyValue(n).trim(); }; return { fill: v('--blue-soft'), stroke: v('--blue'), act: v('--green'), inh: v('--red'), ink: v('--ink'), bg: v('--panel') }; }
+      var PALETTE = ['#0b6fb8', '#d97706', '#7c3aed', '#0e9f6e'];
+      function draw(id, key) {
+        var host = document.getElementById(id); if (!host || !host.clientWidth) return;
+        var pick_ = SEEDS[key](), res = pick_.res, list = res.g.list, rad = radii(list), lay, c = colors(), i;
+        lay = key === 'rand' ? bestForce(list, rad) : key === 'pl' ? concentric(list, rad) : key === 'hier' ? layoutHier(res, rad) : layoutModular(res, rad);
+        var d = degrees(list), Q = res.module ? modularity(list, res.module) : null;
+        REPORT[key] = { seed: pick_.seed, edges: list.length, maxdeg: Math.max.apply(null, d), crossings_and_collisions: lay.q, Q: Q };
+        var els = [];
+        if (res.module) for (var m = 0; m < 4; m++) els.push({ data: { id: 'b' + m, col: PALETTE[m] }, classes: 'blk' });
+        var dshow = key === 'hier' ? degrees(res.base).concat([]) : d;   // clones are drawn with the block's own degree so identical copies look identical
+        for (i = 0; i < N; i++) els.push({ data: { id: 'n' + i, deg: key === 'hier' ? dshow[i % res.M] : d[i], col: res.module ? PALETTE[res.module[i]] : c.stroke, parent: res.module ? 'b' + res.module[i] : undefined }, position: { x: lay.pos[i][0], y: lay.pos[i][1] } });
+        list.forEach(function (e, k) { var cross = res.module && res.module[e[0]] !== res.module[e[1]]; els.push({ data: { id: 'e' + k, source: 'n' + e[0], target: 'n' + e[1], sign: e[2], cross: cross ? 1 : 0 } }); });
+        if (built[id]) built[id].destroy();
+        var cy = cytoscape({ container: host, elements: els, userZoomingEnabled: false, userPanningEnabled: false, boxSelectionEnabled: false, autoungrabify: true, layout: { name: 'preset' },
+          style: [
+            { selector: 'node', style: { width: 'mapData(deg, 0, 10, 11, ' + (res.module ? 24 : 30) + ')', height: 'mapData(deg, 0, 10, 11, ' + (res.module ? 24 : 30) + ')', 'background-color': res.module ? 'data(col)' : c.fill, 'background-opacity': res.module ? .55 : 1, 'border-width': 2, 'border-color': 'data(col)' } },
+            { selector: '.blk', style: { shape: 'round-rectangle', 'background-color': 'data(col)', 'background-opacity': .07, 'border-width': 1, 'border-style': 'dashed', 'border-color': 'data(col)', 'border-opacity': .7, padding: 9 } },
+            { selector: 'edge', style: { width: key === 'pl' ? 1.4 : 1.9, 'curve-style': 'bezier', 'line-color': c.act, 'target-arrow-color': c.act, 'target-arrow-shape': 'triangle', 'arrow-scale': 1.05, opacity: .9 } },
+            { selector: 'edge[sign < 0]', style: { 'line-color': c.inh, 'target-arrow-color': c.inh, 'target-arrow-shape': 'tee' } },
+            { selector: 'edge[cross > 0]', style: { opacity: .6, width: 1.5, 'line-style': 'dashed' } }] });
+        cy.fit(undefined, 10); built[id] = cy;
+        var stat = document.getElementById(id + '-stat');
+        if (stat) stat.textContent = list.length + ' edges · max degree ' + Math.max.apply(null, d) + ' · ' + (Q != null ? 'modularity Q = ' + Q.toFixed(2) : (key === 'pl' ? 'top-2 hubs hold ' + Math.round(100 * (d.slice().sort(function (a, b) { return b - a; })[0] + d.slice().sort(function (a, b) { return b - a; })[1]) / (2 * list.length)) + '% of edge ends' : 'degree spread ' + Math.min.apply(null, d) + '–' + Math.max.apply(null, d)));
+      }
+      var SPECS = [['t-rand', 'rand'], ['t-pl', 'pl'], ['t-h', 'hier'], ['t-m', 'mod']];
+      SPECS.forEach(function (sp) { var el = document.getElementById(sp[0]); if (window.ResizeObserver) new ResizeObserver(function () { if (el.clientWidth && !built[sp[0]]) draw(sp[0], sp[1]); }).observe(el); });
+      window.redrawTopologies = function () { SPECS.forEach(function (sp) { if (built[sp[0]]) draw(sp[0], sp[1]); }); };
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { setTimeout(window.redrawTopologies, 50); });
+    })();
+  </script>
+  <p class="small muted" style="margin-top:6px">Generated samples (20 genes, k_av 1.8, 60% activating). Node size = degree; green arrow activates, red bar inhibits; dashed = edge between modules.</p>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-title="Dynamics engines">
+  <div class="kicker">Simulation option &middot; <code>kinetics_engine</code></div>
+  <h2>Four ways to generate steady states</h2>
+  <div class="cols c2">
+    <div class="card"><span class="tag">default</span><h3>hill_nonlinear</h3>
+      <div class="math small" data-tex="\dfrac{d\mathbf{x}}{dt}=\mathbf{s}(\mathbf{x})-B\mathbf{x}"></div>
+      Numerical integration of the Hill ODEs until the squared displacement is below 10<sup>-4</sup>. The reference model the thesis algorithms were built for; saturation makes responses non-linear in the perturbation.</div>
+    <div class="card"><h3>cellbox_neural_ode</h3>
+      <div class="math small" data-tex="\dfrac{dx_i}{dt}=\tanh\!\Big(\sum_j W_{ij}x_j+b_i+u_i\Big)-\alpha_i x_i"></div>
+      The CellBox model class: W = &gamma;&middot;T, tanh saturation instead of Hill terms. Data suits CellBox and linear methods differently than Hill data.</div>
+    <div class="card"><h3>linear_jacobian</h3>
+      <div class="math small" data-tex="\mathbf{x}=(B-A)^{-1}(\mathbf{v}+\mathbf{u})"></div>
+      Closed form, no integration. Adjacency scaled to spectral radius below 1. Here A X = &minus;U is <i>exact</i>, so it is the easiest setting for regression and inversion methods.</div>
+    <div class="card"><h3>perturb_seq_counts</h3>
+      <div class="math small" data-tex="\text{counts}\sim\mathrm{GammaPoisson}(\mu_{g,c}\cdot\text{depth})"></div>
+      Hill steady states first, then 400 cells per condition with overdispersion and log-normal library depth; X is rebuilt from the cell averages. Gives <code>.h5ad</code>-style count data.</div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-title="Response regimes and noise">
+  <div class="kicker">Simulation option &middot; <code>dynamics_preset</code>, <code>noise</code></div>
+  <h2>Responsive, flat or oscillating, plus measurement noise</h2>
+  <div class="cols c3">
+    <div class="card"><span class="tag g">responsive</span><h3>default</h3>
+      <svg viewBox="0 0 200 80" id="d-resp"></svg>
+      Clear steady-state shifts after each perturbation. What the algorithms are designed for.</div>
+    <div class="card"><span class="tag">flat</span><h3>nothing to see</h3>
+      <svg viewBox="0 0 200 80" id="d-flat"></svg>
+      Perturbation factor 0.005, noise 0.001: changes below 5%. Shows what inference does with no signal.</div>
+    <div class="card"><span class="tag a">oscillating</span><h3>limit cycle</h3>
+      <svg viewBox="0 0 200 80" id="d-osc"></svg>
+      A negative-feedback ring (Hill m 4.5, v 8) never settles. The run is labelled non-steady and Perturb-seq refuses it.</div>
+  </div>
+  <script>
+    (function () {
+      function line(id, f, col) { var d = ''; for (var i = 0; i <= 100; i++) d += (i ? 'L' : 'M') + (i * 2) + ',' + f(i / 100); document.getElementById(id).innerHTML = '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.4"/><line x1="0" x2="200" y1="78" y2="78" stroke="var(--line)"/>'; }
+      line('d-resp', function (t) { return 60 - 38 * (1 - Math.exp(-5 * t)) + 8 * Math.sin(t * 9) * Math.exp(-5 * t); }, 'var(--green)');
+      line('d-flat', function (t) { return 42 - 1.5 * (1 - Math.exp(-6 * t)); }, 'var(--blue)');
+      line('d-osc', function (t) { return 40 + 26 * Math.sin(t * 22); }, 'var(--amber)');
+    })();
+  </script>
+  <div class="cols c2" style="flex:0 0 auto;margin-top:10px">
+    <div><b>Measurement noise</b> (<code>noise</code>, default 0.05, applied to each observed steady state):
+      <div class="math small" data-tex="\tilde x=x\,\big[1+\sqrt{\delta}\,\theta_1(\theta_2-0.5)\big],\ \theta_1\sim\mathcal N(0,1),\ \theta_2\sim U(0,1)"></div>
+    <div class="note"><b>Biological variability</b> (<code>bio_var</code>) is stored with a Studio run but the Studio does not currently pass it to the simulator. <code>PerturbationSimulator(biological_variability=...)</code> implements it for Python use.</div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-title="Studio versus VCC">
+  <div class="kicker">Two simulators</div>
+  <h2>Panel 1 is a configurable workbench; panel 4 is a fixed experiment</h2>
+  <table>
+    <tr><th></th><th>Panel 1: Studio</th><th>Panel 4: Virtual Cell Challenge</th></tr>
+    <tr><td>Purpose</td><td>One network you set up, perturb and reverse-engineer</td><td>Compare many algorithms and a transfer baseline under a controlled design</td></tr>
+    <tr><td>Network</td><td>4 topologies, 6-2000 genes, optional calibrated preset</td><td>Power-law, ratio 0.55, 4-32 genes</td></tr>
+    <tr><td>Contexts</td><td>One</td><td>Three source atlases + one rewired target</td></tr>
+    <tr><td>Noise</td><td><code>noise</code> (0.05)</td><td>fixed 0.01</td></tr>
+    <tr><td>Perturbation</td><td>input</td><td>input or knockdown</td></tr>
+    <tr><td>Evaluation</td><td>Edge recovery on that network</td><td>Edge recovery + held-out perturbations + rewiring decay + epistasis</td></tr>
+    <tr><td>Why fixed?</td><td colspan="2">Panel 4 removes topology, size and noise as variables so differences between rows come from the methods. Its results do not carry over to a 200-gene network from panel 1.</td></tr>
+  </table>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-title="VCC study design">
+  <div class="kicker">Panel 4</div>
+  <h2>Sources, a rewired target and held-out perturbations</h2>
+  <div class="cols c2">
+    <svg viewBox="0 0 520 300" role="img" aria-label="VCC design">
+      <defs><marker id="v1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="var(--muted)"/></marker></defs>
+      <g font-size="12.5" font-weight="700" text-anchor="middle">
+        <rect x="10" y="20" width="130" height="46" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="75" y="48">K562 atlas</text>
+        <rect x="10" y="80" width="130" height="46" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="75" y="108">HCT116 atlas</text>
+        <rect x="10" y="140" width="130" height="46" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="75" y="168">HEK293T atlas</text>
+        <rect x="360" y="70" width="150" height="66" rx="12" fill="rgba(183,121,31,.18)" stroke="var(--amber)"/><text x="435" y="98">Target context</text><text x="435" y="116" font-weight="400" font-size="11.5">edges moved (rewire %)</text>
+        <rect x="190" y="215" width="140" height="46" rx="10" fill="var(--code)" stroke="var(--line)"/><text x="260" y="243">AtlasShift transfer</text>
+        <rect x="190" y="20" width="140" height="46" rx="10" fill="var(--code)" stroke="var(--line)"/><text x="260" y="48">18+ algorithms</text>
+      </g>
+      <g stroke="var(--muted)" stroke-width="1.6" fill="none">
+        <path d="M140,43 H156 V163 H140"/>
+        <path d="M156,103 H358" marker-end="url(#v1)" stroke-dasharray="4 3"/>
+        <path d="M156,103 Q156,238 188,238" marker-end="url(#v1)"/>
+        <path d="M330,238 Q435,238 435,138" marker-end="url(#v1)"/>
+        <path d="M435,70 Q400,43 332,43" marker-end="url(#v1)"/>
+      </g>
+      <g font-size="10.5" style="fill:var(--muted)"><text x="240" y="96">source effects</text><text x="342" y="262">predicts target</text><text x="400" y="33" text-anchor="end" style="fill:var(--muted)">fit &amp; score</text></g>
+      <text x="20" y="290" font-size="11.5" style="fill:var(--muted)">same base network, basal rates modulated; the target's edges are partly rewired</text>
+    </svg>
+    <div>
+      <ul>
+        <li><b>Seen / held-out split.</b> 75% of the target's perturbations are seen; the last 25% (at least 2) are held out. Every model is refit without the held-out columns.</li>
+        <li><b>Linear predictor</b> <code>R = sign&middot;pinv(A_est)</code> is exactly 0 for a held-out gene (its row of A is never identified).</li>
+        <li><b>Hill refit predictor</b> keeps each algorithm's top-2 regulators per target and refits a Hill model on the seen data.</li>
+        <li><b>References:</b> mean-profile null, true-structure oracle, target-gene prior (knockdown), cross-context transfer.</li>
+        <li><b>Also computed:</b> epistasis for every gene pair, virtual single cells with PCA, and prediction decay as rewiring grows 0-50%.</li>
+      </ul>
+      <div class="math small" data-tex="\varepsilon_{ij}=\lVert L_{ij}-(L_i+L_j)\rVert,\quad L=\log_2\dfrac{x_{\text{pert}}}{x_{\text{basal}}}"></div>
+      <p class="small muted">&epsilon; &gt; 0.45 synergistic / synthetic lethal, &gt; 0.25 intermediate, else additive.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-title="Perturb-seq pipeline">
+  <div class="kicker">Single-cell simulation</div>
+  <h2>A pooled CRISPR screen with ground truth</h2>
+  <div class="flow">
+    <div class="step"><b>1 Conditions</b>Steady states for every single (and double) perturbation; truth: total log<sub>2</sub> effects, edge elasticities, labels, epistasis.</div><div class="arrow">&rarr;</div>
+    <div class="step"><b>2 Cells</b>Guides with efficiencies, per-cell doses, escapers, knockout alleles; extrinsic noise propagated through the network (LNA or SDE).</div><div class="arrow">&rarr;</div>
+    <div class="step"><b>3 Measurement</b>Doublets, ambient RNA, capture bias, batches, library size, NB UMI sampling, guide calling.</div><div class="arrow">&rarr;</div>
+    <div class="step"><b>4 Realism</b>Statistics versus genome-scale targets; calibrated presets.</div>
+  </div>
+  <div class="cols c2" style="margin-top:14px">
+    <div class="card"><h3>Cell noise model</h3>
+      <ul><li><span class="tag">lna</span> linear-noise approximation around each steady state: fast, accurate for well-expressed genes (default).</li>
+      <li><span class="tag v">sde</span> chemical-Langevin integration of every cell (Euler-Maruyama): exact, much slower; differs for low-copy genes and steep Hill curves.</li></ul></div>
+    <div class="card"><h3>Design options</h3>
+      <ul><li><code>mode</code> knockdown / knockout / input, <code>pairs</code> for double perturbations.</li>
+      <li><b>Partial screens</b>: perturb 30 genes, measure 500, with <code>effective</code> or <code>random</code> selection.</li>
+      <li>Presets: <code>thesis</code>, <code>replogle_like</code> (modular, anchored kinetics, 80% activating).</li></ul></div>
+  </div>
+  <div class="note good">Output is an AnnData <code>.h5ad</code> with counts, per-cell truth in <code>obs</code> and the ground truth in <code>uns["ground_truth"]</code>.</div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-title="Evaluation">
+  <div class="kicker">Scoring</div>
+  <h2>How an inferred network is judged</h2>
+  <div class="cols c2">
+    <div>
+      <div class="math small" data-tex="\text{coverage}=\dfrac{TP}{TP+FN}\qquad \text{FDR}=\dfrac{FP}{TP+FP}"></div>
+      <ul>
+        <li><b>Coverage / power</b>: share of true edges found. <b>FDR</b>: share of calls that are wrong. <b>F1</b> and <b>total errors</b> summarise both.</li>
+        <li><b>9-state classification</b>: each (regulator, target) pair is true +/-/0 and predicted +/-/0, so sign errors are visible, not hidden as hits.</li>
+        <li><b>Orientation.</b> Algorithms emit <code>A[target, regulator]</code> or <code>[regulator, target]</code>; the registry declares which and <code>orient_prediction</code> normalises it before scoring.</li>
+        <li><b>Total versus direct effects.</b> A perturbation also moves downstream genes; direct-edge truth and total-effect truth are scored separately.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="card"><h3>Reading the numbers honestly</h3>
+        <ul><li>By-Chance is the null every method must beat.</li>
+        <li>3-4 seeds gave wide spreads: treat docs/results as orders of magnitude, not rankings.</li>
+        <li>Knockdown data: score off-target genes, the target gene dominates.</li>
+        <li>Real data (SOS, Norman) usually show much smaller gains over chance than the simulator does.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-title="Algorithm map">
+  <div class="kicker">Algorithms</div>
+  <h2>24 registered algorithms in five families</h2>
+  <p class="lead">All take <code>fit(X, U)</code> and return <code>A_est</code> (scores) and <code>adjacency_pred</code> (signed -1/0/+1). They differ in the assumption that lets them turn responses into edges.</p>
+  <div class="cols c3">
+    <div class="card"><h3>Regression on perturbation data</h3><span class="tag">8</span>
+      <p class="small">S2G, G2S, Vote, Score Vote, NIR, FAST, RidgeCV, By-Chance. Solve A X = &minus;U row by row with different sparsity rules.</p></div>
+    <div class="card"><h3>Response-matrix &amp; transfer</h3><span class="tag g">5</span>
+      <p class="small">inspre, Mean difference, Network Deconvolution, DMD-GRN, AtlasShift. Work on the effect matrix itself: invert, deconvolve or transfer.</p></div>
+    <div class="card"><h3>Co-expression &amp; statistical</h3><span class="tag a">5</span>
+      <p class="small">Pearson, GENIE3, GRNBoost-lite, ARACNE, Gene features. Rank pairs by association; the perturbation mostly gives direction, if anything.</p></div>
+    <div class="card"><h3>Causal &amp; DAG</h3><span class="tag v">2</span>
+      <p class="small">CausalGRN, NOTEARS. Impose a causal structure: partial correlation plus interventions, or an acyclicity constraint.</p></div>
+    <div class="card"><h3>Neural &amp; latent</h3><span class="tag r">4</span>
+      <p class="small">CellBox, DeepRIG, SFINN-style, CPA-Lite. Learn a parametric model or embedding and read influence from it.</p></div>
+    <div class="card"><h3>Experimental (3)</h3><span class="tag">not in registry</span>
+      <p class="small">bicycle-lite, DOTEARS-lite, Rank consensus: cell-level, interventional-aware prototypes.</p></div>
+  </div>
+</section>
+
+<!-- 15 S2G -->
+<section class="slide" data-title="S2G">
+  <div class="kicker">Regression &middot; thesis core &middot; <code>s2g</code></div>
+  <h2>Simple-to-General: grow the regulator set until the penalty says stop</h2>
+  <div class="cols c2">
+    <div>
+      <div class="math small" data-tex="y_i=U_{i,:}^{\top}=X^{\top}a_i"></div>
+      <ol style="font-size:14.5px;line-height:1.5;padding-left:20px">
+        <li>Start with no regulators; residual E = &minus;y<sub>i</sub>.</li>
+        <li>Project E on all (unit-norm) basis columns; add the best match.</li>
+        <li>Refit by pseudo-inverse; <b>swap out</b> the weakest term if it is not the one just added.</li>
+        <li>Evaluate the cost; stop when it no longer drops.</li>
+      </ol>
+      <div class="math small" data-tex="S(k)=N\ln\Big(\dfrac1N\sum_j E_j^2\Big)+k\ln N"></div>
+    </div>
+    <div>
+      <div class="card"><h3>What is distinct</h3>
+        <ul><li><b>No fixed number of regulators</b> per gene; the description-length penalty decides.</li>
+        <li>Forward selection with backtracking (Judd &amp; Mees basis pursuit).</li>
+        <li>Best of the thesis family on 100-gene simulated screens (AUPR 0.35).</li>
+        <li>Needs <code>PartialAdapter</code> for partial screens.</li></ul></div>
+      <p class="small muted">Crampin et al. 2004; Wildenhain thesis ch. 3.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 16 G2S -->
+<section class="slide" data-title="G2S">
+  <div class="kicker">Regression &middot; thesis core &middot; <code>g2s</code></div>
+  <h2>General-to-Specific: start with every gene, prune the least useful</h2>
+  <div class="cols c2">
+    <div>
+      <ol style="font-size:14.5px;line-height:1.5;padding-left:20px">
+        <li>Fit with all <i>n</i> genes as regulators.</li>
+        <li>For each candidate, refit without it and take the one whose removal raises the squared error least.</li>
+        <li>Repeat; stop when AIC stops improving.</li>
+      </ol>
+      <div class="math small" data-tex="j^*=\arg\min_j \mathrm{MSE}_{-j}\qquad \mathrm{AIC}(k)=\sum_j E_j^2+k"></div>
+    </div>
+    <div>
+      <div class="card"><h3>What is distinct</h3>
+        <ul><li>Backward elimination: the mirror of S2G, with a different error profile (its false positives are largely uncorrelated with S2G's).</li>
+        <li>A fast exact engine reproduces the MATLAB result and runs on a process pool.</li>
+        <li>Rank-deficient <code>X</code> makes the default fast path differ from MATLAB; the exact path matches.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 NIR FAST -->
+<section class="slide" data-title="NIR and FAST">
+  <div class="kicker">Regression &middot; thesis core &middot; <code>nir</code>, <code>fast</code></div>
+  <h2>Fix K regulators per gene: search them (NIR) or invert and keep the top K (FAST)</h2>
+  <div class="cols c2">
+    <div class="card"><h3>NIR (Gardner et al. 2003)</h3>
+      <div class="math small" data-tex="\tilde b_i=-u_i\,Q Z^{\top}\big(Z Q Z^{\top}+\lambda I\big)^{-1}"></div>
+      <ul><li>Exactly <b>K</b> inputs per gene (K &asymp; k_av).</li>
+      <li>Beam search (top-D) over regulator subsets, ranked by SSE.</li>
+      <li>Rejects ill-conditioned subsets (cond &gt; 1000); optional ridge and BIC order choice.</li>
+      <li>For unperturbed genes regresses their own response on the others, so it takes <b>partial screens as they are</b>.</li></ul></div>
+    <div class="card"><h3>FAST (Farina et al. 2003)</h3>
+      <div class="math small" data-tex="X=U_s S V^{\top}\qquad A_0=(X-U)\,V_r S_r^{-1}U_r^{\top}-I"></div>
+      <ul><li>Truncated SVD (drop the smallest singular value) gives a full A<sub>0</sub> in one shot.</li>
+      <li>Keep the K largest entries per row, then refit those by least squares.</li>
+      <li>Fast and deterministic; no search, but sensitive to the truncation.</li></ul></div>
+  </div>
+  <div class="note">Both expect the perturbation sign convention <code>&minus;U</code> at fit time (<code>FIT_INPUT_SIGN</code>); the benchmark code handles this.</div>
+</section>
+
+<!-- 18 vote -->
+<section class="slide" data-title="Ensembles, ridge, null">
+  <div class="kicker">Regression &middot; combiners and controls</div>
+  <h2>Voting, evidence voting, ridge and the random null</h2>
+  <div class="cols c2">
+    <div class="card"><span class="tag">core</span><h3>Voting Ensemble</h3>
+      <div class="math small" data-tex="A_{\text{vote}}(i,j)=\begin{cases}\operatorname{sign}A_{s2g}(i,j)&amp;\text{if the signs agree}\\0&amp;\text{otherwise}\end{cases}"></div>
+      Intersection of S2G and G2S (and NIR on Hill data): few false positives, lower recall than either member.</div>
+    <div class="card"><span class="tag g">extended</span><h3>Score Vote</h3>
+      Each member contributes the t-statistic of the edge coefficient, mapped to a z-score; z-scores are summed with a correction for the members' correlation. Keeps <i>how strong</i> each call is instead of a yes/no.</div>
+    <div class="card"><span class="tag a">baseline</span><h3>RidgeCV</h3>
+      <div class="math small" data-tex="\min_A\lVert X A^{\top}+U\rVert^2+\alpha\lVert A\rVert_F^2"></div>
+      Multi-output L2 regression, &alpha; by cross-validation (Kaggle NeurIPS 2023 baseline). In additive fits the perturbed gene's own term must be a regressor or the fit is near random.</div>
+    <div class="card"><span class="tag r">null model</span><h3>By-Chance</h3>
+      <div class="math small" data-tex="A_{\text{rand}}(i,j)=\operatorname{sign}\big(r-\mathcal U(0,1)\big),\ \lceil k\,n\rceil\text{ edges}"></div>
+      Random network with the right connectivity and activator ratio. Ignores the data: the floor every method must clear.</div>
+  </div>
+</section>
+
+<!-- 19 response matrix -->
+<section class="slide" data-title="Response-matrix methods">
+  <div class="kicker">Response-matrix &amp; transfer methods</div>
+  <h2>Work on the effect matrix itself</h2>
+  <div class="cols c3">
+    <div class="card"><span class="tag g">extended</span><h3>inspre</h3>
+      <div class="math small" data-tex="R V=I,\qquad G=I-V\,\mathrm{diag}\big(1/\mathrm{diag}\,V\big)"></div>
+      Total effects R become direct effects G via a sparse inverse (ADMM, L1). <b>Handles feedback loops</b> if stable; accepts partial screens and per-edge priors.</div>
+    <div class="card"><span class="tag a">baseline</span><h3>Mean difference</h3>
+      <div class="math small" data-tex="\text{score}(a\to j)=\lvert X_{ja}\rvert"></div>
+      The unnormalised effect matrix (a CausalBench winner). Scores <i>total</i> effects, so it is perfect against a total-effect truth by construction.</div>
+    <div class="card"><span class="tag g">extended</span><h3>Network Deconvolution</h3>
+      <div class="math small" data-tex="G_{\text{dir}}=G_{\text{obs}}(I+G_{\text{obs}})^{-1},\quad \lambda_{\text{dir}}=\dfrac{\lambda_{\text{obs}}}{1+\lambda_{\text{obs}}}"></div>
+      Removes transitive indirect effects via an eigenvalue map (Feizi 2013).</div>
+    <div class="card"><span class="tag g">extended</span><h3>DMD-GRN (Koopman)</h3>
+      <div class="math small" data-tex="\Delta X\approx-A^{-1}U,\qquad A=-U\,W S^{-1}V^{\top}"></div>
+      Controlled dynamic-mode decomposition: a truncated-SVD best-fit linear operator, off-diagonal entries discretised.</div>
+    <div class="card"><span class="tag v">transfer</span><h3>AtlasShift</h3>
+      <div class="math small" data-tex="\hat y_{\text{dest}}=\bar y_{\text{ctrl}}+\sum_s w_s\big(\bar y_{s,\text{pert}}-\bar y_{s,\text{ctrl}}\big)"></div>
+      <b>Empirical, not mechanistic</b>: fuses the same perturbation observed in other cell contexts. Port of a VCC 2026 leaderboard entry. As a structure scorer it reads A[j,i] = response of i to perturbing j.</div>
+    <div class="card"><h3>Why these differ</h3>
+      <p class="small">inspre and ND try to <b>separate direct from indirect</b> effects; Mean difference and AtlasShift deliberately do not. Which truth you score against (direct or total) decides who wins.</p></div>
+  </div>
+</section>
+
+<!-- 20 coexpression -->
+<section class="slide" data-title="Co-expression methods">
+  <div class="kicker">Co-expression &amp; statistical</div>
+  <h2>Rank pairs by association, add direction from the perturbation</h2>
+  <div class="cols c3">
+    <div class="card"><span class="tag a">baseline</span><h3>Pearson |r|</h3>
+      Absolute correlation across conditions. Symmetric and blind to which gene was perturbed: the cheapest control.</div>
+    <div class="card"><span class="tag g">extended</span><h3>GENIE3</h3>
+      <div class="math small" data-tex="x_i=f_i(x_{-i})+\epsilon,\qquad w_{ji}=\mathrm{MDI}(x_j\to x_i)"></div>
+      Extra-trees per target; edge weight is feature importance; sign from correlation. DREAM4/5 winner. Non-linear, but needs many conditions.</div>
+    <div class="card"><span class="tag a">baseline</span><h3>GRNBoost-lite</h3>
+      Gradient-boosted trees per target, importance-ranked (the GRNBoost2 recipe via scikit-learn, not the Dask code). Few conditions and many candidates limit it.</div>
+    <div class="card"><span class="tag g">extended</span><h3>ARACNE</h3>
+      <div class="math small" data-tex="I_{ij}=-\tfrac12\ln(1-\rho_{ij}^2);\ \text{drop }(i,j)\text{ if }I_{ij}\lt\min(I_{ik},I_{kj})"></div>
+      Gaussian-copula mutual information with Ledoit-Wolf shrinkage; the <b>data-processing inequality</b> removes the weakest edge of every triangle (indirect links); direction from perturbation.</div>
+    <div class="card"><span class="tag a">control</span><h3>Gene features</h3>
+      <div class="math small" data-tex="\text{score}(a\to j)=\text{hub}(a)\times\text{sens}(j)"></div>
+      How much <i>a</i> moves anything times how much <i>j</i> moves under anything, ignoring the pair. Shows how much of a score is just hubness.</div>
+    <div class="card"><h3>Common limit</h3>
+      <p class="small">Association is symmetric and cannot tell direct from indirect. These shine with many conditions; in a one-gene-per-run screen they trail the interventional methods.</p></div>
+  </div>
+</section>
+
+<!-- 21 causal -->
+<section class="slide" data-title="Causal methods">
+  <div class="kicker">Causal &amp; DAG</div>
+  <h2>Impose a causal structure</h2>
+  <div class="cols c2">
+    <div class="card"><span class="tag v">extended</span><h3>CausalGRN</h3>
+      <div class="math small" data-tex="\rho_{ij\cdot k}=\dfrac{\rho_{ij}-\rho_{ik}\rho_{jk}}{\sqrt{(1-\rho_{ik}^2)(1-\rho_{jk}^2)}}"></div>
+      First-order partial correlations drop edges explained by a third gene (the skeleton). The perturbed gene gives each edge's <b>direction</b> (a do-calculus style rule).</div>
+    <div class="card"><span class="tag v">extended</span><h3>NOTEARS</h3>
+      <div class="math small" data-tex="\min_W\ \tfrac{1}{2M}\lVert(I-W)X+U\rVert^2+\lambda\lVert W\rVert_1\quad\text{s.t. }\operatorname{tr}\,e^{W\circ W}-d=0"></div>
+      Continuous optimisation of a weighted graph with a smooth acyclicity constraint (augmented Lagrangian). <b>Cannot represent feedback loops</b>, which real regulatory networks (and this simulator) contain.</div>
+  </div>
+  <div class="cols c2" style="margin-top:12px">
+    <div class="card"><h3 style="color:var(--violet)">CausalGRN</h3><h3>Assumes</h3><ul><li>Few common causes; first-order partial correlation is enough to explain away an edge.</li><li>The perturbed gene is a cause of the others, never an effect of them.</li></ul>
+      <h3 style="margin-top:8px">Fails when</h3><ul><li>Explanations need two or more conditioning genes.</li><li>Indirect effects look as strong as direct ones.</li></ul></div>
+    <div class="card"><h3 style="color:var(--violet)">NOTEARS</h3><h3>Assumes</h3><ul><li>The true graph is acyclic and the model is a linear SEM.</li><li>Every column of X is a clean sample of that SEM.</li></ul>
+      <h3 style="margin-top:8px">Fails when</h3><ul><li>Feedback exists (Hill networks often have it).</li><li>Responses are non-linear: the linear fit blurs saturation.</li></ul></div>
+  </div>
+  <div class="note">Experimental relatives: <b>DOTEARS-lite</b> (NOTEARS with the intervened gene's own equation dropped in its cells) and <b>bicycle-lite</b> (steady-state Ornstein-Uhlenbeck likelihood).</div>
+</section>
+
+<!-- 22 neural -->
+<section class="slide" data-title="Neural and latent methods">
+  <div class="kicker">Neural &amp; latent-space</div>
+  <h2>Learn a model, read influence from it</h2>
+  <div class="cols c2">
+    <div class="card"><span class="tag r">extended</span><h3>CellBox (neural ODE)</h3>
+      <div class="math small" data-tex="x_i=\dfrac{\phi\big(\sum_j W_{ij}x_j+u_i\big)}{\alpha_i};\quad \mathcal L=\mathrm{MSE}+\lambda_1\lVert W\rVert_1+\lambda_2\lVert W\rVert_2^2"></div>
+      Fits steady states with L1-penalised weights (PyTorch, SciPy fallback up to 200 genes). Inputs are rescaled by 1/std(X): log fold changes near 0.1 otherwise leave tanh in its linear range and the fit learns nothing.</div>
+    <div class="card"><span class="tag r">extended</span><h3>CPA-Lite</h3>
+      <div class="math small" data-tex="z=E(x),\ z_{\text{pert}}=z_{\text{ctrl}}+\Delta z_j,\ \hat x=D(z_{\text{pert}}),\ A_{\text{est}}=D^{\top}E"></div>
+      A small autoencoder whose latent space <i>adds</i> perturbation vectors; gene influence from its Jacobian. Simplified, not the published model. Its A is a latent projection, so it has no steady-state response operator.</div>
+    <div class="card"><span class="tag r">extended</span><h3>DeepRIG</h3>
+      <div class="math small" data-tex="Z=\mathrm{GCN}(\hat A,X),\qquad P_{ij}=\sigma(z_i\!\cdot\! z_j)"></div>
+      Graph autoencoder on a covariance-shrunk co-expression prior graph with a low-rank bottleneck; pair scores from the inner-product decoder.</div>
+    <div class="card"><span class="tag r">extended</span><h3>SFINN-style</h3>
+      <div class="math small" data-tex="\text{score}=\lvert S\rvert\,(1+\lvert G\rvert),\qquad S=-X\,\mathrm{pinv}(U)"></div>
+      Despite the name a deterministic rule: perturbation sensitivity S weighted by a shared-factor association G (correlation after smoothing conditions over nearest neighbours).</div>
+  </div>
+</section>
+
+<!-- 23 choosing -->
+<section class="slide" data-title="Choosing an algorithm">
+  <div class="kicker">Practice</div>
+  <h2>Which algorithm for which situation</h2>
+  <table>
+    <tr><th>Situation</th><th>Reasonable choices</th><th>Why</th></tr>
+    <tr><td>Small clean screen, thesis-style data</td><td>S2G, G2S, Vote</td><td>Designed for A X = &minus;U; Vote trades recall for precision</td></tr>
+    <tr><td>You know roughly K regulators per gene</td><td>NIR, FAST</td><td>Fixing K stabilises the fit</td></tr>
+    <tr><td>Feedback loops present</td><td>inspre, DMD-GRN</td><td>NOTEARS and CausalGRN assume DAGs / skeletons</td></tr>
+    <tr><td>Only some genes perturbed (partial screen)</td><td>inspre, NIR, native methods</td><td>Others need the partial adapter</td></tr>
+    <tr><td>Many conditions, non-linear effects</td><td>GENIE3, GRNBoost-lite</td><td>Tree ensembles capture saturation</td></tr>
+    <tr><td>Predict a perturbation in a new context</td><td>AtlasShift, Hill refit of a structure</td><td>Transfer instead of re-inference</td></tr>
+    <tr><td>Always</td><td>By-Chance, Pearson, Mean difference</td><td>Controls that show how much the others add</td></tr>
+  </table>
+  <div class="note">Rankings on simulated data have wide error bars (3-4 seeds). On real data (SOS, Norman) the margin over chance is much smaller. See docs/INFERENCE_GAP_ANALYSIS.md.</div>
+</section>
+
+<!-- 24 end -->
+<section class="slide" data-title="Where to go next">
+  <div class="kicker">Reference</div>
+  <h2>Where to read more</h2>
+  <div class="cols c2">
+    <table>
+      <tr><td><code>docs/SIMULATION_OPTIONS.md</code></td><td>Every option, range and default</td></tr>
+      <tr><td><code>docs/algorithms/</code></td><td>One page per algorithm (generated)</td></tr>
+      <tr><td><code>SPECIFICATION.md</code></td><td>Equations, parameter ranges, algorithm pseudo-code</td></tr>
+      <tr><td><code>docs/PERTURBSEQ.md</code></td><td>Perturb-seq stages, partial screens, realism targets</td></tr>
+      <tr><td><code>docs/HOLDOUT_RESEARCH.md</code>, <code>CROSS_CONTEXT_TRANSFER.md</code></td><td>Held-out prediction and transfer</td></tr>
+      <tr><td><code>docs/INFERENCE_GAP_ANALYSIS.md</code></td><td>Measured comparison and missing pieces</td></tr>
+    </table>
+    <div class="card"><h3>Try it</h3>
+      <p class="small">From Python:</p>
+      <div class="math code">net = GeneNetwork.create(n=12, k_av=1.8,
+                         net_type=POWER_LAW, seed=1)
+exp = PerturbationSimulator(perturbation_factor=2.0)\
+        .run(net, seed=1)
+res = SimpleToGeneral().fit(exp.X, exp.U)
+evaluate_inference(exp.true_matrix, res.adjacency_pred)</div>
+      <p class="small">From the shell: <code>grn-sim web</code>, or <code>grn-sim perturbseq --genes 500 --preset replogle_like --out screen.h5ad</code>.</p></div>
+  </div>
+</section>
+
+</div>
+
+<div id="overview"><h2 style="margin-top:0">Slides</h2><div class="grid" id="ovgrid"></div></div>
+<div id="bar">
+  <button id="prev" aria-label="Previous slide">&larr;</button>
+  <span id="count">1 / 1</span>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <span id="ttl"></span>
+  <button id="ov">Overview (O)</button>
+  <button id="th">Theme (T)</button>
+  <button id="next" aria-label="Next slide">&rarr;</button>
+</div>
+
+<script src="katex/katex.min.js"></script>
+<script>
+  (function () {
+    if (window.katex) document.querySelectorAll('.math[data-tex]').forEach(function (el) { katex.render(el.dataset.tex, el, { throwOnError: false, displayMode: false }); });
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide')), cur = 0;
+    function show(i) {
+      cur = Math.max(0, Math.min(slides.length - 1, i));
+      slides.forEach(function (s, k) { s.classList.toggle('active', k === cur); });
+      document.getElementById('count').textContent = (cur + 1) + ' / ' + slides.length;
+      document.getElementById('fill').style.width = ((cur + 1) / slides.length * 100) + '%';
+      document.getElementById('ttl').textContent = slides[cur].dataset.title || '';
+      try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) { /* file:// restrictions */ }
+    }
+    var grid = document.getElementById('ovgrid');
+    slides.forEach(function (s, k) {
+      var a = document.createElement('a'); a.href = '#' + (k + 1);
+      a.innerHTML = '<b>' + (k + 1) + '</b>' + (s.dataset.title || '');
+      a.onclick = function (e) { e.preventDefault(); document.getElementById('overview').classList.remove('show'); show(k); };
+      grid.appendChild(a);
+    });
+    function toggleOv() { document.getElementById('overview').classList.toggle('show'); }
+    function toggleTheme() {
+      var root = document.documentElement, dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      root.dataset.theme = dark ? 'light' : 'dark';
+      if (window.redrawTopologies) setTimeout(window.redrawTopologies, 50);
+    }
+    document.getElementById('prev').onclick = function () { show(cur - 1); };
+    document.getElementById('next').onclick = function () { show(cur + 1); };
+    document.getElementById('ov').onclick = toggleOv; document.getElementById('th').onclick = toggleTheme;
+    document.addEventListener('keydown', function (e) {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(cur + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur - 1); }
+      else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+      else if (e.key === 'o' || e.key === 'O') toggleOv(); else if (e.key === 't' || e.key === 'T') toggleTheme();
+      else if (e.key === 'Escape') document.getElementById('overview').classList.remove('show');
+    });
+    var start = parseInt((location.hash || '#1').slice(1), 10);
+    show(isNaN(start) ? 0 : start - 1);
+  })();
+</script>
+</body>
+</html>
