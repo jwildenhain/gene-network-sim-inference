@@ -9,8 +9,11 @@ from __future__ import annotations
 import json
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 from grn_sim.evaluation import vcc_benchmark as vb
 from grn_sim.paths import resolve_data_file, user_data_dir
@@ -69,6 +72,11 @@ def parse_simulation(query: Dict[str, List[str]]) -> Tuple[vb.Setting, int]:
         return value
 
     pathway, mode, selection = one("pathway", "replogle_like"), one("mode", "knockdown"), one("selection", "full")
+    generator, noise = one("generator", "linear_sem"), one("noise", "medium")
+    if generator not in vb.GENERATORS and generator != "all":
+        raise ValueError(f"generator must be one of {', '.join(vb.GENERATORS)} or all")
+    if noise not in vb.NOISE_LEVELS:
+        raise ValueError(f"noise must be one of {', '.join(vb.NOISE_LEVELS)}")
     if pathway not in vb.PATHWAYS:
         raise ValueError(f"pathway must be one of {', '.join(vb.PATHWAYS)}")
     if mode not in vb.MODES:
@@ -78,21 +86,48 @@ def parse_simulation(query: Dict[str, List[str]]) -> Tuple[vb.Setting, int]:
     n = integer("n_genes", 100, 12, MAX_LIVE_GENES)
     pairs = integer("pairs", 0, 0, 2 * n)
     seed = integer("seed", int(time.time()) % 100000 + 1000, 1, 10 ** 9)
-    return vb.Setting(pathway=pathway, n_genes=n, mode=mode, pairs=pairs, selection=selection), seed
+    return vb.Setting(generator="mechanistic" if generator == "all" else generator, noise=noise, pathway=pathway, n_genes=n,
+                      mode=mode, pairs=pairs, selection=selection), seed
 
 
-def simulate(query: Dict[str, List[str]], save: bool = True) -> Dict[str, Any]:
+def simulate(query: Dict[str, List[str]], save: bool = True, current_network: Any = None) -> Dict[str, Any]:
     """
-    Runs one new simulation (network, screen, every algorithm) and, with ``save``, adds it to the user's rows so it joins the
-    statistics. Raises ``RuntimeError`` when another simulation is already running.
+    Runs new simulations (network, screen, every algorithm). ``generator=all`` runs the mechanistic and every statistical
+    generator on the *same graph and seed*, which is the one-to-one comparison of the two kinds of data. ``source=current``
+    takes the network open in panel 1 (its Hill kinetics for the mechanistic data, its graph for the statistical ones).
+
+    With ``save`` the rows of preset networks join the stored statistics (a panel-1 network is not a preset, so its runs are
+    returned but not stored). Raises ``RuntimeError`` when another simulation is already running.
     """
     setting, seed = parse_simulation(query)
+    want = str(query.get("generator", ["linear_sem"])[0]).strip() or "linear_sem"
+    source = str(query.get("source", ["preset"])[0]).strip() or "preset"
+    if source not in ("preset", "current"):
+        raise ValueError("source must be preset or current")
+    adjacency = network = None
+    if source == "current":
+        if current_network is None:
+            raise ValueError("no network is open in panel 1: simulate one there first")
+        n = int(current_network.n)
+        if not 12 <= n <= MAX_LIVE_GENES:
+            raise ValueError(f"the panel-1 network has {n} genes; screens need 12 to {MAX_LIVE_GENES}")
+        network, adjacency = current_network, np.asarray(current_network.topology.adjacency)
+        setting = replace(setting, pathway="panel1", n_genes=n, pairs=min(setting.pairs, 2 * n))
+    generators = list(vb.GENERATORS) if want == "all" else [setting.generator]
     if not _RUN_LOCK.acquire(blocking=False):
         raise RuntimeError("another screen simulation is running; wait for it to finish")
+    t = time.time()
+    rows: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
     try:
-        t = time.time()
-        rows = vb.run_simulation(setting, seed)
-        if save:
+        algorithms = vb.algorithm_library()
+        for gen in generators:
+            try:
+                rows += vb.run_simulation(replace(setting, generator=gen), seed, algorithms, adjacency=adjacency, network=network)
+            except Exception as exc:                       # e.g. an oscillating panel-1 network has no steady state
+                errors[gen] = f"{type(exc).__name__}: {exc}"
+        stored = save and source == "preset"
+        if stored and rows:
             path = _user_path()
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a") as fh:
@@ -100,8 +135,11 @@ def simulate(query: Dict[str, List[str]], save: bool = True) -> Dict[str, Any]:
                     fh.write(json.dumps(r, separators=(",", ":")) + "\n")
     finally:
         _RUN_LOCK.release()
-    return {"setting": setting.to_dict(), "seed": seed, "rows": rows, "seconds": round(time.time() - t, 1),
-            "saved": bool(save), "aggregate": vb.aggregate(rows, {})}
+    comparison: Dict[str, Dict[str, Optional[float]]] = {}
+    for r in rows:
+        comparison.setdefault(r["algorithm"], {})[r["generator"]] = r["aupr_direct"]
+    return {"setting": setting.to_dict(), "seed": seed, "generators": generators, "source": source, "rows": rows,
+            "comparison": comparison, "errors": errors, "seconds": round(time.time() - t, 1), "saved": bool(stored and rows)}
 
 
 def parse_filters(query: Dict[str, List[str]]) -> Tuple[Dict[str, str], str]:
@@ -122,7 +160,8 @@ def answer(query: Dict[str, List[str]]) -> Dict[str, Any]:
     out: Dict[str, Any] = {
         "available": bool(rows),
         "levels": vb.factor_levels(rows),
-        "labels": {"pathway": vb.PATHWAYS, "mode": vb.MODES, "selection": vb.SELECTIONS},
+        "labels": {"generator": vb.GENERATORS, "noise": {k: f"{k} noise" for k in vb.NOISE_LEVELS},
+                   "pathway": vb.PATHWAYS, "mode": vb.MODES, "selection": vb.SELECTIONS},
         "filters": filters,
         "aggregate": vb.aggregate(rows, filters),
         "n_rows": len(rows),
@@ -134,7 +173,7 @@ def answer(query: Dict[str, List[str]]) -> Dict[str, Any]:
     if compare:
         pivot: Dict[str, Any] = {}
         for level in out["levels"][compare]:
-            sub = vb.aggregate(rows, {**filters, compare: str(level)})
+            sub = vb.aggregate(rows, {**filters, compare: str(level)}, n_boot=0)
             if sub["n_simulations"]:
                 pivot[str(level)] = {"n_simulations": sub["n_simulations"],
                                      "algorithms": {a["algorithm"]: {k: a[k] for k in ("mean", "sd", "lift", "verdict", "n", "win_rate", "q_value", "q_hub")}

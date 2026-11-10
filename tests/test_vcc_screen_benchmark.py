@@ -123,7 +123,9 @@ def _rows(scores, seeds=10, **setting):
 
 def test_verdicts_separate_working_marginal_and_useless_algorithms():
     rng = np.random.default_rng(0)
-    jitter = lambda s: float(np.random.default_rng(s).normal(0, 0.005))
+    def jitter(s):
+        return float(np.random.default_rng(s).normal(0, 0.005))
+
     rows = _rows({
         vb.RANDOM: lambda s: 0.05 + jitter(s),
         vb.HUBNESS: lambda s: 0.12 + jitter(s),
@@ -206,9 +208,29 @@ def test_live_simulation_validates_its_parameters(query, fragment):
 def test_live_simulation_is_saved_and_joins_the_statistics(stored):
     before = view.answer({})["aggregate"]["n_simulations"]
     out = view.simulate({"n_genes": ["20"], "pathway": ["regulon"], "seed": ["7"]})
-    assert out["saved"] and out["seed"] == 7 and out["aggregate"]["n_simulations"] == 1
+    assert out["saved"] and out["seed"] == 7 and out["generators"] == ["linear_sem"]
+    assert {r["generator"] for r in out["rows"]} == {"linear_sem"} and "s2g" in out["comparison"]
     assert (stored / view.USER_FILE).is_file()
     assert view.answer({})["aggregate"]["n_simulations"] == before + 1
+
+
+def test_live_comparison_runs_every_generator_on_the_same_graph(stored):
+    out = view.simulate({"n_genes": ["16"], "generator": ["all"], "seed": ["5"]}, save=False)
+    assert out["generators"] == list(vb.GENERATORS) and not out["errors"] and not out["saved"]
+    assert set(out["comparison"]["s2g"]) == set(vb.GENERATORS)
+    edges = {r["generator"]: r["n_edges"] for r in out["rows"] if r["algorithm"] == "random"}
+    assert len(set(edges.values())) == 1                                  # one graph for all five generators
+
+
+def test_live_comparison_on_the_panel1_network(stored):
+    from grn_sim.core.network import GeneNetwork
+    from grn_sim.core.topology import TopologyType
+
+    net = GeneNetwork.create(n=14, k_av=1.8, net_type=TopologyType.POWER_LAW, seed=3)
+    out = view.simulate({"generator": ["all"], "source": ["current"], "seed": ["2"]}, current_network=net)
+    assert out["setting"]["n_genes"] == 14 and out["setting"]["pathway"] == "panel1" and not out["saved"]
+    with pytest.raises(ValueError, match="panel 1"):
+        view.simulate({"source": ["current"]}, current_network=None)
 
 
 def test_endpoints_over_http(app_url, stored):

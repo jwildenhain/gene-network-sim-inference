@@ -61,7 +61,7 @@ def _rows_text(page):
 
 def test_header_explains_the_statistical_experiment_and_drops_the_old_comparison_box(page):
     text = page.inner_text("#tab-vcc")
-    assert "statistics" in page.inner_text("#vcc-intro-text") and "panel 1" in page.inner_text("#vcc-intro-text").lower()
+    assert "statistical models" in page.inner_text("#vcc-intro-text") and "panel 1" in page.inner_text("#vcc-intro-text").lower()
     assert "VCC 2026 BENCHMARK" not in text and "Direct comparative benchmark" not in text
     options = page.eval_on_selector_all("#vcc-num-genes option", "els => els.map(e => e.value)")
     assert "200" in options
@@ -99,7 +99,7 @@ def test_family_filter_and_pivot_by_factor(page):
     assert set(_rows_text(page)) == {"random", "gene_features"}
     page.select_option("#vcs-family", "all")
     page.select_option("#vcs-compare", "pathway")
-    page.wait_for_selector("#tbl-vcs-pivot tbody tr")
+    page.wait_for_function("document.querySelector('#tbl-vcs-pivot thead').innerText.toLowerCase().includes('cascade')")
     head = page.inner_text("#tbl-vcs-pivot thead").title()
     assert "Signalling Cascade" in head and "Overlapping Regulons" in head
     cells = page.eval_on_selector_all("#tbl-vcs-pivot tbody td[data-verdict]", "els => els.map(e => e.dataset.verdict)")

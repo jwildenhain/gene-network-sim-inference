@@ -2900,7 +2900,8 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/vcc/screen_simulate":
             try:
-                payload = vcc_screen_view.simulate(query, save=str(query.get("save", ["1"])[0]) != "0")
+                net = CURRENT_STATE.get("network") if str(query.get("source", ["preset"])[0]) == "current" else None
+                payload = vcc_screen_view.simulate(query, save=str(query.get("save", ["1"])[0]) != "0", current_network=net)
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))

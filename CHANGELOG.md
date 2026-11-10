@@ -4,6 +4,23 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## Unreleased - Virtual Cell tab: statistical data generators
+
+- New package `grn_sim.statgen`: data from statistical models instead of the panel-1 Hill kinetics - linear SEM, nonlinear
+  additive-noise SCM, negative-binomial Gaussian copula, probabilistic (logistic) Boolean network - on the same graphs
+  (`preset_graph` reproduces a mechanistic preset's graph for the same seed) with the shared guide-dose and measurement layers.
+  Tested not to touch the kinetics.
+- Noise levels low / medium / high (0.5 / 1 / 2 x calibrated noise) for every generator, mechanistic included; calibrated against
+  the genome-scale Perturb-seq realism targets (`scripts/calibrate_statgen.py`, `scripts/verify_statgen_noise.py`,
+  `docs/results/statgen_calibration.md`).
+- Corpus: 1000 simulations (100 settings x 10 seeds: 5 generators x noise x perturbation type, pathways, 50-200 genes, double
+  knockouts, partial screens, activation) x 23 algorithms (all registered algorithms except AtlasShift and by_chance).
+  Ranking with bootstrap 95% intervals of the mean and of the rank. Output orientation of the registered algorithms on screen
+  data fixed once on separate seeds (`TRANSPOSED_ON_SCREENS`).
+- Tab 4: generator and noise filters, comparison by generator, live simulations with a generator choice, "all five on the same
+  graph" comparison and the panel-1 network as the graph (mechanistic vs statistical data on one network).
+- `run_screen(cell_options=...)` overrides the cell model; benchmark mechanistic screens use the preset's 0.92 guide efficiency.
+
 ## Unreleased - Virtual Cell tab: pathways and screen statistics
 
 - Tab 4 now states what it is: experiments simulated from statistics (Perturb-seq-like screens generated from the panel-1 simulator),

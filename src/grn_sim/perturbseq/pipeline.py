@@ -91,6 +91,7 @@ def run_screen(
     n_perturbed: Optional[int] = None,
     perturbed_selection: str = "effective",
     design: Optional[ScreenDesign] = None,
+    cell_options: Optional[Dict[str, Any]] = None,
 ) -> ScreenRun:
     """
     Runs the screen on ``network``.
@@ -102,7 +103,8 @@ def run_screen(
     (``ScreenRun.realism()["design"]``) and are scored per block (``grn_sim.evaluation.partial_screen``).
 
     ``cell_model``: ``"lna"`` / ``"sde"`` (stage-2 cells) or ``"legacy"`` (independent Gamma-Poisson cells around
-    each condition mean, no guides). ``measurement`` applies the stage-3 droplet model to stage-2 cells (doublets,
+    each condition mean, no guides). ``cell_options`` overrides fields of the stage-2 :class:`CellConfig` (for example
+    the extrinsic noise levels). ``measurement`` applies the stage-3 droplet model to stage-2 cells (doublets,
     ambient RNA, batches, guide calling); without it counts are plain Poisson samples of each cell's composition.
     """
     if cell_model not in CELL_MODELS:
@@ -135,6 +137,7 @@ def run_screen(
     cfg_kwargs: Dict[str, Any] = {"noise_model": cell_model}
     if guide_efficiency_mean is not None:
         cfg_kwargs["guide_efficiency_mean"] = float(guide_efficiency_mean)
+    cfg_kwargs.update(cell_options or {})
     t = time.time()
     population = simulate_cells(network, screen, cells_per_condition=cells_per_condition,
                                 n_control_cells=n_control_cells, config=CellConfig(**cfg_kwargs), seed=seed_i + 1)

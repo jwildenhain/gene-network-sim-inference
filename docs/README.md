@@ -19,10 +19,13 @@ Reproducing the numbers: `scripts/benchmark_screen_methods.py`, `scripts/benchma
 `scripts/benchmark_all_datasets.py`, `scripts/scaling_benchmark.py`, `scripts/sweep_screen_conditions.py`,
 `scripts/impute_partial_screen.py`, `scripts/audit_inspre.py` (each prints a table; `--out` writes JSON to `docs/results/`).
 
-## Virtual Cell tab: screen benchmark
+## Virtual Cell tab: statistical data generators and screen benchmark
 
-`results/vcc_screen_benchmark.md` aggregates 290 simulated Perturb-seq screens (29 settings x 10 seeds: pathway architecture, 50-200
-genes, CRISPRi / knockout / activation, double knockouts, selection of perturbed genes). Every algorithm is compared with a random
-ranking and a hubness-only control on the same cells (paired Wilcoxon, BH-corrected). Pooled over settings the pooled means are
-unbalanced (the modular baseline has 190 of 290 simulations); use the tab's filters for like-for-like comparisons. Reproduce with
-`scripts/run_vcc_benchmark.py` (`--shard`, `--merge`, `--report`). New simulations of up to 200 genes can be added from the tab.
+* `results/statgen_calibration.md`: how the statistical generators (`grn_sim.statgen`: linear SEM, nonlinear additive-noise SCM,
+  negative-binomial copula, probabilistic Boolean network) and their low / medium / high noise levels were calibrated against
+  genome-scale Perturb-seq statistics and checked on unseen seeds (`statgen_noise_verification.json`).
+* `results/vcc_screen_benchmark.md`: 1000 simulated screens (100 settings x 10 seeds) from the five generators - the mechanistic
+  panel-1 engine and the four statistical models, on identical graphs - with 23 algorithms, compared with a random ranking and a
+  hubness-only control (paired Wilcoxon, BH), ranked with bootstrap intervals. Pooled tables mix factors; use the tab's filters
+  or matched comparisons for like-for-like statements.
+* Reproduce: `scripts/run_vcc_benchmark.py` (`--list`, `--shard i/N`, `--merge`, `--report`).

@@ -48,14 +48,32 @@ PATHWAYS = {
     "lineage": "Lineage master regulators",
     "regulon": "Overlapping regulons",
 }
-MODES = {"knockdown": "CRISPRi knockdown", "knockout": "CRISPR knockout", "input": "Activation (thesis input)"}
+MODES = {"knockdown": "CRISPRi knockdown", "knockout": "CRISPR knockout", "input": "Activation (thesis input; CRISPRa for the statistical generators)"}
 SELECTIONS = {"full": "All genes perturbed", "effective": "Effective genes", "random": "Random genes",
               "expressed": "Most expressed genes", "hubs": "Hub regulators (oracle)"}
-FACTORS = ("pathway", "n_genes", "mode", "pairs", "selection")
+GENERATORS = {
+    "mechanistic": "Mechanistic (Hill kinetics, as in panel 1)",
+    "linear_sem": "Linear SEM",
+    "nonlinear_scm": "Nonlinear additive-noise SCM",
+    "nb_copula": "Negative-binomial copula",
+    "boolean": "Probabilistic Boolean network",
+}
+NOISE_LEVELS = {"low": 0.5, "medium": 1.0, "high": 2.0}      # multiples of each generator's calibrated noise
+FACTORS = ("generator", "noise", "pathway", "n_genes", "mode", "pairs", "selection")
+
+# Registered algorithms scored from the cells' effect estimates. Their output orientation on screen data was fixed once on
+# noise-free effects of separate networks (seeds 1001-1003, mechanistic and linear-SEM data, 60 genes): these are scored
+# transposed (A[target, regulator]); every other one as returned. AtlasShift needs source atlases (it is compared in the
+# cross-atlas section) and ``by_chance`` duplicates the random ranking, so both are left out here.
+REGISTRY_EXTRA = ("fast", "vote", "score_vote", "genie3", "notears", "cellbox", "netdeconv", "dmdgrn", "causalgrn", "arachne",
+                  "deeprig", "sfinn", "cpa_lite")
+TRANSPOSED_ON_SCREENS = frozenset({"cellbox", "netdeconv", "dmdgrn", "causalgrn", "arachne", "deeprig", "sfinn"})
 
 
 @dataclass(frozen=True)
 class Setting:
+    generator: str = "mechanistic"  # how the data are produced (see GENERATORS)
+    noise: str = "medium"           # low | medium | high (see NOISE_LEVELS)
     pathway: str = "replogle_like"
     n_genes: int = 100
     mode: str = "knockdown"
@@ -65,7 +83,12 @@ class Setting:
     cells: int = 40                 # cells per perturbation
 
     def key(self) -> str:
-        return "|".join(str(v) for v in (self.pathway, self.n_genes, self.mode, self.pairs, self.selection, self.fraction, self.cells))
+        return "|".join(str(v) for v in (self.generator, self.noise, self.pathway, self.n_genes, self.mode, self.pairs,
+                                         self.selection, self.fraction, self.cells))
+
+    @classmethod
+    def from_row(cls, row: Dict[str, Any]) -> "Setting":
+        return cls(**{k: row.get(k, f.default) for k, f in cls.__dataclass_fields__.items()})
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -154,24 +177,67 @@ def algorithm_library(max_genes: int = 250) -> List[Algorithm]:
         Algorithm("pearson", "Pearson correlation", _legacy(lambda: PearsonCorrelation(K), False), True, "association"),
         Algorithm("grnboost", "GRNBoost (tree importances)", _legacy(lambda: GRNBoostLite(K), True), True, "association"),
         Algorithm("gene_features", "Gene hubness only (no pair signal)", _legacy(lambda: GeneFeatureBaseline(K), False), family="control"),
-    ]
+    ] + [_registered(key) for key in REGISTRY_EXTRA]
+
+
+FAMILIES = {"fast": "mechanistic", "vote": "mechanistic", "score_vote": "mechanistic", "netdeconv": "association",
+            "arachne": "association", "genie3": "association", "dmdgrn": "dynamical", "notears": "causal",
+            "causalgrn": "causal", "cellbox": "deep learning", "deeprig": "deep learning", "sfinn": "deep learning",
+            "cpa_lite": "deep learning"}
+
+
+def _registered(key: str) -> Algorithm:
+    """A registry algorithm on single perturbations: built for partial screens, fitted on (X, sign U), oriented per the table."""
+    from grn_sim.inference import registry
+
+    spec = registry.get(key)
+
+    def run(ace: ACEEstimate, X: np.ndarray, U: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+        algo = registry.build_partial(key, registry.BuildContext(k_est=K, use_reg=False, seed=int(rng.integers(0, 10 ** 6))))
+        A = np.abs(np.nan_to_num(np.real(algo.fit(X, (-1.0 if spec.negate_u_in_additive else 1.0) * U).A_est)))
+        return A.T if key in TRANSPOSED_ON_SCREENS else A
+
+    return Algorithm(key, spec.long_name or spec.label, run, False, FAMILIES.get(key, "other"))
 
 
 # -- one simulation ------------------------------------------------------------------------------------------------------
 
-def run_simulation(setting: Setting, seed: int, algorithms: Optional[Sequence[Algorithm]] = None) -> List[Dict[str, Any]]:
-    """Builds the network, simulates the screen and scores every algorithm; one row per algorithm."""
+def simulate_screen(setting: Setting, seed: int, adjacency: Optional[np.ndarray] = None, network: Any = None) -> Any:
+    """
+    The screen of one simulation. ``mechanistic`` builds the preset network with its Hill kinetics (the panel-1 engine; pass
+    ``network`` to use a given one); the statistical generators use the same preset's graph for the same seed (or
+    ``adjacency``) with their calibrated parameters scaled by the noise level.
+    """
+    from grn_sim.perturbseq.design import ScreenDesign
     from grn_sim.perturbseq.pipeline import build_network, run_screen
 
+    if setting.generator not in GENERATORS:
+        raise ValueError(f"generator must be one of {', '.join(GENERATORS)}")
+    if setting.noise not in NOISE_LEVELS:
+        raise ValueError(f"noise must be one of {', '.join(NOISE_LEVELS)}")
+    factor = NOISE_LEVELS[setting.noise]
+    n_pert = max(2, int(round(setting.fraction * setting.n_genes)))
+    design = ScreenDesign.full() if setting.selection == "full" else ScreenDesign.partial(n_pert, setting.selection)
+    if setting.generator == "mechanistic":
+        net = network if network is not None else build_network(setting.pathway, setting.n_genes, seed=seed)
+        return run_screen(net, mode=setting.mode, cells_per_condition=setting.cells, seed=seed, design=design,
+                          pairs=setting.pairs or None, guide_efficiency_mean=0.92,
+                          cell_options={"extrinsic_gene_sd": 0.15 * factor, "extrinsic_shared_sd": 0.1 * factor})
+    from grn_sim.statgen import preset_graph, run_stat_screen
+    from grn_sim.statgen.calibration import params_for
+
+    A = adjacency if adjacency is not None else preset_graph(setting.pathway, setting.n_genes, seed=seed)
+    return run_stat_screen(A, setting.generator, params_for(setting.generator, factor), mode=setting.mode,
+                           pairs=setting.pairs or None, cells_per_condition=setting.cells, design=design, seed=seed)
+
+
+def run_simulation(setting: Setting, seed: int, algorithms: Optional[Sequence[Algorithm]] = None,
+                   adjacency: Optional[np.ndarray] = None, network: Any = None) -> List[Dict[str, Any]]:
+    """Builds the network, simulates the screen and scores every algorithm; one row per algorithm (see ``simulate_screen``
+    for ``adjacency`` / ``network``)."""
     algorithms = list(algorithms) if algorithms is not None else algorithm_library()
-    net = build_network(setting.pathway, setting.n_genes, seed=seed)
-    kwargs: Dict[str, Any] = {"mode": setting.mode, "cells_per_condition": setting.cells, "seed": seed}
-    if setting.selection != "full":
-        kwargs.update(n_perturbed=max(2, int(round(setting.fraction * setting.n_genes))), perturbed_selection=setting.selection)
-    if setting.pairs:
-        kwargs["pairs"] = setting.pairs
     t0 = time.time()
-    run = run_screen(net, **kwargs)
+    run = simulate_screen(setting, seed, adjacency=adjacency, network=network)
     t_sim = time.time() - t0
     ace = sb.screen_inputs(run, "cells", seed)
     Xp, Up = pair_columns(run.adata, ace) if setting.pairs else (np.zeros((setting.n_genes, 0)),) * 2
@@ -232,7 +298,7 @@ def matches(row: Dict[str, Any], filters: Dict[str, Any]) -> bool:
     return True
 
 
-def aggregate(rows: Iterable[Dict[str, Any]], filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def aggregate(rows: Iterable[Dict[str, Any]], filters: Optional[Dict[str, Any]] = None, n_boot: int = 400) -> Dict[str, Any]:
     """
     Per-algorithm statistics over all simulations that match ``filters`` (setting fields, ``"all"`` = no filter).
 
@@ -241,12 +307,13 @@ def aggregate(rows: Iterable[Dict[str, Any]], filters: Optional[Dict[str, Any]] 
     the direct AUPR, ``base`` (mean base rate), ``lift`` (mean AUPR / mean base rate), ``random_mean``, ``win_rate``
     (simulations where it beat the random ranking), ``p_value`` / ``q_value`` (paired Wilcoxon, BH over the algorithms),
     ``q_hub`` (the same test against the hubness-only control), ``verdict`` (``better`` / ``marginal`` / ``not_better`` /
-    ``worse``; ``reference`` for the random ranking, ``control`` for the hubness-only baseline) and the per-simulation ``values`` for plotting.
+    ``worse``; ``reference`` for the random ranking, ``control`` for the hubness-only baseline), ``rank`` with its 95% bootstrap
+    interval (``rank_low`` / ``rank_high``) and the 95% bootstrap interval of the mean (``ci_low`` / ``ci_high``) and the per-simulation ``values`` for plotting.
     """
     rows = [r for r in rows if matches(r, filters or {}) and r.get("status", "ok") == "ok" and r.get("aupr_direct") is not None]
     sims: Dict[Tuple[str, int], Dict[str, Dict[str, Any]]] = {}
     for r in rows:
-        key = (Setting(**{k: r[k] for k in Setting.__dataclass_fields__}).key(), int(r["seed"]))
+        key = (Setting.from_row(r).key(), int(r["seed"]))
         sims.setdefault(key, {})[r["algorithm"]] = r
     reference = {k: v[RANDOM]["aupr_direct"] for k, v in sims.items() if RANDOM in v}
     names = sorted({a for v in sims.values() for a in v})
@@ -297,8 +364,36 @@ def aggregate(rows: Iterable[Dict[str, Any]], filters: Optional[Dict[str, Any]] 
         elif o["algorithm"] == HUBNESS:
             o["q_value"], o["verdict"] = o["p_value"], "control"
     out.sort(key=lambda o: (-o["mean"], o["algorithm"]))
+    _bootstrap_ranks(out, sims, n_boot)
     return {"n_simulations": len(sims), "n_settings": len({k[0] for k in sims}), "algorithms": out,
             "min_lift": MIN_LIFT, "alpha": ALPHA}
+
+
+def _bootstrap_ranks(out: List[Dict[str, Any]], sims: Dict[Tuple[str, int], Dict[str, Dict[str, Any]]], n_boot: int) -> None:
+    """
+    Adds ``rank`` (by mean AUPR), a 95% bootstrap interval of the mean (``ci_low`` / ``ci_high``) and of the rank
+    (``rank_low`` / ``rank_high``). Simulations are resampled as a whole, so every algorithm sees the same resampled set and
+    the ranks stay paired; simulations an algorithm is missing from count once less for it (its mean is over the rest).
+    """
+    names = [o["algorithm"] for o in out]
+    keys = sorted(sims)
+    if not names or not keys:
+        return
+    M = np.full((len(keys), len(names)), np.nan)
+    for i, k in enumerate(keys):
+        for j, a in enumerate(names):
+            if a in sims[k]:
+                M[i, j] = sims[k][a]["aupr_direct"]
+    rng = np.random.default_rng(20261110)
+    idx = rng.integers(0, len(keys), size=(n_boot, len(keys)))
+    means = np.stack([np.nanmean(M[ix], axis=0) for ix in idx]) if n_boot else np.zeros((0, len(names)))
+    means = np.nan_to_num(means, nan=-1.0)
+    ranks = (-means).argsort(axis=1).argsort(axis=1) + 1
+    for j, o in enumerate(out):
+        o["rank"] = j + 1
+        if n_boot:
+            o["ci_low"], o["ci_high"] = (float(v) for v in np.quantile(means[:, j], [0.025, 0.975]))
+            o["rank_low"], o["rank_high"] = (int(v) for v in np.quantile(ranks[:, j], [0.025, 0.975], method="nearest"))
 
 
 def factor_levels(rows: Iterable[Dict[str, Any]]) -> Dict[str, List[Any]]:

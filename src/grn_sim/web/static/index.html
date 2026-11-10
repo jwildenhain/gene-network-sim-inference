@@ -2803,11 +2803,13 @@
               Virtual Cell: experiments simulated from statistics
             </h2>
             <p style="font-size:12px;color:var(--text-muted);max-width:960px;line-height:1.5;" id="vcc-intro-text">
-              Panel 1 simulates a gene network mechanistically (Hill kinetics solved to steady state). This panel uses
-              <strong>statistics</strong> to turn that simulator into <em>experimental data</em>: a pooled single-cell CRISPR screen
-              with per-cell knockdown doses, cell-to-cell noise, doublets, ambient RNA and guide calling, as a Perturb-seq
-              experiment would deliver it. The inference algorithms only see those noisy cells; the simulator of panel 1
-              keeps the true network, so every result below is scored against the truth.
+              Panel 1 produces data <strong>mechanistically</strong>: Hill kinetics solved to a steady state. This panel generates
+              experimental data from <strong>statistical models</strong> of the same kind of graph instead &mdash; a linear structural
+              equation model, a nonlinear additive-noise causal model, a negative-binomial count model with a Gaussian copula and a
+              probabilistic Boolean network &mdash; and turns them into a pooled single-cell CRISPR screen (guide doses, escapers,
+              doublets, ambient RNA, guide calling). Mechanistic data from the panel-1 engine are kept as one more generator, so
+              every algorithm can be compared on both kinds of data, on identical graphs. Noise levels are calibrated so that the
+              screens look like genome-scale Perturb-seq; every result is scored against the true network.
             </p>
           </div>
 
@@ -2870,6 +2872,10 @@
           <span class="badge badge-blue" id="vcs-badge">--</span>
         </div>
         <div style="display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 10px;font-size:11px;">
+          <label>Data generator
+            <select id="vcs-generator" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
+          <label>Noise
+            <select id="vcs-noise" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
           <label>Pathway
             <select id="vcs-pathway" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
           <label>Genes
@@ -2883,16 +2889,30 @@
           <label>Algorithm family
             <select id="vcs-family" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="renderVccScreen()">
               <option value="all">All</option><option value="mechanistic">Mechanistic (A X = &minus;U)</option>
-              <option value="interventional">Interventional</option><option value="interventional baseline">Interventional baseline</option>
+              <option value="interventional">Interventional</option><option value="causal">Causal discovery</option>
+              <option value="dynamical">Dynamical</option><option value="deep learning">Deep learning</option><option value="interventional baseline">Interventional baseline</option>
               <option value="association">Association</option><option value="control">Controls</option></select></label>
           <label>Compare by
             <select id="vcs-compare" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()">
+              <option value="generator">Data generator</option><option value="noise">Noise level</option>
               <option value="pathway">Pathway</option><option value="n_genes">Genes</option><option value="mode">Perturbation</option>
               <option value="pairs">Double knockouts</option><option value="selection">Gene selection</option></select></label>
           <button class="btn btn-secondary btn-sm" onclick="resetVccScreenFilters()" style="width:auto;">Reset filters</button>
         </div>
         <div style="display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;margin:0 0 10px;padding:8px 10px;border:1px dashed var(--border);border-radius:6px;font-size:11px;" id="vcs-new">
           <strong style="align-self:center;">Simulate a new screen</strong>
+          <label>Data generator
+            <select id="vcs-new-generator" style="width:auto;display:block;font-size:12px;padding:4px 8px;">
+              <option value="all">All five on the same graph (compare)</option>
+              <option value="mechanistic">Mechanistic (panel-1 Hill kinetics)</option><option value="linear_sem" selected>Linear SEM</option>
+              <option value="nonlinear_scm">Nonlinear additive-noise SCM</option><option value="nb_copula">Negative-binomial copula</option>
+              <option value="boolean">Probabilistic Boolean network</option></select></label>
+          <label>Noise
+            <select id="vcs-new-noise" style="width:auto;display:block;font-size:12px;padding:4px 8px;">
+              <option value="low">Low</option><option value="medium" selected>Medium (calibrated)</option><option value="high">High</option></select></label>
+          <label>Graph
+            <select id="vcs-new-source" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="document.getElementById('vcs-new-pathway').disabled = this.value === 'current'; document.getElementById('vcs-new-genes').disabled = this.value === 'current';">
+              <option value="preset">Preset pathway</option><option value="current">Network open in panel 1</option></select></label>
           <label>Pathway
             <select id="vcs-new-pathway" style="width:auto;display:block;font-size:12px;padding:4px 8px;">
               <option value="replogle_like">Modular (Perturb-seq calibrated)</option><option value="thesis">Scale-free (thesis kinetics)</option>
@@ -2921,7 +2941,8 @@
           <caption style="text-align:left;font-size:11px;color:var(--text-muted);padding:2px 0 6px;caption-side:top;">
             Direct-edge AUPR over the perturbed genes, one dot per simulation; the dashed line is the random ranking of the same simulations.</caption>
           <thead><tr>
-            <th>Algorithm</th><th>Sims</th><th>AUPR mean &plusmn; SD</th><th>Distribution (0 &ndash; max)</th>
+            <th title="rank by mean AUPR; the range is the 95% bootstrap interval of the rank (simulations resampled)">Rank</th>
+            <th>Algorithm</th><th>Sims</th><th>AUPR mean &plusmn; SD</th><th title="95% bootstrap interval of the mean AUPR">95% CI</th><th>Distribution (0 &ndash; max)</th>
             <th title="mean AUPR divided by the AUPR a random ranking has in expectation (the fraction of true edges)">Lift vs chance</th>
             <th title="share of simulations in which the algorithm beat the random ranking of the same simulation">Wins vs random</th>
             <th title="paired one-sided Wilcoxon test against the random ranking, Benjamini-Hochberg corrected">q vs random</th>
@@ -8370,6 +8391,8 @@
       const nativeFetch = window.fetch.bind(window);
       const LABELS = [
         [/\/api\/benchmark\/vcc_atlasshift/, 'Computing the Virtual Cell Challenge benchmark (the first run takes about 10 s)'],
+        [/\/api\/vcc\/screen_simulate/, 'Simulating screens and fitting every algorithm'],
+        [/\/api\/vcc\/screen_benchmark/, 'Loading the stored screen simulations'],
         [/\/api\/benchmark\/sos_full|\/api\/benchmark\/dataset|\/api\/benchmark\/sos/, 'Loading the benchmark data set and scoring the algorithms'],
         [/\/api\/benchmark\/overall_stats|\/api\/benchmark\/thesis_figures/, 'Loading the overall statistics'],
         [/\/api\/history|\/api\/archive/, 'Loading the simulation archive'],
@@ -8388,9 +8411,11 @@
           el.classList.remove('on'); el.setAttribute('aria-busy', 'false');
           clearInterval(tickTimer); tickTimer = null; return;
         }
-        const oldest = [...pending.values()].sort((a, b) => a.t0 - b.t0)[0];
-        const secs = Math.floor((Date.now() - oldest.t0) / 1000);
-        msg.textContent = `${oldest.label}… ${secs} s` + (pending.size > 1 ? ` (+${pending.size - 1} more)` : '');
+        const items = [...pending.values()].sort((a, b) => a.t0 - b.t0);
+        const secs = Math.floor((Date.now() - items[0].t0) / 1000);
+        const labels = [...new Set(items.map(x => x.label))];          // every distinct thing that is loading, oldest first
+        const extra = items.length - labels.length;
+        msg.textContent = `${labels.join(' · ')}… ${secs} s` + (extra > 0 ? ` (+${extra} more)` : '');
         el.classList.add('on'); el.setAttribute('aria-busy', 'true');
       }
       function started() {
@@ -9963,7 +9988,7 @@
 
     // --- Virtual Cell: algorithm performance across simulated screens -------------------------------
     const VCS = { data: null, seq: 0, controller: null, initialised: false };
-    const VCS_FACTORS = ['pathway', 'n_genes', 'mode', 'pairs', 'selection'];
+    const VCS_FACTORS = ['generator', 'noise', 'pathway', 'n_genes', 'mode', 'pairs', 'selection'];
     const VCS_VERDICT = {
       better: ['Works: beats random and hubness', '#10b981'],
       marginal: ['Marginal: hubness level only', '#d97706'],
@@ -9994,7 +10019,7 @@
         const el = document.getElementById('vcs-' + f);
         if (!el) return;
         const keep = d.filters[f] || 'all';
-        const title = { pathway: 'All pathways', n_genes: 'All sizes', mode: 'All perturbations', pairs: 'Any', selection: 'All selections' }[f];
+        const title = { generator: 'All generators', noise: 'All levels', pathway: 'All pathways', n_genes: 'All sizes', mode: 'All perturbations', pairs: 'Any', selection: 'All selections' }[f];
         el.innerHTML = `<option value="all">${title}</option>` + (d.levels[f] || []).map(v =>
           `<option value="${v}">${vcsLevelLabel(f, v, d.labels)}</option>`).join('');
         el.value = keep;
@@ -10014,7 +10039,7 @@
       const seq = ++VCS.seq;
       const err = document.getElementById('vcs-error');
       try {
-        const res = await fetch('/api/vcc/screen_benchmark?' + (VCS.initialised ? vcsFilterQuery() : 'compare_by=pathway'), { signal: controller.signal });
+        const res = await fetch('/api/vcc/screen_benchmark?' + (VCS.initialised ? vcsFilterQuery() : 'compare_by=generator'), { signal: controller.signal });
         const data = await res.json();
         if (seq !== VCS.seq) return;
         if (!res.ok || data.status !== 'success') throw new Error(data.error || `HTTP ${res.status}`);
@@ -10045,30 +10070,43 @@
       const v = id => document.getElementById(id);
       const btn = v('btn-vcs-new'), status = v('vcs-new-status'), out = v('vcs-new-result');
       const params = new URLSearchParams({
+        generator: v('vcs-new-generator').value, noise: v('vcs-new-noise').value, source: v('vcs-new-source').value,
         pathway: v('vcs-new-pathway').value, n_genes: String(parseInt(v('vcs-new-genes').value) || 100),
         mode: v('vcs-new-mode').value, pairs: String(Math.max(0, parseInt(v('vcs-new-pairs').value) || 0)),
         selection: v('vcs-new-selection').value,
       });
       btn.disabled = true;
-      status.textContent = 'Simulating the screen and fitting the algorithms (about 10 s at 100 genes, up to a few minutes at 200)…';
+      status.textContent = v('vcs-new-generator').value === 'all'
+        ? 'Simulating the same graph with all five generators and fitting every algorithm on each (about 1-3 minutes)…'
+        : 'Simulating the screen and fitting the algorithms (about 10-30 s at 100 genes, up to a minute or two at 200)…';
       out.innerHTML = '';
       try {
         const res = await fetch('/api/vcc/screen_simulate?' + params.toString());
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         const meta = (VCS.data && VCS.data.algorithms) || {};
-        const base = data.rows.length ? data.rows[0].base_direct : 0;
-        const rnd = (data.rows.find(r => r.algorithm === 'random') || {}).aupr_direct || 0;
-        const rows = data.rows.filter(r => r.status === 'ok').sort((a, b) => b.aupr_direct - a.aupr_direct).map(r => {
-          const beat = r.algorithm !== 'random' && r.aupr_direct > rnd;
-          return `<tr><td>${(meta[r.algorithm] || {}).label || r.algorithm}</td><td style="font-family:monospace;">${r.aupr_direct.toFixed(3)}</td>
-            <td style="font-family:monospace;">${r.base_direct ? (r.aupr_direct / r.base_direct).toFixed(1) + '×' : '–'}</td>
-            <td>${r.algorithm === 'random' ? 'chance' : (beat ? 'above random' : 'not above random')}</td></tr>`;
-        }).join('');
-        out.innerHTML = `<div style="font-size:11px;margin-bottom:4px;"><b>New simulation</b>: ${data.setting.n_genes} genes, ${data.setting.pathway}, ${data.setting.mode}, ${data.setting.pairs} double KOs, selection ${data.setting.selection}, seed ${data.seed}
-          (${data.rows[0].n_perturbed} genes perturbed, ${data.rows[0].n_edges} true edges, base rate ${base.toFixed(3)}); one simulation shows one draw, the statistics below pool many.</div>
-          <table class="data-table" id="tbl-vcs-new"><caption class="sr-only">Algorithm scores of the new simulation</caption><thead><tr><th>Algorithm</th><th>AUPR</th><th>Lift</th><th>vs random</th></tr></thead><tbody>${rows}</tbody></table>`;
-        status.textContent = `Done in ${data.seconds} s and added to the statistics below.`;
+        const gens = data.generators.filter(g => !(data.errors || {})[g]);
+        const glabel = (VCS.data && VCS.data.labels && VCS.data.labels.generator) || {};
+        const random = {};
+        data.rows.filter(r => r.algorithm === 'random').forEach(r => { random[r.generator] = r.aupr_direct; });
+        const first = data.rows[0] || {};
+        const names = Object.keys(data.comparison).sort((a, b) => {
+          const m = x => { const v = Object.values(data.comparison[x]).filter(y => y !== null); return v.length ? v.reduce((p, q) => p + q, 0) / v.length : -1; };
+          return m(b) - m(a);
+        });
+        const cell = (name, g) => {
+          const v = data.comparison[name][g];
+          if (v === null || v === undefined) return '<td>&ndash;</td>';
+          const above = name !== 'random' && v > (random[g] || 0) * 1.5;
+          return `<td style="font-family:monospace;${above ? '' : 'color:var(--text-muted);'}" title="${above ? 'at least 1.5x the random ranking' : 'not clearly above the random ranking'}">${v.toFixed(3)}</td>`;
+        };
+        const errs = Object.entries(data.errors || {}).map(([g, e]) => `<div style="color:var(--accent-red);font-size:11px;">${glabel[g] || g}: ${e}</div>`).join('');
+        out.innerHTML = `<div style="font-size:11px;margin-bottom:4px;"><b>New simulation</b>: ${data.source === 'current' ? 'the network open in panel 1' : data.setting.pathway} (${data.setting.n_genes} genes), ${data.setting.mode}, ${data.setting.noise} noise, ${data.setting.pairs} double KOs, selection ${data.setting.selection}, seed ${data.seed}
+          &mdash; ${first.n_perturbed || '?'} genes perturbed, ${first.n_edges || '?'} true edges. AUPR per algorithm${gens.length > 1 ? ' and data generator (same graph, same seed)' : ''}; grey = not clearly above the random ranking. One simulation shows one draw; the statistics below pool many.</div>${errs}
+          <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcs-new"><caption class="sr-only">Algorithm scores of the new simulation</caption>
+          <thead><tr><th>Algorithm</th>${gens.map(g => `<th>${glabel[g] || g}</th>`).join('')}</tr></thead>
+          <tbody>${names.map(nm => `<tr><td>${(meta[nm] || {}).label || nm}</td>${gens.map(g => cell(nm, g)).join('')}</tr>`).join('')}</tbody></table></div>`;
+        status.textContent = `Done in ${data.seconds} s` + (data.saved ? ' and added to the statistics below.' : ' (panel-1 network: shown here, not added to the stored statistics).');
         VCS.initialised = false;
         await loadVccScreenBenchmark();
       } catch (e) {
@@ -10109,9 +10147,11 @@
           const label = (m.label || a.algorithm) + (a.uses_pairs ? ' †' : '');
           const isRef = a.verdict === 'reference';
           return `<tr data-algorithm="${a.algorithm}" data-verdict="${a.verdict}">
+            <td style="font-family:monospace;" data-sort="${a.rank}">${a.rank}${a.rank_low !== undefined && (a.rank_low !== a.rank || a.rank_high !== a.rank) ? `<div style="font-size:10px;color:var(--text-muted);">${a.rank_low}&ndash;${a.rank_high}</div>` : ''}</td>
             <td><strong>${label}</strong><div style="font-size:10px;color:var(--text-muted);">${m.family || ''}</div></td>
             <td>${a.n}</td>
             <td style="font-family:monospace;">${fmt(a.mean)} &plusmn; ${fmt(a.sd)}</td>
+            <td style="font-family:monospace;font-size:11px;">${a.ci_low !== undefined ? fmt(a.ci_low) + '&ndash;' + fmt(a.ci_high) : '&ndash;'}</td>
             <td>${vcsStrip(a.values, max, randomRow ? randomRow.mean : a.base, vcol)}</td>
             <td style="font-family:monospace;">${isRef ? '1.0&times;' : a.lift.toFixed(1) + '&times;'}</td>
             <td>${isRef ? '&ndash;' : Math.round(a.win_rate * 100) + '%'}</td>
@@ -10140,7 +10180,7 @@
       const thead = document.querySelector('#tbl-vcs-pivot thead');
       const pbody = document.querySelector('#tbl-vcs-pivot tbody');
       if (pv && thead && pbody) {
-        const factorName = { pathway: 'pathway', n_genes: 'network size', mode: 'perturbation type', pairs: 'double knockouts', selection: 'gene selection' }[pv.factor];
+        const factorName = { generator: 'data generator', noise: 'noise level', pathway: 'pathway', n_genes: 'network size', mode: 'perturbation type', pairs: 'double knockouts', selection: 'gene selection' }[pv.factor];
         const levels = Object.keys(pv.levels);
         if (title) title.textContent = `Mean AUPR by ${factorName} (other filters applied; colour = verdict against random, lift in brackets)`;
         thead.innerHTML = `<tr><th>Algorithm</th>${levels.map(l => `<th>${vcsLevelLabel(pv.factor, l, d.labels)}<div style="font-size:10px;font-weight:400;">${pv.levels[l].n_simulations} sims</div></th>`).join('')}</tr>`;
@@ -10159,7 +10199,8 @@
         foot.innerHTML = `AUPR = area under the precision-recall curve for the true direct edges (a random ranking scores about the share of true edges, shown as the dashed line). ` +
           `An algorithm counts as <b>better than random</b> when its mean lift is at least ${rule.min_lift}&times; and the ${rule.test || ''} gives q &lt; ${rule.alpha}. Beating chance is a low bar (a gene's hubness alone carries signal), so the same test against the hubness-only control separates <b>works</b> from <b>marginal</b>. ` +
           `&dagger; uses the double-knockout experiments as extra conditions; the other algorithms use the single knockouts only. ` +
-          `Gene selection: <i>effective</i> = genes whose knockdown moves others; <i>hubs</i> = oracle choice of the best-connected regulators.`;
+          `Gene selection: <i>effective</i> = genes whose knockdown moves others; <i>hubs</i> = oracle choice of the best-connected regulators. ` +
+          `Rank ranges and 95% CIs come from resampling whole simulations (400 bootstrap draws); algorithms whose rank ranges overlap cannot be told apart on these data.`;
       }
     }
 
