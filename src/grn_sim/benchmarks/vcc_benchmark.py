@@ -211,16 +211,109 @@ def _simulate_contexts(
     return sources, sim.run(target_net, seed=seed + 999)
 
 
-def validate_vcc_params(num_genes: int, k_av: float, rewire_fraction: float, perturbation_mode: str = "input") -> None:
+# -- statistical data generators for the cross-atlas comparison -----------------------------------------------------------
+# The contexts above are produced mechanistically (panel-1 Hill kinetics). With ``generator`` set to one of grn_sim.statgen's
+# models, the same comparison runs on statistical data: every context is the statistical model on the same graph (sources:
+# the same weights jittered by 10% per context, like the mechanistic sources differ in basal rates; target and rewired
+# contexts: edges moved exactly as for the mechanistic networks), measured with the same multiplicative noise. No ODE is
+# solved, so networks of up to MAX_GENES_STATISTICAL genes are practical.
+
+MAX_GENES_STATISTICAL = 200
+MAX_GENES_HILL_REFIT = 32          # the structure -> Hill refit costs ~n^2 least-squares fits: skipped above this size
+MAX_EPISTASIS_GENES = 32           # above this many genes, the double-perturbation screen covers the most-connected genes
+STAT_GENERATORS = ("linear_sem", "nonlinear_scm", "nb_copula", "boolean")
+
+
+class _StatContexts:
+    """Builds statistical-model contexts as ``SimulationExperiment`` objects (``network`` holds the model)."""
+
+    def __init__(self, generator: str, num_genes: int, k_av: float, seed: int, mode: str, measurement_noise: float = 0.01):
+        from grn_sim.statgen.calibration import params_for
+
+        self.generator, self.n, self.k_av, self.seed, self.mode = generator, num_genes, k_av, seed, mode
+        self.params = params_for(generator)
+        self.noise = measurement_noise
+        self.dose = KNOCKDOWN_EFFICIENCY if mode == "knockdown" else 0.5     # input: CRISPRa doubling at dose 0.5
+        self.model_mode = "knockdown" if mode == "knockdown" else "input"
+
+    def _graph(self, rewire: float, shift: int, rng_seed: int) -> np.ndarray:
+        net = GeneNetwork.create(n=self.n, k_av=self.k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=self.seed)
+        if rewire > 0:
+            _rewire_edges(net, rewire, np.random.default_rng(rng_seed), shift=shift)
+        return np.asarray(net.topology.adjacency).copy()
+
+    def _model(self, adjacency: np.ndarray, jitter: Optional[int] = None) -> Any:
+        from grn_sim.statgen.models import jitter_weights, make_model
+
+        m = make_model(self.generator, adjacency, self.params, self.model_mode, np.random.default_rng(self.seed + 101))
+        if jitter is not None:
+            jitter_weights(m, 0.1, np.random.default_rng(self.seed + 7 * (jitter + 1)))
+        return m
+
+    def experiment(self, model: Any, noise_seed: int) -> SimulationExperiment:
+        n = self.n
+        rng = np.random.default_rng(noise_seed)
+        ref = model.baseline
+        X = np.zeros((n, n))
+        U = np.zeros((n, n))
+        states = np.zeros((n, n))
+        for j in range(n):
+            z = model.log_mean((j,), np.array([[self.dose]]))[0]
+            x = ref * np.exp(z)
+            if self.noise > 0:
+                x = x * (1.0 + np.sqrt(self.noise) * rng.standard_normal(n) * (rng.uniform(size=n) - 0.5))
+            states[:, j] = x
+            X[:, j] = x / np.maximum(ref, 1e-12) - 1.0
+            U[j, j] = -self.dose if self.mode == "knockdown" else 1.0
+        return SimulationExperiment(network=model, true_matrix=np.sign(np.asarray(model.adjacency)).astype(int), X=X, U=U,
+                                    reference_steady_state=ref, perturbed_states=states, error_conc=np.zeros((n, n)),
+                                    error_pert=np.zeros((n, n)), is_valid_steady_state=True)
+
+    def contexts(self, target_rewire: float) -> Tuple[List[Tuple[str, SimulationExperiment]], SimulationExperiment]:
+        base = self._graph(0.0, 1, 0)
+        sources = [(name, self.experiment(self._model(base, jitter=idx), self.seed + idx * 10))
+                   for idx, name in enumerate(SOURCE_NAMES)]
+        target = self.experiment(self._model(self._graph(target_rewire, 1, self.seed + 999)), self.seed + 999)
+        return sources, target
+
+    def rewired(self, fraction: float) -> SimulationExperiment:
+        adj = self._graph(fraction, 2, self.seed + int(fraction * 1000))
+        return self.experiment(self._model(adj), self.seed + 100)
+
+    def dual_screen(self, exp: SimulationExperiment) -> Tuple[np.ndarray, int, List[int]]:
+        """eps_ij = ||L_ij - (L_i + L_j)|| (log2, noise-free) over all genes, or the most-connected ones above the cap."""
+        model = exp.network
+        n = self.n
+        if n <= MAX_EPISTASIS_GENES:
+            genes = list(range(n))
+        else:
+            out = (np.asarray(model.adjacency) != 0).sum(axis=1)
+            genes = sorted(int(g) for g in np.argsort(-out, kind="stable")[:MAX_EPISTASIS_GENES])
+        L1 = {g: model.log_mean((g,), np.array([[self.dose]]))[0] / np.log(2.0) for g in genes}
+        eps = np.zeros((n, n))
+        for a_i, a in enumerate(genes):
+            for b in genes[a_i + 1:]:
+                dual = model.log_mean((a, b), np.array([[self.dose, self.dose]]))[0] / np.log(2.0)
+                d = dual - (L1[a] + L1[b])
+                d[[a, b]] = 0.0
+                eps[a, b] = eps[b, a] = float(np.linalg.norm(d))
+        return eps, 0, genes
+
+
+def validate_vcc_params(num_genes: int, k_av: float, rewire_fraction: float, perturbation_mode: str = "input",
+                        generator: str = "mechanistic") -> None:
     """Raises ValueError if the benchmark parameters are outside the supported range."""
     if perturbation_mode not in PERTURBATION_MODES:
         raise ValueError(f"perturbation must be one of {list(PERTURBATION_MODES)}, got {perturbation_mode!r}")
+    if generator != "mechanistic" and generator not in STAT_GENERATORS:
+        raise ValueError(f"generator must be mechanistic or one of {list(STAT_GENERATORS)}, got {generator!r}")
+    top = MAX_GENES if generator == "mechanistic" else MAX_GENES_STATISTICAL
     try:
         n = int(num_genes)
     except (TypeError, ValueError, OverflowError):
-        raise ValueError(f"num_genes must be an integer in [{MIN_GENES}, {MAX_GENES}]") from None
-    if n != num_genes or not MIN_GENES <= n <= MAX_GENES:
-        raise ValueError(f"num_genes must be an integer in [{MIN_GENES}, {MAX_GENES}], got {num_genes!r}")
+        raise ValueError(f"num_genes must be an integer in [{MIN_GENES}, {top}]") from None
+    if n != num_genes or not MIN_GENES <= n <= top:
+        raise ValueError(f"num_genes must be an integer in [{MIN_GENES}, {top}] for the {generator} generator, got {num_genes!r}")
     if not np.isfinite(k_av) or not 0.0 < k_av <= min(MAX_K_AV, n - 1):
         raise ValueError(f"k_av must be in (0, {min(MAX_K_AV, n - 1):g}] for {n} genes, got {k_av!r}")
     if not np.isfinite(rewire_fraction) or not 0.0 <= rewire_fraction <= 1.0:
@@ -468,6 +561,8 @@ def run_vcc_comparative_benchmark(
     rewire_fractions: Optional[List[float]] = None,
     target_rewire_fraction: float = 0.15,
     perturbation_mode: str = "input",
+    generator: str = "mechanistic",
+    progress: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Executes a multi-context comparative study:
@@ -481,7 +576,13 @@ def run_vcc_comparative_benchmark(
        - Virtual single-cell sequencing with 2D PCA embedding
        - Context rewiring sensitivity curve (rho in [0%, 50%])
     """
-    validate_vcc_params(num_genes, k_av, target_rewire_fraction, perturbation_mode)
+    validate_vcc_params(num_genes, k_av, target_rewire_fraction, perturbation_mode, generator)
+
+    def stage(text: str) -> None:
+        if progress is not None:
+            progress(text)
+
+    stage("simulating the source and target contexts")
     if rewire_fractions is None:
         rewire_fractions = [0.0, 0.1, 0.2, 0.35, 0.5]
 
@@ -498,12 +599,17 @@ def run_vcc_comparative_benchmark(
 
     # 1.-3. Three source atlases and the rewired target context (Context A)
     source_names = list(SOURCE_NAMES)
-    source_experiments, target_exp = _simulate_contexts(num_genes, k_av, seed, target_rewire_fraction, sim)
+    stat = _StatContexts(generator, num_genes, k_av, seed, perturbation_mode) if generator != "mechanistic" else None
+    if stat is None:
+        source_experiments, target_exp = _simulate_contexts(num_genes, k_av, seed, target_rewire_fraction, sim)
+    else:
+        source_experiments, target_exp = stat.contexts(target_rewire_fraction)
 
     X_tgt = target_exp.X
     U_tgt = target_exp.U
     T_true = target_exp.true_matrix
 
+    stage("fitting every algorithm on the target context")
     # 4. Fit AtlasShift with the 3 source atlases
     atlasshift = AtlasShift(de_threshold=0.15)
     for s_name, exp_s in source_experiments:
@@ -561,6 +667,7 @@ def run_vcc_comparative_benchmark(
     X_train[:, unseen_indices] = 0.0
     U_train[:, unseen_indices] = 0.0
 
+    stage("refitting every algorithm without the held-out perturbations")
     held_fits: Dict[str, Any] = {}
     fit_failures: Dict[str, str] = {}
     for key, runner in _build_runners(k_est).items():
@@ -584,9 +691,14 @@ def run_vcc_comparative_benchmark(
                 response_ops[model.key] = op
 
     hill_catalog = hill_models()
-    hill_responses, hill_unavailable = _hill_held_out_responses(
-        target_exp, seen_indices, held_fits, fit_failures, X_train, U_train, mode=perturbation_mode
-    )
+    if num_genes <= MAX_GENES_HILL_REFIT:
+        hill_responses, hill_unavailable = _hill_held_out_responses(
+            target_exp, seen_indices, held_fits, fit_failures, X_train, U_train, mode=perturbation_mode
+        )
+    else:
+        reason = f"Hill refits are computed up to {MAX_GENES_HILL_REFIT} genes (their cost grows with the square of the gene count)"
+        hill_responses = {"null": mean_profile_baseline(target_exp.X, seen_indices)}
+        hill_unavailable = {m.key: reason for m in hill_catalog if m.key != "null"}
 
     # Cross-context transfer: predict the target's responses from the source atlases, calibrated on the seen target columns
     # only (leave-one-out for those columns, see cross_context.py). Unlike the AtlasShift row, the held-out genes are present in
@@ -709,7 +821,12 @@ def run_vcc_comparative_benchmark(
 
     # 7. Combinatorial Epistasis & Synthetic Lethality Screen (Gi x Gj)
     # Every pair is simulated on the true network; eps_ij is the deviation from additive single effects.
-    epistasis_matrix, unsteady_pairs = _dual_perturbation_screen(sim, target_exp)
+    stage("simulating the double perturbations")
+    if stat is None:
+        epistasis_matrix, unsteady_pairs = _dual_perturbation_screen(sim, target_exp)
+        epistasis_genes = list(range(num_genes))
+    else:
+        epistasis_matrix, unsteady_pairs, epistasis_genes = stat.dual_screen(target_exp)
     synergy_pairs: List[Dict[str, Any]] = []
 
     for i in range(num_genes):
@@ -777,7 +894,7 @@ def run_vcc_comparative_benchmark(
     # Hill refit on the Voting Ensemble's structure, fitted on every experiment of the target context.
     hill_sweep_model: Optional[HillResponseModel] = None
     vote_fit = full_fits["vote"]
-    if np.any(vote_fit.A_est) and np.all(np.isfinite(vote_fit.A_est)):
+    if num_genes <= MAX_GENES_HILL_REFIT and np.any(vote_fit.A_est) and np.all(np.isfinite(vote_fit.A_est)):
         signed_vote, _ = infer_signed_structure(vote_fit.A_est, vote_fit.adjacency_pred, X_tgt, U_tgt, q=HILL_STRUCTURE_Q)
         if np.any(signed_vote):
             x_abs_all = (X_tgt + 1.0) * target_exp.reference_steady_state[:, None]
@@ -791,10 +908,14 @@ def run_vcc_comparative_benchmark(
         for series, key in (("calibrated_r", "atlas_calibrated"), ("transpert_r", "transpert_style"), ("pseudobulk_r", "pseudobulk_ridge"))
     }
 
+    stage("sweeping the context rewiring")
     for rf in rewire_fractions:
-        net_rf = GeneNetwork.create(n=num_genes, k_av=k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=seed)
-        _rewire_edges(net_rf, rf, np.random.default_rng(seed + int(rf * 1000)), shift=2)
-        exp_rf = sim.run(net_rf, seed=seed + 100)
+        if stat is None:
+            net_rf = GeneNetwork.create(n=num_genes, k_av=k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=seed)
+            _rewire_edges(net_rf, rf, np.random.default_rng(seed + int(rf * 1000)), shift=2)
+            exp_rf = sim.run(net_rf, seed=seed + 100)
+        else:
+            exp_rf = stat.rewired(rf)
 
         # Evaluate mean Pearson r across targets
         r_atlas = [compute_profile_similarity(exp_rf.X[:, j], atlas_pred[:, j])["pearson_r"] for j in range(num_genes)]
@@ -824,6 +945,7 @@ def run_vcc_comparative_benchmark(
         "parameters": {
             "num_genes": num_genes,
             "k_av": k_av,
+            "generator": generator,
             "target_rewire_fraction": target_rewire_fraction,
             "gene_names": gene_names,
             "sources": source_names,
@@ -871,6 +993,24 @@ def run_vcc_comparative_benchmark(
             "epistasis_matrix": [[round(float(v), 3) for v in row] for row in epistasis_matrix],
             "top_synergy_pairs": synergy_pairs[:10],
             "unsteady_pairs": unsteady_pairs,
+            "screened_genes": [gene_names[g] for g in epistasis_genes],
+            "all_pairs": len(epistasis_genes) == num_genes,
         },
         "single_cell_pca": single_cell_pca,
     }
+
+
+def run_in_child(kwargs: Dict[str, Any], queue: Any) -> None:
+    """
+    Entry point of a spawned process that runs :func:`run_vcc_comparative_benchmark` and reports through ``queue``:
+    ``("stage", text)`` while it runs, then ``("done", payload)`` or ``("error", message)``.
+
+    The studio runs large comparisons this way, not in a thread of the web server: the algorithms fork process pools, and a
+    fork from a multi-threaded server can copy a lock another thread holds into the child, which then waits forever (seen
+    with a 100-gene run that stopped in the held-out refits; the same run in a plain process finishes in ~100 s).
+    """
+    try:
+        payload = run_vcc_comparative_benchmark(progress=lambda text: queue.put(("stage", text)), **kwargs)
+        queue.put(("done", payload))
+    except Exception as exc:                                       # reported to the parent, which shows it on the page
+        queue.put(("error", f"{type(exc).__name__}: {exc}"))

@@ -37,6 +37,9 @@ from grn_sim.perturbseq.ace import ACEEstimate, log_normalise
 MIN_LIFT = 1.5          # an algorithm must beat the base rate by this factor on average ...
 ALPHA = 0.05            # ... and win the corrected paired test against the random ranking at this level
 RANDOM = "random"
+# Effect estimates use median-ratio size factors: total-count normalisation turns a knockdown of a highly expressed gene
+# into effects on genes that do not depend on it (grn_sim.perturbseq.ace.log_normalise; tests/test_perturbation_dependencies.py).
+NORMALISATION = "median_ratio"
 HUBNESS = "gene_features"      # non-causal control: how much a gene moves anything x how much a gene moves under anything
 K = 3
 
@@ -66,7 +69,13 @@ FACTORS = ("generator", "noise", "pathway", "n_genes", "mode", "pairs", "selecti
 # transposed (A[target, regulator]); every other one as returned. AtlasShift needs source atlases (it is compared in the
 # cross-atlas section) and ``by_chance`` duplicates the random ranking, so both are left out here.
 REGISTRY_EXTRA = ("fast", "vote", "score_vote", "genie3", "notears", "cellbox", "netdeconv", "dmdgrn", "causalgrn", "arachne",
-                  "deeprig", "sfinn", "cpa_lite")
+                  "deeprig", "sfinn")
+# Dropped after the admission test (tests/test_vcc_algorithm_admission.py: an algorithm must beat the hubness-only control on
+# noise-free effects): CPA-Lite (AUPR 0.049 vs 0.07 for the control on noise-free 100-gene screens) and GRNBoost on effect
+# profiles (0.046-0.086, control level). GRNBoost is kept on single cells, the input it is designed for.
+DROPPED = {"cpa_lite": "fails the admission test: no better than the hubness-only control even on noise-free data",
+           "grnboost_profiles": "GRNBoost on per-perturbation effect profiles is at the hubness level; the cell-level variant is used"}
+GRNBOOST_CELLS = 1500
 TRANSPOSED_ON_SCREENS = frozenset({"cellbox", "netdeconv", "dmdgrn", "causalgrn", "arachne", "deeprig", "sfinn"})
 
 
@@ -110,7 +119,8 @@ def pair_columns(adata: Any, ace: ACEEstimate, control_label: str = "non-targeti
     n = len(names)
     if not wanted:
         return np.zeros((n, 0)), np.zeros((n, 0))
-    Y = log_normalise(adata.X)
+    Xd = adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
+    Y = log_normalise(Xd, method=NORMALISATION, reference=Xd[lab == control_label].mean(axis=0))
     m0 = Y[lab == control_label].mean(axis=0)
     cols_x, cols_u = [], []
     for name in wanted:
@@ -137,6 +147,7 @@ class Algorithm:
     score: Callable[..., np.ndarray]          # (ace, X, U, rng) -> S[regulator, target]
     uses_pairs: bool = False                  # accepts double perturbations as extra (X, U) columns
     family: str = ""
+    uses_cells: bool = False                  # scores single cells (log-normalised, cells x genes) instead of (X, U)
 
 
 def _legacy(factory: Callable[[], Any], target_regulator: bool) -> Callable[..., np.ndarray]:
@@ -151,7 +162,7 @@ def algorithm_library(max_genes: int = 250) -> List[Algorithm]:
     """The algorithms of the benchmark. Every one runs from the cells' effect estimates in seconds."""
     from grn_sim.inference.g2s import GeneralToSpecific
     from grn_sim.inference.inspre import InspreAlgorithm
-    from grn_sim.inference.interventional_baselines import (GeneFeatureBaseline, GRNBoostLite, MeanDifference,
+    from grn_sim.inference.interventional_baselines import (GeneFeatureBaseline, MeanDifference,
                                                             PearsonCorrelation)
     from grn_sim.inference.nir import NIRAlgorithm
     from grn_sim.inference.ridge_cv import KaggleMultiOutputRidge
@@ -175,7 +186,8 @@ def algorithm_library(max_genes: int = 250) -> List[Algorithm]:
                   _legacy(lambda: GeneralToSpecific(drop_rule="loo", max_interactions=2 * K, matlab_mode=False), True), True,
                   "mechanistic"),
         Algorithm("pearson", "Pearson correlation", _legacy(lambda: PearsonCorrelation(K), False), True, "association"),
-        Algorithm("grnboost", "GRNBoost (tree importances)", _legacy(lambda: GRNBoostLite(K), True), True, "association"),
+        Algorithm("grnboost", "GRNBoost (tree importances on single cells)", _grnboost_cells, family="association",
+                  uses_cells=True),
         Algorithm("gene_features", "Gene hubness only (no pair signal)", _legacy(lambda: GeneFeatureBaseline(K), False), family="control"),
     ] + [_registered(key) for key in REGISTRY_EXTRA]
 
@@ -184,6 +196,17 @@ FAMILIES = {"fast": "mechanistic", "vote": "mechanistic", "score_vote": "mechani
             "arachne": "association", "genie3": "association", "dmdgrn": "dynamical", "notears": "causal",
             "causalgrn": "causal", "cellbox": "deep learning", "deeprig": "deep learning", "sfinn": "deep learning",
             "cpa_lite": "deep learning"}
+
+
+def _grnboost_cells(ace: ACEEstimate, X: np.ndarray, U: np.ndarray, rng: np.random.Generator,
+                    cells: Optional[np.ndarray] = None) -> np.ndarray:
+    """GRNBoost2-style: per target gene, boosted-tree importances of the other genes over single cells (S[regulator, target])."""
+    from grn_sim.inference.interventional_baselines import GRNBoostLite
+
+    if cells is None:
+        raise ValueError("GRNBoost needs the cells of the screen")
+    W = GRNBoostLite(K, n_jobs=2, seed=int(rng.integers(0, 10 ** 6))).fit(cells.T, np.zeros((cells.shape[1], 1))).A_est
+    return np.abs(W).T                                                    # A_est is [target, regulator]
 
 
 def _registered(key: str) -> Algorithm:
@@ -201,6 +224,15 @@ def _registered(key: str) -> Algorithm:
 
 
 # -- one simulation ------------------------------------------------------------------------------------------------------
+
+def _cell_matrix(adata: Any, seed: int, n_cells: int = GRNBOOST_CELLS) -> np.ndarray:
+    """A random subsample of the screen's cells, log-normalised like the effect estimates (cells x genes)."""
+    Xd = adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
+    lab = adata.obs["perturbation"].astype(str).values
+    Y = log_normalise(Xd, method=NORMALISATION, reference=Xd[lab == "non-targeting"].mean(axis=0))
+    idx = np.random.default_rng(seed + 31).choice(len(Y), size=min(n_cells, len(Y)), replace=False)
+    return np.asarray(Y[np.sort(idx)], dtype=float)
+
 
 def simulate_screen(setting: Setting, seed: int, adjacency: Optional[np.ndarray] = None, network: Any = None) -> Any:
     """
@@ -239,18 +271,19 @@ def run_simulation(setting: Setting, seed: int, algorithms: Optional[Sequence[Al
     t0 = time.time()
     run = simulate_screen(setting, seed, adjacency=adjacency, network=network)
     t_sim = time.time() - t0
-    ace = sb.screen_inputs(run, "cells", seed)
+    ace = sb.screen_inputs(run, "cells", seed, normalisation=NORMALISATION)
     Xp, Up = pair_columns(run.adata, ace) if setting.pairs else (np.zeros((setting.n_genes, 0)),) * 2
     X1, U1 = ace.to_xu()
     X2, U2 = (np.hstack([X1, Xp]), np.hstack([U1, Up])) if Xp.shape[1] else (X1, U1)
     n_edges = int((np.asarray(run.screen.adjacency) != 0).sum())
+    cells = _cell_matrix(run.adata, seed) if any(a.uses_cells for a in algorithms) else None
     rows: List[Dict[str, Any]] = []
     for alg in algorithms:
         rng = np.random.default_rng(seed * 7919 + 13)
         X, U = (X2, U2) if alg.uses_pairs else (X1, U1)
         t = time.time()
         try:
-            S = alg.score(ace, X, U, rng)
+            S = alg.score(ace, X, U, rng, cells) if alg.uses_cells else alg.score(ace, X, U, rng)
             res = sb.evaluate_scores(run.screen, S)
             status = "ok"
         except Exception as exc:                                    # an algorithm that fails scores as missing, not as chance

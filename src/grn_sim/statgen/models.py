@@ -102,6 +102,9 @@ class StatModel:
     def sample(self, targets: Sequence[int], doses: np.ndarray, rng: np.random.Generator) -> np.ndarray:  # pragma: no cover
         raise NotImplementedError
 
+    def refresh(self) -> None:
+        """Recomputes the matrices derived from ``W`` (after the weights were changed in place)."""
+
     def local_effects(self) -> np.ndarray:
         """d z_k / d z_j along each edge at the baseline (the model's edge elasticities)."""
         return self.W.copy()
@@ -117,6 +120,9 @@ class LinearSEM(StatModel):
 
     def __init__(self, adjacency: np.ndarray, params: ModelParams, mode: str, rng: np.random.Generator):
         super().__init__(adjacency, params, mode, rng)
+        self.refresh()
+
+    def refresh(self) -> None:
         self.M = np.linalg.inv(np.eye(self.n) - self.W)          # z = (delta + eps) M
 
     def log_mean(self, targets: Sequence[int], doses: np.ndarray) -> np.ndarray:
@@ -172,12 +178,15 @@ class NBCopula(StatModel):
 
     def __init__(self, adjacency: np.ndarray, params: ModelParams, mode: str, rng: np.random.Generator):
         super().__init__(adjacency, params, mode, rng)
+        self.refresh()
+        self.dispersion = np.maximum(params.noise ** 2 * np.exp(rng.normal(0.0, 0.5, size=self.n)), 1e-4)
+
+    def refresh(self) -> None:
         self.M = np.linalg.inv(np.eye(self.n) - self.W)
         cov = self.M.T @ self.M                                      # residual correlation implied by the graph
         d = np.sqrt(np.diag(cov))
         corr = cov / np.outer(d, d)
         self.chol = np.linalg.cholesky(corr + 1e-9 * np.eye(self.n))
-        self.dispersion = np.maximum(params.noise ** 2 * np.exp(rng.normal(0.0, 0.5, size=self.n)), 1e-4)
 
     def log_mean(self, targets: Sequence[int], doses: np.ndarray) -> np.ndarray:
         return self._delta(targets, doses) @ self.M
@@ -232,11 +241,14 @@ class ProbabilisticBoolean(StatModel):
         s = rng.uniform(size=(k, self.n)) < 0.5
         acc = np.zeros((k, self.n))
         for sweep in range(self.SWEEPS):
+            # The same random numbers are drawn whatever is perturbed (common random numbers): a gene that does not depend
+            # on the perturbed one then follows exactly the same path as in the control, so it shows no effect at all.
+            u_on, u_flip, u_hit = rng.uniform(size=(3, k, self.n))
             p_on = 1.0 / (1.0 + np.exp(-(self.bias[None, :] + self.gain * (s.astype(float) @ self.Wb))))
-            new = rng.uniform(size=(k, self.n)) < p_on
-            new ^= rng.uniform(size=new.shape) < self.flip
+            new = u_on < p_on
+            new ^= u_flip < self.flip
             for t, g in enumerate(targets):
-                hit = rng.uniform(size=k) < doses[:, t]
+                hit = u_hit[:, g] < doses[:, t]
                 new[hit, g] = self.mode == "input"
             s = new
             if sweep >= self.SWEEPS - self.AVERAGE:
@@ -262,7 +274,7 @@ class ProbabilisticBoolean(StatModel):
     def _mc(self, targets: tuple, dose: np.ndarray) -> np.ndarray:
         key = (targets, tuple(np.round(dose, 3)))
         if key not in self._mean_cache:
-            rng = np.random.default_rng(self._seed + hash(key) % 100003)
+            rng = np.random.default_rng(self._seed)            # the same stream for every condition (see _run)
             D = np.tile(dose, (400, 1)) if len(targets) else np.zeros((400, 0))
             frac = self._run(targets, D, rng)
             self._mean_cache[key] = np.log(self._expr(frac, targets, D).mean(axis=0))
@@ -280,6 +292,23 @@ class ProbabilisticBoolean(StatModel):
 
     def local_effects(self) -> np.ndarray:
         return self.gain * 0.25 * self.Wb                              # slope of the logistic at p = 1/2
+
+
+def jitter_weights(model: StatModel, sd: float, rng: np.random.Generator) -> StatModel:
+    """
+    Multiplies every edge weight by ``exp(N(0, sd))`` in place (a related cell context: same wiring, different strengths),
+    keeps |W| below the stability bound and refreshes the derived matrices. Returns the model.
+    """
+    factor = np.exp(rng.normal(0.0, sd, size=model.W.shape))
+    model.W = model.W * factor
+    rho = float(np.max(np.abs(np.linalg.eigvals(np.abs(model.W))))) if model.W.any() else 0.0
+    if rho > MAX_SPECTRAL_RADIUS:
+        model.W *= MAX_SPECTRAL_RADIUS / rho
+    if isinstance(model, ProbabilisticBoolean):
+        model.Wb = model.Wb * factor
+        model._mean_cache.clear()
+    model.refresh()
+    return model
 
 
 MODELS: Dict[str, Type[StatModel]] = {m.name: m for m in (LinearSEM, NonlinearSCM, NBCopula, ProbabilisticBoolean)}

@@ -2824,6 +2824,16 @@
               </select>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;" for="vcc-generator">Data:</label>
+              <select id="vcc-generator" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(false)" title="How the cell contexts of the cross-atlas comparison are generated">
+                <option value="mechanistic">Mechanistic (panel-1 Hill kinetics, up to 32 genes)</option>
+                <option value="linear_sem" selected>Linear SEM</option>
+                <option value="nonlinear_scm">Nonlinear additive-noise SCM</option>
+                <option value="nb_copula">Negative-binomial copula</option>
+                <option value="boolean">Probabilistic Boolean network</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
               <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;">Genes:</label>
               <select id="vcc-num-genes" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;">
                 <option value="8">8 Genes</option>
@@ -2847,8 +2857,8 @@
             <div style="display:flex;align-items:center;gap:6px;">
               <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;" for="vcc-perturbation">Perturbation:</label>
               <select id="vcc-perturbation" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(false)" title="How the simulator perturbs a gene">
-                <option value="input" selected>Activation (+1 regulator input)</option>
-                <option value="knockdown">CRISPRi knockdown (&minus;80% production)</option>
+                <option value="input">Activation (+1 regulator input; CRISPRa for statistical data)</option>
+                <option value="knockdown" selected>CRISPRi knockdown (&minus;80% production)</option>
               </select>
             </div>
             <button class="btn btn-primary btn-sm" id="btn-run-vcc" onclick="loadVccBenchmarkData(true)" style="padding:6px 14px;font-weight:700;">
@@ -2955,8 +2965,9 @@
 
       <div id="vcc-large-note" style="display:none;margin-bottom:14px;" class="panel">
         <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
-          Networks above 32 genes are simulated with the screen simulator above (the cross-atlas comparison below fits 18 algorithms twice
-          and is only computed up to 32 genes).
+          Mechanistic contexts solve the Hill kinetics for every context and perturbation and are computed up to 32 genes. Choose a
+          statistical data generator for larger networks (up to 200 genes; above 32 genes the comparison runs in the background, a
+          few minutes at 200 genes), or use the screen simulator above.
         </div>
       </div>
       <div id="vcc-atlas-section">
@@ -3237,6 +3248,7 @@
             <div>
               <div class="panel-title">Combinatorial Perturbations &amp; Epistasis Matrix (G<sub>i</sub> × G<sub>j</sub>)</div>
               <div style="font-size:11px;color:var(--text-muted);">Simulated double perturbations: deviation from multiplicative (log-additive) single effects, ε<sub>ij</sub> = ‖L<sub>ij</sub> − (L<sub>i</sub> + L<sub>j</sub>)‖ with L = log<sub>2</sub>(x / x<sub>basal</sub>)</div>
+              <div id="vcc-epistasis-scope" style="font-size:11px;color:var(--text-muted);"></div>
             </div>
             <span class="badge badge-purple">Double-KO Screen</span>
           </div>
@@ -9946,32 +9958,43 @@
       const n = document.getElementById('vcc-num-genes')?.value || 12;
       const kav = document.getElementById('vcc-kav')?.value || 1.8;
       const rewireFrac = document.getElementById('vcc-cell-line')?.value || 0.15;
-      const perturbation = document.getElementById('vcc-perturbation')?.value || 'input';
-      const large = Number(n) > 32;
+      const perturbation = document.getElementById('vcc-perturbation')?.value || 'knockdown';
+      const generator = document.getElementById('vcc-generator')?.value || 'mechanistic';
+      // Mechanistic contexts solve the Hill ODEs for every context and stop at 32 genes; the statistical generators go to 200.
+      const tooLarge = Number(n) > 32 && generator === 'mechanistic';
       const atlas = document.getElementById('vcc-atlas-section'), note = document.getElementById('vcc-large-note');
-      if (atlas) atlas.style.display = large ? 'none' : '';
-      if (note) note.style.display = large ? 'block' : 'none';
-      if (large) {
-        // Networks above 32 genes: simulate a screen of that size instead of the cross-atlas comparison.
-        if (vccAbortController) vccAbortController.abort();
+      if (atlas) atlas.style.display = tooLarge ? 'none' : '';
+      if (note) note.style.display = tooLarge ? 'block' : 'none';
+      if (vccAbortController) vccAbortController.abort();
+      if (tooLarge) {
         vccRequestSeq++;
-        document.getElementById('vcs-new-genes').value = n;
-        document.getElementById('vcs-new-mode').value = perturbation === 'knockdown' ? 'knockdown' : 'input';
-        if (refresh) runVccScreenSimulation();
+        setVccBusy(false);
         return;
       }
 
       // Only the newest request may update the page: abort the previous one and ignore stragglers.
-      if (vccAbortController) vccAbortController.abort();
       const controller = vccAbortController = new AbortController();
       const seq = ++vccRequestSeq;
       setVccBusy(true);
+      const url = r => `/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${r ? 1 : 0}&rewire_fraction=${rewireFrac}&perturbation=${perturbation}&generator=${generator}`;
 
-      fetch(`/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${refresh ? 1 : 0}&rewire_fraction=${rewireFrac}&perturbation=${perturbation}`, { signal: controller.signal })
-        .then(r => r.json().catch(() => ({})).then(data => ({ ok: r.ok, status: r.status, data })))
+      // Above 32 genes the server computes in the background and answers 202 with its current stage until the result is ready.
+      const poll = r => fetch(url(r), { signal: controller.signal })
+        .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, status: res.status, data })))
         .then(({ ok, status, data }) => {
-          if (seq !== vccRequestSeq) return;
+          if (seq !== vccRequestSeq) return null;
+          if (status === 202) {
+            const btn = document.getElementById('btn-run-vcc');
+            if (btn) btn.innerHTML = `<span class="spinner-inline"></span> ${data.stage || 'Computing'} (${Math.round(data.elapsed || 0)} s)`;
+            return new Promise(resolve => setTimeout(resolve, 3000)).then(() => poll(false));
+          }
           if (!ok || data.status !== 'success') throw new Error(data.error || `HTTP ${status}`);
+          return data;
+        });
+
+      poll(refresh)
+        .then(data => {
+          if (!data || seq !== vccRequestSeq) return;
           APP_STATE.vccData = data;
           showVccError('');
           renderVccBenchmarkUI(data);
@@ -10303,6 +10326,14 @@
 
       // 4. Top synergistic pairs list
       if (data.combinatorial_screen) {
+        const scopeEl = document.getElementById('vcc-epistasis-scope');
+        if (scopeEl) {
+          const cs = (data && data.combinatorial_screen) || {};
+          const gen = (data && data.parameters && data.parameters.generator) || 'mechanistic';
+          scopeEl.textContent = (cs.all_pairs === false
+            ? `Pairs among the ${cs.screened_genes.length} most-connected genes (all ${cs.screened_genes.length * (cs.screened_genes.length - 1) / 2} of them); other pairs are not simulated at this size. `
+            : '') + (gen === 'linear_sem' || gen === 'nb_copula' ? 'Log-linear data: double effects add exactly, so ε = 0 by construction.' : '');
+        }
         const listEl = document.getElementById('vcc-top-synergy-list');
         if (listEl && data.combinatorial_screen.top_synergy_pairs) {
           listEl.innerHTML = data.combinatorial_screen.top_synergy_pairs.slice(0, 7).map(pair => `

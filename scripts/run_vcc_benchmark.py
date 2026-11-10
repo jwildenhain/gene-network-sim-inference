@@ -27,6 +27,7 @@ from grn_sim.evaluation.vcc_benchmark import GENERATORS, NOISE_LEVELS, PATHWAYS,
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLED = ROOT / "src" / "grn_sim" / "data" / "benchmarks" / "vcc_screen_benchmark.jsonl"
 REPORT = ROOT / "docs" / "results" / "vcc_screen_benchmark.md"
+FINDINGS = ROOT / "docs" / "results" / "vcc_screen_findings.md"
 MARK = {"better": "✓", "marginal": "~", "not_better": "✗", "worse": "✗✗", "control": "·", "reference": "·"}
 
 
@@ -129,7 +130,12 @@ def main() -> None:
         print(len(settings), "settings x", a.seeds, "seeds =", len(settings) * a.seeds, "simulations")
         return
     if a.report:
-        write_report([json.loads(line) for line in BUNDLED.read_text().splitlines() if line.strip()])
+        from grn_sim.evaluation import vcc_findings
+
+        rows = [json.loads(line) for line in BUNDLED.read_text().splitlines() if line.strip()]
+        write_report(rows)
+        FINDINGS.write_text(vcc_findings.render(vcc_findings.compute(rows)))
+        print("wrote", FINDINGS)
         return
     if a.merge:
         rows = []

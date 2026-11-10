@@ -3,6 +3,7 @@ Checks the calibrated generators on seeds not used for calibration: realism stat
 mean difference and S2G) at each noise level, next to the mechanistic generator.
 
     python scripts/verify_statgen_noise.py [--genes 100 --seeds 3 --generators linear_sem,nb_copula] [--out file.json]
+    python scripts/verify_statgen_noise.py --out docs/results/statgen_noise_verification.json --doc docs/results/statgen_calibration.md
 """
 import argparse
 import json
@@ -24,6 +25,7 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--generators", default=",".join(vb.GENERATORS))
     ap.add_argument("--out", default=None)
+    ap.add_argument("--doc", default=None, help="also render docs/results/statgen_calibration.md to this path")
     a = ap.parse_args()
     lib = {x.name: x for x in vb.algorithm_library()}
     out = []
@@ -38,12 +40,13 @@ def main() -> None:
                 score.append(sum(max(0.0, (r["target_low"] - r["value"]) / (r["target_high"] - r["target_low"]),
                                      (r["value"] - r["target_high"]) / (r["target_high"] - r["target_low"]))
                                  for r in rows if r.get("value") is not None))
-                ace = sb.screen_inputs(run, "cells", seed)
+                ace = sb.screen_inputs(run, "cells", seed, normalisation=vb.NORMALISATION)
                 X, U = ace.to_xu()
                 rng = np.random.default_rng(seed)
                 md.append(sb.evaluate_scores(run.screen, lib["mean_difference"].score(ace, X, U, rng))["aupr_direct"])
                 s2g.append(sb.evaluate_scores(run.screen, lib["s2g"].score(ace, X, U, rng))["aupr_direct"])
-            row = {"generator": gen, "noise": noise, "realism_score": round(float(np.mean(score)), 2),
+            row = {"generator": gen, "noise": noise, "seeds": list(range(501, 501 + a.seeds)),
+                   "realism_score": round(float(np.mean(score)), 2),
                    "aupr_mean_difference": round(float(np.mean(md)), 3), "aupr_s2g": round(float(np.mean(s2g)), 3),
                    **{k: round(float(np.mean([s[k] for s in stats if s[k] is not None])), 3) for k in KEEP}}
             out.append(row)
@@ -51,6 +54,11 @@ def main() -> None:
     if a.out:
         with open(a.out, "w") as fh:
             json.dump(out, fh, indent=1)
+    if a.doc:
+        from grn_sim.statgen.report import render
+
+        with open(a.doc, "w") as fh:
+            fh.write(render(out))
 
 
 if __name__ == "__main__":

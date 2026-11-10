@@ -2033,21 +2033,88 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
     return payload
 
 
-def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False, rewire_fraction: float = 0.15, perturbation: str = "input") -> Dict[str, Any]:
-    """Computes or retrieves cached Virtual Cell Challenge 2026 vs Mechanistic GRN comparative benchmark."""
-    validate_vcc_params(num_genes, k_av, rewire_fraction, perturbation)
+def _vcc_cache_key(num_genes: int, k_av: float, seed: int, rewire_fraction: float, perturbation: str, generator: str) -> str:
     # Quantise the continuous parameters so near-identical requests share one cache entry
+    return f"vcc_{num_genes}_{round(k_av, 2)}_{seed}_{round(rewire_fraction, 2)}_{perturbation}_{generator}"
+
+
+def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False, rewire_fraction: float = 0.15, perturbation: str = "input",
+                                 generator: str = "mechanistic", progress: Any = None) -> Dict[str, Any]:
+    """Computes or retrieves the cached cross-atlas benchmark (mechanistic or statistical data, see ``generator``)."""
+    validate_vcc_params(num_genes, k_av, rewire_fraction, perturbation, generator)
     k_av, rewire_fraction = round(k_av, 2), round(rewire_fraction, 2)
-    cache_key = f"vcc_{num_genes}_{k_av}_{seed}_{rewire_fraction}_{perturbation}"
+    cache_key = _vcc_cache_key(num_genes, k_av, seed, rewire_fraction, perturbation, generator)
     with _VCC_LOCK:
         if not refresh and cache_key in BENCHMARK_CACHE:
             return BENCHMARK_CACHE[cache_key]
 
-        payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction, perturbation_mode=perturbation)
+        payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction, perturbation_mode=perturbation,
+                                                generator=generator, progress=progress)
         BENCHMARK_CACHE[cache_key] = payload
         for stale_key in [k for k in list(BENCHMARK_CACHE) if k.startswith("vcc_")][:-VCC_CACHE_LIMIT]:
             BENCHMARK_CACHE.pop(stale_key, None)
         return payload
+
+
+# Large cross-atlas runs (more than VCC_SYNC_GENES genes) are computed in a background thread; the page polls the same URL,
+# which answers 202 with the current stage until the payload is cached.
+VCC_SYNC_GENES = 32
+_VCC_TASKS: Dict[str, Dict[str, Any]] = {}
+_VCC_TASKS_LOCK = threading.Lock()
+
+
+def _vcc_background(key: str, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Starts (once) or reports the background computation of ``key``: {state, stage, elapsed, error}."""
+    with _VCC_TASKS_LOCK:
+        task = _VCC_TASKS.get(key)
+        if task is None or task["state"] == "error" and kwargs.get("refresh"):
+            task = {"state": "running", "stage": "queued", "started": time.time(), "error": ""}
+            _VCC_TASKS[key] = task
+
+            def work() -> None:
+                # A spawned process, not this thread: the algorithms fork process pools, and forking from the threaded
+                # server can deadlock (see grn_sim.benchmarks.vcc_benchmark.run_in_child).
+                import multiprocessing
+                import queue as queue_mod
+
+                from grn_sim.benchmarks.vcc_benchmark import run_in_child
+
+                args = {k: kwargs[k] for k in ("num_genes", "k_av", "seed", "perturbation", "generator")}
+                args["target_rewire_fraction"] = kwargs["rewire_fraction"]
+                args["perturbation_mode"] = args.pop("perturbation")
+                ctx = multiprocessing.get_context("spawn")
+                q = ctx.Queue()
+                proc = ctx.Process(target=run_in_child, args=(args, q))         # not a daemon: it starts its own process pools
+                proc.start()
+                try:
+                    while True:
+                        try:
+                            kind, value = q.get(timeout=5)
+                        except queue_mod.Empty:
+                            if not proc.is_alive():
+                                raise RuntimeError(f"the computation stopped unexpectedly (exit code {proc.exitcode})") from None
+                            continue
+                        if kind == "stage":
+                            task["stage"] = value
+                        elif kind == "error":
+                            raise RuntimeError(value)
+                        else:
+                            with _VCC_LOCK:
+                                BENCHMARK_CACHE[key] = value
+                                for stale_key in [k for k in list(BENCHMARK_CACHE) if k.startswith("vcc_")][:-VCC_CACHE_LIMIT]:
+                                    BENCHMARK_CACHE.pop(stale_key, None)
+                            task["state"] = "done"
+                            break
+                except Exception as exc:                       # reported to the page, not raised in the thread
+                    task["state"], task["error"] = "error", f"{exc}"
+                finally:
+                    proc.join(timeout=10)
+                    if proc.is_alive():
+                        proc.kill()
+
+            threading.Thread(target=work, daemon=True, name=f"vcc-{key}").start()
+        return {"state": task["state"], "stage": task["stage"], "elapsed": round(time.time() - task["started"], 1),
+                "error": task["error"]}
 
 
 def _parse_cells_per_condition(query: Dict[str, List[str]]) -> int:
@@ -2822,13 +2889,35 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 rf = query.get("refresh", ["0"])[0] in ("1", "true")
                 rewire_frac = float(query.get("rewire_fraction", [0.15])[0])
                 perturbation = query.get("perturbation", ["input"])[0]
-                validate_vcc_params(n_g, k_av, rewire_frac, perturbation)
+                generator = query.get("generator", ["mechanistic"])[0]
+                validate_vcc_params(n_g, k_av, rewire_frac, perturbation, generator)
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}).encode("utf-8"))
                 return
+            key = _vcc_cache_key(n_g, k_av, sd, rewire_frac, perturbation, generator)
+            if n_g > VCC_SYNC_GENES and not (key in BENCHMARK_CACHE and not rf):
+                with _VCC_TASKS_LOCK:
+                    done = key in BENCHMARK_CACHE and _VCC_TASKS.get(key, {}).get("state") == "done"
+                if rf and _VCC_TASKS.get(key, {}).get("state") != "running":
+                    _VCC_TASKS.pop(key, None)
+                if not done:
+                    task = _vcc_background(key, {"num_genes": n_g, "k_av": k_av, "seed": sd, "refresh": rf,
+                                                 "rewire_fraction": rewire_frac, "perturbation": perturbation, "generator": generator})
+                    if task["state"] == "error":
+                        with _VCC_TASKS_LOCK:
+                            _VCC_TASKS.pop(key, None)
+                        self._set_headers(500)
+                        self.wfile.write(json.dumps({"status": "error", "error": task["error"]}).encode("utf-8"))
+                        return
+                    if task["state"] != "done":
+                        self._set_headers(202)
+                        self.wfile.write(json.dumps({"status": "running", **task}).encode("utf-8"))
+                        return
+                rf = False
             try:
-                payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf, rewire_fraction=rewire_frac, perturbation=perturbation)
+                payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf, rewire_fraction=rewire_frac, perturbation=perturbation,
+                                                       generator=generator)
                 # allow_nan=False: a bare NaN is not valid JSON and would break response.json() in the browser.
                 # Serialise before sending headers so a failure becomes a clean 500, not a 200 with a broken body.
                 body = json.dumps(payload, allow_nan=False).encode("utf-8")

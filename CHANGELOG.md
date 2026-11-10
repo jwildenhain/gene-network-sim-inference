@@ -4,6 +4,25 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## Unreleased - Virtual Cell tab: correctness pass
+
+- Perturbation dependencies tested for every generator (`tests/test_perturbation_dependencies.py`): a perturbation moves exactly
+  the genes downstream of it, double perturbations interact only downstream of both partners, at most 5% of independent gene
+  pairs look dependent in the cells. Fixed on the way: the Boolean model's Monte Carlo truth leaked effects of up to 0.08 log2
+  onto independent genes (now common random numbers: exactly 0); total-count normalisation made 9-14% of independent pairs look
+  dependent, so effects are now estimated with median-ratio size factors (`estimate_ace(normalisation="median_ratio")`, opt-in;
+  used by the Virtual Cell benchmark).
+- Algorithm admission test (`tests/test_vcc_algorithm_admission.py`): every benchmarked algorithm must beat the hubness-only
+  control by 1.5x on noise-free data. Dropped: CPA-Lite and GRNBoost on effect profiles; GRNBoost now runs on single cells.
+- CellBox: penalties scaled by (100 / N)^2 and at least 150 epochs above 100 genes (its summed L1/L2 penalty grew with N^2 and
+  shrank every weight at 200 genes: AUPR 0.08 -> 0.32-0.49); unchanged at or below 100 genes.
+- Cross-atlas comparison on statistical data (`generator=` in `run_vcc_comparative_benchmark` and the API) up to 200 genes;
+  above 32 genes it runs in a spawned process (forking the algorithms' process pools from the threaded server deadlocked), the
+  page polls (HTTP 202 with the current stage). Double-perturbation screen over the 32 most-connected genes and no Hill refits
+  above 32 genes, both stated on the page. Default perturbation CRISPRi, default data linear SEM.
+- Findings and calibration documents are generated from the data (`grn_sim.evaluation.vcc_findings`, `grn_sim.statgen.report`)
+  and tests fail when the documents and the data disagree. Loading bar names every pending request.
+
 ## Unreleased - Virtual Cell tab: statistical data generators
 
 - New package `grn_sim.statgen`: data from statistical models instead of the panel-1 Hill kinetics - linear SEM, nonlinear

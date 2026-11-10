@@ -262,7 +262,12 @@ def test_hill_search_values_fill_both_summary_cards(open_vcc, payload_a):
 def test_perturbation_selector_is_sent_to_the_server_and_explained_in_the_note(open_vcc, payload_a, payload_knockdown):
     vp = open_vcc(lambda route, q: fulfil(route, payload_knockdown if q.get("perturbation") == "knockdown" else payload_a))
     vp.page.wait_for_selector("#tbl-vcc-response tbody tr")
-    assert vp.requests[0]["perturbation"] == "input"
+    assert vp.requests[0]["perturbation"] == "knockdown"                 # CRISPRi is the default
+    assert vp.requests[0]["generator"] == "linear_sem"                   # statistical data by default
+    vp.page.select_option("#vcc-perturbation", "input")
+    vp.page.wait_for_function("document.querySelector('#vcc-response-note').innerText.length > 0 && "
+                              "!document.querySelector('#vcc-response-note').innerText.startsWith('CRISPRi knockdown')")
+    assert vp.requests[-1]["perturbation"] == "input"
     vp.page.select_option("#vcc-perturbation", "knockdown")
     vp.page.wait_for_function("document.querySelector('#vcc-response-note').innerText.startsWith('CRISPRi knockdown')")
     assert vp.requests[-1]["perturbation"] == "knockdown"

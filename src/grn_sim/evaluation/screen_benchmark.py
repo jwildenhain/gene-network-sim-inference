@@ -67,12 +67,12 @@ def evaluate_scores(screen: Any, S: np.ndarray) -> Dict[str, float]:
 
 
 def screen_inputs(run: Any, input_kind: str = "cells", seed: int = 0, use_called_guide: bool = True,
-                  min_cells: int = 20) -> ACEEstimate:
+                  min_cells: int = 20, normalisation: str = "total") -> ACEEstimate:
     if input_kind == "truth":
         return truth_ace(run.screen)
     if input_kind == "cells":
         return estimate_ace(run.adata, gene_names=list(run.screen.gene_names), use_called_guide=use_called_guide,
-                            min_cells=min_cells, seed=seed)
+                            min_cells=min_cells, seed=seed, normalisation=normalisation)
     raise ValueError("input_kind must be 'truth' or 'cells'")
 
 

@@ -42,6 +42,10 @@ def resolve_device(requested: Optional[str], n_genes: int) -> str:
     return "cuda" if usable and n_genes >= GPU_MIN_GENES else "cpu"
 
 
+PENALTY_REFERENCE_GENES = 100
+LARGE_NETWORK_EPOCHS = 150
+
+
 class CellBoxNeuralODE(BaseInferenceAlgorithm):
     """
     Infers regulatory network interaction matrix W by fitting a continuous
@@ -64,6 +68,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         perturbation_mode: str = "additive",
         device: Optional[str] = None,
         auto_scale: bool = True,
+        size_scaled_penalty: bool = True,
     ):
         super().__init__(name="cellbox")
         self.device = device
@@ -79,6 +84,11 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         # linear part of tanh and learns nothing useful (AUPR at the random level on 100-500 genes). Scaling X and U by
         # the same factor (1 / std of X) keeps the model (W is fitted to the scaled data) and fixes it.
         self.auto_scale = auto_scale
+        # The fit error is a mean over entries but the L1/L2 penalties are sums over the N^2 weights, so the penalty's weight
+        # grows with N^2: tuned near 100 genes, at 200 genes it shrinks every weight to ~0 (AUPR 0.41 -> 0.08 on simulated
+        # screens). Above PENALTY_REFERENCE_GENES the penalties are scaled by (reference / N)^2 and the optimiser gets at least
+        # LARGE_NETWORK_EPOCHS steps (AUPR at 200 genes back to 0.32-0.49); at or below the reference nothing changes.
+        self.size_scaled_penalty = size_scaled_penalty
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
@@ -96,6 +106,10 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         l2 = float(kwargs.get("l2_reg", self.l2_reg))
         thresh = float(kwargs.get("threshold", self.threshold))
         max_epochs = int(kwargs.get("epochs", self.epochs))
+        if bool(kwargs.get("size_scaled_penalty", self.size_scaled_penalty)) and N > PENALTY_REFERENCE_GENES:
+            factor = (PENALTY_REFERENCE_GENES / N) ** 2
+            l1, l2 = l1 * factor, l2 * factor
+            max_epochs = max(max_epochs, LARGE_NETWORK_EPOCHS)
 
         try:
             if not HAS_TORCH:
