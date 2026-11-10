@@ -4,6 +4,20 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## Unreleased - Virtual Cell tab: pathways and screen statistics
+
+- Tab 4 now states what it is: experiments simulated from statistics (Perturb-seq-like screens generated from the panel-1 simulator),
+  not a comparison with a mechanistic model. The AtlasShift/mechanistic header box is gone (the cross-atlas section stays, up to 32 genes).
+- New pathway architectures (`cascade`, `feedforward`, `lineage`, `regulon` in `core/topology.py`, presets in `perturbseq/calibration.py`,
+  also selectable in panel 1): signalling cascade, feed-forward-loop network, lineage master regulators, overlapping regulons.
+- Screens of up to 200 genes from the tab (`/api/vcc/screen_simulate`, fast algorithms only); results are saved to the user's
+  data folder and join the statistics.
+- New gene-selection rules for partial screens: `expressed` and `hubs` (oracle), next to `effective` and `random`.
+- Benchmark of 290 simulations (29 settings x 10 seeds: pathway, size, CRISPRi / knockout / activation, double knockouts, selection)
+  with a paired random-ranking and hubness-only control per simulation, Wilcoxon tests, verdicts and filters
+  (`evaluation/vcc_benchmark.py`, `scripts/run_vcc_benchmark.py`, `/api/vcc/screen_benchmark`, `docs/results/vcc_screen_benchmark.md`).
+- S2G and G2S in the benchmark run in their regression form (`matlab_mode=False`), which accepts partial screens and double knockouts.
+
 ## Unreleased - partial screens
 
 - Documentation: one page per algorithm in `docs/algorithms/` (generated from `inference/descriptions.py`, checked by a test), a docs index

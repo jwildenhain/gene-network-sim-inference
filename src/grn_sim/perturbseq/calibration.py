@@ -154,4 +154,9 @@ PRESETS: Dict[str, NetworkPreset] = {
     # networks (k_av 3) reach 0.92 but then overshoot density and feedback. Genome-scale screens combine low density
     # with ~98.5% mediated effects because they span thousands of genes; at 500 genes the two cannot both be met.
     "replogle_like": NetworkPreset(),
+    # Pathway architectures (see grn_sim.core.topology): same anchored kinetics as replogle_like, different wiring.
+    "cascade": NetworkPreset(topology="cascade", k_av=2.0, ratio=0.7),
+    "feedforward": NetworkPreset(topology="feedforward", k_av=2.2, ratio=0.7),
+    "lineage": NetworkPreset(topology="lineage", k_av=2.2, ratio=0.7),
+    "regulon": NetworkPreset(topology="regulon", k_av=2.0, ratio=0.7),
 }

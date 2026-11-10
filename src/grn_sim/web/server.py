@@ -25,7 +25,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from pathlib import Path
 import numpy as np
 
-from grn_sim.core.topology import TopologyType, NetworkTopology
+from grn_sim.core.topology import TopologyType, NetworkTopology, PATHWAY_TOPOLOGIES
+from grn_sim.perturbseq.design import SELECTIONS as SCREEN_SELECTIONS
+from grn_sim.perturbseq.calibration import PRESETS as CALIBRATION_PRESETS
 from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.experiment import PerturbationSimulator, SimulationExperiment
 from grn_sim.inference.s2g import SimpleToGeneral
@@ -36,7 +38,7 @@ from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
 from grn_sim.inference.score_vote import ScoreVote
 from grn_sim.inference import registry as algorithm_registry
-from grn_sim.web import history_view
+from grn_sim.web import history_view, vcc_screen_view
 from grn_sim.inference.by_chance import ByChance
 from grn_sim.inference.atlasshift import AtlasShift
 from grn_sim.inference.cellbox import CellBoxNeuralODE
@@ -658,6 +660,8 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
             # networks have 5-10 modules).
             eff_subdiv = int(params["subdiv"]) if "subdiv" in params else int(np.clip(num_genes // 10, 2, 8))
         calibration_preset = params.get("calibration_preset")
+        if not calibration_preset and topo_str in PATHWAY_TOPOLOGY_NAMES:
+            calibration_preset = topo_str        # pathway architectures need anchored kinetics to reach a steady state
         if calibration_preset:
             # Perturb-seq calibrated network (anchored kinetics): reaches a steady state at genome-like sizes
             network = build_perturbseq_network(str(calibration_preset), num_genes, seed=seed)
@@ -2059,7 +2063,7 @@ MAX_PERTURB_SEQ_PERTURBED = 20000                 # partial screen: perturbed ge
 
 
 PERTURB_SEQ_CELL_MODELS = ("lna", "sde", "legacy")
-PERTURB_SEQ_PRESETS = ("current", "replogle_like", "thesis")
+PERTURB_SEQ_PRESETS = ("current",) + tuple(CALIBRATION_PRESETS)
 MAX_PERTURB_SEQ_CONTROLS = 20000
 # Last few pipeline runs, so a realism report followed by the download of the same screen simulates it once.
 _PERTURB_SEQ_CACHE: "Dict[tuple, Any]" = {}
@@ -2079,8 +2083,8 @@ def _parse_perturb_seq_extras(query: Dict[str, List[str]]) -> Dict[str, Any]:
     if not 0 <= perturbed <= MAX_PERTURB_SEQ_PERTURBED:
         raise ValueError(f"perturbed must be in [0, {MAX_PERTURB_SEQ_PERTURBED}] (0 = every gene), got {perturbed}")
     selection = str(query.get("selection", ["effective"])[0]).strip().lower()
-    if selection not in ("effective", "random"):
-        raise ValueError(f"selection must be 'effective' or 'random', got {selection!r}")
+    if selection not in SCREEN_SELECTIONS:
+        raise ValueError(f"selection must be one of {', '.join(SCREEN_SELECTIONS)}, got {selection!r}")
     return {"preset": preset, "measurement": measurement, "n_control_cells": controls, "perturbed": perturbed,
             "selection": selection}
 
@@ -2352,7 +2356,8 @@ KNOWN_ALGORITHMS = tuple(algorithm_registry.keys())      # the built-ins; use kn
 def known_algorithms() -> List[str]:
     """Every registered algorithm key (algorithms registered after start-up included)."""
     return algorithm_registry.keys()
-SIM_TOPOLOGIES = ("power_law", "random", "hierarchical", "modular")
+PATHWAY_TOPOLOGY_NAMES = tuple(t.value for t in PATHWAY_TOPOLOGIES)
+SIM_TOPOLOGIES = ("power_law", "random", "hierarchical", "modular", "cascade", "feedforward", "lineage", "regulon")
 SIM_KINETICS = ("hill_nonlinear", "cellbox_neural_ode", "linear_jacobian", "perturb_seq_counts")
 SIM_PRESETS = ("responsive", "flat", "oscillating")
 MAX_SIM_GENES = 2000
@@ -2880,6 +2885,32 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 traceback.print_exc()
                 self._set_headers(500)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+            return
+
+        elif path == "/api/vcc/screen_benchmark":
+            try:
+                payload = vcc_screen_view.answer(query)
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"status": "success", **payload}).encode("utf-8"))
+            return
+
+        elif path == "/api/vcc/screen_simulate":
+            try:
+                payload = vcc_screen_view.simulate(query, save=str(query.get("save", ["1"])[0]) != "0")
+            except ValueError as e:
+                self._set_headers(400)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            except RuntimeError as e:
+                self._set_headers(409)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
+            self._set_headers(200)
+            self.wfile.write(json.dumps({"status": "success", **payload}).encode("utf-8"))
             return
 
         elif path == "/api/history":

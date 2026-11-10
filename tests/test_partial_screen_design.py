@@ -19,7 +19,7 @@ def test_design_options_and_validation(net):
     d = ScreenDesign.from_options(10, "random")
     assert d.is_partial and d.label() == "partial_10_random"
     assert ScreenDesign.from_options(5, genes=[4, 2, 2]).genes == (2, 4)
-    for bad in (ScreenDesign.partial(0), ScreenDesign.partial(81), ScreenDesign.partial(5, "hubs"), ScreenDesign.explicit([99])):
+    for bad in (ScreenDesign.partial(0), ScreenDesign.partial(81), ScreenDesign.partial(5, "nonsense"), ScreenDesign.explicit([99])):
         with pytest.raises(ValueError):
             bad.validate(80)
 
@@ -118,7 +118,7 @@ def test_server_partial_screen_payload_and_validation():
     data, filename = server._build_perturb_seq_h5ad_bytes(cells_per_condition=8, preset="replogle_like", perturbed=5,
                                                           selection="random")
     assert "partial_5_random" in filename and len(data) > 0
-    for q in ({"perturbed": ["-1"]}, {"perturbed": ["999999"]}, {"selection": ["hubs"]}):
+    for q in ({"perturbed": ["-1"]}, {"perturbed": ["999999"]}, {"selection": ["nonsense"]}):
         with pytest.raises(ValueError):
             server._parse_perturb_seq_extras(q)
     assert server._parse_perturb_seq_extras({"perturbed": ["12"], "selection": ["random"]})["perturbed"] == 12

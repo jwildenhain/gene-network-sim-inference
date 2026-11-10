@@ -1309,6 +1309,10 @@
                 <option value="random">Random Network (Erdős–Rényi)</option>
                 <option value="hierarchical">Hierarchical Modular Network</option>
                 <option value="modular">Modular Preferential-Attachment (Perturb-seq calibrated)</option>
+                <option value="cascade">Signalling cascade (receptor &rarr; kinase tiers &rarr; TFs)</option>
+                <option value="feedforward">Feed-forward-loop motifs (E. coli / yeast-like)</option>
+                <option value="lineage">Lineage master regulators (haematopoiesis-like)</option>
+                <option value="regulon">Overlapping regulons (two-layer TF &rarr; target)</option>
               </select>
             </div>
 
@@ -2795,16 +2799,15 @@
       <div class="panel" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(2,132,199,0.06));border:1px solid rgba(139,92,246,0.3);">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
           <div style="flex:1 1 500px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-              <span class="badge" style="background:#8b5cf6;color:#fff;font-weight:700;">VCC 2026 BENCHMARK</span>
-              <span class="badge badge-emerald">AtlasShift (#82 Public LB)</span>
-              <span class="badge badge-blue">Mechanistic Dynamical GRN (phpIoRN)</span>
-            </div>
-            <h2 style="font-size:17px;font-weight:700;color:var(--text-main);margin-bottom:4px;">
-              Arc Institute Virtual Cell Challenge 2026 vs. Mechanistic Dynamical Reverse-Engineering
+            <h2 style="font-size:17px;font-weight:700;color:var(--text-main);margin-bottom:4px;" id="vcc-intro-title">
+              Virtual Cell: experiments simulated from statistics
             </h2>
-            <p style="font-size:12px;color:var(--text-muted);max-width:960px;line-height:1.5;">
-              Direct comparative benchmark comparing <strong>Empirical Cross-Atlas Perturbation Transfer</strong> (<em>AtlasShift</em> by Kaipeng Meng, Arc Institute VCC 2026) against <strong>Mechanistic Dynamical GRN Inference</strong> (<em>phpIoRN</em>: S2G, G2S, Voting Ensemble, Score Vote, NIR, FAST and every other registered algorithm). Highlights the core architectural divergence: empirical weighted averaging across cell lines vs. causal dynamical Jacobian inversion predicting unseen Out-of-Distribution (OOD) perturbations and regulatory rewiring decay.
+            <p style="font-size:12px;color:var(--text-muted);max-width:960px;line-height:1.5;" id="vcc-intro-text">
+              Panel 1 simulates a gene network mechanistically (Hill kinetics solved to steady state). This panel uses
+              <strong>statistics</strong> to turn that simulator into <em>experimental data</em>: a pooled single-cell CRISPR screen
+              with per-cell knockdown doses, cell-to-cell noise, doublets, ambient RNA and guide calling, as a Perturb-seq
+              experiment would deliver it. The inference algorithms only see those noisy cells; the simulator of panel 1
+              keeps the true network, so every result below is scored against the truth.
             </p>
           </div>
 
@@ -2825,6 +2828,10 @@
                 <option value="12" selected>12 Genes</option>
                 <option value="16">16 Genes</option>
                 <option value="24">24 Genes</option>
+                <option value="32">32 Genes</option>
+                <option value="50">50 Genes</option>
+                <option value="100">100 Genes</option>
+                <option value="200">200 Genes</option>
               </select>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
@@ -2853,6 +2860,85 @@
         </div>
       </div>
 
+      <!-- Screen benchmark: algorithm performance across simulation settings -->
+      <div class="panel" style="margin-bottom:14px;padding:14px;" id="vcs-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">&#128202; Algorithm performance across simulated screens</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;" id="vcs-sub">Loading stored simulations&hellip;</div>
+          </div>
+          <span class="badge badge-blue" id="vcs-badge">--</span>
+        </div>
+        <div style="display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 10px;font-size:11px;">
+          <label>Pathway
+            <select id="vcs-pathway" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
+          <label>Genes
+            <select id="vcs-n_genes" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
+          <label>Perturbation
+            <select id="vcs-mode" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
+          <label>Double knockouts
+            <select id="vcs-pairs" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
+          <label>Gene selection
+            <select id="vcs-selection" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()"></select></label>
+          <label>Algorithm family
+            <select id="vcs-family" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="renderVccScreen()">
+              <option value="all">All</option><option value="mechanistic">Mechanistic (A X = &minus;U)</option>
+              <option value="interventional">Interventional</option><option value="interventional baseline">Interventional baseline</option>
+              <option value="association">Association</option><option value="control">Controls</option></select></label>
+          <label>Compare by
+            <select id="vcs-compare" style="width:auto;display:block;font-size:12px;padding:4px 8px;" onchange="loadVccScreenBenchmark()">
+              <option value="pathway">Pathway</option><option value="n_genes">Genes</option><option value="mode">Perturbation</option>
+              <option value="pairs">Double knockouts</option><option value="selection">Gene selection</option></select></label>
+          <button class="btn btn-secondary btn-sm" onclick="resetVccScreenFilters()" style="width:auto;">Reset filters</button>
+        </div>
+        <div style="display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;margin:0 0 10px;padding:8px 10px;border:1px dashed var(--border);border-radius:6px;font-size:11px;" id="vcs-new">
+          <strong style="align-self:center;">Simulate a new screen</strong>
+          <label>Pathway
+            <select id="vcs-new-pathway" style="width:auto;display:block;font-size:12px;padding:4px 8px;">
+              <option value="replogle_like">Modular (Perturb-seq calibrated)</option><option value="thesis">Scale-free (thesis kinetics)</option>
+              <option value="cascade">Signalling cascade</option><option value="feedforward">Feed-forward loops</option>
+              <option value="lineage">Lineage master regulators</option><option value="regulon">Overlapping regulons</option></select></label>
+          <label>Genes (12&ndash;200)
+            <input type="number" id="vcs-new-genes" value="100" min="12" max="200" style="width:70px;display:block;font-size:12px;padding:4px 8px;" /></label>
+          <label>Perturbation
+            <select id="vcs-new-mode" style="width:auto;display:block;font-size:12px;padding:4px 8px;">
+              <option value="knockdown">CRISPRi knockdown</option><option value="knockout">CRISPR knockout</option>
+              <option value="input">Activation (thesis input)</option></select></label>
+          <label>Double KOs
+            <input type="number" id="vcs-new-pairs" value="0" min="0" max="400" style="width:70px;display:block;font-size:12px;padding:4px 8px;" /></label>
+          <label>Gene selection
+            <select id="vcs-new-selection" style="width:auto;display:block;font-size:12px;padding:4px 8px;">
+              <option value="full">All genes perturbed</option><option value="effective">Effective genes (50%)</option>
+              <option value="random">Random genes (50%)</option><option value="expressed">Most expressed (50%)</option>
+              <option value="hubs">Hub regulators, oracle (50%)</option></select></label>
+          <button class="btn btn-primary btn-sm" id="btn-vcs-new" onclick="runVccScreenSimulation()" style="width:auto;">&#9654; Simulate once</button>
+          <span id="vcs-new-status" style="font-size:11px;color:var(--text-muted);" role="status"></span>
+        </div>
+        <div id="vcs-new-result" style="margin-bottom:10px;"></div>
+        <div id="vcs-error" role="alert" style="display:none;font-size:11.5px;font-weight:600;color:var(--accent-red);"></div>
+        <div id="vcs-verdict" style="font-size:12px;line-height:1.5;margin-bottom:10px;"></div>
+        <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcs-algorithms">
+          <caption style="text-align:left;font-size:11px;color:var(--text-muted);padding:2px 0 6px;caption-side:top;">
+            Direct-edge AUPR over the perturbed genes, one dot per simulation; the dashed line is the random ranking of the same simulations.</caption>
+          <thead><tr>
+            <th>Algorithm</th><th>Sims</th><th>AUPR mean &plusmn; SD</th><th>Distribution (0 &ndash; max)</th>
+            <th title="mean AUPR divided by the AUPR a random ranking has in expectation (the fraction of true edges)">Lift vs chance</th>
+            <th title="share of simulations in which the algorithm beat the random ranking of the same simulation">Wins vs random</th>
+            <th title="paired one-sided Wilcoxon test against the random ranking, Benjamini-Hochberg corrected">q vs random</th>
+            <th title="the same test against the hubness-only control: does the algorithm know specific pairs, or only which genes are hubs?">q vs hubness</th><th>Verdict</th>
+          </tr></thead><tbody></tbody></table></div>
+        <div style="font-size:11px;font-weight:700;margin:14px 0 4px;" id="vcs-pivot-title"></div>
+        <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcs-pivot"><thead></thead><tbody></tbody></table></div>
+        <div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;line-height:1.45;" id="vcs-footnote"></div>
+      </div>
+
+      <div id="vcc-large-note" style="display:none;margin-bottom:14px;" class="panel">
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
+          Networks above 32 genes are simulated with the screen simulator above (the cross-atlas comparison below fits 18 algorithms twice
+          and is only computed up to 32 genes).
+        </div>
+      </div>
+      <div id="vcc-atlas-section">
       <!-- Comparative Summary Cards -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-bottom:14px;">
         <!-- In-Distribution Card -->
@@ -2956,6 +3042,10 @@
                 <option value="current" selected>Current network</option>
                 <option value="replogle_like">Replogle-like preset</option>
                 <option value="thesis">Thesis preset</option>
+                <option value="cascade">Signalling cascade</option>
+                <option value="feedforward">Feed-forward loops</option>
+                <option value="lineage">Lineage master regulators</option>
+                <option value="regulon">Overlapping regulons</option>
               </select>
             </label>
             <label>Double KOs
@@ -2968,6 +3058,8 @@
               <select id="ps-selection" style="width:100%;font-size:11px;padding:3px;">
                 <option value="effective" selected>Effective genes</option>
                 <option value="random">Random genes</option>
+                <option value="expressed">Most expressed genes</option>
+                <option value="hubs">Hub regulators (oracle)</option>
               </select>
             </label>
             <label>Cells / perturbation
@@ -3156,6 +3248,7 @@
           </div>
         </div>
       </div>
+      </div><!-- /vcc-atlas-section -->
     </section>
 
     <!-- ========================================================================= -->
@@ -3441,6 +3534,7 @@
       } else if (tabId === 'tab-history') {
         loadHistoryTable();
       } else if (tabId === 'tab-vcc') {
+        if (!VCS.data) loadVccScreenBenchmark();
         if (!APP_STATE.vccData) {
           loadVccBenchmarkData();
         } else {
@@ -4174,6 +4268,7 @@
         'tbl-hist-alg-comparison',
         'tbl-vcc-summary',
         'tbl-vcc-response',
+        'tbl-vcs-algorithms',
         'tbl-fig2-4gene'
       ];
       sortableIds.forEach(id => makeTableSortable(id));
@@ -9827,6 +9922,19 @@
       const kav = document.getElementById('vcc-kav')?.value || 1.8;
       const rewireFrac = document.getElementById('vcc-cell-line')?.value || 0.15;
       const perturbation = document.getElementById('vcc-perturbation')?.value || 'input';
+      const large = Number(n) > 32;
+      const atlas = document.getElementById('vcc-atlas-section'), note = document.getElementById('vcc-large-note');
+      if (atlas) atlas.style.display = large ? 'none' : '';
+      if (note) note.style.display = large ? 'block' : 'none';
+      if (large) {
+        // Networks above 32 genes: simulate a screen of that size instead of the cross-atlas comparison.
+        if (vccAbortController) vccAbortController.abort();
+        vccRequestSeq++;
+        document.getElementById('vcs-new-genes').value = n;
+        document.getElementById('vcs-new-mode').value = perturbation === 'knockdown' ? 'knockdown' : 'input';
+        if (refresh) runVccScreenSimulation();
+        return;
+      }
 
       // Only the newest request may update the page: abort the previous one and ignore stragglers.
       if (vccAbortController) vccAbortController.abort();
@@ -9851,6 +9959,208 @@
         .finally(() => {
           if (seq === vccRequestSeq) setVccBusy(false);
         });
+    }
+
+    // --- Virtual Cell: algorithm performance across simulated screens -------------------------------
+    const VCS = { data: null, seq: 0, controller: null, initialised: false };
+    const VCS_FACTORS = ['pathway', 'n_genes', 'mode', 'pairs', 'selection'];
+    const VCS_VERDICT = {
+      better: ['Works: beats random and hubness', '#10b981'],
+      marginal: ['Marginal: hubness level only', '#d97706'],
+      control: ['Control (no pair signal)', 'var(--text-muted)'],
+      not_better: ['Not better than random', '#f59e0b'],
+      worse: ['Worse than random', '#ef4444'],
+      reference: ['Chance reference', 'var(--text-muted)'],
+    };
+
+    function vcsLevelLabel(factor, value, labels) {
+      if (factor === 'n_genes') return `${value} genes`;
+      if (factor === 'pairs') return Number(value) === 0 ? 'no double KOs' : `${value} double KOs`;
+      return (labels[factor] && labels[factor][value]) || String(value);
+    }
+
+    function vcsFilterQuery() {
+      const params = new URLSearchParams();
+      VCS_FACTORS.forEach(f => {
+        const el = document.getElementById('vcs-' + f);
+        params.set(f, el && el.value ? el.value : 'all');
+      });
+      params.set('compare_by', (document.getElementById('vcs-compare') || {}).value || 'pathway');
+      return params.toString();
+    }
+
+    function fillVcsFilters(d) {
+      VCS_FACTORS.forEach(f => {
+        const el = document.getElementById('vcs-' + f);
+        if (!el) return;
+        const keep = d.filters[f] || 'all';
+        const title = { pathway: 'All pathways', n_genes: 'All sizes', mode: 'All perturbations', pairs: 'Any', selection: 'All selections' }[f];
+        el.innerHTML = `<option value="all">${title}</option>` + (d.levels[f] || []).map(v =>
+          `<option value="${v}">${vcsLevelLabel(f, v, d.labels)}</option>`).join('');
+        el.value = keep;
+      });
+      VCS.initialised = true;
+    }
+
+    function resetVccScreenFilters() {
+      VCS_FACTORS.forEach(f => { const el = document.getElementById('vcs-' + f); if (el) el.value = 'all'; });
+      const fam = document.getElementById('vcs-family'); if (fam) fam.value = 'all';
+      loadVccScreenBenchmark();
+    }
+
+    async function loadVccScreenBenchmark() {
+      if (VCS.controller) VCS.controller.abort();
+      const controller = VCS.controller = new AbortController();
+      const seq = ++VCS.seq;
+      const err = document.getElementById('vcs-error');
+      try {
+        const res = await fetch('/api/vcc/screen_benchmark?' + (VCS.initialised ? vcsFilterQuery() : 'compare_by=pathway'), { signal: controller.signal });
+        const data = await res.json();
+        if (seq !== VCS.seq) return;
+        if (!res.ok || data.status !== 'success') throw new Error(data.error || `HTTP ${res.status}`);
+        VCS.data = data;
+        if (err) err.style.display = 'none';
+        if (!VCS.initialised) fillVcsFilters(data);
+        renderVccScreen();
+      } catch (e) {
+        if (e.name === 'AbortError' || seq !== VCS.seq) return;
+        if (err) { err.textContent = 'Could not load the screen benchmark: ' + (e.message || e); err.style.display = 'block'; }
+      }
+    }
+
+    // One dot per simulation on a 0..max axis; dashed line = mean AUPR of the random ranking.
+    function vcsStrip(values, max, randomMean, color) {
+      const W = 190, H = 22, x = v => 4 + (W - 8) * Math.min(1, v / max);
+      const dots = values.map((v, i) => `<circle cx="${x(v).toFixed(1)}" cy="${(7 + (i % 3) * 4).toFixed(1)}" r="2.4" fill="${color}" fill-opacity="0.75"/>`).join('');
+      const mean = values.reduce((a, b) => a + b, 0) / Math.max(1, values.length);
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${values.length} simulations, mean ${mean.toFixed(2)}">
+        <line x1="4" y1="19" x2="${W - 4}" y2="19" stroke="var(--border)" stroke-width="1"/>
+        <line x1="${x(randomMean).toFixed(1)}" y1="1" x2="${x(randomMean).toFixed(1)}" y2="21" stroke="var(--text-muted)" stroke-dasharray="2 2"/>
+        ${dots}<line x1="${x(mean).toFixed(1)}" y1="14" x2="${x(mean).toFixed(1)}" y2="21" stroke="${color}" stroke-width="2.5"/></svg>`;
+    }
+
+
+    // A fresh simulation of up to 200 genes: network, screen, every algorithm; saved to the user's rows so it joins the statistics.
+    async function runVccScreenSimulation() {
+      const v = id => document.getElementById(id);
+      const btn = v('btn-vcs-new'), status = v('vcs-new-status'), out = v('vcs-new-result');
+      const params = new URLSearchParams({
+        pathway: v('vcs-new-pathway').value, n_genes: String(parseInt(v('vcs-new-genes').value) || 100),
+        mode: v('vcs-new-mode').value, pairs: String(Math.max(0, parseInt(v('vcs-new-pairs').value) || 0)),
+        selection: v('vcs-new-selection').value,
+      });
+      btn.disabled = true;
+      status.textContent = 'Simulating the screen and fitting the algorithms (about 10 s at 100 genes, up to a few minutes at 200)…';
+      out.innerHTML = '';
+      try {
+        const res = await fetch('/api/vcc/screen_simulate?' + params.toString());
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const meta = (VCS.data && VCS.data.algorithms) || {};
+        const base = data.rows.length ? data.rows[0].base_direct : 0;
+        const rnd = (data.rows.find(r => r.algorithm === 'random') || {}).aupr_direct || 0;
+        const rows = data.rows.filter(r => r.status === 'ok').sort((a, b) => b.aupr_direct - a.aupr_direct).map(r => {
+          const beat = r.algorithm !== 'random' && r.aupr_direct > rnd;
+          return `<tr><td>${(meta[r.algorithm] || {}).label || r.algorithm}</td><td style="font-family:monospace;">${r.aupr_direct.toFixed(3)}</td>
+            <td style="font-family:monospace;">${r.base_direct ? (r.aupr_direct / r.base_direct).toFixed(1) + '×' : '–'}</td>
+            <td>${r.algorithm === 'random' ? 'chance' : (beat ? 'above random' : 'not above random')}</td></tr>`;
+        }).join('');
+        out.innerHTML = `<div style="font-size:11px;margin-bottom:4px;"><b>New simulation</b>: ${data.setting.n_genes} genes, ${data.setting.pathway}, ${data.setting.mode}, ${data.setting.pairs} double KOs, selection ${data.setting.selection}, seed ${data.seed}
+          (${data.rows[0].n_perturbed} genes perturbed, ${data.rows[0].n_edges} true edges, base rate ${base.toFixed(3)}); one simulation shows one draw, the statistics below pool many.</div>
+          <table class="data-table" id="tbl-vcs-new"><caption class="sr-only">Algorithm scores of the new simulation</caption><thead><tr><th>Algorithm</th><th>AUPR</th><th>Lift</th><th>vs random</th></tr></thead><tbody>${rows}</tbody></table>`;
+        status.textContent = `Done in ${data.seconds} s and added to the statistics below.`;
+        VCS.initialised = false;
+        await loadVccScreenBenchmark();
+      } catch (e) {
+        status.textContent = 'Simulation failed: ' + (e.message || e);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderVccScreen() {
+      const d = VCS.data;
+      if (!d) return;
+      const sub = document.getElementById('vcs-sub');
+      const badge = document.getElementById('vcs-badge');
+      const body = document.querySelector('#tbl-vcs-algorithms tbody');
+      if (!d.available) {
+        if (sub) sub.textContent = 'No stored simulations found. Run scripts/run_vcc_benchmark.py to create them.';
+        if (body) body.innerHTML = '';
+        return;
+      }
+      const agg = d.aggregate;
+      const fam = (document.getElementById('vcs-family') || {}).value || 'all';
+      const meta = d.algorithms || {};
+      let algs = agg.algorithms.filter(a => fam === 'all' || (meta[a.algorithm] || {}).family === fam || a.algorithm === 'random');
+      if (sub) {
+        sub.textContent = agg.n_simulations
+          ? `${agg.n_simulations} simulations in ${agg.n_settings} setting${agg.n_settings === 1 ? '' : 's'} match the filters; each algorithm sees the same noisy cells as every other and as a random ranking.`
+          : 'No simulation matches this combination of filters. Reset the filters or pick a combination that was simulated.';
+      }
+      if (badge) badge.textContent = `${agg.n_simulations} sims`;
+      const randomRow = agg.algorithms.find(a => a.algorithm === 'random');
+      const max = Math.max(0.05, ...agg.algorithms.map(a => Math.max(...a.values)));
+      const fmt = v => Number(v).toFixed(3);
+      if (body) {
+        body.innerHTML = algs.map(a => {
+          const [vlabel, vcol] = VCS_VERDICT[a.verdict] || ['', 'var(--text-muted)'];
+          const m = meta[a.algorithm] || {};
+          const label = (m.label || a.algorithm) + (a.uses_pairs ? ' †' : '');
+          const isRef = a.verdict === 'reference';
+          return `<tr data-algorithm="${a.algorithm}" data-verdict="${a.verdict}">
+            <td><strong>${label}</strong><div style="font-size:10px;color:var(--text-muted);">${m.family || ''}</div></td>
+            <td>${a.n}</td>
+            <td style="font-family:monospace;">${fmt(a.mean)} &plusmn; ${fmt(a.sd)}</td>
+            <td>${vcsStrip(a.values, max, randomRow ? randomRow.mean : a.base, vcol)}</td>
+            <td style="font-family:monospace;">${isRef ? '1.0&times;' : a.lift.toFixed(1) + '&times;'}</td>
+            <td>${isRef ? '&ndash;' : Math.round(a.win_rate * 100) + '%'}</td>
+            <td style="font-family:monospace;">${isRef ? '&ndash;' : (a.q_value < 0.001 ? '&lt;0.001' : a.q_value.toFixed(3))}</td>
+            <td style="font-family:monospace;">${isRef || a.verdict === 'control' ? '&ndash;' : (a.q_hub < 0.001 ? '&lt;0.001' : a.q_hub.toFixed(3))}</td>
+            <td><span style="color:${vcol};font-weight:700;">${vlabel}</span></td></tr>`;
+        }).join('');
+        makeTableSortable('tbl-vcs-algorithms');
+      }
+      // Verdict summary
+      const real = agg.algorithms.filter(a => a.verdict !== 'reference' && a.verdict !== 'control');
+      const names = list => list.map(a => `<b>${(meta[a.algorithm] || {}).label || a.algorithm}</b>`).join(', ');
+      const group = v => real.filter(a => a.verdict === v);
+      const box = document.getElementById('vcs-verdict');
+      const line = (colour, title, list) => list.length
+        ? `<div style="border-left:4px solid ${colour};padding:4px 10px;margin-bottom:4px;"><span style="color:${colour};font-weight:700;">${title}</span> ${names(list)}</div>` : '';
+      if (box) {
+        box.innerHTML = !real.length ? '' :
+          line('#10b981', 'Appropriate (beats random and the hubness-only control):', group('better')) +
+          line('#d97706', 'Marginal (beats random, but no better than ranking hub genes):', group('marginal')) +
+          line('#ef4444', 'Not appropriate for this experiment (not better than random):', group('not_better').concat(group('worse')));
+      }
+      // Pivot: one column per level of the compared factor
+      const pv = d.pivot;
+      const title = document.getElementById('vcs-pivot-title');
+      const thead = document.querySelector('#tbl-vcs-pivot thead');
+      const pbody = document.querySelector('#tbl-vcs-pivot tbody');
+      if (pv && thead && pbody) {
+        const factorName = { pathway: 'pathway', n_genes: 'network size', mode: 'perturbation type', pairs: 'double knockouts', selection: 'gene selection' }[pv.factor];
+        const levels = Object.keys(pv.levels);
+        if (title) title.textContent = `Mean AUPR by ${factorName} (other filters applied; colour = verdict against random, lift in brackets)`;
+        thead.innerHTML = `<tr><th>Algorithm</th>${levels.map(l => `<th>${vcsLevelLabel(pv.factor, l, d.labels)}<div style="font-size:10px;font-weight:400;">${pv.levels[l].n_simulations} sims</div></th>`).join('')}</tr>`;
+        const names2 = algs.map(a => a.algorithm);
+        pbody.innerHTML = names2.map(name => `<tr><td><strong>${(meta[name] || {}).label || name}</strong></td>` + levels.map(l => {
+          const c = pv.levels[l].algorithms[name];
+          if (!c) return '<td>&ndash;</td>';
+          const col = (VCS_VERDICT[c.verdict] || ['', 'var(--text-muted)'])[1];
+          const bg = c.verdict === 'better' ? 'rgba(16,185,129,0.14)' : c.verdict === 'marginal' ? 'rgba(217,119,6,0.14)' : c.verdict === 'worse' ? 'rgba(239,68,68,0.12)' : c.verdict === 'not_better' ? 'rgba(245,158,11,0.12)' : 'transparent';
+          return `<td style="background:${bg};font-family:monospace;" data-verdict="${c.verdict}">${fmt(c.mean)} <span style="color:${col};font-size:10px;">(${c.verdict === 'reference' ? 'chance' : c.lift.toFixed(1) + '×'})</span></td>`;
+        }).join('') + '</tr>').join('');
+      }
+      const rule = d.decision_rule || {};
+      const foot = document.getElementById('vcs-footnote');
+      if (foot) {
+        foot.innerHTML = `AUPR = area under the precision-recall curve for the true direct edges (a random ranking scores about the share of true edges, shown as the dashed line). ` +
+          `An algorithm counts as <b>better than random</b> when its mean lift is at least ${rule.min_lift}&times; and the ${rule.test || ''} gives q &lt; ${rule.alpha}. Beating chance is a low bar (a gene's hubness alone carries signal), so the same test against the hubness-only control separates <b>works</b> from <b>marginal</b>. ` +
+          `&dagger; uses the double-knockout experiments as extra conditions; the other algorithms use the single knockouts only. ` +
+          `Gene selection: <i>effective</i> = genes whose knockdown moves others; <i>hubs</i> = oracle choice of the best-connected regulators.`;
+      }
     }
 
     function renderVccBenchmarkUI(data) {

@@ -89,4 +89,4 @@ def test_server_extras_defaults():
     assert extras == {"preset": "current", "measurement": True, "n_control_cells": None, "perturbed": 0,
                       "selection": "effective"}
     assert server._parse_perturb_seq_extras({"measurement": ["0"]})["measurement"] is False
-    assert set(server.PERTURB_SEQ_PRESETS) == {"current", "replogle_like", "thesis"}
+    assert set(server.PERTURB_SEQ_PRESETS) == {"current", "replogle_like", "thesis", "cascade", "feedforward", "lineage", "regulon"}

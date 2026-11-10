@@ -43,7 +43,7 @@ class ScreenRun:
             stats.update(observed_statistics(self.adata, phenotype_test=phenotype_test,
                                              seed=int(self.settings.get("seed") or 0)))
         partial = self.design.is_partial
-        rows = realism_report(stats, partial_selection=partial and self.design.selection == "effective")
+        rows = realism_report(stats, partial_selection=partial and self.design.selection != "random")
         self.seconds["statistics"] = round(time.time() - t, 2)
         out = {"statistics": stats, "report": rows, "score": realism_score(rows), "settings": self.settings,
                "seconds": dict(self.seconds)}

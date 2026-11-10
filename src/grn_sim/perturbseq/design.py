@@ -12,6 +12,10 @@ perturbed* from how the screen is generated (network preset, cell model, measure
     seed. This mirrors how real screens pick targets (genes with a readable phenotype). If the network has fewer effective
     genes than requested, all of them are used and ``info["shortfall"]`` says how many are missing;
   - ``random``: uniformly at random among all genes (no selection effect);
+  - ``expressed``: the most highly expressed genes at the unperturbed steady state (what a real screen can knock down
+    measurably: low-expressed genes have no detectable knockdown); deterministic;
+  - ``hubs``: the genes with the most regulatory targets (an oracle that knows the regulators; the best case for any
+    method, since regulators are exactly the genes whose perturbation moves other genes); ties broken at random;
   - an explicit list of gene indices (``genes``).
 
 Statistics of a partial screen are their own category (:func:`grn_sim.perturbseq.partial_stats.design_statistics`): the share
@@ -25,7 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-SELECTIONS = ("effective", "random")
+SELECTIONS = ("effective", "random", "expressed", "hubs")
 KINDS = ("full", "partial")
 
 
@@ -110,6 +114,19 @@ def select_perturbed(network: Any, design: ScreenDesign, mode: str = "knockdown"
     if design.selection == "random":
         genes = sorted(int(g) for g in rng.choice(n, size=want, replace=False))
         return genes, {"rule": "random", "n_requested": want, "n_selected": want, "n_effective_available": None, "shortfall": 0}
+    if design.selection == "hubs":
+        out_deg = (np.asarray(network.topology.adjacency) != 0).sum(axis=1).astype(float) + rng.uniform(0, 0.5, size=n)
+        genes = sorted(int(g) for g in np.argsort(-out_deg, kind="stable")[:want])
+        return genes, {"rule": "hubs", "n_requested": want, "n_selected": len(genes), "n_effective_available": None,
+                       "shortfall": 0}
+    if design.selection == "expressed":
+        level = getattr(network, "steady_state_unperturbed", None)
+        if level is None:
+            from grn_sim.simulator.steady_state import SteadyStateSolver
+            level = SteadyStateSolver().solve_with_diagnostics(network)[0]
+        genes = sorted(int(g) for g in np.argsort(-np.asarray(level, dtype=float), kind="stable")[:want])
+        return genes, {"rule": "expressed", "n_requested": want, "n_selected": len(genes), "n_effective_available": None,
+                       "shortfall": 0}
     from grn_sim.perturbseq.conditions import simulate_conditions
     probe = simulate_conditions(network, mode=mode if mode != "input" else "knockdown", efficiency=efficiency, seed=seed)
     singles = [c[0] for c in probe.conditions if len(c) == 1]

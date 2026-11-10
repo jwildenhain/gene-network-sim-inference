@@ -18,3 +18,11 @@
 Reproducing the numbers: `scripts/benchmark_screen_methods.py`, `scripts/benchmark_partial_screens.py`,
 `scripts/benchmark_all_datasets.py`, `scripts/scaling_benchmark.py`, `scripts/sweep_screen_conditions.py`,
 `scripts/impute_partial_screen.py`, `scripts/audit_inspre.py` (each prints a table; `--out` writes JSON to `docs/results/`).
+
+## Virtual Cell tab: screen benchmark
+
+`results/vcc_screen_benchmark.md` aggregates 290 simulated Perturb-seq screens (29 settings x 10 seeds: pathway architecture, 50-200
+genes, CRISPRi / knockout / activation, double knockouts, selection of perturbed genes). Every algorithm is compared with a random
+ranking and a hubness-only control on the same cells (paired Wilcoxon, BH-corrected). Pooled over settings the pooled means are
+unbalanced (the modular baseline has 190 of 290 simulations); use the tab's filters for like-for-like comparisons. Reproduce with
+`scripts/run_vcc_benchmark.py` (`--shard`, `--merge`, `--report`). New simulations of up to 200 genes can be added from the tab.
