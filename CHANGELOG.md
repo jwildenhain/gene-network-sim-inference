@@ -4,6 +4,21 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## Unreleased - Virtual Cell tab: tuning round and measured limits
+
+- Second calibration round (effect scale x noise x weight spread, `calibrate_statgen.py --spreads`): linear SEM and NB copula
+  now meet every shown realism target; the Boolean model's effect tail is fixed; the nonlinear model stays short on phenotype
+  share (its saturating links cap propagation) and its noise levels hardly change difficulty - both stated in the generated
+  calibration document.
+- Edge weights capped at |w| <= 1: the spectral bound did not limit single weights on acyclic pathways, where a heavy-tailed
+  weight of 9 drove log expression to ~140 and crashed the measurement; regression test over every pathway and generator.
+- Cross-atlas size limits are measured (`docs/results/vcc_cross_atlas_timings.json`, `tests/test_vcc_limits.py`): the
+  largest size whose slowest whole run fits 600 s and whose double-perturbation screen fits 180 s. Mechanistic 150 genes (was
+  32), Boolean 150, linear SEM / NB copula / nonlinear SCM 200 with every pair screened; Boolean screens its 64 most-connected
+  genes; Hill refits at every size.
+- Simulated source contexts renamed "Source context A/B/C" and the target-context menu shows the rewired share only (the
+  cell-line names suggested real data).
+
 ## Unreleased - Virtual Cell tab: correctness pass
 
 - Perturbation dependencies tested for every generator (`tests/test_perturbation_dependencies.py`): a perturbation moves exactly

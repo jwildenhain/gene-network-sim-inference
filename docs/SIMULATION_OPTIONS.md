@@ -130,7 +130,7 @@ See [`REAL_WORLD_BENCHMARK_PROVENANCE_AND_USAGE.md`](REAL_WORLD_BENCHMARK_PROVEN
 
 What the benchmark builds, in order:
 
-1. **Three source atlases** (K562_GWPS, HCT116_Perturb, HEK293T_Perturb): the same power-law network with basal
+1. **Three source atlases** (simulated source contexts A, B and C; no cell-line data): the same power-law network with basal
    rates modulated by `1 + 0.15 sin(idx + 1 + gene index)`.
 2. **One target context**: the same network after rewiring.
 3. **Edge recovery**: every algorithm is fitted on the target's `X`, `U` and scored against the true network.

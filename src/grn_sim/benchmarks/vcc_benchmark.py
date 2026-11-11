@@ -54,7 +54,9 @@ from grn_sim.benchmarks.hill_response import (
 
 # Accepted ranges for user-supplied parameters (the benchmark is O(n^3) in the gene count).
 MIN_GENES = 4
-MAX_GENES = 32
+# Size limits measured, not assumed (docs/results/vcc_cross_atlas_timings.json; tests/test_vcc_limits.py re-derives them):
+# the largest measured size whose whole run stays within 600 s and whose double-perturbation screen stays within 180 s.
+MAX_GENES = 150                    # mechanistic contexts: 535 s at 150 genes, 379 s at 100
 MAX_K_AV = 5.0
 PERTURBATION_MODES = ("input", "knockdown")
 KNOCKDOWN_EFFICIENCY = 0.8  # CRISPRi: the targeted gene's production is cut by 80% (VCC data: >80% knockdown in 83% of cells)
@@ -188,15 +190,15 @@ def hill_models() -> List[HillModel]:
     return models
 
 
-SOURCE_NAMES = ["K562_GWPS", "HCT116_Perturb", "HEK293T_Perturb"]
+SOURCE_NAMES = ["Source context A", "Source context B", "Source context C"]   # simulated; no real cell-line data
 
 
 def _simulate_contexts(
     num_genes: int, k_av: float, seed: int, target_rewire_fraction: float, sim: PerturbationSimulator
 ) -> Tuple[List[Tuple[str, SimulationExperiment]], SimulationExperiment]:
     """
-    The three source atlases (the same scale-free network with slightly different basal rates: K562-, HCT116- and
-    HEK293T-like) and the target context (the network with ``target_rewire_fraction`` of its edges moved), each
+    The three source atlases (simulated source contexts A, B and C: the same scale-free network with slightly different
+    basal rates) and the target context (the network with ``target_rewire_fraction`` of its edges moved), each
     perturbed one gene at a time.
     """
     base_net = GeneNetwork.create(n=num_genes, k_av=k_av, net_type=TopologyType.POWER_LAW, ratio=0.55, seed=seed)
@@ -219,8 +221,14 @@ def _simulate_contexts(
 # solved, so networks of up to MAX_GENES_STATISTICAL genes are practical.
 
 MAX_GENES_STATISTICAL = 200
-MAX_GENES_HILL_REFIT = 32          # the structure -> Hill refit costs ~n^2 least-squares fits: skipped above this size
-MAX_EPISTASIS_GENES = 32           # above this many genes, the double-perturbation screen covers the most-connected genes
+# Largest network per generator whose whole run fits the 600 s budget (measured; the Boolean model's Monte-Carlo contexts and
+# double perturbations make it the slowest statistical generator).
+MAX_GENES_BY_GENERATOR = {"mechanistic": MAX_GENES, "linear_sem": 200, "nb_copula": 200, "nonlinear_scm": 200, "boolean": 150}
+MAX_GENES_HILL_REFIT = 200         # Hill refits: 178 s at 200 genes (linear SEM), so they run at every allowed size
+# Double-perturbation screen: genes screened (all pairs among them); above this, the most-connected genes. Per pair:
+# linear SEM / NB copula 0.07 ms, nonlinear SCM 1.2 ms, mechanistic ~19 ms, Boolean 43-57 ms (Monte Carlo per pair).
+SCREEN_MAX_GENES = {"mechanistic": 150, "linear_sem": 200, "nb_copula": 200, "nonlinear_scm": 200, "boolean": 64}
+MAX_EPISTASIS_GENES = SCREEN_MAX_GENES["boolean"]                  # the smallest screen limit (kept for callers)
 STAT_GENERATORS = ("linear_sem", "nonlinear_scm", "nb_copula", "boolean")
 
 
@@ -284,11 +292,11 @@ class _StatContexts:
         """eps_ij = ||L_ij - (L_i + L_j)|| (log2, noise-free) over all genes, or the most-connected ones above the cap."""
         model = exp.network
         n = self.n
-        if n <= MAX_EPISTASIS_GENES:
+        if n <= SCREEN_MAX_GENES[self.generator]:
             genes = list(range(n))
         else:
             out = (np.asarray(model.adjacency) != 0).sum(axis=1)
-            genes = sorted(int(g) for g in np.argsort(-out, kind="stable")[:MAX_EPISTASIS_GENES])
+            genes = sorted(int(g) for g in np.argsort(-out, kind="stable")[:SCREEN_MAX_GENES[self.generator]])
         L1 = {g: model.log_mean((g,), np.array([[self.dose]]))[0] / np.log(2.0) for g in genes}
         eps = np.zeros((n, n))
         for a_i, a in enumerate(genes):
@@ -307,7 +315,7 @@ def validate_vcc_params(num_genes: int, k_av: float, rewire_fraction: float, per
         raise ValueError(f"perturbation must be one of {list(PERTURBATION_MODES)}, got {perturbation_mode!r}")
     if generator != "mechanistic" and generator not in STAT_GENERATORS:
         raise ValueError(f"generator must be mechanistic or one of {list(STAT_GENERATORS)}, got {generator!r}")
-    top = MAX_GENES if generator == "mechanistic" else MAX_GENES_STATISTICAL
+    top = MAX_GENES_BY_GENERATOR[generator]
     try:
         n = int(num_genes)
     except (TypeError, ValueError, OverflowError):
@@ -566,7 +574,7 @@ def run_vcc_comparative_benchmark(
 ) -> Dict[str, Any]:
     """
     Executes a multi-context comparative study:
-    1. Simulates multiple source cell contexts (Context 1 = K562-like, Context 2 = HCT116-like, Context 3 = HEK293T-like).
+    1. Simulates three source contexts (A, B, C: the same network with slightly different parameters; simulated, not cell-line data).
     2. Simulates an unseen destination context (Context A) with customizable network rewiring.
     3. Evaluates 18 Reverse-Engineering Algorithms vs Empirical AtlasShift on:
        - Causal interaction matrix recovery (Coverage, FDR, Power, Total Errors)
@@ -691,15 +699,17 @@ def run_vcc_comparative_benchmark(
                 response_ops[model.key] = op
 
     hill_catalog = hill_models()
+    stage("refitting the Hill response models")
     if num_genes <= MAX_GENES_HILL_REFIT:
         hill_responses, hill_unavailable = _hill_held_out_responses(
             target_exp, seen_indices, held_fits, fit_failures, X_train, U_train, mode=perturbation_mode
         )
     else:
-        reason = f"Hill refits are computed up to {MAX_GENES_HILL_REFIT} genes (their cost grows with the square of the gene count)"
+        reason = f"Hill refits are computed up to {MAX_GENES_HILL_REFIT} genes (measured cost: 178 s at 200 genes)"
         hill_responses = {"null": mean_profile_baseline(target_exp.X, seen_indices)}
         hill_unavailable = {m.key: reason for m in hill_catalog if m.key != "null"}
 
+    stage("calibrating the cross-context transfer predictors")
     # Cross-context transfer: predict the target's responses from the source atlases, calibrated on the seen target columns
     # only (leave-one-out for those columns, see cross_context.py). Unlike the AtlasShift row, the held-out genes are present in
     # the source atlases: they are unmeasured in the *target context*, the zero-shot setting of the 2026 challenge.

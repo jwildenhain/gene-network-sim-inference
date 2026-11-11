@@ -13,5 +13,5 @@ def test_calibration_document_matches_code_and_verification_data():
     doc = (ROOT / "docs" / "results" / "statgen_calibration.md").read_text()
     assert doc == render(results), "regenerate with scripts/verify_statgen_noise.py --out ... --doc ..."
     for g, p in CALIBRATED.items():
-        assert f"| {g} | {p.effect_scale:g} | {p.noise:g} |" in doc
+        assert f"| {g} | {p.effect_scale:g} | {p.noise:g} | {p.weight_spread:g} |" in doc
     assert {r["generator"] for r in results} == set(CALIBRATED) | {"mechanistic"}

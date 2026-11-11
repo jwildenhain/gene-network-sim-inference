@@ -37,8 +37,8 @@ kinetics; mechanistic data from the panel-1 engine stay available as one more ge
 
 Model changes made during calibration: the Boolean model became a stochastic logistic rule over weighted inputs (hard threshold
 rules gave far too many affected pairs and a weak knockdown) with common random numbers across conditions (so genes that do not
-depend on a perturbation show exactly no effect); edge weights got a heavier tail (log-sd 1.1); the nonlinear model's noise was
-lowered; the mechanistic screens use the preset's 0.92 guide efficiency; effects are estimated with median-ratio size factors
+depend on a perturbation show exactly no effect); edge weights got a heavier tail (weight spread, the log-sd of |edge weight|, tuned per
+generator in a second round together with effect scale and noise); the nonlinear model's noise was lowered; the mechanistic screens use the preset's 0.92 guide efficiency; effects are estimated with median-ratio size factors
 (total-count normalisation made 9-14% of independent gene pairs look dependent).
 """
 
@@ -54,11 +54,11 @@ def _target_line() -> str:
 def render(results: Sequence[Dict[str, Any]]) -> str:
     rows = sorted(results, key=lambda r: (ORDER.index(r["generator"]), ["low", "medium", "high"].index(r["noise"])))
     L: List[str] = ["# Statistical data generators: calibration and noise levels", "", METHOD, "## Calibrated parameters", "",
-                    "| generator | effect scale | noise (medium) | unit |", "|---|---|---|---|"]
+                    "| generator | effect scale | noise (medium) | weight spread | unit of noise |", "|---|---|---|---|---|"]
     for g in ORDER[1:]:
         p = CALIBRATED[g]
-        L.append(f"| {g} | {p.effect_scale:g} | {p.noise:g} | {UNITS[g]} |")
-    L.append("| mechanistic | preset kinetics | 0.15 / 0.10 | extrinsic log-sd per gene / shared (cell model) |")
+        L.append(f"| {g} | {p.effect_scale:g} | {p.noise:g} | {p.weight_spread:g} | {UNITS[g]} |")
+    L.append("| mechanistic | preset kinetics | 0.15 / 0.10 | preset | extrinsic log-sd per gene / shared (cell model) |")
     seeds = sorted({int(s) for r in rows for s in r.get("seeds", [])})
     L += ["", f"## Verification on unseen seeds ({', '.join(map(str, seeds)) if seeds else 'see the JSON'}; 100 genes, CRISPRi)", "",
           _target_line() + " Realism score: summed distance outside the ranges (0 = all inside). AUPR: direct edges, chance about "

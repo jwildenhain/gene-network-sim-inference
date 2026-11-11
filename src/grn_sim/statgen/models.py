@@ -33,6 +33,9 @@ import numpy as np
 KNOCKOUT_RESIDUAL = 0.02          # production left after a full knockout
 ACTIVATION_GAIN = 2.0             # CRISPRa at full dose multiplies production by 1 + gain
 MAX_SPECTRAL_RADIUS = 0.8         # |W| is rescaled below this, so every model has a unique, stable solution
+MAX_EDGE_WEIGHT = 1.0             # |w| per edge: a target moves at most proportionally (in log) to its regulator. The spectral
+                                  # bound alone does not limit single weights on acyclic graphs (spectral radius 0), where a
+                                  # heavy-tailed draw of 9 gave log expression of ~140 along a chain
 
 
 @dataclass(frozen=True)
@@ -61,7 +64,7 @@ def edge_weights(adjacency: np.ndarray, effect_scale: float, rng: np.random.Gene
     np.fill_diagonal(A, 0.0)
     mag = effect_scale * np.exp(rng.normal(0.0, spread, size=A.shape) - spread ** 2 / 2)
     indeg = np.maximum((A != 0).sum(axis=0), 1)
-    W = A * mag / np.sqrt(indeg)[None, :]
+    W = np.clip(A * mag / np.sqrt(indeg)[None, :], -MAX_EDGE_WEIGHT, MAX_EDGE_WEIGHT)
     rho = float(np.max(np.abs(np.linalg.eigvals(np.abs(W))))) if W.any() else 0.0
     if rho > MAX_SPECTRAL_RADIUS:
         W *= MAX_SPECTRAL_RADIUS / rho
@@ -300,7 +303,7 @@ def jitter_weights(model: StatModel, sd: float, rng: np.random.Generator) -> Sta
     keeps |W| below the stability bound and refreshes the derived matrices. Returns the model.
     """
     factor = np.exp(rng.normal(0.0, sd, size=model.W.shape))
-    model.W = model.W * factor
+    model.W = np.clip(model.W * factor, -MAX_EDGE_WEIGHT, MAX_EDGE_WEIGHT)
     rho = float(np.max(np.abs(np.linalg.eigvals(np.abs(model.W))))) if model.W.any() else 0.0
     if rho > MAX_SPECTRAL_RADIUS:
         model.W *= MAX_SPECTRAL_RADIUS / rho

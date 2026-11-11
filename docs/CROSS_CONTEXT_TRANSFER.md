@@ -21,7 +21,7 @@ beats that average. Code: `src/grn_sim/benchmarks/cross_context.py`; study: `scr
 
 ## The setting
 
-Three source atlases (the same scale-free network with ±15% different basal rates: K562-, HCT116- and HEK293T-like) and a
+Three source atlases (the same scale-free network with ±15% different basal rates: simulated source contexts A, B and C) and a
 target context with a fraction of its edges moved (`_simulate_contexts` in `vcc_benchmark.py`). The predictors get the source
 responses, the target's **seen** perturbations, the perturbation design for every column (which gene is hit, how hard) and the
 target's unperturbed state; the target responses of the held-out columns are never read (tested by poisoning them with NaN).

@@ -3,6 +3,7 @@ Calibrates the statistical generators (grn_sim.statgen) towards genome-scale Per
 scripts/calibrate_perturbseq.py does for the mechanistic presets.
 
     python scripts/calibrate_statgen.py --generator linear_sem [--genes 100 --seeds 2] [--out results.json]
+    python scripts/calibrate_statgen.py --generator nonlinear_scm --scales 0.6 --noises 0.03,0.05 --spreads 1.1,1.5
 
 For every (effect_scale, noise) of the grid a knockdown screen (40 cells per perturbation, measurement artefacts) is
 simulated on the modular replogle_like graph, and the observed statistics are compared with the realism targets
@@ -44,21 +45,32 @@ def main() -> None:
     ap.add_argument("--genes", type=int, default=100)
     ap.add_argument("--seeds", type=int, default=2)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--scales", default=None, help="comma-separated effect scales (default: the generator's grid)")
+    ap.add_argument("--noises", default=None, help="comma-separated noise levels (default: the generator's grid)")
+    ap.add_argument("--spreads", default="1.1", help="comma-separated weight spreads (log-sd of |edge weight|)")
     a = ap.parse_args()
     scales, noises = GRIDS[a.generator]
+    if a.scales:
+        scales = [float(x) for x in a.scales.split(",")]
+    if a.noises:
+        noises = [float(x) for x in a.noises.split(",")]
+    spreads = [float(x) for x in a.spreads.split(",")]
     results = []
     for es in scales:
         for nz in noises:
-            vals, stats = [], []
-            for seed in range(1, a.seeds + 1):
-                A = preset_graph("replogle_like", a.genes, seed=seed)
-                run = run_stat_screen(A, a.generator, ModelParams(effect_scale=es, noise=nz), cells_per_condition=40, seed=seed)
-                s, st = score(run)
-                vals.append(s)
-                stats.append(st)
-            mean_stats = {k: round(float(np.mean([s[k] for s in stats])), 3) for k in stats[0]}
-            results.append({"effect_scale": es, "noise": nz, "score": round(float(np.mean(vals)), 3), "stats": mean_stats})
-            print(json.dumps(results[-1]), flush=True)
+            for sp in spreads:
+                vals, stats = [], []
+                for seed in range(1, a.seeds + 1):
+                    A = preset_graph("replogle_like", a.genes, seed=seed)
+                    run = run_stat_screen(A, a.generator, ModelParams(effect_scale=es, noise=nz, weight_spread=sp),
+                                          cells_per_condition=40, seed=seed)
+                    s, st = score(run)
+                    vals.append(s)
+                    stats.append(st)
+                mean_stats = {k: round(float(np.mean([s[k] for s in stats])), 3) for k in stats[0]}
+                results.append({"effect_scale": es, "noise": nz, "weight_spread": sp, "score": round(float(np.mean(vals)), 3),
+                                "stats": mean_stats})
+                print(json.dumps(results[-1]), flush=True)
     results.sort(key=lambda r: r["score"])
     print("BEST", json.dumps(results[:3]))
     if a.out:

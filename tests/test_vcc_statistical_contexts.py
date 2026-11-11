@@ -13,10 +13,14 @@ from grn_sim.benchmarks import vcc_benchmark as vcc
 def test_gene_limits_depend_on_the_generator():
     vcc.validate_vcc_params(200, 1.8, 0.15, "knockdown", "linear_sem")
     vcc.validate_vcc_params(32, 1.8, 0.15, "knockdown", "mechanistic")
+    vcc.validate_vcc_params(vcc.MAX_GENES, 1.8, 0.15, "knockdown", "mechanistic")
     with pytest.raises(ValueError, match="mechanistic"):
-        vcc.validate_vcc_params(33, 1.8, 0.15, "knockdown", "mechanistic")
+        vcc.validate_vcc_params(vcc.MAX_GENES + 1, 1.8, 0.15, "knockdown", "mechanistic")
     with pytest.raises(ValueError, match="200"):
-        vcc.validate_vcc_params(201, 1.8, 0.15, "knockdown", "boolean")
+        vcc.validate_vcc_params(201, 1.8, 0.15, "knockdown", "linear_sem")
+    vcc.validate_vcc_params(150, 1.8, 0.15, "knockdown", "boolean")
+    with pytest.raises(ValueError, match="150"):
+        vcc.validate_vcc_params(151, 1.8, 0.15, "knockdown", "boolean")
     with pytest.raises(ValueError, match="generator"):
         vcc.validate_vcc_params(20, 1.8, 0.15, "knockdown", "ode")
 
@@ -53,16 +57,27 @@ def payload_40():
                                              generator="linear_sem", rewire_fractions=[0.0, 0.3])
 
 
-def test_a_40_gene_statistical_comparison_runs_with_its_documented_limits(payload_40):
+def test_a_40_gene_statistical_comparison_screens_every_pair_and_refits_hill(payload_40):
     p = payload_40
     assert p["status"] == "success" and p["parameters"]["generator"] == "linear_sem"
     cs = p["combinatorial_screen"]
-    assert len(cs["screened_genes"]) == vcc.MAX_EPISTASIS_GENES and cs["all_pairs"] is False
+    assert len(cs["screened_genes"]) == 40 and cs["all_pairs"] is True
     assert max(max(row) for row in cs["epistasis_matrix"]) < 1e-9                    # log-linear: no interactions
     hill = {m["key"]: m for m in p["parameters"]["hill_models"]}
-    assert not hill["oracle"]["available"] and "32 genes" in hill["oracle"]["reason"] and hill["null"]["available"]
+    assert hill["oracle"]["available"] and hill["null"]["available"]
     assert len(p["summary_table"]) >= 18 and len(p["target_profiles"]) == 40
     json.dumps(p, allow_nan=False)
+
+
+def test_the_screen_covers_the_most_connected_genes_above_the_generator_limit(monkeypatch):
+    monkeypatch.setitem(vcc.SCREEN_MAX_GENES, "nonlinear_scm", 10)
+    ctx = vcc._StatContexts("nonlinear_scm", 30, 1.8, 5, "knockdown")
+    _, target = ctx.contexts(0.0)
+    eps, _, genes = ctx.dual_screen(target)
+    out = (np.asarray(target.network.adjacency) != 0).sum(axis=1)
+    assert len(genes) == 10 and out[genes].min() >= np.sort(out)[-10]
+    others = [g for g in range(30) if g not in genes]
+    assert not eps[np.ix_(others, others)].any()
 
 
 def test_nonlinear_data_do_show_interactions():

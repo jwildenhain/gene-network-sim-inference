@@ -28,4 +28,7 @@ Reproducing the numbers: `scripts/benchmark_screen_methods.py`, `scripts/benchma
   panel-1 engine and the four statistical models, on identical graphs - with 23 algorithms, compared with a random ranking and a
   hubness-only control (paired Wilcoxon, BH), ranked with bootstrap intervals. Pooled tables mix factors; use the tab's filters
   or matched comparisons for like-for-like statements.
+* `results/vcc_screen_findings.md`: the findings, rendered from the stored simulations (tested against them).
+* `results/vcc_cross_atlas_timings.json`: measured stage timings of the cross-atlas comparison per generator and size; the
+  size limits in `grn_sim.benchmarks.vcc_benchmark` are derived from them (tests/test_vcc_limits.py).
 * Reproduce: `scripts/run_vcc_benchmark.py` (`--list`, `--shard i/N`, `--merge`, `--report`).

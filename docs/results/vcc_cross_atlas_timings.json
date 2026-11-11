@@ -1,0 +1,521 @@
+{
+ "note": "measured 2026-11-10 on the Threadripper (cores 16-31, nice 10) while a 1000-simulation corpus ran on 16 other cores: timings are on the high side",
+ "budget_seconds": {
+  "whole_run": 600,
+  "double_screen": 180
+ },
+ "runs": [
+  {
+   "generator": "boolean",
+   "n": 32,
+   "total": 61.4,
+   "stages": {
+    "simulating the source and target contexts": 2.5,
+    "fitting every algorithm on the target context": 6.6,
+    "refitting every algorithm without the held-out perturbations": 4.5,
+    "refitting the Hill response models": 34.6,
+    "calibrating the cross-context transfer predictors": 0.5,
+    "simulating the double perturbations": 8.8,
+    "sweeping the context rewiring": 3.9
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "boolean",
+   "n": 48,
+   "total": 103.4,
+   "stages": {
+    "simulating the source and target contexts": 6.1,
+    "fitting every algorithm on the target context": 3.7,
+    "refitting every algorithm without the held-out perturbations": 9.2,
+    "refitting the Hill response models": 46.2,
+    "calibrating the cross-context transfer predictors": 0.8,
+    "simulating the double perturbations": 28.0,
+    "sweeping the context rewiring": 9.3
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "boolean",
+   "n": 64,
+   "total": 199.7,
+   "stages": {
+    "simulating the source and target contexts": 9.8,
+    "fitting every algorithm on the target context": 4.5,
+    "refitting every algorithm without the held-out perturbations": 29.4,
+    "refitting the Hill response models": 70.3,
+    "calibrating the cross-context transfer predictors": 1.0,
+    "simulating the double perturbations": 69.1,
+    "sweeping the context rewiring": 15.6
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "boolean",
+   "n": 100,
+   "total": 330.7,
+   "stages": {
+    "simulating the source and target contexts": 21.8,
+    "fitting every algorithm on the target context": 8.0,
+    "refitting every algorithm without the held-out perturbations": 86.2,
+    "refitting the Hill response models": 86.4,
+    "calibrating the cross-context transfer predictors": 1.6,
+    "simulating the double perturbations": 97.1,
+    "sweeping the context rewiring": 29.6
+   },
+   "limits": "configured"
+  },
+  {
+   "generator": "boolean",
+   "n": 150,
+   "total": 553.2,
+   "stages": {
+    "simulating the source and target contexts": 53.4,
+    "fitting every algorithm on the target context": 11.0,
+    "refitting every algorithm without the held-out perturbations": 137.6,
+    "refitting the Hill response models": 124.9,
+    "calibrating the cross-context transfer predictors": 2.8,
+    "simulating the double perturbations": 158.6,
+    "sweeping the context rewiring": 64.9
+   },
+   "limits": "configured"
+  },
+  {
+   "generator": "boolean",
+   "n": 200,
+   "total": 987.1,
+   "stages": {
+    "simulating the source and target contexts": 182.7,
+    "fitting every algorithm on the target context": 12.4,
+    "refitting every algorithm without the held-out perturbations": 92.3,
+    "refitting the Hill response models": 179.4,
+    "calibrating the cross-context transfer predictors": 4.4,
+    "simulating the double perturbations": 385.2,
+    "sweeping the context rewiring": 130.6
+   },
+   "limits": "configured"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 32,
+   "total": 40.3,
+   "stages": {
+    "simulating the source and target contexts": 0.3,
+    "fitting every algorithm on the target context": 6.7,
+    "refitting every algorithm without the held-out perturbations": 4.8,
+    "refitting the Hill response models": 26.3,
+    "calibrating the cross-context transfer predictors": 0.5,
+    "simulating the double perturbations": 0.5,
+    "sweeping the context rewiring": 1.1
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 48,
+   "total": 54.3,
+   "stages": {
+    "simulating the source and target contexts": 1.2,
+    "fitting every algorithm on the target context": 3.4,
+    "refitting every algorithm without the held-out perturbations": 9.2,
+    "refitting the Hill response models": 35.5,
+    "calibrating the cross-context transfer predictors": 0.7,
+    "simulating the double perturbations": 0.7,
+    "sweeping the context rewiring": 3.6
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 64,
+   "total": 88.5,
+   "stages": {
+    "simulating the source and target contexts": 1.6,
+    "fitting every algorithm on the target context": 3.8,
+    "refitting every algorithm without the held-out perturbations": 24.0,
+    "refitting the Hill response models": 51.5,
+    "calibrating the cross-context transfer predictors": 1.1,
+    "simulating the double perturbations": 1.2,
+    "sweeping the context rewiring": 5.2
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 100,
+   "total": 259.1,
+   "stages": {
+    "simulating the source and target contexts": 1.8,
+    "fitting every algorithm on the target context": 5.8,
+    "refitting every algorithm without the held-out perturbations": 164.0,
+    "refitting the Hill response models": 78.0,
+    "calibrating the cross-context transfer predictors": 2.0,
+    "simulating the double perturbations": 1.6,
+    "sweeping the context rewiring": 5.9
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 150,
+   "total": 324.9,
+   "stages": {
+    "simulating the source and target contexts": 1.9,
+    "fitting every algorithm on the target context": 12.2,
+    "refitting every algorithm without the held-out perturbations": 166.0,
+    "refitting the Hill response models": 129.2,
+    "calibrating the cross-context transfer predictors": 4.3,
+    "simulating the double perturbations": 3.6,
+    "sweeping the context rewiring": 7.8
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 200,
+   "total": 396.2,
+   "stages": {
+    "simulating the source and target contexts": 2.3,
+    "fitting every algorithm on the target context": 18.1,
+    "refitting every algorithm without the held-out perturbations": 180.0,
+    "refitting the Hill response models": 178.1,
+    "calibrating the cross-context transfer predictors": 5.4,
+    "simulating the double perturbations": 3.8,
+    "sweeping the context rewiring": 8.5
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 32,
+   "total": 51.7,
+   "stages": {
+    "simulating the source and target contexts": 2.2,
+    "fitting every algorithm on the target context": 6.3,
+    "refitting every algorithm without the held-out perturbations": 4.4,
+    "refitting the Hill response models": 26.6,
+    "calibrating the cross-context transfer predictors": 0.5,
+    "simulating the double perturbations": 9.0,
+    "sweeping the context rewiring": 2.7
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 40,
+   "total": 65.4,
+   "stages": {
+    "simulating the source and target contexts": 3.1,
+    "fitting every algorithm on the target context": 3.1,
+    "refitting every algorithm without the held-out perturbations": 5.4,
+    "refitting the Hill response models": 39.8,
+    "calibrating the cross-context transfer predictors": 0.6,
+    "simulating the double perturbations": 9.6,
+    "sweeping the context rewiring": 3.9
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 48,
+   "total": 90.3,
+   "stages": {
+    "simulating the source and target contexts": 5.6,
+    "fitting every algorithm on the target context": 3.6,
+    "refitting every algorithm without the held-out perturbations": 8.8,
+    "refitting the Hill response models": 38.8,
+    "calibrating the cross-context transfer predictors": 0.8,
+    "simulating the double perturbations": 26.0,
+    "sweeping the context rewiring": 6.8
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 64,
+   "total": 140.7,
+   "stages": {
+    "simulating the source and target contexts": 8.3,
+    "fitting every algorithm on the target context": 4.4,
+    "refitting every algorithm without the held-out perturbations": 25.1,
+    "refitting the Hill response models": 50.8,
+    "calibrating the cross-context transfer predictors": 1.1,
+    "simulating the double perturbations": 42.1,
+    "sweeping the context rewiring": 8.9
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 100,
+   "total": 379.3,
+   "stages": {
+    "simulating the source and target contexts": 13.2,
+    "fitting every algorithm on the target context": 9.3,
+    "refitting every algorithm without the held-out perturbations": 161.0,
+    "refitting the Hill response models": 86.1,
+    "calibrating the cross-context transfer predictors": 2.5,
+    "simulating the double perturbations": 93.7,
+    "sweeping the context rewiring": 13.4
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 150,
+   "total": 535.0,
+   "stages": {
+    "simulating the source and target contexts": 15.6,
+    "fitting every algorithm on the target context": 10.6,
+    "refitting every algorithm without the held-out perturbations": 184.6,
+    "refitting the Hill response models": 123.1,
+    "calibrating the cross-context transfer predictors": 3.4,
+    "simulating the double perturbations": 178.6,
+    "sweeping the context rewiring": 19.1
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 200,
+   "total": 834.9,
+   "stages": {
+    "simulating the source and target contexts": 18.2,
+    "fitting every algorithm on the target context": 16.4,
+    "refitting every algorithm without the held-out perturbations": 186.3,
+    "refitting the Hill response models": 169.5,
+    "calibrating the cross-context transfer predictors": 4.7,
+    "simulating the double perturbations": 416.2,
+    "sweeping the context rewiring": 23.6
+   },
+   "limits": "lifted"
+  },
+  {
+   "generator": "nb_copula",
+   "n": 200,
+   "total": 348.9,
+   "stages": {
+    "simulating the source and target contexts": 2.0,
+    "fitting every algorithm on the target context": 15.3,
+    "refitting every algorithm without the held-out perturbations": 140.6,
+    "refitting the Hill response models": 175.2,
+    "calibrating the cross-context transfer predictors": 4.6,
+    "simulating the double perturbations": 3.3,
+    "sweeping the context rewiring": 7.8
+   },
+   "limits": "configured"
+  },
+  {
+   "generator": "nonlinear_scm",
+   "n": 200,
+   "total": 328.9,
+   "stages": {
+    "simulating the source and target contexts": 2.6,
+    "fitting every algorithm on the target context": 13.9,
+    "refitting every algorithm without the held-out perturbations": 149.7,
+    "refitting the Hill response models": 126.3,
+    "calibrating the cross-context transfer predictors": 4.4,
+    "simulating the double perturbations": 23.5,
+    "sweeping the context rewiring": 8.5
+   },
+   "limits": "configured"
+  }
+ ],
+ "screens": [
+  {
+   "generator": "boolean",
+   "n": 32,
+   "pairs": 496,
+   "seconds": 8.8,
+   "limits": "lifted"
+  },
+  {
+   "generator": "boolean",
+   "n": 48,
+   "pairs": 1128,
+   "seconds": 28.0,
+   "limits": "lifted"
+  },
+  {
+   "generator": "boolean",
+   "n": 64,
+   "pairs": 2016,
+   "seconds": 69.1,
+   "limits": "lifted"
+  },
+  {
+   "generator": "boolean",
+   "n": 64,
+   "pairs": 2016,
+   "seconds": 97.1,
+   "limits": "configured",
+   "network_genes": 100
+  },
+  {
+   "generator": "boolean",
+   "n": 64,
+   "pairs": 2016,
+   "seconds": 158.6,
+   "limits": "configured",
+   "network_genes": 150
+  },
+  {
+   "generator": "boolean",
+   "n": 80,
+   "pairs": 3160,
+   "seconds": 137.3,
+   "limits": "lifted"
+  },
+  {
+   "generator": "boolean",
+   "n": 80,
+   "pairs": 3160,
+   "seconds": 385.2,
+   "limits": "configured",
+   "network_genes": 200
+  },
+  {
+   "generator": "boolean",
+   "n": 100,
+   "pairs": 4950,
+   "seconds": 283.6,
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 32,
+   "pairs": 496,
+   "seconds": 0.5,
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 48,
+   "pairs": 1128,
+   "seconds": 0.7,
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 64,
+   "pairs": 2016,
+   "seconds": 1.2,
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 100,
+   "pairs": 4950,
+   "seconds": 1.6,
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 150,
+   "pairs": 11175,
+   "seconds": 3.6,
+   "limits": "lifted"
+  },
+  {
+   "generator": "linear_sem",
+   "n": 200,
+   "pairs": 19900,
+   "seconds": 3.8,
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 32,
+   "pairs": 496,
+   "seconds": 9.0,
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 40,
+   "pairs": 780,
+   "seconds": 9.6,
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 48,
+   "pairs": 1128,
+   "seconds": 26.0,
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 64,
+   "pairs": 2016,
+   "seconds": 42.1,
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 100,
+   "pairs": 4950,
+   "seconds": 93.7,
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 150,
+   "pairs": 11175,
+   "seconds": 178.6,
+   "limits": "lifted"
+  },
+  {
+   "generator": "mechanistic",
+   "n": 200,
+   "pairs": 19900,
+   "seconds": 416.2,
+   "limits": "lifted"
+  },
+  {
+   "generator": "nb_copula",
+   "n": 100,
+   "pairs": 4950,
+   "seconds": 0.3,
+   "limits": "lifted"
+  },
+  {
+   "generator": "nb_copula",
+   "n": 200,
+   "pairs": 19900,
+   "seconds": 1.7,
+   "limits": "lifted"
+  },
+  {
+   "generator": "nb_copula",
+   "n": 200,
+   "pairs": 19900,
+   "seconds": 3.3,
+   "limits": "configured",
+   "network_genes": 200
+  },
+  {
+   "generator": "nonlinear_scm",
+   "n": 100,
+   "pairs": 4950,
+   "seconds": 4.9,
+   "limits": "lifted"
+  },
+  {
+   "generator": "nonlinear_scm",
+   "n": 200,
+   "pairs": 19900,
+   "seconds": 24.2,
+   "limits": "lifted"
+  },
+  {
+   "generator": "nonlinear_scm",
+   "n": 200,
+   "pairs": 19900,
+   "seconds": 23.5,
+   "limits": "configured",
+   "network_genes": 200
+  }
+ ],
+ "rule": "limit = the largest measured size whose slowest measurement fits the budget (whole run 600 s, double screen 180 s)"
+}

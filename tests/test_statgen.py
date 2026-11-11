@@ -146,8 +146,10 @@ def test_noise_levels_scale_only_the_noise():
 
 @pytest.mark.parametrize("gen", sorted(MODELS))
 def test_calibrated_screens_look_like_perturb_seq(gen):
-    run = vb.simulate_screen(vb.Setting(generator=gen, n_genes=100), seed=777)
-    st = run.realism()["statistics"]
+    """Mean over three seeds (single screens vary: the nonlinear model's phenotype share ranges 0.10-0.29 by seed)."""
+    keys = ("on_target_knockdown", "fraction_with_phenotype", "affected_pair_density")
+    stats = [vb.simulate_screen(vb.Setting(generator=gen, n_genes=100), seed).realism()["statistics"] for seed in (777, 778, 779)]
+    st = {k: float(np.mean([s[k] for s in stats])) for k in keys}
     assert 0.75 <= st["on_target_knockdown"] <= 0.95
     assert 0.12 <= st["fraction_with_phenotype"] <= 0.5
     assert 0.01 <= st["affected_pair_density"] <= 0.07
@@ -215,3 +217,22 @@ def test_rank_and_mean_intervals_contain_the_point_estimates():
         assert a["ci_low"] <= a["mean"] <= a["ci_high"] and a["rank_low"] <= a["rank"] <= a["rank_high"]
     assert by["a"]["rank_high"] >= 2 and by["b"]["rank_low"] <= 1         # a and b cannot be told apart
     assert by["c"]["rank_low"] == by["c"]["rank_high"] == 3                 # c is clearly third
+
+
+@pytest.mark.parametrize("gen", sorted(MODELS))
+def test_every_pathway_gives_bounded_expression(gen):
+    """Heavy-tailed weights on acyclic pathways once produced log expression of ~140 (non-finite after measurement)."""
+    from grn_sim.evaluation.vcc_benchmark import PATHWAYS
+    from grn_sim.statgen.models import MAX_EDGE_WEIGHT
+
+    for pathway in PATHWAYS:
+        for seed in (1, 6):
+            A = preset_graph(pathway, 100, seed=seed)
+            for mode in ("knockdown", "knockout", "input"):
+                m = make_model(gen, A, params_for(gen, 2.0), mode, np.random.default_rng(seed + 101))
+                assert np.abs(m.W).max() <= MAX_EDGE_WEIGHT + 1e-12
+                z = m.log_mean((0,), np.array([[1.0]]))
+                assert np.isfinite(z).all() and np.abs(z).max() < 12, f"{gen} {pathway} {mode}: |log fold| {np.abs(z).max():.1f}"
+                if gen != "boolean":                       # the Boolean sampler is slow; its states are bounded by design
+                    x = m.sample((3,), np.full((50, 1), 0.9), np.random.default_rng(seed))
+                    assert np.isfinite(x).all() and x.max() / max(x.min(), 1e-300) < 1e12

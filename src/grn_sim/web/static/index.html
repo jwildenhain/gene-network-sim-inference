@@ -2815,22 +2815,22 @@
 
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:6px;">
-              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;">Cell Context:</label>
+              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;" for="vcc-cell-line">Target context:</label>
               <select id="vcc-cell-line" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(false)">
-                <option value="0.05">K562-like (Low Rewire 5%)</option>
-                <option value="0.15" selected>HCT116-like (Std Rewire 15%)</option>
-                <option value="0.30">Jurkat-like (Rewired 30%)</option>
-                <option value="0.45">Cancer Divergent (45%)</option>
+                <option value="0.05">5% of edges rewired</option>
+                <option value="0.15" selected>15% of edges rewired</option>
+                <option value="0.30">30% of edges rewired</option>
+                <option value="0.45">45% of edges rewired</option>
               </select>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
               <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;" for="vcc-generator">Data:</label>
               <select id="vcc-generator" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(false)" title="How the cell contexts of the cross-atlas comparison are generated">
-                <option value="mechanistic">Mechanistic (panel-1 Hill kinetics, up to 32 genes)</option>
+                <option value="mechanistic">Mechanistic (panel-1 Hill kinetics, up to 150 genes)</option>
                 <option value="linear_sem" selected>Linear SEM</option>
                 <option value="nonlinear_scm">Nonlinear additive-noise SCM</option>
                 <option value="nb_copula">Negative-binomial copula</option>
-                <option value="boolean">Probabilistic Boolean network</option>
+                <option value="boolean">Probabilistic Boolean network (up to 150 genes)</option>
               </select>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
@@ -2843,6 +2843,7 @@
                 <option value="32">32 Genes</option>
                 <option value="50">50 Genes</option>
                 <option value="100">100 Genes</option>
+                <option value="150">150 Genes</option>
                 <option value="200">200 Genes</option>
               </select>
             </div>
@@ -2965,9 +2966,9 @@
 
       <div id="vcc-large-note" style="display:none;margin-bottom:14px;" class="panel">
         <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
-          Mechanistic contexts solve the Hill kinetics for every context and perturbation and are computed up to 32 genes. Choose a
-          statistical data generator for larger networks (up to 200 genes; above 32 genes the comparison runs in the background, a
-          few minutes at 200 genes), or use the screen simulator above.
+          This network is larger than the selected data generator can compare within about 10 minutes (measured limits:
+          mechanistic and Boolean 150 genes, the other statistical generators 200). Choose another generator or fewer genes
+          (above 32 genes every comparison runs in the background), or use the screen simulator above.
         </div>
       </div>
       <div id="vcc-atlas-section">
@@ -2980,7 +2981,7 @@
             <span class="badge badge-emerald">High Overlap</span>
           </div>
           <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">
-            Target perturbed in source atlases (K562, HCT116, HEK293T).
+            Target perturbed in the simulated source contexts A, B and C.
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;background:var(--stage-bg);padding:10px;border-radius:6px;">
             <div>
@@ -9960,8 +9961,9 @@
       const rewireFrac = document.getElementById('vcc-cell-line')?.value || 0.15;
       const perturbation = document.getElementById('vcc-perturbation')?.value || 'knockdown';
       const generator = document.getElementById('vcc-generator')?.value || 'mechanistic';
-      // Mechanistic contexts solve the Hill ODEs for every context and stop at 32 genes; the statistical generators go to 200.
-      const tooLarge = Number(n) > 32 && generator === 'mechanistic';
+      // Measured limits per generator (docs/results/vcc_cross_atlas_timings.json; the server enforces the same values).
+      const VCC_MAX_GENES = { mechanistic: 150, linear_sem: 200, nb_copula: 200, nonlinear_scm: 200, boolean: 150 };
+      const tooLarge = Number(n) > (VCC_MAX_GENES[generator] || 200);
       const atlas = document.getElementById('vcc-atlas-section'), note = document.getElementById('vcc-large-note');
       if (atlas) atlas.style.display = tooLarge ? 'none' : '';
       if (note) note.style.display = tooLarge ? 'block' : 'none';
@@ -10331,7 +10333,7 @@
           const cs = (data && data.combinatorial_screen) || {};
           const gen = (data && data.parameters && data.parameters.generator) || 'mechanistic';
           scopeEl.textContent = (cs.all_pairs === false
-            ? `Pairs among the ${cs.screened_genes.length} most-connected genes (all ${cs.screened_genes.length * (cs.screened_genes.length - 1) / 2} of them); other pairs are not simulated at this size. `
+            ? `Pairs among the ${cs.screened_genes.length} most-connected genes (all ${cs.screened_genes.length * (cs.screened_genes.length - 1) / 2} of them); this generator's double perturbations are too slow to screen every pair at this size. `
             : '') + (gen === 'linear_sem' || gen === 'nb_copula' ? 'Log-linear data: double effects add exactly, so ε = 0 by construction.' : '');
         }
         const listEl = document.getElementById('vcc-top-synergy-list');

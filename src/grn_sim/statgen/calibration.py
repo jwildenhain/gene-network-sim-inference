@@ -21,10 +21,12 @@ from typing import Dict
 from grn_sim.statgen.models import ModelParams
 
 CALIBRATED: Dict[str, ModelParams] = {
-    "linear_sem": ModelParams(effect_scale=0.15, noise=0.2),
-    "nonlinear_scm": ModelParams(effect_scale=0.6, noise=0.07),
-    "nb_copula": ModelParams(effect_scale=0.15, noise=0.2),
-    "boolean": ModelParams(effect_scale=1.2, noise=1.0),
+    # second tuning round (effect scale x noise x weight spread, 4 seeds per grid point): heavier-tailed edge weights for the
+    # top-5% effect share, larger effects to keep phenotype share and pair density inside their ranges
+    "linear_sem": ModelParams(effect_scale=0.25, noise=0.2, weight_spread=1.7),
+    "nonlinear_scm": ModelParams(effect_scale=0.6, noise=0.03, weight_spread=1.4),
+    "nb_copula": ModelParams(effect_scale=0.25, noise=0.2, weight_spread=1.7),
+    "boolean": ModelParams(effect_scale=1.2, noise=1.0, weight_spread=1.7),
 }
 
 
