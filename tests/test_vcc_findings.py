@@ -19,6 +19,8 @@ def rows():
 
 
 def test_findings_document_matches_the_stored_simulations(rows):
+    if not (ROOT / "docs" / "results").is_dir():
+        pytest.skip("docs/results is not available (installed package or Docker image)")
     doc = ROOT / "docs" / "results" / "vcc_screen_findings.md"
     assert doc.read_text() == vf.render(vf.compute(rows)), "regenerate with scripts/run_vcc_benchmark.py --report"
 

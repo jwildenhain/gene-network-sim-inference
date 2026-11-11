@@ -6,9 +6,14 @@ screen budget.
 import json
 from pathlib import Path
 
+import pytest
+
 from grn_sim.benchmarks import vcc_benchmark as vcc
 
-TIMINGS = json.loads((Path(__file__).resolve().parents[1] / "docs" / "results" / "vcc_cross_atlas_timings.json").read_text())
+_PATH = Path(__file__).resolve().parents[1] / "docs" / "results" / "vcc_cross_atlas_timings.json"
+if not _PATH.is_file():                                    # the Docker image ships no docs/
+    pytest.skip("docs/results is not available (installed package or Docker image)", allow_module_level=True)
+TIMINGS = json.loads(_PATH.read_text())
 RUN_BUDGET = TIMINGS["budget_seconds"]["whole_run"]
 SCREEN_BUDGET = TIMINGS["budget_seconds"]["double_screen"]
 

@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from grn_sim.statgen.calibration import CALIBRATED
 from grn_sim.statgen.report import render
 
@@ -9,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_calibration_document_matches_code_and_verification_data():
+    if not (ROOT / "docs" / "results").is_dir():
+        pytest.skip("docs/results is not available (installed package or Docker image)")
     results = json.loads((ROOT / "docs" / "results" / "statgen_noise_verification.json").read_text())
     doc = (ROOT / "docs" / "results" / "statgen_calibration.md").read_text()
     assert doc == render(results), "regenerate with scripts/verify_statgen_noise.py --out ... --doc ..."
