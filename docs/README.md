@@ -7,6 +7,7 @@
 | [`slides/index.html`](slides/index.html) | Illustrated slide deck: the tool, the simulators and what is distinct about each algorithm (open in a browser, arrow keys to move) |
 | [`PERTURBSEQ.md`](PERTURBSEQ.md) | Perturb-seq screen simulation: stages, partial screens, realism targets, API |
 | [`SCALE_BENCHMARK.md`](SCALE_BENCHMARK.md) | The 500-2000 gene benchmark: same mechanistic simulation, calibrated kinetics, scores against thesis scale, edge counts given to algorithms |
+| [`results/mechanistic_vs_statistical_top5.md`](results/mechanistic_vs_statistical_top5.md) | Top 5 algorithms on mechanistic and on statistical screens (rendered from the corpus, tested) |
 | [`INFERENCE_GAP_ANALYSIS.md`](INFERENCE_GAP_ANALYSIS.md) | How the algorithms compare on simulated screens and real datasets; what is missing; run time |
 | [`results/`](results/) | Raw tables and JSON behind the analyses (partial screens, sweeps, ablations, scaling, imputation, datasets) |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Package map, data flow, conventions, how to extend |
