@@ -337,6 +337,16 @@ def load_run_from_db(run_id: str, db_path: Optional[str] = None) -> Optional[Dic
         conn.close()
 
 
+def run_exists_in_db(run_id: str, db_path: Optional[str] = None) -> bool:
+    """True when the archive holds a run with this id (a cheap key lookup; nothing is loaded)."""
+    path = init_db(db_path)
+    conn = sqlite3.connect(path)
+    try:
+        return conn.execute("SELECT 1 FROM nw WHERE simid = ? LIMIT 1", (run_id,)).fetchone() is not None
+    finally:
+        conn.close()
+
+
 def get_db_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
     """Returns row counts and metadata for the `nw` and `alg` tables in `rgn_db.sqlite`."""
     path = init_db(db_path)

@@ -18,6 +18,7 @@ import json
 import os
 import sys
 import threading
+import types
 import time
 import urllib.parse
 import zipfile
@@ -96,6 +97,7 @@ from grn_sim.web.database import (
     save_simulation_to_db,
     load_all_history_from_db,
     load_run_from_db,
+    run_exists_in_db,
     get_db_stats,
 )
 from grn_sim.simulator.response_dynamics import classify_perturbation_response
@@ -2611,11 +2613,9 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
     """
     failed: Dict[str, str] = {}
     with STATE_LOCK:
-        stored = SIMULATION_RUN_STORE.get(run_id)
-        if stored is None:
-            raise LookupError(f"network {run_id!r} is no longer in memory")
         snapshot = dict(CURRENT_STATE)
         try:
+            stored = SIMULATION_RUN_STORE.get(run_id) or _adopt_archived_run(run_id)
             CURRENT_STATE.clear()
             CURRENT_STATE.update(stored["state"])
             for index, alg in enumerate(algorithms):
@@ -2647,8 +2647,25 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
             "best_f1": metrics[best]["f1_score"] if best else None}
 
 
+def _adopt_archived_run(run_id: str) -> Dict[str, Any]:
+    """
+    Brings an archived run back into the in-memory store with the data the algorithms need (its X and U), so a job can
+    add algorithms to a network generated before the last restart. Call with STATE_LOCK held; the caller restores
+    CURRENT_STATE (the loader switches it to this run).
+    """
+    record = _load_archived_run(run_id)
+    stored = SIMULATION_RUN_STORE.get(run_id)
+    if record is None or stored is None:
+        raise LookupError(f"network {run_id!r} is neither in memory nor in the archive")
+    if stored["state"].get("experiment") is None:
+        stored["state"]["experiment"] = types.SimpleNamespace(
+            X=np.asarray(record["X"], dtype=float), U=np.asarray(record["U"], dtype=float))
+    return stored
+
+
 def _job_can_infer(run_id: str) -> bool:
-    return run_id in SIMULATION_RUN_STORE  # no STATE_LOCK: a running job holds it, and submitting must not wait
+    # no STATE_LOCK: a running job holds it, and submitting must not wait
+    return run_id in SIMULATION_RUN_STORE or run_exists_in_db(run_id)
 
 
 JOB_MANAGER = _jobs.JobManager(
