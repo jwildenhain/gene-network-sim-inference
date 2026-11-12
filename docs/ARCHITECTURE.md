@@ -17,7 +17,9 @@ src/grn_sim/
 ├── perturbseq/         Perturb-seq generator: conditions, cells, measurement, realism, calibration; design.py (full or partial
 │                       screens, effective-gene selection), partial_stats.py (their statistics), ace.py (effect estimates + FDR)
 ├── evaluation/         confusion matrices, coverage / FDR / power, 9-state classification (BenchmarkMetrics); screen_benchmark.py
-│                       (direct vs total-effect truth), partial_screen.py (per-block scoring), prior_experiment.py, heldout_prediction.py
+│                       (direct vs total-effect truth), partial_screen.py (per-block scoring), prior_experiment.py, heldout_prediction.py;
+│                       vcc2026.py (the Virtual Cell Challenge 2026 scorer, a port of cell-eval2's vcc2026 profile) and
+│                       vcc_prediction.py (predicted cells, the structure + linear-refit predictor, scoring of a prediction set)
 ├── benchmarks/         SOS pathway, dataset registry + provenance, Virtual Cell Challenge benchmark, held-out prediction, sweeps
 ├── visualization/      graph export (DOT / SVG / JSON) and the built-in layered layout used without Graphviz
 ├── agents/             small multi-agent simulate -> infer -> evaluate loop (CLI: grn-sim multi-agent)

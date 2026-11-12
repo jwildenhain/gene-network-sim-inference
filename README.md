@@ -497,10 +497,21 @@ We benchmarked the modernized `phpIoRN` mechanistic simulator against the contem
 
 ##### Algorithmic Paradigms
 * **AtlasShift (Empirical Cross-Atlas Delta Transfer)**:
-  Estimates target cell-line response $\mathbf{y}_t = \mathbf{y}_{t,\text{ctrl}} + \Delta \mathbf{y}$ by taking weighted combinations of observed perturbations across source atlases (K562, HCT116, HEK293T) and emitting discrete single-cell UMI counts via dual-moment Negative-Binomial matching.
+  Estimates target cell-line response $\mathbf{y}_t = \mathbf{y}_{t,\text{ctrl}} + \Delta \mathbf{y}$ by taking weighted combinations of observed perturbations across source atlases (in the studio: simulated source contexts A, B and C) and emitting discrete single-cell UMI counts via dual-moment Negative-Binomial matching.
 * **phpIoRN (Mechanistic Causal ODE Inversion)**:
   Reconstructs the underlying directed, signed regulatory Jacobian topology $\mathbf{A} \in \mathbb{R}^{N \times N}$ using sparse regression ($L_0 / L_1$ with MDL/AIC criteria) and propagates perturbations through the causal gene network:
   $$\hat{\mathbf{X}} = \mathbf{A}_{\text{est}}^{-1} \mathbf{U}$$
+
+##### Scoring with the challenge's own metrics
+Tab 4 also scores its simulations the way the 2026 leaderboard does: a port of cell-eval2's `vcc2026` profile
+([`src/grn_sim/evaluation/vcc2026.py`](src/grn_sim/evaluation/vcc2026.py), documented in
+[`docs/VCC2026_SCORING.md`](docs/VCC2026_SCORING.md)) computes perturbation discrimination, the sampling-corrected
+expression error, Jaccard, NMAE, direction fidelity and direction reach, each placed between the context-mean baseline (0)
+and a replicate experiment (1) measured on the same cells. The cross-atlas comparison scores every held-out prediction of
+Table 2 on virtual cells (Table 2b); "Simulate once" scores every network-inference algorithm as a predictor of held-out
+knockdowns (structure + linear refit) next to oracle and prior rows. Tested in
+[`tests/test_vcc2026_scorer.py`](tests/test_vcc2026_scorer.py) (bit-identical Wilcoxon p-values to scanpy, BH to scipy, the
+specification's fixed points) and [`tests/test_vcc2026_integration.py`](tests/test_vcc2026_integration.py).
 
 ##### Automated Test Verification Matrix
 Tested in [`tests/test_atlasshift_and_perturbseq.py`](tests/test_atlasshift_and_perturbseq.py) and [`tests/test_web_and_visualization.py`](tests/test_web_and_visualization.py):

@@ -21,6 +21,9 @@ from grn_sim.paths import resolve_data_file, user_data_dir
 FILE_PARTS = ("benchmarks", "vcc_screen_benchmark.jsonl")
 USER_FILE = "vcc_screen_user.jsonl"           # simulations run from the studio, kept in the user data folder
 MAX_LIVE_GENES = 200
+DEFAULT_CELLS = vb.Setting().cells            # the benchmark's cells per perturbation; other counts are not stored
+MAX_CELLS = 400                               # the challenge's cells per perturbation
+MAX_BYSTANDERS = 5000
 _LOCK = threading.Lock()
 _RUN_LOCK = threading.Lock()
 _CACHE: Dict[str, Any] = {"key": None, "rows": []}
@@ -85,9 +88,22 @@ def parse_simulation(query: Dict[str, List[str]]) -> Tuple[vb.Setting, int]:
         raise ValueError(f"selection must be one of {', '.join(vb.SELECTIONS)}")
     n = integer("n_genes", 100, 12, MAX_LIVE_GENES)
     pairs = integer("pairs", 0, 0, 2 * n)
+    cells = integer("cells", DEFAULT_CELLS, 12, MAX_CELLS)
     seed = integer("seed", int(time.time()) % 100000 + 1000, 1, 10 ** 9)
     return vb.Setting(generator="mechanistic" if generator == "all" else generator, noise=noise, pathway=pathway, n_genes=n,
-                      mode=mode, pairs=pairs, selection=selection), seed
+                      mode=mode, pairs=pairs, selection=selection, cells=cells), seed
+
+
+def parse_bystanders(query: Dict[str, List[str]]) -> int:
+    """Unregulated genes added to the VCC-scored panel (0 to ``MAX_BYSTANDERS``)."""
+    raw = str(query.get("bystanders", ["0"])[0]).strip() or "0"
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValueError("bystanders must be an integer") from None
+    if not 0 <= value <= MAX_BYSTANDERS:
+        raise ValueError(f"bystanders must be between 0 and {MAX_BYSTANDERS}, got {value}")
+    return value
 
 
 def simulate(query: Dict[str, List[str]], save: bool = True, current_network: Any = None) -> Dict[str, Any]:
@@ -96,10 +112,13 @@ def simulate(query: Dict[str, List[str]], save: bool = True, current_network: An
     generator on the *same graph and seed*, which is the one-to-one comparison of the two kinds of data. ``source=current``
     takes the network open in panel 1 (its Hill kinetics for the mechanistic data, its graph for the statistical ones).
 
-    With ``save`` the rows of preset networks join the stored statistics (a panel-1 network is not a preset, so its runs are
-    returned but not stored). Raises ``RuntimeError`` when another simulation is already running.
+    With ``save`` the rows of preset networks join the stored statistics (a panel-1 network is not a preset, and a run with
+    another cell count than the benchmark's is not comparable, so those runs are returned but not stored). Every screen
+    is also scored as the Virtual Cell Challenge task (``vcc_scores`` per generator). Raises ``RuntimeError`` when another
+    simulation is already running.
     """
     setting, seed = parse_simulation(query)
+    bystanders = parse_bystanders(query)
     want = str(query.get("generator", ["linear_sem"])[0]).strip() or "linear_sem"
     source = str(query.get("source", ["preset"])[0]).strip() or "preset"
     if source not in ("preset", "current"):
@@ -119,14 +138,17 @@ def simulate(query: Dict[str, List[str]], save: bool = True, current_network: An
     t = time.time()
     rows: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
+    vcc_scores: Dict[str, Any] = {}
     try:
         algorithms = vb.algorithm_library()
         for gen in generators:
             try:
-                rows += vb.run_simulation(replace(setting, generator=gen), seed, algorithms, adjacency=adjacency, network=network)
+                new_rows, vcc_scores[gen] = vb.run_simulation(replace(setting, generator=gen), seed, algorithms, adjacency=adjacency,
+                                                              network=network, return_vcc=True, bystanders=bystanders)
+                rows += new_rows
             except Exception as exc:                       # e.g. an oscillating panel-1 network has no steady state
                 errors[gen] = f"{type(exc).__name__}: {exc}"
-        stored = save and source == "preset"
+        stored = save and source == "preset" and setting.cells == DEFAULT_CELLS
         if stored and rows:
             path = _user_path()
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -139,7 +161,8 @@ def simulate(query: Dict[str, List[str]], save: bool = True, current_network: An
     for r in rows:
         comparison.setdefault(r["algorithm"], {})[r["generator"]] = r["aupr_direct"]
     return {"setting": setting.to_dict(), "seed": seed, "generators": generators, "source": source, "rows": rows,
-            "comparison": comparison, "errors": errors, "seconds": round(time.time() - t, 1), "saved": bool(stored and rows)}
+            "comparison": comparison, "errors": errors, "seconds": round(time.time() - t, 1), "saved": bool(stored and rows),
+            "vcc_scores": vcc_scores, "bystanders": bystanders}
 
 
 def parse_filters(query: Dict[str, List[str]]) -> Tuple[Dict[str, str], str]:

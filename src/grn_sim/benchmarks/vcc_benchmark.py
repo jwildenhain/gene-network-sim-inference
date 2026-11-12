@@ -486,6 +486,77 @@ def _hill_held_out_responses(
     return responses, unavailable
 
 
+VCC_CELLS = 400                    # cells per held-out perturbation of the virtual reference (the challenge's 400)
+VCC_BYSTANDERS = 0                 # unregulated genes added to the virtual reference (optional: a realistic library)
+MAX_BYSTANDERS = 5000
+
+
+def _vcc_scores_for_held_out(
+    exp: SimulationExperiment,
+    gene_names: List[str],
+    unseen: List[int],
+    U: np.ndarray,
+    response_ops: Dict[str, np.ndarray],
+    unavailable: Dict[str, str],
+    hill_responses: Dict[str, np.ndarray],
+    hill_unavailable: Dict[str, str],
+    transfer_responses: Dict[str, np.ndarray],
+    transfer_unavailable: Dict[str, str],
+    hill_catalog: List[HillModel],
+    seed: int,
+    cells: int = VCC_CELLS,
+    bystanders: int = VCC_BYSTANDERS,
+) -> Dict[str, Any]:
+    """
+    The held-out predictions of every response row on the Virtual Cell Challenge 2026 scale
+    (:mod:`grn_sim.evaluation.vcc2026`). The reference is a virtual Perturb-seq of the target context's held-out
+    perturbations (``cells`` Poisson-sampled cells each, plus controls, from the simulated steady states, with
+    ``bystanders`` unregulated genes for a realistic library); a row's predicted relative response ``x / x_ss - 1``
+    becomes a fold change of every gene's mean, emitted as rescaled control cells. Rows that produced no response are
+    listed as unavailable with their reason.
+    """
+    from grn_sim.evaluation.vcc_prediction import (LFC_CLIP, PredictionRow, score_prediction_rows, virtual_cells,
+                                                   with_bystanders)
+
+    ref = np.maximum(np.asarray(exp.reference_steady_state, dtype=float), 1e-12)
+    states = np.asarray(exp.perturbed_states, dtype=float)
+    profiles = {gene_names[j]: np.maximum(states[:, j], 0.0) for j in unseen}
+    real = with_bystanders(virtual_cells(profiles, ref, gene_names, cells_per_condition=cells, seed=seed + 555),
+                           bystanders, seed=seed + 556)
+
+    def folds(response_of: Any) -> Dict[str, np.ndarray]:
+        cap = float(np.exp(LFC_CLIP))
+        return {gene_names[j]: np.clip(1.0 + np.nan_to_num(np.asarray(response_of(j), dtype=float)), 0.0, cap) for j in unseen}
+
+    rows: List[PredictionRow] = []
+    for m in response_models():
+        if m.key in response_ops:
+            op = response_ops[m.key]
+            rows.append(PredictionRow(m.key, m.label, "algorithm", "Linear Jacobian", folds(lambda j, op=op: op @ U[:, j])))
+        else:
+            rows.append(PredictionRow(m.key, m.label, "algorithm", "Linear Jacobian", None, unavailable.get(m.key, "")))
+    for h in hill_catalog:
+        if h.key in hill_responses:
+            R = hill_responses[h.key]
+            rows.append(PredictionRow(h.key, h.label, h.kind, "Hill refit", folds(lambda j, R=R: R[:, j])))
+        else:
+            rows.append(PredictionRow(h.key, h.label, h.kind, "Hill refit", None, hill_unavailable.get(h.key, "")))
+    for p in TRANSFER_PREDICTORS:
+        if p.key in transfer_responses:
+            R = transfer_responses[p.key]
+            rows.append(PredictionRow(p.key, p.label, p.kind, "Cross-context transfer", folds(lambda j, R=R: R[:, j])))
+        else:
+            rows.append(PredictionRow(p.key, p.label, p.kind, "Cross-context transfer", None, transfer_unavailable.get(p.key, "")))
+    rows.append(PredictionRow("atlasshift", "AtlasShift (cross-atlas average)", "reference", "Reference",
+                              folds(lambda j: np.zeros(len(gene_names)))))
+    rows.append(PredictionRow("truth_means", "Simulator truth (noise-free means)", "oracle", "Reference",
+                              {gene_names[j]: profiles[gene_names[j]] / ref for j in unseen}))
+    out = score_prediction_rows(real, [gene_names[j] for j in unseen], rows, seed=seed)
+    out["cells_per_perturbation"] = int(cells)
+    out["bystanders"] = int(bystanders)
+    return out
+
+
 def _mean_metrics(scores: List[Dict[str, float]]) -> Dict[str, float]:
     keys = ("pearson_r", "cosine_sim", "rmse", "offtarget_r")
     return {k: round(float(np.mean([s[k] for s in scores])) if scores else 0.0, 3) for k in keys}
@@ -571,6 +642,7 @@ def run_vcc_comparative_benchmark(
     perturbation_mode: str = "input",
     generator: str = "mechanistic",
     progress: Optional[Any] = None,
+    bystanders: int = VCC_BYSTANDERS,
 ) -> Dict[str, Any]:
     """
     Executes a multi-context comparative study:
@@ -585,6 +657,8 @@ def run_vcc_comparative_benchmark(
        - Context rewiring sensitivity curve (rho in [0%, 50%])
     """
     validate_vcc_params(num_genes, k_av, target_rewire_fraction, perturbation_mode, generator)
+    if not isinstance(bystanders, (int, np.integer)) or not 0 <= int(bystanders) <= MAX_BYSTANDERS:
+        raise ValueError(f"bystanders must be an integer in [0, {MAX_BYSTANDERS}], got {bystanders!r}")
 
     def stage(text: str) -> None:
         if progress is not None:
@@ -829,6 +903,14 @@ def run_vcc_comparative_benchmark(
     ]
     response_table.append(table_row("reference", "atlasshift", "AtlasShift (cross-atlas average)", "reference", True, ""))
 
+    # 6b. The held-out predictions on the Virtual Cell Challenge 2026 scale: virtual cells of the target context's
+    # held-out perturbations are the reference, every response row above is emitted as cells and scored.
+    stage("scoring the held-out predictions with the VCC 2026 metrics")
+    vcc_scores = _vcc_scores_for_held_out(
+        target_exp, gene_names, unseen_indices, U_tgt, response_ops, unavailable, hill_responses, hill_unavailable,
+        transfer_responses, transfer_unavailable, hill_catalog, seed, bystanders=int(bystanders),
+    )
+
     # 7. Combinatorial Epistasis & Synthetic Lethality Screen (Gi x Gj)
     # Every pair is simulated on the true network; eps_ij is the deviation from additive single effects.
     stage("simulating the double perturbations")
@@ -1007,6 +1089,7 @@ def run_vcc_comparative_benchmark(
             "all_pairs": len(epistasis_genes) == num_genes,
         },
         "single_cell_pca": single_cell_pca,
+        "vcc_scores": vcc_scores,
     }
 
 

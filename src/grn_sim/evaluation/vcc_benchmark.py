@@ -225,13 +225,19 @@ def _registered(key: str) -> Algorithm:
 
 # -- one simulation ------------------------------------------------------------------------------------------------------
 
-def _cell_matrix(adata: Any, seed: int, n_cells: int = GRNBOOST_CELLS) -> np.ndarray:
-    """A random subsample of the screen's cells, log-normalised like the effect estimates (cells x genes)."""
+def _cell_matrix_with_labels(adata: Any, seed: int, n_cells: int = GRNBOOST_CELLS) -> Tuple[np.ndarray, np.ndarray]:
+    """A random subsample of the screen's cells, log-normalised like the effect estimates (cells x genes), with the
+    cells' perturbation labels."""
     Xd = adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
     lab = adata.obs["perturbation"].astype(str).values
     Y = log_normalise(Xd, method=NORMALISATION, reference=Xd[lab == "non-targeting"].mean(axis=0))
-    idx = np.random.default_rng(seed + 31).choice(len(Y), size=min(n_cells, len(Y)), replace=False)
-    return np.asarray(Y[np.sort(idx)], dtype=float)
+    idx = np.sort(np.random.default_rng(seed + 31).choice(len(Y), size=min(n_cells, len(Y)), replace=False))
+    return np.asarray(Y[idx], dtype=float), lab[idx]
+
+
+def _cell_matrix(adata: Any, seed: int, n_cells: int = GRNBOOST_CELLS) -> np.ndarray:
+    """The cell matrix of :func:`_cell_matrix_with_labels` alone."""
+    return _cell_matrix_with_labels(adata, seed, n_cells)[0]
 
 
 def simulate_screen(setting: Setting, seed: int, adjacency: Optional[np.ndarray] = None, network: Any = None) -> Any:
@@ -264,9 +270,17 @@ def simulate_screen(setting: Setting, seed: int, adjacency: Optional[np.ndarray]
 
 
 def run_simulation(setting: Setting, seed: int, algorithms: Optional[Sequence[Algorithm]] = None,
-                   adjacency: Optional[np.ndarray] = None, network: Any = None) -> List[Dict[str, Any]]:
-    """Builds the network, simulates the screen and scores every algorithm; one row per algorithm (see ``simulate_screen``
-    for ``adjacency`` / ``network``)."""
+                   adjacency: Optional[np.ndarray] = None, network: Any = None, return_vcc: bool = False,
+                   bystanders: int = 0) -> Any:
+    """
+    Builds the network, simulates the screen and scores every algorithm; one row per algorithm (see ``simulate_screen``
+    for ``adjacency`` / ``network``).
+
+    With ``return_vcc`` the same screen is also posed as the Virtual Cell Challenge task (a quarter of the perturbations
+    held out, every algorithm predicting their cells through :func:`grn_sim.evaluation.vcc_prediction.screen_predictions`,
+    scored with :mod:`grn_sim.evaluation.vcc2026`; ``bystanders`` unregulated genes may be added to the scored panel) and
+    ``(rows, vcc_scores)`` is returned, each algorithm's row carrying its scaled scores as ``vcc_overall`` / ``vcc_<member>``.
+    """
     algorithms = list(algorithms) if algorithms is not None else algorithm_library()
     t0 = time.time()
     run = simulate_screen(setting, seed, adjacency=adjacency, network=network)
@@ -276,7 +290,8 @@ def run_simulation(setting: Setting, seed: int, algorithms: Optional[Sequence[Al
     X1, U1 = ace.to_xu()
     X2, U2 = (np.hstack([X1, Xp]), np.hstack([U1, Up])) if Xp.shape[1] else (X1, U1)
     n_edges = int((np.asarray(run.screen.adjacency) != 0).sum())
-    cells = _cell_matrix(run.adata, seed) if any(a.uses_cells for a in algorithms) else None
+    need_cells = any(a.uses_cells for a in algorithms)
+    cells, cell_labels = _cell_matrix_with_labels(run.adata, seed) if need_cells else (None, None)
     rows: List[Dict[str, Any]] = []
     for alg in algorithms:
         rng = np.random.default_rng(seed * 7919 + 13)
@@ -294,7 +309,25 @@ def run_simulation(setting: Setting, seed: int, algorithms: Optional[Sequence[Al
                      "base_total": res.get("base_total"), "seconds": round(time.time() - t, 2),
                      "n_perturbed": len(ace.nodes), "n_edges": n_edges, "n_pair_columns": int(Xp.shape[1]),
                      "uses_pairs": bool(alg.uses_pairs and Xp.shape[1]), "sim_seconds": round(t_sim, 1)})
-    return rows
+    if not return_vcc:
+        return rows
+    from grn_sim.evaluation import vcc_prediction as vp
+
+    t = time.time()
+    panel, held, predictions = vp.screen_predictions(run, ace, algorithms, seed, cells, cell_labels)
+    panel = vp.with_bystanders(panel, bystanders, seed=seed)
+    vcc = vp.score_prediction_rows(panel, held, predictions, seed=seed)
+    vcc.update(bystanders=int(bystanders), prediction_seconds=round(time.time() - t - vcc["seconds"], 1),
+               n_genes_scored=panel.n_genes)
+    by_key = {r["key"]: r for r in vcc["rows"]}
+    for row in rows:
+        r = by_key.get(row["algorithm"])
+        ok = bool(r and r["available"])
+        row["vcc_overall"] = r["overall"] if ok else None
+        row["vcc_n_scaled"] = r.get("n_scaled") if ok else None
+        for m in vcc["metrics"]:
+            row[f"vcc_{m}"] = r["members"][m]["scaled"] if ok else None
+    return rows, vcc
 
 
 # -- statistics ----------------------------------------------------------------------------------------------------------

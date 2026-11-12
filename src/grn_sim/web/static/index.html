@@ -2862,6 +2862,13 @@
                 <option value="knockdown" selected>CRISPRi knockdown (&minus;80% production)</option>
               </select>
             </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-main);white-space:nowrap;" for="vcc-bystanders">VCC bystander genes:</label>
+              <select id="vcc-bystanders" style="width:auto;padding:5px 10px;font-size:12px;font-weight:700;" onchange="loadVccBenchmarkData(false)" title="Unregulated genes added to the panel scored with the Virtual Cell Challenge metrics (Table 2b), for a realistic library composition">
+                <option value="0" selected>none</option>
+                <option value="1000">1,000</option>
+              </select>
+            </div>
             <button class="btn btn-primary btn-sm" id="btn-run-vcc" onclick="loadVccBenchmarkData(true)" style="padding:6px 14px;font-weight:700;">
               &#9654; Re-Simulate Virtual Cell
             </button>
@@ -2942,6 +2949,10 @@
               <option value="full">All genes perturbed</option><option value="effective">Effective genes (50%)</option>
               <option value="random">Random genes (50%)</option><option value="expressed">Most expressed (50%)</option>
               <option value="hubs">Hub regulators, oracle (50%)</option></select></label>
+          <label title="Cells per perturbation. The stored statistics use 40; the Virtual Cell Challenge downsamples to 400, which gives its DE metrics their power. Runs with other counts than 40 are shown but not stored.">Cells / pert.
+            <input type="number" id="vcs-new-cells" value="40" min="12" max="400" style="width:70px;display:block;font-size:12px;padding:4px 8px;" /></label>
+          <label title="Unregulated genes added to the panel scored with the challenge metrics, for a realistic library composition (0 = the network's genes only).">Bystander genes
+            <input type="number" id="vcs-new-bystanders" value="0" min="0" max="5000" step="100" style="width:80px;display:block;font-size:12px;padding:4px 8px;" /></label>
           <button class="btn btn-primary btn-sm" id="btn-vcs-new" onclick="runVccScreenSimulation()" style="width:auto;">&#9654; Simulate once</button>
           <span id="vcs-new-status" style="font-size:11px;color:var(--text-muted);" role="status"></span>
         </div>
@@ -3179,6 +3190,31 @@
           <tbody></tbody>
         </table></div>
         <div id="vcc-response-note" style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.45;"></div>
+      </div>
+
+      <!-- Table 2b: the same held-out predictions on the Virtual Cell Challenge 2026 scale -->
+      <div class="panel" style="margin-bottom:14px;padding:14px;" id="vcc-score-panel">
+        <div class="panel-header" style="flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="panel-title">Held-Out Predictions on the Virtual Cell Challenge 2026 Scale</div>
+            <div style="font-size:11px;color:var(--text-muted);">
+              The six leaderboard metrics of virtualcellchallenge.org (cell-eval2 <code>vcc2026</code> profile) on virtual cells of the held-out perturbations: each row's predicted response is emitted as cells and scored like a submission. Scaled score above the raw value; 0 = the context mean, 1 = a replicate experiment.
+            </div>
+          </div>
+          <span class="badge badge-emerald">Table 2b</span>
+        </div>
+        <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcc-score">
+          <thead>
+            <tr>
+              <th>Method</th><th>Model</th><th>Overall</th>
+              <th title="Perturbation discrimination">PDS <sub>sc</sub></th><th title="Expression accuracy (MSE)">MSE <sub>sc</sub></th>
+              <th title="DE significance overlap (Jaccard)">JAC <sub>sc</sub></th><th title="DE log-FC accuracy (NMAE)">NMAE <sub>sc</sub></th>
+              <th title="DE direction fidelity">FID <sub>sc</sub></th><th title="DE direction reach">REACH <sub>sc</sub></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table></div>
+        <div id="vcc-score-note" style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.45;"></div>
       </div>
 
       <!-- Section 3: Interactive In Silico In Vivo Perturbation Simulator & Profile Comparison -->
@@ -9978,7 +10014,8 @@
       const controller = vccAbortController = new AbortController();
       const seq = ++vccRequestSeq;
       setVccBusy(true);
-      const url = r => `/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${r ? 1 : 0}&rewire_fraction=${rewireFrac}&perturbation=${perturbation}&generator=${generator}`;
+      const bystanders = document.getElementById('vcc-bystanders')?.value || 0;
+      const url = r => `/api/benchmark/vcc_atlasshift?num_genes=${n}&k_av=${kav}&seed=2026&refresh=${r ? 1 : 0}&rewire_fraction=${rewireFrac}&perturbation=${perturbation}&generator=${generator}&bystanders=${bystanders}`;
 
       // Above 32 genes the server computes in the background and answers 202 with its current stage until the result is ready.
       const poll = r => fetch(url(r), { signal: controller.signal })
@@ -10099,6 +10136,8 @@
         pathway: v('vcs-new-pathway').value, n_genes: String(parseInt(v('vcs-new-genes').value) || 100),
         mode: v('vcs-new-mode').value, pairs: String(Math.max(0, parseInt(v('vcs-new-pairs').value) || 0)),
         selection: v('vcs-new-selection').value,
+        cells: String(Math.min(400, Math.max(12, parseInt(v('vcs-new-cells').value) || 40))),
+        bystanders: String(Math.min(5000, Math.max(0, parseInt(v('vcs-new-bystanders').value) || 0))),
       });
       btn.disabled = true;
       status.textContent = v('vcs-new-generator').value === 'all'
@@ -10131,7 +10170,19 @@
           <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcs-new"><caption class="sr-only">Algorithm scores of the new simulation</caption>
           <thead><tr><th>Algorithm</th>${gens.map(g => `<th>${glabel[g] || g}</th>`).join('')}</tr></thead>
           <tbody>${names.map(nm => `<tr><td>${(meta[nm] || {}).label || nm}</td>${gens.map(g => cell(nm, g)).join('')}</tr>`).join('')}</tbody></table></div>`;
-        status.textContent = `Done in ${data.seconds} s` + (data.saved ? ' and added to the statistics below.' : ' (panel-1 network: shown here, not added to the stored statistics).');
+        gens.forEach((g, i) => {
+          const vcc = (data.vcc_scores || {})[g];
+          if (!vcc) return;
+          const box = document.createElement('div');
+          box.style.marginTop = '10px';
+          box.innerHTML = `<div style="font-size:12px;font-weight:700;margin-bottom:2px;">Virtual Cell Challenge 2026 scoring${gens.length > 1 ? ' — ' + (glabel[g] || g) : ''}</div>
+            <div style="overflow-x:auto;"><table class="data-table" id="tbl-vcs-new-vcc-${i}"><caption class="sr-only">Virtual Cell Challenge scores of the new simulation</caption>
+            <thead><tr><th>Method</th><th>Model</th><th>Overall</th><th title="Perturbation discrimination">PDS <sub>sc</sub></th><th title="Expression accuracy (MSE)">MSE <sub>sc</sub></th><th title="DE significance overlap (Jaccard)">JAC <sub>sc</sub></th><th title="DE log-FC accuracy (NMAE)">NMAE <sub>sc</sub></th><th title="DE direction fidelity">FID <sub>sc</sub></th><th title="DE direction reach">REACH <sub>sc</sub></th></tr></thead>
+            <tbody></tbody></table></div><div id="vcs-new-vcc-note-${i}" style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.45;"></div>`;
+          out.appendChild(box);
+          renderVccScoreTable(`tbl-vcs-new-vcc-${i}`, `vcs-new-vcc-note-${i}`, vcc, meta, 'screen');
+        });
+        status.textContent = `Done in ${data.seconds} s` + (data.saved ? ' and added to the statistics below.' : data.source === 'current' ? ' (panel-1 network: shown here, not added to the stored statistics).' : ' (non-standard cell count: shown here, not added to the stored statistics).');
         VCS.initialised = false;
         await loadVccScreenBenchmark();
       } catch (e) {
@@ -10309,6 +10360,7 @@
         if (off) off.textContent = hill ? `Off-target r: ${hill.offtarget_r.toFixed(3)}` : 'Off-target r: --';
       });
       renderVccResponseTable(data);
+      renderVccScoreTable('tbl-vcc-score', 'vcc-score-note', data.vcc_scores, null, 'atlas');
 
       // 3. Populate Target Gene Dropdown & model options for the Profile Comparator
       const targetSelect = document.getElementById('vcc-target-select');
@@ -10428,6 +10480,72 @@
         note.innerHTML = `${modeText}<br>One simulated network with ${p.unseen_ood_targets} held-out genes: differences under about 0.1 are within noise `
           + `(see <code>docs/HOLDOUT_RESEARCH.md</code> for the 24-network paired study); "no skill" = off-target r of 0.1 or less. Linear Jacobian rows are exactly 0 for held-out genes because their row of A is never identified. `
           + `<b>Cross-context transfer</b> rows predict the target from the source atlases, which do contain the held-out genes; the AtlasShift row predicts 0 for them by construction (no atlas observation), so compare transfer methods with the plain "Source-atlas average" (see <code>docs/CROSS_CONTEXT_TRANSFER.md</code>).`;
+      }
+    }
+
+    // The Virtual Cell Challenge 2026 score table (leaderboard columns): scaled score in bold, raw value beneath, the two
+    // anchors as rows of their own, unavailable rows and unresolved members with their reason as tooltip.
+    function renderVccScoreTable(tableId, noteId, vcc, meta, context) {
+      const tbody = document.querySelector(`#${tableId} tbody`);
+      const note = document.getElementById(noteId);
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      if (!vcc || !vcc.rows) {
+        if (note) note.textContent = 'No Virtual Cell Challenge scores in this result.';
+        return;
+      }
+      const metrics = vcc.metrics || ['pds', 'mse', 'jac', 'nmae', 'fid', 'reach'];
+      const anchors = vcc.anchors || {};
+      const unresolved = anchors.unresolved || {};
+      const nScalable = metrics.length - Object.keys(unresolved).length;
+      const fmt = (x, d = 3) => (x === null || x === undefined || Number.isNaN(Number(x))) ? '--' : Number(x).toFixed(d);
+      const colour = s => s >= 1 ? '#10b981' : s > 0 ? 'var(--text-main)' : s > -0.5 ? '#d97706' : '#ef4444';
+      const cellOf = m => {
+        if (!m) return '<td>&ndash;</td>';
+        const raw = `<div style="font-size:10px;color:var(--text-muted);">${fmt(m.raw)}${m.n !== null && m.n !== undefined ? ` <span title="perturbations scored">(n=${m.n})</span>` : ''}</div>`;
+        if (m.scaled === null || m.scaled === undefined) {
+          return `<td title="${(m.reason || 'not scaled').replace(/"/g, '&quot;')}"><span style="color:var(--text-muted);font-style:italic;">n/a</span>${raw}</td>`;
+        }
+        return `<td data-sort="${m.scaled}"><span style="font-family:monospace;font-weight:700;color:${colour(m.scaled)};">${fmt(m.scaled)}</span>${raw}</td>`;
+      };
+      const rows = vcc.rows.slice().sort((a, b) => {
+        const rank = r => r.kind === 'anchor' ? 2 : r.available ? 1 : 0;
+        if (rank(a) !== rank(b)) return rank(b) - rank(a);
+        return ((b.overall === null || b.overall === undefined) ? -1e9 : b.overall) - ((a.overall === null || a.overall === undefined) ? -1e9 : a.overall);
+      });
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.dataset.model = row.key;
+        tr.dataset.kind = row.kind;
+        if (row.kind === 'anchor') tr.style.background = 'rgba(139, 92, 246, 0.10)';
+        else if (row.kind === 'oracle') tr.style.background = 'rgba(16, 185, 129, 0.08)';
+        else if (row.kind === 'control') tr.style.background = 'rgba(148, 163, 184, 0.10)';
+        const label = (meta && meta[row.key] && meta[row.key].label) || row.label;
+        if (!row.available) {
+          tr.title = row.reason || 'not available';
+          tr.innerHTML = `<td>${row.method || ''}</td><td>${label}</td><td colspan="${metrics.length + 1}" style="color:var(--text-muted);font-style:italic;">n/a${row.reason ? ' — ' + row.reason : ''}</td>`;
+        } else {
+          const k = row.n_scaled === undefined ? nScalable : row.n_scaled;
+          const overall = (row.overall === null || row.overall === undefined)
+            ? '<span style="color:var(--text-muted);font-style:italic;">n/a</span>'
+            : `<span style="font-family:monospace;font-weight:800;color:${colour(row.overall)};">${fmt(row.overall)}</span>${k < metrics.length ? `<div style="font-size:10px;color:var(--text-muted);" title="members with a resolved scale on this panel">${k} of ${metrics.length}</div>` : ''}`;
+          tr.innerHTML = `<td>${row.method || ''}</td><td><strong>${label}</strong></td><td data-sort="${row.overall === null ? -1e9 : row.overall}">${overall}</td>` + metrics.map(m => cellOf(row.members[m])).join('');
+        }
+        tbody.appendChild(tr);
+      });
+      makeTableSortable(tableId);
+      if (note) {
+        const held = vcc.held_out || [];
+        const cells = vcc.cells_per_perturbation || (anchors.cells_per_perturbation ? Object.values(anchors.cells_per_perturbation)[0] : null);
+        const flagged = Object.entries(unresolved).map(([m, why]) => `<li><b>${m.toUpperCase()}</b>: ${why}</li>`).join('');
+        const what = context === 'screen'
+          ? `A quarter of the perturbed genes (${held.length}: ${held.join(', ')}) is held out; every algorithm is fitted on the other perturbations' effects and predicts the held-out knockdowns through its ${vcc.rows.find(r => r.kind === 'algorithm') ? (vcc.rows.find(r => r.kind === 'algorithm').method || 'structure + linear refit') : 'structure + linear refit'} (the algorithm's two best regulators per target, weights refit in log expression on the seen knockdowns, the response as the model's fixed point).`
+          : `The ${held.length} held-out perturbation${held.length === 1 ? '' : 's'} (${held.join(', ')}) of the target context, as ${cells || 400} virtual cells each (Poisson counts around the simulated steady states, plus controls); every row of Table 2 predicts their mean response, which is emitted as rescaled control cells.`;
+        note.innerHTML = `${what} Reference: ${anchors.n_control_cells || '?'} control cells, ${anchors.n_genes || '?'} genes (${anchors.genes_tested || '?'} pass the DE gate${vcc.bystanders ? `, ${vcc.bystanders} of them unregulated bystanders` : ''}). `
+          + `Each member reads <b>(value &minus; baseline) / (replicate &minus; baseline)</b> with the baseline (context mean) and replicate (five disjoint half-splits of the reference) measured on this panel; MSE is clamped to [0, 1], NMAE floored at &minus;6, the others unclamped. The overall score is the mean of the scaled members. `
+          + `<b>Oracle rows</b> (true structure, the simulator's noise-free means) bound what any method can reach here; the <b>target-gene prior</b> predicts only the knockdown itself. `
+          + (flagged ? `<br>Members without a resolved scale on this panel (reported raw, left out of the overall):<ul style="margin:4px 0 0 16px;">${flagged}</ul>` : '')
+          + `<br>The scorer is a port of cell-eval2's <code>vcc2026</code> profile (see <code>docs/VCC2026_SCORING.md</code>); on panels of a few dozen genes and a few perturbations the direction and set members are far noisier than on the challenge's 18,533-gene, 300-perturbation panels, so compare rows within one table only. Scored in ${vcc.seconds} s.`;
       }
     }
 

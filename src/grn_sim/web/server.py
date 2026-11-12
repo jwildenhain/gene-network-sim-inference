@@ -32,6 +32,7 @@ from grn_sim.core.network import GeneNetwork
 from grn_sim.simulator.experiment import PerturbationSimulator, SimulationExperiment
 from grn_sim.inference.s2g import SimpleToGeneral
 from grn_sim.inference.g2s import GeneralToSpecific
+from grn_sim.evaluation.prediction_codec import decode_prediction, encode_prediction
 from grn_sim.perturbseq.pipeline import build_network as build_perturbseq_network
 from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.fast_svd import FastSVD
@@ -937,7 +938,7 @@ def _execute_inference(selected_algs: List[str],
             fit_mode = str(res.diagnostics.get("perturbation_mode", "additive"))
             pred = orient_prediction(alg, res.adjacency_pred, data_model, truth_tr, fit_mode)
             A_est = orient_prediction(alg, res.A_est, data_model, truth_tr, fit_mode)
-            pred_matrices[alg] = pred.tolist()
+            pred_matrices[alg] = encode_prediction(pred)  # sparse above 60 genes (archive size)
 
             m = evaluate_inference(true_matrix, pred)
             stats_9 = compute_new_stats_9state(true_matrix, pred)
@@ -1140,7 +1141,7 @@ def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
         stale_neato = reversed_views or alg not in svgs_neato or _is_arrowless_fallback_svg(svgs_neato.get(alg, ""))
         if not (stale_dot or stale_neato or alg not in svgs_grid):
             continue
-        pred_arr = np.array(pred, dtype=int)
+        pred_arr = decode_prediction(pred)
         a_stats = _drawing_matrix(
             np.array(compute_new_stats_9state(true_matrix, pred_arr)["a_stats"], dtype=int), truth_tr
         )
@@ -2033,23 +2034,38 @@ def _build_thesis_figures_data(source: str = "matlab_mat", repeats: int = 2) -> 
     return payload
 
 
-def _vcc_cache_key(num_genes: int, k_av: float, seed: int, rewire_fraction: float, perturbation: str, generator: str) -> str:
+def _vcc_cache_key(num_genes: int, k_av: float, seed: int, rewire_fraction: float, perturbation: str, generator: str,
+                   bystanders: int = 0) -> str:
     # Quantise the continuous parameters so near-identical requests share one cache entry
-    return f"vcc_{num_genes}_{round(k_av, 2)}_{seed}_{round(rewire_fraction, 2)}_{perturbation}_{generator}"
+    return f"vcc_{num_genes}_{round(k_av, 2)}_{seed}_{round(rewire_fraction, 2)}_{perturbation}_{generator}_{int(bystanders)}"
+
+
+def _parse_bystanders(query: Dict[str, List[str]]) -> int:
+    """Unregulated genes added to the VCC-scored panel of the cross-atlas comparison."""
+    from grn_sim.benchmarks.vcc_benchmark import MAX_BYSTANDERS
+
+    raw = str(query.get("bystanders", ["0"])[0]).strip() or "0"
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValueError("bystanders must be an integer") from None
+    if not 0 <= value <= MAX_BYSTANDERS:
+        raise ValueError(f"bystanders must be between 0 and {MAX_BYSTANDERS}, got {value}")
+    return value
 
 
 def _build_vcc_benchmark_payload(num_genes: int = 12, k_av: float = 1.8, seed: int = 2026, refresh: bool = False, rewire_fraction: float = 0.15, perturbation: str = "input",
-                                 generator: str = "mechanistic", progress: Any = None) -> Dict[str, Any]:
+                                 generator: str = "mechanistic", progress: Any = None, bystanders: int = 0) -> Dict[str, Any]:
     """Computes or retrieves the cached cross-atlas benchmark (mechanistic or statistical data, see ``generator``)."""
     validate_vcc_params(num_genes, k_av, rewire_fraction, perturbation, generator)
     k_av, rewire_fraction = round(k_av, 2), round(rewire_fraction, 2)
-    cache_key = _vcc_cache_key(num_genes, k_av, seed, rewire_fraction, perturbation, generator)
+    cache_key = _vcc_cache_key(num_genes, k_av, seed, rewire_fraction, perturbation, generator, bystanders)
     with _VCC_LOCK:
         if not refresh and cache_key in BENCHMARK_CACHE:
             return BENCHMARK_CACHE[cache_key]
 
         payload = run_vcc_comparative_benchmark(num_genes=num_genes, k_av=k_av, seed=seed, target_rewire_fraction=rewire_fraction, perturbation_mode=perturbation,
-                                                generator=generator, progress=progress)
+                                                generator=generator, progress=progress, bystanders=bystanders)
         BENCHMARK_CACHE[cache_key] = payload
         for stale_key in [k for k in list(BENCHMARK_CACHE) if k.startswith("vcc_")][:-VCC_CACHE_LIMIT]:
             BENCHMARK_CACHE.pop(stale_key, None)
@@ -2079,7 +2095,7 @@ def _vcc_background(key: str, kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
                 from grn_sim.benchmarks.vcc_benchmark import run_in_child
 
-                args = {k: kwargs[k] for k in ("num_genes", "k_av", "seed", "perturbation", "generator")}
+                args = {k: kwargs[k] for k in ("num_genes", "k_av", "seed", "perturbation", "generator", "bystanders")}
                 args["target_rewire_fraction"] = kwargs["rewire_fraction"]
                 args["perturbation_mode"] = args.pop("perturbation")
                 ctx = multiprocessing.get_context("spawn")
@@ -2532,14 +2548,13 @@ def _job_generate(params: Dict[str, Any], ctx: "_jobs.JobContext") -> Dict[str, 
 
 
 def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> Dict[str, Any]:
-    """Job stage 2: run the algorithms on a network held in memory. The studio's active network is put back afterwards."""
-    def before_algorithm(alg: str, index: int, total: int) -> None:
-        ctx.check_cancel()
-        ctx.progress(f"{alg} ({index + 1}/{total})")
-        if index:
-            ctx.progress(advance=True)
-        ctx.log(f"running {alg}")
+    """Job stage 2: run the algorithms on a network held in memory. The studio's active network is put back afterwards.
 
+    One algorithm per ``_execute_inference`` call: each result is stored (archive and in-memory run) as soon as it is
+    done, so a crash, a restart or a later algorithm failing keeps what finished. An algorithm that raises is logged and
+    skipped (listed in ``algorithms_failed``); the job fails only when none of them produced a result.
+    """
+    failed: Dict[str, str] = {}
     with STATE_LOCK:
         stored = SIMULATION_RUN_STORE.get(run_id)
         if stored is None:
@@ -2548,16 +2563,30 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
         try:
             CURRENT_STATE.clear()
             CURRENT_STATE.update(stored["state"])
-            result = _execute_inference(algorithms, on_algorithm=before_algorithm,
-                                        previous=stored.get("inferred_payload") or None)
+            for index, alg in enumerate(algorithms):
+                ctx.check_cancel()
+                ctx.progress(f"{alg} ({index + 1}/{len(algorithms)})")
+                if index:
+                    ctx.progress(advance=True)
+                ctx.log(f"running {alg}")
+                try:
+                    _execute_inference([alg], previous=stored.get("inferred_payload") or None)
+                except _jobs.JobCancelled:
+                    raise
+                except Exception as exc:  # one failing algorithm must not discard the others
+                    failed[alg] = f"{type(exc).__name__}: {exc}"[:300]
+                    ctx.log(f"{alg} failed: {failed[alg]}")
         finally:
             CURRENT_STATE.clear()
             CURRENT_STATE.update(snapshot)
     ctx.progress(advance=True)  # the last algorithm
-    metrics = result.get("metrics", {})
+    metrics = (stored.get("inferred_payload") or {}).get("metrics", {})
+    if algorithms and len(failed) == len(set(algorithms)):
+        raise RuntimeError("; ".join(f"{a}: {e}" for a, e in failed.items()))
     # By F1 (fewest errors as tie-break): total errors alone rewards an algorithm that predicts almost nothing
     best = max(metrics, key=lambda k: (metrics[k]["f1_score"], -metrics[k]["total_errors"])) if metrics else None
     return {"algorithms_run": [a for a in algorithms if a in metrics], "algorithms_stored": list(metrics),
+            "algorithms_failed": failed,
             "best_algorithm": best,
             "best_total_errors": metrics[best]["total_errors"] if best else None,
             "best_f1": metrics[best]["f1_score"] if best else None}
@@ -2891,11 +2920,12 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 perturbation = query.get("perturbation", ["input"])[0]
                 generator = query.get("generator", ["mechanistic"])[0]
                 validate_vcc_params(n_g, k_av, rewire_frac, perturbation, generator)
+                bystanders = _parse_bystanders(query)
             except ValueError as e:
                 self._set_headers(400)
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}).encode("utf-8"))
                 return
-            key = _vcc_cache_key(n_g, k_av, sd, rewire_frac, perturbation, generator)
+            key = _vcc_cache_key(n_g, k_av, sd, rewire_frac, perturbation, generator, bystanders)
             if n_g > VCC_SYNC_GENES and not (key in BENCHMARK_CACHE and not rf):
                 with _VCC_TASKS_LOCK:
                     done = key in BENCHMARK_CACHE and _VCC_TASKS.get(key, {}).get("state") == "done"
@@ -2903,7 +2933,8 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                     _VCC_TASKS.pop(key, None)
                 if not done:
                     task = _vcc_background(key, {"num_genes": n_g, "k_av": k_av, "seed": sd, "refresh": rf,
-                                                 "rewire_fraction": rewire_frac, "perturbation": perturbation, "generator": generator})
+                                                 "rewire_fraction": rewire_frac, "perturbation": perturbation, "generator": generator,
+                                                 "bystanders": bystanders})
                     if task["state"] == "error":
                         with _VCC_TASKS_LOCK:
                             _VCC_TASKS.pop(key, None)
@@ -2917,7 +2948,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 rf = False
             try:
                 payload = _build_vcc_benchmark_payload(num_genes=n_g, k_av=k_av, seed=sd, refresh=rf, rewire_fraction=rewire_frac, perturbation=perturbation,
-                                                       generator=generator)
+                                                       generator=generator, bystanders=bystanders)
                 # allow_nan=False: a bare NaN is not valid JSON and would break response.json() in the browser.
                 # Serialise before sending headers so a failure becomes a clean 500, not a 200 with a broken body.
                 body = json.dumps(payload, allow_nan=False).encode("utf-8")

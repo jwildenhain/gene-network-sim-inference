@@ -127,6 +127,7 @@ See [`REAL_WORLD_BENCHMARK_PROVENANCE_AND_USAGE.md`](REAL_WORLD_BENCHMARK_PROVEN
 | Perturbation | `perturbation` | `input`, `knockdown` | See perturbation modes |
 | Seed | `seed` | default 2026 | Source atlases use `seed`, `seed+10`, `seed+20`; the target uses `seed+999` |
 | Re-simulate | `refresh` | | Bypasses the cache (results are cached per parameter set) |
+| VCC bystander genes | `bystanders` | 0 (default) or up to 5000 (menu: none, 1,000) | Unregulated genes added to the panel that Table 2b scores with the Virtual Cell Challenge metrics, so a knockdown is a small share of the library as on a real panel; see [`VCC2026_SCORING.md`](VCC2026_SCORING.md) |
 
 What the benchmark builds, in order:
 
@@ -140,6 +141,9 @@ What the benchmark builds, in order:
    target, see [`HOLDOUT_RESEARCH.md`](HOLDOUT_RESEARCH.md)). References: mean-profile null, true-structure oracle,
    target-gene prior (knockdown only), and the cross-context transfer predictors
    ([`CROSS_CONTEXT_TRANSFER.md`](CROSS_CONTEXT_TRANSFER.md)).
+   4b. **Virtual Cell Challenge scale** (Table 2b): the held-out perturbations as 400 virtual cells each, every predictor
+   above emitted as cells and scored with the six leaderboard metrics against the context-mean baseline and a replicate
+   anchor measured on the same cells ([`VCC2026_SCORING.md`](VCC2026_SCORING.md)).
 5. **Epistasis screen**: every pair is simulated on the true network without measurement noise;
    `eps_ij = ||L_ij - (L_i + L_j)||` with `L = log2(x_perturbed / x_basal)`. Above 0.45 is "Synergistic / Synthetic
    Lethal", above 0.25 intermediate, the rest additive.

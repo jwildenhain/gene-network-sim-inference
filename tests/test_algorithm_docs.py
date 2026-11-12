@@ -2,6 +2,8 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 from grn_sim.inference import registry
 from grn_sim.inference.descriptions import BY_KEY, D, FAMILIES
 
@@ -28,9 +30,11 @@ def test_descriptions_point_at_existing_code():
 
 
 def test_generated_pages_are_up_to_date():
+    out = ROOT / "docs" / "algorithms"
+    if not out.is_dir():                                       # the Docker image ships no docs/
+        pytest.skip("docs/algorithms is not available (installed package or Docker image)")
     gen = _generator()
     files = gen.render()
-    out = ROOT / "docs" / "algorithms"
     stale = [n for n, t in files.items() if not (out / n).exists() or (out / n).read_text() != t]
     assert not stale, f"run python scripts/generate_algorithm_docs.py (out of date: {stale})"
     assert {p.name for p in out.glob("*.md")} == set(files)

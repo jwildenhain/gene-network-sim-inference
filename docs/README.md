@@ -32,3 +32,6 @@ Reproducing the numbers: `scripts/benchmark_screen_methods.py`, `scripts/benchma
 * `results/vcc_cross_atlas_timings.json`: measured stage timings of the cross-atlas comparison per generator and size; the
   size limits in `grn_sim.benchmarks.vcc_benchmark` are derived from them (tests/test_vcc_limits.py).
 * Reproduce: `scripts/run_vcc_benchmark.py` (`--list`, `--shard i/N`, `--merge`, `--report`).
+* [`VCC2026_SCORING.md`](VCC2026_SCORING.md): the Virtual Cell Challenge 2026 leaderboard metrics (a port of cell-eval2's
+  `vcc2026` profile) applied to the tab's simulations: what is scored, the anchors and the scale, and how to read it on
+  small simulated panels. Options `cells` and `bystanders` of "Simulate once", `bystanders` of the cross-atlas comparison.
