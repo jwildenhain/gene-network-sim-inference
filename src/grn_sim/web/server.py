@@ -176,11 +176,59 @@ SIMULATION_RUN_STORE: Dict[str, Dict[str, Any]] = {}
 MAX_RUNS_IN_MEMORY = 300
 
 
+# ... and at most this many bytes (estimated): one 2000-gene run is about 14 GB of Python lists, so a count limit alone
+# lets a batch of large runs fill the machine. Evicted runs stay in the SQLite archive.
+RUN_STORE_BUDGET_BYTES = int(float(os.environ.get("GRN_SIM_RUN_STORE_GB", "8")) * 1e9)
+
+
+def _approx_size(obj: Any, depth: int = 0) -> int:
+    """Fast estimate of the memory held by ``obj`` (long lists are sampled, arrays are exact)."""
+    if isinstance(obj, np.ndarray):
+        return int(obj.nbytes)
+    if isinstance(obj, str):
+        return len(obj) + 49
+    if obj is None or isinstance(obj, (bool, int, float)):
+        return 28
+    if depth > 6:
+        return 64
+    if isinstance(obj, dict):
+        return 232 + sum(_approx_size(k, depth + 1) + _approx_size(v, depth + 1) for k, v in obj.items())
+    if isinstance(obj, (list, tuple)):
+        n = len(obj)
+        if n <= 32:
+            return 56 + 8 * n + sum(_approx_size(v, depth + 1) for v in obj)
+        step = max(1, n // 16)
+        sample = [_approx_size(obj[i], depth + 1) for i in range(0, n, step)]
+        return 56 + 8 * n + int(n * sum(sample) / len(sample))
+    attrs = getattr(obj, "__dict__", None)
+    return _approx_size(attrs, depth + 1) if isinstance(attrs, dict) else 64
+
+
 def _trim_run_store() -> None:
-    """Drops the oldest in-memory runs beyond MAX_RUNS_IN_MEMORY (never the active one). Call with STATE_LOCK held."""
+    """
+    Drops the oldest in-memory runs beyond MAX_RUNS_IN_MEMORY runs or RUN_STORE_BUDGET_BYTES. Never the active run, the
+    newest one, or a run a queued / running job still needs. Call with STATE_LOCK held.
+    """
     excess = len(SIMULATION_RUN_STORE) - MAX_RUNS_IN_MEMORY
     for run_id in [r for r in SIMULATION_RUN_STORE if r != CURRENT_STATE.get("run_id")][:max(0, excess)]:
         del SIMULATION_RUN_STORE[run_id]
+    sizes = {r: _approx_size(entry) for r, entry in SIMULATION_RUN_STORE.items()}
+    total = sum(sizes.values())
+    if total <= RUN_STORE_BUDGET_BYTES:
+        return
+    keep = {CURRENT_STATE.get("run_id"), next(reversed(SIMULATION_RUN_STORE), None)}
+    try:
+        keep |= JOB_MANAGER.pinned_run_ids()
+    except NameError:  # the job manager is created after this module-level helper is defined
+        pass
+    for run_id in list(SIMULATION_RUN_STORE):
+        if total <= RUN_STORE_BUDGET_BYTES:
+            break
+        if run_id in keep:
+            continue
+        total -= sizes[run_id]
+        del SIMULATION_RUN_STORE[run_id]
+
 
 # The handler runs on one thread per request, so everything that rewrites CURRENT_STATE /
 # SIMULATION_HISTORY / SIMULATION_RUN_STORE holds this (re-entrant) lock.

@@ -330,6 +330,20 @@ class JobManager:
             job = self._jobs.get(job_id)
             return self._describe(job, with_log) if job else None
 
+    def pinned_run_ids(self) -> set:
+        """Runs a queued or running job reads or will read (its own network, or the one it depends on)."""
+        with self._lock:
+            ids = set()
+            for job in self._jobs.values():
+                if job.status not in ACTIVE:
+                    continue
+                if job.run_id:
+                    ids.add(job.run_id)
+                dep = self._jobs.get(job.depends_on or "")
+                if dep is not None and dep.run_id:
+                    ids.add(dep.run_id)
+            return ids
+
     def running(self) -> Optional[Dict[str, Any]]:
         """The job being worked on now, if any."""
         with self._lock:
