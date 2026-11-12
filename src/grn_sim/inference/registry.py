@@ -184,7 +184,7 @@ def _register_builtin() -> None:
         return GeneralToSpecific(max_interactions=2 * c.k_est if c.use_reg else None, drop_rule="loo")
 
     builtin = [
-        AlgorithmSpec("s2g", "S2G (Forward AIC)", lambda c: SimpleToGeneral(), "Simple-to-General (S2G)",
+        AlgorithmSpec("s2g", "S2G (Forward AIC)", lambda c: SimpleToGeneral(max_interactions=k_if_reg(c)), "Simple-to-General (S2G)",
                       "Forward Stepwise AIC", "Top Single Stepwise", "#0284c7", core=True, additive_target_regulator=True),
         AlgorithmSpec("g2s", "G2S (Backward AIC)", lambda c: g2s_member(c), "General-to-Specific (G2S)",
                       "Backward Stepwise AIC", "Stepwise Backward", "#d97706", core=True, additive_target_regulator=True),

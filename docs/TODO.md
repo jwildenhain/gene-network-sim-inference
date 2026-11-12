@@ -32,8 +32,13 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   adds u to the activation, the simulator adds it to the regulator concentration) and the GPU path.
 - [ ] **cpa_lite is at chance level** too (AUPR 0.018 vs 0.019): a linear autoencoder without structure; decide whether to
   keep it (it still needs 500 MB of torch).
-- [ ] **G2S (quick) is below S2G and NIR** (200 genes F1 0.157 vs 0.156 and 0.310; 500 genes sensitivity 0.121 vs 0.347):
-  check the budgeted tie-break and the `loo` rule against the exact one on this data.
+- [x] **G2S checked: not a bug.** Its F1 is mid-table (500 genes 0.130, 1000 genes 0.161; AUPR 0.05-0.07); the earlier
+  "far below S2G" compared sensitivity alone, and S2G reached it by predicting 6,657 / 21,861 edges. On this data the AIC
+  optimum is exactly 2 regulators for every target (the target `U` row is a single spike), so the cap (`k`, `2k`, none), the
+  drop rule (`loo` / `exact`) and the regulator formulation (X+U) change nothing. Real 500-gene time is 12 s: the 3906 s in
+  the archive was the pool hang. **S2G was the unfair one**: it had no edge cap while every other algorithm gets `k`; capped
+  at `k` (registry, Hill data) F1 goes 0.109 -> 0.192 (500 genes) and 0.082 -> 0.219 (1000 genes) with AUPR unchanged
+  (committed; not yet in the container image).
 - [ ] **arachne 0.07, netdeconv 0.10, grnboost 0.087, dmdgrn 0.12, pearson 0.08 F1 at 200 genes**: weak or wrong? Compare
   with the controls (gene-feature 0.015, by-chance 0.025) and check orientation / scaling.
 - [ ] **G2S pool deadlock** (one forked worker hung for an hour at 500 genes): guarded by `run_chunks` (kills idle pools

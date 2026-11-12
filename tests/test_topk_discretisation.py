@@ -46,3 +46,18 @@ def test_registry_gives_these_algorithms_k_on_hill_data_and_none_otherwise():
 
 def test_notears_default_penalty_does_not_empty_the_graph():
     assert NOTEARSAlgorithm().lambda1 <= 0.001   # 0.02 shrank whole networks to 17-45 edges at 200-300 genes
+
+
+def test_s2g_is_capped_at_k_on_hill_data_so_it_is_comparable_with_the_others():
+    on = registry.build("s2g", registry.BuildContext(k_est=4, use_reg=True, is_sos=False))
+    off = registry.build("s2g", registry.BuildContext(k_est=4, use_reg=False, is_sos=False))
+    assert on.max_interactions == 4 and off.max_interactions is None
+
+
+def test_s2g_never_predicts_more_than_its_cap_per_gene():
+    from grn_sim.inference.s2g import SimpleToGeneral
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(25, 25))
+    U = X @ rng.normal(size=(25, 25)) * 0.1 + rng.normal(size=(25, 25)) * 0.01   # many real dependencies
+    res = SimpleToGeneral(max_interactions=2).fit(X, U)
+    assert (res.adjacency_pred != 0).sum(axis=0).max() <= 2   # column i holds the regulators of gene i
