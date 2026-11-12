@@ -1,26 +1,70 @@
 # To do
 
-State as of 2026-11-12. Source for the algorithm list: `research_notes/Perturb seq design and modelling/`
+State as of 2026-11-12 (evening). Source for the algorithm list: `research_notes/Perturb seq design and modelling/`
 (`causal_grn_inference.md`, `prediction_models_benchmarks.md`); gap audit in `docs/INFERENCE_GAP_ANALYSIS.md`.
 
-## Where the project stands
+## 1. Algorithm bugs (top priority: speed, memory leakage, accuracy)
 
-- `main` has the Perturb-seq pipeline (phases 1-5), job queue, algorithm registry (19 built-ins incl. `score_vote`),
-  paged archive, accessibility pass, CellBox GPU option (PRs #2-#6 merged).
-- Branch `feat/inspre-and-interventional-baselines` (pushed, no PR yet, 6 commits ahead of its push):
-  inspre, mean-difference / Pearson / GRNBoost-lite / gene-feature baselines, bicycle-lite, DOTEARS-lite, rank consensus,
-  partial screens (`ScreenDesign`), per-algorithm docs (`docs/algorithms/`), statistical data generators and the Virtual
-  Cell tab benchmark (`grn_sim.statgen`, 1000-simulation corpus, rendered findings), pathway topologies.
-- VCC 2026 leaderboard scorer (`evaluation/vcc2026.py`, `vcc_prediction.py`, `docs/VCC2026_SCORING.md`) committed on
-  the same branch (2a31295).
-- Container `grn-sim-phpiorn` serves :8085 (rebuilt 2026-11-11).
-- Gene cap is 2000 and jobs accept `calibration_preset` (e.g. `replogle_like`): the default kinetics oscillate at 2000
-  genes, the calibrated preset gives a steady state (generation ~9 min).
+Evidence: the scale run (`replogle_like`, seed 7, 500 / 1000 / 2000 genes; archived runs `iorn-838581`, `iorn-592020`,
+`iorn-846813`; about 2,100 true edges at 500 genes). Timings are job times in the 48 GB / 8-core container.
 
-## Paper algorithms
+### Memory (leaks and scaling)
+- [ ] **cpa_lite**: container memory went from 16 GB to 40.5 GB when its 1000-gene job started (about 24 GB), so about
+  100 GB is expected at 2000 genes (over the 48 GB cap: an OOM kill takes the server and every in-memory network).
+  Find the allocation (dense n x n tensors per batch?) and bound it; refuse above a limit until fixed. Its 2000-gene job
+  is skipped for now.
+- [ ] Check every algorithm for memory that is not released after `fit` (hold references to X, U, per-gene models, torch
+  tensors): run each at 500 genes in a loop and watch resident memory; the container sat at 13.9 -> 16.9 GB across the
+  500/1000-gene jobs before `cpa_lite`.
+- [ ] A per-algorithm memory estimate that skips or warns before a run, so no algorithm can take the server down.
+- [x] The in-memory run store is bounded by bytes (`GRN_SIM_RUN_STORE_GB`, default 8). Check whether anything else keeps
+  per-run copies (`SIMULATION_HISTORY`, `CURRENT_STATE`, job summaries).
 
-Implemented since the first list: inspre, mean-difference, GRNBoost-lite, Pearson, bicycle-lite (no latent variables),
-DOTEARS-lite, interventional consensus, gene-feature baseline. Not implemented:
+### Speed
+- [ ] **cpa_lite**: 31 s at 500 genes, over 80 minutes at 1000 (worse than cubic).
+- [ ] **cellbox**: about 21 min at 500 genes (GPU option exists, `GRN_SIM_DEVICE`); hours expected at 2000.
+- [ ] **grnboost**: 41 s at 500, 197 s at 1000, 1475 s at 2000 genes.
+- [ ] **G2S** quick mode: about 65 min at 500 genes in the run (that included a hang); the tie-break budget may be the cost.
+- [ ] **G2S pool deadlock**: one forked worker hung for an hour at 500 genes. Guarded (`run_chunks` kills idle pools after
+  300 s), root cause unknown: the stderr-lock hypothesis did not reproduce; workers dump stacks to
+  `/tmp/grn_sim_worker_<pid>.trace` after 600 s.
+- [ ] Time every algorithm at 500 / 1000 / 2000 genes (the run gives most of it) and list the ones above O(n^2.5).
+
+### Accuracy (results that look wrong at 500 genes, sensitivity / specificity)
+- [ ] **inspre predicts nothing at every size** (sensitivity 0.0, specificity 1.0, 1254 errors = the number of true
+  edges). Check thresholding, the ACE input and the spectral-radius condition at N >= 500.
+- [ ] **ridge_cv almost empty** (0.059 / 1.0) although `k_interactions` comes from the truth: check the top-k selection and
+  the self-term handling at 500 genes.
+- [ ] **G2S quick (0.121) is far below S2G (0.347) and NIR (0.271)** though G2S should be at least as good: is the budgeted
+  tie-break (`exact_budget_flops`) costing accuracy, or is the quick path wrong on this data?
+- [ ] **cellbox 0.047, cpa_lite 0.028, arachne 0.044, grnboost 0.063, netdeconv 0.086, dmdgrn 0.141**: separate weak methods
+  from bugs, against the controls (gene-feature 0.009, by-chance 0.003); check input scaling and orientation first.
+- [ ] 40 archived datasets have no algorithm rows (28 small leftovers, 12 profiling), 10 have 6 of 19, 5 lack only
+  `score_vote`.
+
+## 2. Scale run (in progress)
+
+- [ ] **1000 genes**: `cpa_lite` still running (about 80 min); `notears`, `cellbox` not run. 21 of 24 stored.
+- [ ] **2000 genes**: 8 of 24 stored; to run: genie3, inspre, ridge_cv, nir, s2g, g2s, vote, score_vote, sfinn, dmdgrn,
+  arachne, causalgrn, deeprig, notears, cellbox. `cpa_lite` skipped (memory).
+- [ ] **After `cpa_lite` ends**: stop the container, back up the archive, run `scripts/compact_archive.py --apply --backup`
+  (snapshot test: 8.56 GB -> 625 MB), start image `grn-sim-phpiorn:next` (rollback tag `before-scale-2026-11-12`), re-queue
+  the remaining algorithms on the archived runs (jobs can run on archived networks since 66667c7). Re-run results for
+  algorithms fixed under section 1 afterwards.
+
+## 3. Perturb-seq proposal (`reports/GRN-Sim Perturb-seq proposal.md`)
+
+- [ ] **Held-out-perturbation benchmark on single-cell screens** (proposal section 3): training mean / additive / linear /
+  target-only / random-structure baselines, off-target metrics (DEG-weighted MSE, Pearson-delta, direction accuracy, rank),
+  stratified by effect size. `evaluation/screen_benchmark.py` covers edge recovery only; `scripts/holdout_study.py` is
+  still bulk-data only; the VCC 2026 scorer covers part of the metrics.
+- [ ] Realism targets still missed: mediated share 0.79 at 500 genes (target 0.90), phenotype share 0.20; Virtual Cell tab:
+  top-5% share 0.23-0.24, nonlinear phenotype 0.19, mechanistic density 0.10 at 100 genes.
+
+## 4. Paper algorithms not yet implemented
+
+Implemented so far: inspre, mean-difference, GRNBoost-lite, Pearson, bicycle-lite (no latent variables), DOTEARS-lite,
+interventional consensus, gene-feature baseline (plus the 19 earlier ones).
 
 | Priority | Method | Paper | Note |
 |---|---|---|---|
@@ -36,42 +80,19 @@ DOTEARS-lite, interventional consensus, gene-feature baseline. Not implemented:
 
 Papers still to read before implementing: LLC, GIES, IGSP, DCDI, NODAGS-Flow, Dictys.
 
-## Perturb-seq proposal (`reports/GRN-Sim Perturb-seq proposal.md`)
+## 5. Speed and storage of the platform (done 2026-11-12, details in CHANGELOG)
 
-- [ ] **Held-out-perturbation benchmark on single-cell screens** (proposal section 3): training mean / additive / linear /
-  target-only / random-structure baselines, off-target metrics, stratified by effect size. `evaluation/screen_benchmark.py`
-  covers edge recovery (direct and total AUPR); prediction of held-out perturbations is still "not done" in the gap
-  analysis. The VCC 2026 scorer (uncommitted) covers part of the metrics; `scripts/holdout_study.py` is still bulk-data only.
-- [ ] **2000 genes, all algorithms, G2S in its quick mode.** Not completed: two 2000-gene networks (seed 7, `replogle_like`,
-  `iorn-182011`, `iorn-533100`) are in the archive with no algorithm results; the inference job was interrupted by a server
-  restart both times (jobs are not resumed). Re-run with `calibration_preset: replogle_like` through the job queue, pinned
-  to NUMA nodes 0/2 and niced (see the CPU rule in the notes); expect CellBox (~21 min at 500 genes) and NOTEARS /
-  CausalGRN to dominate, and expect some algorithms to be too slow at 2000 genes.
-- [ ] Realism targets still missed: mediated share 0.79 at 500 genes (target 0.90), phenotype share 0.20; Virtual Cell tab:
-  top-5% share 0.23-0.24, nonlinear phenotype 0.19, mechanistic density 0.10 at 100 genes.
+- [x] Sparse stored predictions, no per-algorithm SVGs above 100 genes, compressed payload columns, empty legacy columns,
+  `compact_archive.py` (not yet run on the real archive, see section 2); run store bounded by bytes; kinetics kernel
+  grouped products (500-gene generation 51 s -> 28 s); pool stall guard; per-algorithm job storage with error isolation;
+  job list keeps jobs others depend on; jobs on archived runs.
+- [ ] Load time of a 2000-gene run (4.2 s) is JSON parsing of X, U, trajectories as nested lists: store them as binary
+  arrays. (orjson was measured: 0.5 s of 2.8 s.)
+- [ ] Network generation at 500 genes (28 s): `_terms` power evaluation (about 10 s) and the ODE solver loop.
 
-## Housekeeping
+## 6. Housekeeping
 
-- [ ] Open the PR for `feat/inspre-and-interventional-baselines`.
+- [ ] Push the last commit (`66667c7`, local only) and open the PR for `feat/inspre-and-interventional-baselines`.
 - [ ] Cut a release (everything is under `[Unreleased]`).
 - [ ] Real-data check of the Hill refit and transfer predictors on Norman 2019 / Replogle 2022.
-- [x] Archive size and speed (2026-11-12): predictions stored sparsely above 60 genes; per-algorithm comparison SVGs not
-  rendered or stored above 100 genes (the page draws such graphs as modules); payload columns over 1 M characters
-  stored zlib-compressed; write-only legacy columns left empty above 100 genes; `get_summary_statistics_by_type` no
-  longer reads `sim_payload_json`; `scripts/compact_archive.py` migrates an existing archive (snapshot of the real one:
-  8.56 GB -> 625 MB, summary 4.6 -> 0.43 s, 500-gene run load 2.0 -> 0.7 s, 2000-gene 7.0 -> 4.2 s).
-  **Not yet run on the real archive** (a scale run was writing to it): run it with `--apply --backup` when no server
-  is using the archive, then rebuild the container.
-- [x] In-memory run store bounded by bytes (`GRN_SIM_RUN_STORE_GB`, default 8), never evicting runs queued jobs need.
-- [x] Per-algorithm overhead at 500 genes 8.0 s -> 0.9 s (no SVG layout for large networks); kinetics kernel uses grouped
-  products instead of `np.multiply.at` (bit-identical, 500-gene generation 51 s -> 28 s).
-- [ ] Remaining load time of a 2000-gene run (4.2 s) is JSON parsing of the simulation payload (X, U, trajectories as
-  nested lists); storing them as binary arrays would remove it. orjson was measured and gains only 0.5 s of 2.8 s.
-- [ ] Remaining generation cost: `_terms` power evaluation (about 10 s of 28 s at 500 genes) and the ODE solver loop.
-- [x] Pool deadlock guard (`inference/_parallel.run_chunks`): workers with no CPU use for 300 s are killed and the
-  chunks finished in the parent; workers dump their stacks to `/tmp/grn_sim_worker_<pid>.trace`. Root cause of the
-  one observed hang (500-gene G2S, forked worker in futex_wait for an hour) is still unknown: stderr-lock repro failed.
-- [x] Job list no longer drops a finished job that queued jobs depend on; jobs store each algorithm as it finishes.
-- [ ] Resume jobs interrupted by a restart (they come back as "interrupted"; the last 10 are kept and roll off).
-- [ ] 40 archived datasets have no algorithm rows (28 small leftovers, 12 profiling), 10 have 6 of 19, 5 lack only
-  `score_vote` (`grn-sim-registry-and-archive-rerun` notes).
+- [ ] Resume interrupted jobs automatically (they come back as "interrupted"; a job on an archived run can be re-queued).
