@@ -48,6 +48,7 @@ from grn_sim.visualization.graph_export import (
     compute_new_stats_9state,
     export_9state_graphviz_dot,
     render_graphviz_svg,
+    renders_graphs,
 )
 from grn_sim.web.database import save_simulation_to_db, init_db, get_db_path
 
@@ -216,7 +217,8 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
         # Build differential dot string for primary algorithm (Voting Ensemble)
         a_stats = np.array(compute_new_stats_9state(exp.true_matrix, preds["vote"])["a_stats"])
         dot_h = export_9state_graphviz_dot(a_stats, gene_names, graph_name=f"{run_id}_dot", layout="dot")
-        svg_h = render_graphviz_svg(dot_h, engine="dot", matrix=a_stats, gene_names=gene_names, is_9state=True)
+        svg_h = (render_graphviz_svg(dot_h, engine="dot", matrix=a_stats, gene_names=gene_names, is_9state=True)
+                 if renders_graphs(len(gene_names)) else "")
 
         history_entry = {
             "id": run_counter,

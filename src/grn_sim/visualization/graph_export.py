@@ -406,6 +406,16 @@ def _route_svg(
     return [shaft, head]
 
 
+# No graph is laid out or rendered to SVG above this many genes: the page draws such networks as modules from the graph
+# JSON, and the layouts cost minutes and gigabytes on dense graphs (a 1000-gene CPA-Lite result took 105 minutes and
+# 24 GB). Callers check ``renders_graphs`` before calling ``render_graphviz_svg``.
+MAX_RENDERED_GENES = 100
+
+
+def renders_graphs(n_genes: int) -> bool:
+    return int(n_genes) <= MAX_RENDERED_GENES
+
+
 def render_graphviz_svg(
     dot_source: str,
     engine: str = "dot",

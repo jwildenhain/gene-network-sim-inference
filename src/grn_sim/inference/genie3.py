@@ -88,7 +88,7 @@ class GENIE3Algorithm(BaseInferenceAlgorithm):
                 mags = np.abs(W[i, :])
                 top_idx = np.argsort(mags)[-K:]
                 for reg in top_idx:
-                    if mags[reg] >= thresh:
+                    if mags[reg] > 0:   # top-K keeps K per gene; the threshold only applies without K
                         adj_pred[i, reg] = int(np.sign(W[i, reg]))
         else:
             # Global thresholding

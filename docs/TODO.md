@@ -6,47 +6,48 @@ State as of 2026-11-12 (evening). Source for the algorithm list: `research_notes
 ## 1. Algorithm bugs (top priority: speed, memory leakage, accuracy)
 
 Evidence: the scale run (`replogle_like`, seed 7, 500 / 1000 / 2000 genes; archived runs `iorn-838581`, `iorn-592020`,
-`iorn-846813`; about 2,100 true edges at 500 genes). Timings are job times in the 48 GB / 8-core container.
+`iorn-846813`) and `scripts/audit_algorithms.py` (every algorithm in its own process: time, peak memory, accuracy; run
+at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the archive as they were; re-run to compare.
 
-### Memory (leaks and scaling)
-- [ ] **cpa_lite**: container memory went from 16 GB to 40.5 GB when its 1000-gene job started (about 24 GB), so about
-  100 GB is expected at 2000 genes (over the 48 GB cap: an OOM kill takes the server and every in-memory network).
-  Find the allocation (dense n x n tensors per batch?) and bound it; refuse above a limit until fixed. Its 2000-gene job
-  is skipped for now.
-- [ ] Check every algorithm for memory that is not released after `fit` (hold references to X, U, per-gene models, torch
-  tensors): run each at 500 genes in a loop and watch resident memory; the container sat at 13.9 -> 16.9 GB across the
-  500/1000-gene jobs before `cpa_lite`.
-- [ ] A per-algorithm memory estimate that skips or warns before a run, so no algorithm can take the server down.
-- [x] The in-memory run store is bounded by bytes (`GRN_SIM_RUN_STORE_GB`, default 8). Check whether anything else keeps
-  per-run copies (`SIMULATION_HISTORY`, `CURRENT_STATE`, job summaries).
+### Fixed (2026-11-12)
+- [x] **inspre returned an empty graph on Hill-simulator data** (F1 0.00, AUPR 0.005 at 500 genes): in the regulator-input
+  perturbation the perturbed gene itself barely responds (median own response -5e-5), and inspre divided each response by
+  it. `InspreAlgorithm(perturbation_mode="regulator")` applies it to the response of X + U (own effect ~ u); the registry
+  uses it on Hill data. 500 genes: F1 0.255, AUPR 0.135; 200 genes: AUPR 0.264 (the best of the 24).
+- [x] **Top-K was gated by a magnitude threshold, or K was not wired at all** (ridge_cv kept 90 of 600 edges; genie3 and
+  cpa_lite had no K and predicted 18,487 and 4,902 edges, cellbox 40). K regulators per target now whenever K is known
+  (genie3, cpa_lite, ridge_cv, cellbox; thresholds apply only without K). 200 genes F1: ridge_cv 0.172 -> 0.334,
+  genie3 0.038 -> 0.102 (AUPR unchanged, it is threshold-free).
+- [x] **NOTEARS emptied the graph on some networks** (17-45 predicted edges at 100-300 genes with the L1 penalty 0.02):
+  default `lambda1` 0.0005; mean AUPR over 6 networks 0.054 -> 0.15 (100/seed 11: 0.06 -> 0.37).
+- [x] **cpa_lite "memory leak" and 105-minute job at 1000 genes** (24 GB): not the model (a 4 MB linear autoencoder) but
+  the result processing: with no K it predicted a dense graph and three 9-state SVG layouts were rendered for it. No graph is
+  rendered above 100 genes now (generation, inference, archive load, studio benchmark, parameter sweep) and K bounds the
+  edges: 1000 genes 7.3 s, 1.7 GB peak.
+- [x] Per-algorithm job storage with error isolation; stall guard for forked pools; run store bounded by bytes.
 
-### Speed
-- [ ] **cpa_lite**: 31 s at 500 genes, over 80 minutes at 1000 (worse than cubic).
-- [ ] **cellbox**: about 21 min at 500 genes (GPU option exists, `GRN_SIM_DEVICE`); hours expected at 2000.
-- [ ] **grnboost**: 41 s at 500, 197 s at 1000, 1475 s at 2000 genes.
-- [ ] **G2S** quick mode: about 65 min at 500 genes in the run (that included a hang); the tie-break budget may be the cost.
-- [ ] **G2S pool deadlock**: one forked worker hung for an hour at 500 genes. Guarded (`run_chunks` kills idle pools after
-  300 s), root cause unknown: the stderr-lock hypothesis did not reproduce; workers dump stacks to
-  `/tmp/grn_sim_worker_<pid>.trace` after 600 s.
-- [ ] Time every algorithm at 500 / 1000 / 2000 genes (the run gives most of it) and list the ones above O(n^2.5).
-
-### Accuracy (results that look wrong at 500 genes, sensitivity / specificity)
-- [ ] **inspre predicts nothing at every size** (sensitivity 0.0, specificity 1.0, 1254 errors = the number of true
-  edges). Check thresholding, the ACE input and the spectral-radius condition at N >= 500.
-- [ ] **ridge_cv almost empty** (0.059 / 1.0) although `k_interactions` comes from the truth: check the top-k selection and
-  the self-term handling at 500 genes.
-- [ ] **G2S quick (0.121) is far below S2G (0.347) and NIR (0.271)** though G2S should be at least as good: is the budgeted
-  tie-break (`exact_budget_flops`) costing accuracy, or is the quick path wrong on this data?
-- [ ] **cellbox 0.047, cpa_lite 0.028, arachne 0.044, grnboost 0.063, netdeconv 0.086, dmdgrn 0.141**: separate weak methods
-  from bugs, against the controls (gene-feature 0.009, by-chance 0.003); check input scaling and orientation first.
+### Still open
+- [ ] **cellbox is at chance level** (AUPR 0.030-0.035 vs 0.026 chance at 100 genes) whatever the epochs (70 to 1500) or
+  penalty; 500 MB extra memory at 200 genes; about 21 min at 500 genes. Check the regulator-input adaptation (the model
+  adds u to the activation, the simulator adds it to the regulator concentration) and the GPU path.
+- [ ] **cpa_lite is at chance level** too (AUPR 0.018 vs 0.019): a linear autoencoder without structure; decide whether to
+  keep it (it still needs 500 MB of torch).
+- [ ] **G2S (quick) is below S2G and NIR** (200 genes F1 0.157 vs 0.156 and 0.310; 500 genes sensitivity 0.121 vs 0.347):
+  check the budgeted tie-break and the `loo` rule against the exact one on this data.
+- [ ] **arachne 0.07, netdeconv 0.10, grnboost 0.087, dmdgrn 0.12, pearson 0.08 F1 at 200 genes**: weak or wrong? Compare
+  with the controls (gene-feature 0.015, by-chance 0.025) and check orientation / scaling.
+- [ ] **G2S pool deadlock** (one forked worker hung for an hour at 500 genes): guarded by `run_chunks` (kills idle pools
+  after 300 s), root cause unknown; workers dump stacks to `/tmp/grn_sim_worker_<pid>.trace` after 600 s.
+- [ ] Time and memory of every algorithm at 500 / 1000 / 2000 genes with the fixed code (the audit script takes
+  `--genes`); a per-algorithm memory estimate that skips or warns before a run.
 - [ ] 40 archived datasets have no algorithm rows (28 small leftovers, 12 profiling), 10 have 6 of 19, 5 lack only
   `score_vote`.
 
 ## 2. Scale run (in progress)
 
-- [ ] **1000 genes**: `cpa_lite` still running (about 80 min); `notears`, `cellbox` not run. 21 of 24 stored.
+- [ ] **1000 genes**: 21 of 24 stored (`cpa_lite` was stuck 105 min in the old image, `notears`, `cellbox` not run).
 - [ ] **2000 genes**: 8 of 24 stored; to run: genie3, inspre, ridge_cv, nir, s2g, g2s, vote, score_vote, sfinn, dmdgrn,
-  arachne, causalgrn, deeprig, notears, cellbox. `cpa_lite` skipped (memory).
+  arachne, causalgrn, deeprig, notears, cellbox. `cpa_lite` is fine now (see section 1).
 - [ ] **After `cpa_lite` ends**: stop the container, back up the archive, run `scripts/compact_archive.py --apply --backup`
   (snapshot test: 8.56 GB -> 625 MB), start image `grn-sim-phpiorn:next` (rollback tag `before-scale-2026-11-12`), re-queue
   the remaining algorithms on the archived runs (jobs can run on archived networks since 66667c7). Re-run results for

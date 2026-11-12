@@ -69,8 +69,10 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         device: Optional[str] = None,
         auto_scale: bool = True,
         size_scaled_penalty: bool = True,
+        k_interactions: Optional[int] = None,
     ):
         super().__init__(name="cellbox")
+        self.k_interactions = k_interactions
         self.device = device
         self.l1_reg = l1_reg
         self.l2_reg = l2_reg
@@ -134,13 +136,26 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
 
         # Discretize: sign of estimated coefficients exceeding threshold
         adj_pred = np.zeros((N, N), dtype=int)
-        mask = np.abs(A_est) >= thresh
-        if np.sum(mask) == 0 and self.adaptive_fallback and np.any(A_est != 0):
+        K = kwargs.get("k", self.k_interactions)
+        if K is not None:
+            # K strongest regulators per target (rows of A_est), as the other algorithms do when K is known; the
+            # absolute threshold below left only about 40 edges for 600 true ones at 200 genes
+            K = max(1, min(int(K), N - 1))
+            for i in range(N):
+                mags = np.abs(A_est[i, :])
+                for reg in np.argsort(mags)[-K:]:
+                    if mags[reg] > 0:
+                        adj_pred[i, reg] = int(np.sign(A_est[i, reg]))
+            mask = adj_pred != 0
+        else:
+            mask = np.abs(A_est) >= thresh
+        if K is None and np.sum(mask) == 0 and self.adaptive_fallback and np.any(A_est != 0):
             # Adaptive fallback: select top 20% non-zero weights
             nonzero_mags = np.abs(A_est[A_est != 0])
             cutoff = float(np.percentile(nonzero_mags, 80))
             mask = np.abs(A_est) >= max(cutoff, 1e-4)
-        adj_pred[mask] = np.sign(A_est[mask]).astype(int)
+        if K is None:
+            adj_pred[mask] = np.sign(A_est[mask]).astype(int)
 
         elapsed = time.time() - start_time
         return InferenceResult(

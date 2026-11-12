@@ -26,7 +26,7 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
 
     def __init__(
         self,
-        lambda1: float = 0.02,
+        lambda1: float = 0.0005,
         max_iter: int = 25,
         h_tol: float = 1e-4,
         rho_max: float = 1000.0,

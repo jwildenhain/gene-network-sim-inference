@@ -88,6 +88,7 @@ from grn_sim.visualization.graph_export import (
     export_graphviz_dot,
     export_9state_graphviz_dot,
     render_graphviz_svg,
+    MAX_RENDERED_GENES,
     compute_new_stats_9state,
     compute_detailed_confusion_matrix,
     format_matrix_tsv,
@@ -261,7 +262,12 @@ LARGE_NETWORK_GENES = 60
 # the page draws any graph of more than 25 nodes as modules from `comparison_graphs`, so those SVGs were never shown, yet
 # they were 65-70% of a stored result (about 25 MB per algorithm at 2000 genes) and most of the time a trivial
 # algorithm took (layered layout, 7 of 8 s at 500 genes).
-STORED_SVG_MAX_GENES = 100
+STORED_SVG_MAX_GENES = MAX_RENDERED_GENES
+
+
+def _renders_graphs(n_genes: int) -> bool:
+    """False above STORED_SVG_MAX_GENES: no graph layout or SVG is computed for such a network, anywhere."""
+    return int(n_genes) <= STORED_SVG_MAX_GENES
 
 
 # Orientation of the network matrices the studio handles:
@@ -790,9 +796,12 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
     draw = _drawing_matrix(reg_adj, False)
     dot_hier = export_graphviz_dot(draw, gene_names, graph_name=f"GRN_{topo_str}_dot", layout="dot")
     dot_spring = export_graphviz_dot(draw, gene_names, graph_name=f"GRN_{topo_str}_neato", layout="neato")
-    svg_hier = render_graphviz_svg(dot_hier, engine="dot", matrix=draw, gene_names=gene_names)
-    svg_hier_grid = render_graphviz_svg(dot_hier, engine="dot", matrix=draw, gene_names=gene_names, layout="grid")
-    svg_spring = render_graphviz_svg(dot_spring, engine="neato", matrix=draw, gene_names=gene_names)
+    if _renders_graphs(len(gene_names)):
+        svg_hier = render_graphviz_svg(dot_hier, engine="dot", matrix=draw, gene_names=gene_names)
+        svg_hier_grid = render_graphviz_svg(dot_hier, engine="dot", matrix=draw, gene_names=gene_names, layout="grid")
+        svg_spring = render_graphviz_svg(dot_spring, engine="neato", matrix=draw, gene_names=gene_names)
+    else:  # drawn client side as modules from `graph`; no layout is computed for a large network
+        svg_hier = svg_hier_grid = svg_spring = ""
 
     graph_json = export_graph_json(draw, gene_names)
     msmt_text = format_matrix_tsv(experiment.X)
@@ -1030,7 +1039,7 @@ def _execute_inference(selected_algs: List[str],
             draw_stats = _drawing_matrix(a_stats_arr, truth_tr)
             dot_9_hier = export_9state_graphviz_dot(draw_stats, gene_names, graph_name=f"Diff_{alg}_dot", layout="dot")
             dots_dict[alg] = dot_9_hier
-            if N <= STORED_SVG_MAX_GENES:
+            if _renders_graphs(N):
                 dot_9_neato = export_9state_graphviz_dot(draw_stats, gene_names, graph_name=f"Diff_{alg}_neato", layout="neato")
                 svgs_dot_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True)
                 svgs_dot_grid_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True, layout="grid")
@@ -1178,13 +1187,14 @@ def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
         sim_payload["dot_hierarchical"] = export_graphviz_dot(draw, names, graph_name="GRN_archived_dot", layout="dot")
         sim_payload["dot_spring"] = sim_payload["dot"] = export_graphviz_dot(draw, names, graph_name="GRN_archived_neato", layout="neato")
         sim_payload["graph"] = export_graph_json(draw, names)
-    if reversed_views or _is_arrowless_fallback_svg(sim_payload.get("svg_hierarchical", "")) or not sim_payload.get("svg_hierarchical"):
+    can_render = _renders_graphs(len(names))
+    if can_render and (reversed_views or _is_arrowless_fallback_svg(sim_payload.get("svg_hierarchical", "")) or not sim_payload.get("svg_hierarchical")):
         dot = export_graphviz_dot(draw, names, graph_name="GRN_archived_dot", layout="dot")
         sim_payload["svg_hierarchical"] = render_graphviz_svg(dot, engine="dot", matrix=draw, gene_names=names)
-    if reversed_views or _is_arrowless_fallback_svg(sim_payload.get("svg_spring", "")) or not sim_payload.get("svg_spring"):
+    if can_render and (reversed_views or _is_arrowless_fallback_svg(sim_payload.get("svg_spring", "")) or not sim_payload.get("svg_spring")):
         dot = export_graphviz_dot(draw, names, graph_name="GRN_archived_neato", layout="neato")
         sim_payload["svg_spring"] = render_graphviz_svg(dot, engine="neato", matrix=draw, gene_names=names)
-    if reversed_views or not sim_payload.get("svg_hierarchical_grid"):
+    if can_render and (reversed_views or not sim_payload.get("svg_hierarchical_grid")):
         dot = export_graphviz_dot(draw, names, graph_name="GRN_archived_dot", layout="dot")
         sim_payload["svg_hierarchical_grid"] = render_graphviz_svg(dot, engine="dot", matrix=draw, gene_names=names, layout="grid")
 
@@ -1193,7 +1203,7 @@ def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
     svgs_neato = inferred.setdefault("svgs_neato", {}) if inferred else {}
     svgs_grid = inferred.setdefault("svgs_dot_grid", {}) if inferred else {}
     # Larger networks have no stored SVGs (see STORED_SVG_MAX_GENES): nothing to rebuild
-    for alg, pred in ((inferred.get("pred_matrices") or {}) if len(names) <= STORED_SVG_MAX_GENES else {}).items():
+    for alg, pred in ((inferred.get("pred_matrices") or {}) if can_render else {}).items():
         stale_dot = reversed_views or alg not in svgs_dot or _is_arrowless_fallback_svg(svgs_dot.get(alg, ""))
         stale_neato = reversed_views or alg not in svgs_neato or _is_arrowless_fallback_svg(svgs_neato.get(alg, ""))
         if not (stale_dot or stale_neato or alg not in svgs_grid):
@@ -1406,9 +1416,12 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
     draw_true = _drawing_matrix(A_true, truth_tr)
     dot_true_hier = export_graphviz_dot(draw_true, gene_names, graph_name=f"{dataset_id}_True_dot", layout="dot")
     dot_true_neato = export_graphviz_dot(draw_true, gene_names, graph_name=f"{dataset_id}_True_neato", layout="neato")
-    svg_true_hier = render_graphviz_svg(dot_true_hier, engine="dot", matrix=draw_true, gene_names=gene_names)
-    svg_true_neato = render_graphviz_svg(dot_true_neato, engine="neato", matrix=draw_true, gene_names=gene_names)
-    svg_true_grid = render_graphviz_svg(dot_true_hier, engine="dot", matrix=draw_true, gene_names=gene_names, layout="grid")
+    if _renders_graphs(len(gene_names)):
+        svg_true_hier = render_graphviz_svg(dot_true_hier, engine="dot", matrix=draw_true, gene_names=gene_names)
+        svg_true_neato = render_graphviz_svg(dot_true_neato, engine="neato", matrix=draw_true, gene_names=gene_names)
+        svg_true_grid = render_graphviz_svg(dot_true_hier, engine="dot", matrix=draw_true, gene_names=gene_names, layout="grid")
+    else:
+        svg_true_hier = svg_true_neato = svg_true_grid = ""
 
     is_sos = (dataset_id == "ecoli_sos")
     k_conn = 5 if is_sos else max(1, int(np.round(np.sum(A_true != 0) / N)))
@@ -1482,9 +1495,10 @@ def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
         a_stats_arr = _drawing_matrix(a_stats_arr, truth_tr)
         d_dot = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_dot", layout="dot")
         d_neato = export_9state_graphviz_dot(a_stats_arr, gene_names, graph_name=f"{dataset_id}_{alg_name}_neato", layout="neato")
-        svgs_dot[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
-        svgs_dot_grid[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True, layout="grid")
-        svgs_neato[alg_name] = render_graphviz_svg(d_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
+        if _renders_graphs(len(gene_names)):
+            svgs_dot[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
+            svgs_dot_grid[alg_name] = render_graphviz_svg(d_dot, engine="dot", matrix=a_stats_arr, gene_names=gene_names, is_9state=True, layout="grid")
+            svgs_neato[alg_name] = render_graphviz_svg(d_neato, engine="neato", matrix=a_stats_arr, gene_names=gene_names, is_9state=True)
 
     # Compute gene dynamics profiles and node parameters for interactive inspection
     basal_traj_down = _downsample_trajectory(sim_exp.basal_trajectory, max_points=45) if sim_exp.basal_trajectory is not None else []

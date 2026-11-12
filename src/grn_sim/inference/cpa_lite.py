@@ -67,7 +67,7 @@ class CPALite(BaseInferenceAlgorithm):
                 mags = np.abs(A_est[i, :])
                 top_idx = np.argsort(mags)[-K:]
                 for reg in top_idx:
-                    if mags[reg] >= thresh:
+                    if mags[reg] > 0:   # top-K keeps K per gene; the threshold only applies without K
                         adj_pred[i, reg] = int(np.sign(A_est[i, reg]))
         else:
             max_mag = np.max(np.abs(A_est)) if np.max(np.abs(A_est)) > 0 else 1.0

@@ -88,6 +88,12 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Changed
+- **Algorithm fixes found by `scripts/audit_algorithms.py`** (one process per algorithm: accuracy, time, peak memory).
+  inspre applies to the response of X + U on Hill-simulator data (it returned an empty graph; 500 genes F1 0 -> 0.255);
+  genie3, cpa_lite, cellbox and ridge_cv keep K regulators per target whenever K is known (ridge_cv F1 0.17 -> 0.33,
+  genie3 0.04 -> 0.10 at 200 genes; thresholds apply only without K); NOTEARS default `lambda1` 0.02 -> 0.0005 (it
+  shrank some networks to 17-45 edges). No graph layout or SVG is computed above 100 genes anywhere (CPA-Lite at 1000
+  genes: 105 minutes and 24 GB -> 7 s and 1.7 GB).
 - **Archive size and speed at 500-2000 genes.** Predicted matrices are stored as coordinate lists above 60 genes; the
   per-algorithm comparison SVGs are not rendered or stored above 100 genes (the page draws graphs of more than 25 nodes as
   modules from the stored comparison graph, and a trivial algorithm now takes 0.9 s instead of 8 s at 500 genes); payload

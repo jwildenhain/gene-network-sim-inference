@@ -209,8 +209,20 @@ class InspreAlgorithm(BaseInferenceAlgorithm):
         lam: Optional[float] = None,
         min_own_effect: float = 1e-8,
         weight_by_own_effect: bool = True,
+        perturbation_mode: str = "additive",
     ):
+        """
+        ``perturbation_mode="regulator"`` is for data from the Hill simulator's regulator-input perturbation, which adds
+        the perturbation to the *effective concentration* of the perturbed gene's regulatory input: the perturbed gene
+        itself barely responds (median own response about 5e-5 at 500 genes), so scaling each response by it (the
+        knockdown normalisation) divides by noise and returned an empty graph. The model there is X = c F (X + U), whose
+        response in the effective concentration X + U has own effect ~ u and inverts to I - cF, so inspre is applied to
+        the response of X + U. ``"additive"`` (knockdown, Gardner A X = -U) uses the responses as they are.
+        """
         super().__init__(name="inspre")
+        if perturbation_mode not in ("additive", "regulator"):
+            raise ValueError(f"perturbation_mode must be 'additive' or 'regulator', got {perturbation_mode!r}")
+        self.perturbation_mode = perturbation_mode
         self.k_interactions = k_interactions
         self.density_factor = density_factor
         self.lam = lam
@@ -218,12 +230,16 @@ class InspreAlgorithm(BaseInferenceAlgorithm):
         self.weight_by_own_effect = weight_by_own_effect
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
+        if self.perturbation_mode == "regulator":
+            X = np.real(np.asarray(X, dtype=float)) + np.real(np.asarray(U, dtype=float))
         genes, R, own = ace_from_xu(X, U, self.min_own_effect)
         w = None
         if self.weight_by_own_effect and len(genes):
             a = np.abs(own)
             w = np.minimum(a / max(float(np.median(a[a > 0])) if np.any(a > 0) else 1.0, 1e-12), 1.0)
-        return self._solve(np.asarray(X).shape[0], genes, R, w, **kwargs)
+        result = self._solve(np.asarray(X).shape[0], genes, R, w, **kwargs)
+        result.diagnostics["perturbation_mode"] = self.perturbation_mode
+        return result
 
     def fit_ace(self, ace: Any, alpha: Optional[float] = 0.05, min_own_z: float = 2.0, entry_weights: bool = False,
                 **kwargs) -> InferenceResult:
