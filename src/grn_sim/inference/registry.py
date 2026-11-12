@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from grn_sim.inference import orientation
-from grn_sim.inference.base import BaseInferenceAlgorithm
+from grn_sim.inference.base import BaseInferenceAlgorithm, EffectiveConcentration
 
 
 @dataclass(frozen=True)
@@ -177,6 +177,10 @@ def _register_builtin() -> None:
     def k_if_reg(c: BuildContext) -> Optional[int]:
         return c.k_est if c.use_reg else None
 
+    def eff(c: BuildContext, algo):
+        """On Hill regulator-input data co-expression methods get the effective concentrations X + U (see base.py)."""
+        return EffectiveConcentration(algo) if c.use_reg else algo
+
     def nir_member(c: BuildContext) -> NIRAlgorithm:
         return NIRAlgorithm(k_interactions=c.k_est, perturbation_mode="regulator", adaptive_k=True)
 
@@ -214,9 +218,9 @@ def _register_builtin() -> None:
         AlgorithmSpec("cellbox", "CellBox Neural ODE", lambda c: CellBoxNeuralODE(epochs=70, perturbation_mode=mode(c), k_interactions=k_if_reg(c)),
                       "CellBox Neural ODE", "Adjoint Gradient Optimizer", "Deep Neural ODE", "#ec4899",
                       regulator_input=True, additive_target_regulator=True),
-        AlgorithmSpec("genie3", "GENIE3 (Forest)", lambda c: GENIE3Algorithm(n_estimators=40, seed=c.seed, k_interactions=k_if_reg(c)), "GENIE3",
+        AlgorithmSpec("genie3", "GENIE3 (Forest)", lambda c: eff(c, GENIE3Algorithm(n_estimators=40, seed=c.seed, k_interactions=k_if_reg(c))), "GENIE3",
                       "Random Forest Tree Importance", "ML Tree Ensemble", "#10b981", target_row=True),
-        AlgorithmSpec("netdeconv", "Net Deconvolution", lambda c: NetworkDeconvolution(k_interactions=k_if_reg(c)),
+        AlgorithmSpec("netdeconv", "Net Deconvolution", lambda c: eff(c, NetworkDeconvolution(k_interactions=k_if_reg(c))),
                       "Network Deconvolution", "Direct-Indirect Deconvolution", "Spectral Deconvolution", "#0ea5e9", (2, 2)),
         AlgorithmSpec("ridge_cv", "RidgeCV (L2)", lambda c: KaggleMultiOutputRidge(
             k_interactions=k_if_reg(c), perturbation_mode=mode(c)), "Multi-Output RidgeCV", "L2 Regularized Inverse",
@@ -224,9 +228,9 @@ def _register_builtin() -> None:
                       additive_target_regulator=True),
         AlgorithmSpec("cpa_lite", "CPA-Lite Autoenc", lambda c: CPALite(epochs=40, k_interactions=k_if_reg(c)), "CPA-Lite Autoencoder",
                       "Latent Perturbation AE", "Latent Autoencoder", "#f97316"),
-        AlgorithmSpec("arachne", "ARACNE (MI+DPI)", lambda c: AracneAlgorithm(k_interactions=k_if_reg(c)), "ARACNE",
+        AlgorithmSpec("arachne", "ARACNE (MI+DPI)", lambda c: eff(c, AracneAlgorithm(k_interactions=k_if_reg(c))), "ARACNE",
                       "Information Theoretic (MI + DPI)", "Mutual Info & DPI", "#84cc16"),
-        AlgorithmSpec("causalgrn", "CausalGRN (Causal)", lambda c: CausalGRNAlgorithm(k_interactions=k_if_reg(c)),
+        AlgorithmSpec("causalgrn", "CausalGRN (Causal)", lambda c: eff(c, CausalGRNAlgorithm(k_interactions=k_if_reg(c))),
                       "CausalGRN", "Interventional Causal Discovery", "Causal Do-Calculus", "#e11d48", target_row=True),
         AlgorithmSpec("dmdgrn", "DMD-GRN (Koopman)", lambda c: DMDGRNAlgorithm(k_interactions=k_if_reg(c)), "DMD-GRN",
                       "Dynamic Mode Decomposition", "Koopman Dynamics", "#a855f7", (2, 2)),
@@ -242,9 +246,9 @@ def _register_builtin() -> None:
         AlgorithmSpec("mean_difference", "Mean Difference", lambda c: MeanDifference(k_interactions=c.k_est),
                       "Mean Difference (control vs perturbed)", "Interventional Contrast Baseline",
                       "Total-Effect Baseline", "#78716c", (2, 4)),
-        AlgorithmSpec("pearson", "Pearson |r|", lambda c: PearsonCorrelation(k_interactions=c.k_est),
+        AlgorithmSpec("pearson", "Pearson |r|", lambda c: eff(c, PearsonCorrelation(k_interactions=c.k_est)),
                       "Pearson Correlation", "Co-expression Baseline", "Correlation Baseline", "#a8a29e", (2, 4)),
-        AlgorithmSpec("grnboost", "GRNBoost-lite", lambda c: GRNBoostLite(k_interactions=c.k_est, seed=c.seed),
+        AlgorithmSpec("grnboost", "GRNBoost-lite", lambda c: eff(c, GRNBoostLite(k_interactions=c.k_est, seed=c.seed)),
                       "GRNBoost (gradient-boosted importances)", "Boosted Tree Importance", "Boosted Trees", "#65a30d",
                       target_row=True),
         AlgorithmSpec("gene_features", "Gene-level features", lambda c: GeneFeatureBaseline(k_interactions=c.k_est),

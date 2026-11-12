@@ -46,7 +46,9 @@ Supported by measurements in this repository:
   about 0.985 in genome-scale screens (`docs/PERTURBSEQ.md`): a perturbation moves many genes through the network, and the
   direct edges are a small part of the signal that methods must separate out.
 - The perturbed gene itself barely responds in the regulator-input mode (median own response -5e-5 at 500 genes), which is
-  what made inspre (built for knockdown data) return an empty graph until it was given the response of X + U.
+  what made inspre (built for knockdown data) return an empty graph until it was given the response of X + U, and why the
+  co-expression methods (ARACNE, NetDeconv, Pearson, GENIE3, GRNBoost, CausalGRN) are given X + U too: AUPR rises 2-3x
+  (`inference/base.py`, `EffectiveConcentration`). The scores in the table above were stored before this change.
 
 Hypotheses, not tested here (no ablation was run): that the fall is mainly the number of candidate regulators (500 against 12),
 and that the noise level matters more at scale. Disentangling them needs the same preset at 12-60 genes, which is not in the

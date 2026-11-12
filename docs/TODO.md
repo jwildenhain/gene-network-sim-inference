@@ -41,8 +41,13 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   (2026-11-12) they are given `k` when it is known, as the others are: S2G F1 0.109 -> 0.192 (500 genes), 0.082 -> 0.219
   (1000 genes), AUPR unchanged. This uses the truth's edge density; documented in `docs/SCALE_BENCHMARK.md`; compare with
   AUPR when edge counts differ. (Committed; not yet in the container image.)
-- [ ] **arachne 0.07, netdeconv 0.10, grnboost 0.087, dmdgrn 0.12, pearson 0.08 F1 at 200 genes**: weak or wrong? Compare
-  with the controls (gene-feature 0.015, by-chance 0.025) and check orientation / scaling.
+- [x] **arachne, netdeconv, pearson, grnboost, genie3, causalgrn ran on X alone, but the Hill regulator-input perturbation
+  is invisible in X** (the perturbed gene does not respond; the data satisfy X = cF(X+U)). Given X + U (new
+  `EffectiveConcentration` wrapper, registry, Hill data only) AUPR rises 2-3x on calibrated 100-200 gene networks
+  (arachne 0.03 -> 0.09, netdeconv 0.06 -> 0.15, pearson 0.04 -> 0.12, genie3 0.04 -> 0.12, causalgrn 0.14 -> 0.22) and on
+  default-parameter 40-gene networks (6 seeds, 4-6 wins each). Not wrapped, no gain: sfinn, deeprig, atlasshift, mean_difference,
+  notears (+14%), the controls. Committed; not yet in the container image.
+- [ ] **dmdgrn** is mixed under X + U (orientation flips between inputs): check its orientation flag and its use of U.
 - [ ] **G2S pool deadlock** (one forked worker hung for an hour at 500 genes): guarded by `run_chunks` (kills idle pools
   after 300 s), root cause unknown; workers dump stacks to `/tmp/grn_sim_worker_<pid>.trace` after 600 s.
 - [ ] Time and memory of every algorithm at 500 / 1000 / 2000 genes with the fixed code (the audit script takes
