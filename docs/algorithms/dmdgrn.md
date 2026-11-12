@@ -11,7 +11,7 @@ Delta X ~ -A^-1 U; best-fit operator A = -U W S^-1 V^T, off-diagonal entries dis
 ## Interface
 
 - Input: `fit(X, U)`: X is genes × perturbations, U is zero except for each perturbed gene's own response.
-- Output: `A_est[regulator, target]`.
+- Output: `A_est[target, regulator]` on additive data, `[regulator, target]` on Hill data (`orient_prediction` handles both).
 - Partial screens (m perturbed genes of n measured): runs on a partial screen as it is.
 - Registry key: `dmdgrn`; listed by `/api/algorithms` and the studio.
 

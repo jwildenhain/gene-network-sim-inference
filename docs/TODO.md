@@ -50,7 +50,14 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   (arachne 0.03 -> 0.09, netdeconv 0.06 -> 0.15, pearson 0.04 -> 0.12, genie3 0.04 -> 0.12, causalgrn 0.14 -> 0.22) and on
   default-parameter 40-gene networks (6 seeds, 4-6 wins each). Not wrapped, no gain: sfinn, deeprig, atlasshift, mean_difference,
   notears (+14%), the controls. Committed; not yet in the container image.
-- [ ] **dmdgrn** is mixed under X + U (orientation flips between inputs): check its orientation flag and its use of U.
+- [x] **dmdgrn had two bugs.** (1) On Hill regulator-input data it inverted the additive relation A X = -U instead of
+  X = cF(X + U): it now fits on (X + U, -X) like NIR / FAST / RidgeCV (`perturbation_mode="regulator"`; 200 genes AUPR
+  0.036 -> 0.241, F1 0.12 -> 0.30, level with NIR and SFINN). (2) Its output orientation was undeclared: on additive
+  (Gardner) data the raw output is A[target, regulator] and scored 2-3x better transposed (like S2G and NIR); declared now.
+- [ ] **Archived additive-data runs scored dmdgrn with the wrong orientation** (and the archive rows for dmdgrn on Hill data
+  predate the regulator mode): `scripts/rescore_archive_orientation.py` skips runs already marked `pred_orientation`, so it
+  needs a per-algorithm option to re-orient dmdgrn only; the 82 `biophysical` and 167 untagged archive runs with dmdgrn
+  results are the candidates (check which are additive before rescoring).
 - [ ] **G2S pool deadlock** (one forked worker hung for an hour at 500 genes): guarded by `run_chunks` (kills idle pools
   after 300 s), root cause unknown; workers dump stacks to `/tmp/grn_sim_worker_<pid>.trace` after 600 s.
 - [ ] Time and memory of every algorithm at 500 / 1000 / 2000 genes with the fixed code (the audit script takes

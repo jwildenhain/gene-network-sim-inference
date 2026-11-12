@@ -232,8 +232,10 @@ def _register_builtin() -> None:
                       "Information Theoretic (MI + DPI)", "Mutual Info & DPI", "#84cc16"),
         AlgorithmSpec("causalgrn", "CausalGRN (Causal)", lambda c: eff(c, CausalGRNAlgorithm(k_interactions=k_if_reg(c))),
                       "CausalGRN", "Interventional Causal Discovery", "Causal Do-Calculus", "#e11d48", target_row=True),
-        AlgorithmSpec("dmdgrn", "DMD-GRN (Koopman)", lambda c: DMDGRNAlgorithm(k_interactions=k_if_reg(c)), "DMD-GRN",
-                      "Dynamic Mode Decomposition", "Koopman Dynamics", "#a855f7", (2, 2)),
+        AlgorithmSpec("dmdgrn", "DMD-GRN (Koopman)", lambda c: DMDGRNAlgorithm(
+            k_interactions=k_if_reg(c), perturbation_mode=mode(c)), "DMD-GRN",
+                      "Dynamic Mode Decomposition", "Koopman Dynamics", "#a855f7", (2, 2),
+                      regulator_input=True, additive_target_regulator=True),
         AlgorithmSpec("deeprig", "DeepRIG (GAE+GCN)", lambda c: DeepRIGAlgorithm(k_interactions=k_if_reg(c), seed=c.seed),
                       "DeepRIG", "Graph Autoencoder (GCN)", "Deep Graph AE", "#14b8a6", target_row=True),
         AlgorithmSpec("sfinn", "SFINN (GCN+FNN)", lambda c: SFINNAlgorithm(k_interactions=k_if_reg(c)), "SFINN",
