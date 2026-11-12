@@ -27,6 +27,9 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 - [x] Per-algorithm job storage with error isolation; stall guard for forked pools; run store bounded by bytes.
 
 ### Still open
+- [ ] **ridge_cv at 2000 genes takes over 95 minutes** (500 genes 28 s, 1000 genes 280 s: worse than the 10x per doubling the
+  first two sizes suggested; the job was interrupted at 95 minutes in the container swap of 2026-11-12). Profile it
+  (`RidgeCV` per-target loop, the regulator-input transform) before running it again; queued last at 2000 genes.
 - [ ] **cellbox is at chance level** (AUPR 0.030-0.035 vs 0.026 chance at 100 genes) whatever the epochs (70 to 1500) or
   penalty; 500 MB extra memory at 200 genes; about 21 min at 500 genes. Check the regulator-input adaptation (the model
   adds u to the activation, the simulator adds it to the regulator concentration) and the GPU path.
