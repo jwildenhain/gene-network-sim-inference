@@ -2674,6 +2674,7 @@ def _adopt_archived_run(run_id: str) -> Dict[str, Any]:
     if stored["state"].get("experiment") is None:
         stored["state"]["experiment"] = types.SimpleNamespace(
             X=np.asarray(record["X"], dtype=float), U=np.asarray(record["U"], dtype=float))
+    _trim_run_store()  # runs adopted one after another must not pile up beyond the memory budget
     return stored
 
 

@@ -44,3 +44,21 @@ def test_job_adds_algorithms_to_an_archived_run_and_keeps_the_old_ones(archived_
 def test_unknown_run_is_reported(archived_run):
     with pytest.raises(LookupError):
         server._job_infer("no-such-run", ["by_chance"], _Ctx())
+
+
+def test_adopting_runs_one_after_another_respects_the_memory_budget(tmp_path, monkeypatch):
+    monkeypatch.setenv("RGN_DB_PATH", str(tmp_path / "t.sqlite"))
+    saved_state, saved_store = dict(server.CURRENT_STATE), dict(server.SIMULATION_RUN_STORE)
+    try:
+        ids = []
+        for seed in (21, 22, 23):
+            server._execute_simulation({"num_genes": 12, "topology": "random", "k_av": 1.8, "seed": seed})
+            ids.append(server.CURRENT_STATE["run_id"])
+        server.SIMULATION_RUN_STORE.clear()
+        monkeypatch.setattr(server, "RUN_STORE_BUDGET_BYTES", 1)  # everything is over budget: only the newest may stay
+        for rid in ids:
+            server._job_infer(rid, ["by_chance"], _Ctx())
+        assert list(server.SIMULATION_RUN_STORE) == [ids[-1]]
+    finally:
+        server.CURRENT_STATE.clear(); server.CURRENT_STATE.update(saved_state)
+        server.SIMULATION_RUN_STORE.clear(); server.SIMULATION_RUN_STORE.update(saved_store)
