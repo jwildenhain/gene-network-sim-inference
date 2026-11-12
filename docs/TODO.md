@@ -55,12 +55,19 @@ Papers still to read before implementing: LLC, GIES, IGSP, DCDI, NODAGS-Flow, Di
 - [ ] Open the PR for `feat/inspre-and-interventional-baselines`.
 - [ ] Cut a release (everything is under `[Unreleased]`).
 - [ ] Real-data check of the Hill refit and transfer predictors on Norman 2019 / Replogle 2022.
-- [x] Archive payload at 2000 genes: predictions are stored sparsely above 60 genes (`evaluation/prediction_codec.py`,
-  12 MB -> under 1 MB per algorithm). Still large per algorithm: the three SVG graphs (~25 MB at 2000 genes) and the
-  comparison graph (~3 MB); one run's simulation payload is 200 MB (`msmt_text`/`pert_text` text copies of the data are
-  82 MB of that). Next: render large-network SVGs on demand.
-- [ ] Per-algorithm overhead: a trivial algorithm (`by_chance`) costs 8 s at 500 genes, 7 s of it in
-  `layered_layout` (pure-Python crossing minimisation, called once per algorithm); 73 s per job at 2000 genes.
+- [x] Archive size and speed (2026-11-12): predictions stored sparsely above 60 genes; per-algorithm comparison SVGs not
+  rendered or stored above 100 genes (the page draws such graphs as modules); payload columns over 1 M characters
+  stored zlib-compressed; write-only legacy columns left empty above 100 genes; `get_summary_statistics_by_type` no
+  longer reads `sim_payload_json`; `scripts/compact_archive.py` migrates an existing archive (snapshot of the real one:
+  8.56 GB -> 625 MB, summary 4.6 -> 0.43 s, 500-gene run load 2.0 -> 0.7 s, 2000-gene 7.0 -> 4.2 s).
+  **Not yet run on the real archive** (a scale run was writing to it): run it with `--apply --backup` when no server
+  is using the archive, then rebuild the container.
+- [x] In-memory run store bounded by bytes (`GRN_SIM_RUN_STORE_GB`, default 8), never evicting runs queued jobs need.
+- [x] Per-algorithm overhead at 500 genes 8.0 s -> 0.9 s (no SVG layout for large networks); kinetics kernel uses grouped
+  products instead of `np.multiply.at` (bit-identical, 500-gene generation 51 s -> 28 s).
+- [ ] Remaining load time of a 2000-gene run (4.2 s) is JSON parsing of the simulation payload (X, U, trajectories as
+  nested lists); storing them as binary arrays would remove it. orjson was measured and gains only 0.5 s of 2.8 s.
+- [ ] Remaining generation cost: `_terms` power evaluation (about 10 s of 28 s at 500 genes) and the ODE solver loop.
 - [x] Pool deadlock guard (`inference/_parallel.run_chunks`): workers with no CPU use for 300 s are killed and the
   chunks finished in the parent; workers dump their stacks to `/tmp/grn_sim_worker_<pid>.trace`. Root cause of the
   one observed hang (500-gene G2S, forked worker in futex_wait for an hour) is still unknown: stderr-lock repro failed.

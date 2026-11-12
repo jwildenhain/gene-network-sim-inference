@@ -88,6 +88,18 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Changed
+- **Archive size and speed at 500-2000 genes.** Predicted matrices are stored as coordinate lists above 60 genes; the
+  per-algorithm comparison SVGs are not rendered or stored above 100 genes (the page draws graphs of more than 25 nodes as
+  modules from the stored comparison graph, and a trivial algorithm now takes 0.9 s instead of 8 s at 500 genes); payload
+  columns over 1 M characters are stored zlib-compressed and read back transparently; the PHP-era columns nothing reads are
+  left empty above 100 genes; the archive summary no longer reads every run's payload (4.6 s -> 0.43 s).
+  `scripts/compact_archive.py` converts an existing archive (dry run by default, `--apply` needs a backup path and verifies
+  each run: 8.56 GB -> 625 MB on the real one).
+- The in-memory run store is bounded by bytes (`GRN_SIM_RUN_STORE_GB`, default 8) and keeps runs queued jobs need; a pool of
+  forked workers that makes no progress for 5 minutes is killed and its chunks are finished in the calling process;
+  background inference jobs store each algorithm's result as it finishes and an algorithm that fails no longer discards
+  the others; the job list keeps a finished job while queued jobs depend on it; the kinetics kernel uses grouped products
+  (bit-identical, about 1.8x faster network generation at 500 genes).
 - **CellBox can run on a GPU.** `CellBoxNeuralODE(device="auto"|"cpu"|"cuda")` (default `auto`, or the `GRN_SIM_DEVICE`
   environment variable): `auto` uses a usable CUDA GPU for networks of at least 300 genes and the CPU otherwise, `cuda`
   fails with a clear error when there is no GPU, and an `auto` run whose GPU step fails (for example out of memory) finishes on

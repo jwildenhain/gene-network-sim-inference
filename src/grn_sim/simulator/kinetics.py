@@ -43,6 +43,9 @@ class KineticsKernel:
         self.k_m = np.where(self.act, params.Ka[self.src, self.dst], params.Ki[self.src, self.dst]) ** self.m
         self.v = params.v
         self.B = params.B
+        # Edges are sorted by target, so each target's regulator terms are one contiguous run: a grouped product
+        # (np.multiply.reduceat, same left-to-right order) replaces the much slower np.multiply.at scatter.
+        self._groups, self._starts = np.unique(self.dst, return_index=True)
 
     def _terms(self, x: np.ndarray, with_derivative: bool = False) -> Tuple[np.ndarray, Optional[np.ndarray], np.ndarray]:
         eff_x = np.maximum(x + self.u, 1e-12)
@@ -64,7 +67,8 @@ class KineticsKernel:
         """Production ``s_k = v_k * prod_j term_jk`` (times the knockdown scale if ``scaled``)."""
         term, _, _ = self._terms(x)
         prod_terms = np.ones(self.n, dtype=float)
-        np.multiply.at(prod_terms, self.dst, term)
+        if term.size:
+            prod_terms[self._groups] = np.multiply.reduceat(term, self._starts)
         production = prod_terms * self.v
         if scaled and self.scale is not None:
             production = production * self.scale
@@ -91,9 +95,8 @@ class KineticsKernel:
         if sparse:
             from scipy.sparse import coo_matrix
             return coo_matrix((vals, (rows, cols)), shape=(n, n)).tocsc()
-        J = np.zeros((n, n), dtype=float)
-        np.add.at(J, (rows, cols), vals)
-        return J
+        # Accumulates duplicate (row, col) entries (a self-regulating gene) in input order, like np.add.at, but in C
+        return np.bincount(rows * n + cols, weights=vals, minlength=n * n).reshape(n, n)
 
 
 def evaluate_derivatives(
