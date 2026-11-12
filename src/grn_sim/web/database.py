@@ -376,7 +376,7 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None, run_ids: Optio
         cur.execute(
             """
             SELECT simid, nz, nt, av_k, noise, steady_state, oscillating,
-                   response_type, response_stats_json, sim_payload_json
+                   response_type, response_stats_json
             FROM nw
             """
         )
@@ -411,7 +411,7 @@ def get_summary_statistics_by_type(db_path: Optional[str] = None, run_ids: Optio
             })
 
         cat_runs: Dict[str, List[Dict[str, Any]]] = {c: [] for c in categories}
-        for simid, nz, _nt, av_k, noise, ss, osc, r_type, r_stats_json, _sim_j in nw_rows:
+        for simid, nz, _nt, av_k, noise, ss, osc, r_type, r_stats_json in nw_rows:
             c = r_type if r_type in categories else ("oscillating" if osc or not ss else "responsive")
             stats = json.loads(r_stats_json) if r_stats_json and r_stats_json != "{}" else {}
             cat_runs[c].append({

@@ -255,6 +255,11 @@ MAX_CELLS_PER_CONDITION = 2000
 # Above this many genes the N^2-sized trajectory/profile data are not embedded in /api/simulate (or the archive) but
 # served per perturbation / per gene from /api/trajectory and /api/gene_profile.
 LARGE_NETWORK_GENES = 60
+# Above this many genes the per-algorithm comparison SVGs (hierarchical, grid, spring) are neither rendered nor stored:
+# the page draws any graph of more than 25 nodes as modules from `comparison_graphs`, so those SVGs were never shown, yet
+# they were 65-70% of a stored result (about 25 MB per algorithm at 2000 genes) and most of the time a trivial
+# algorithm took (layered layout, 7 of 8 s at 500 genes).
+STORED_SVG_MAX_GENES = 100
 
 
 # Orientation of the network matrices the studio handles:
@@ -1022,11 +1027,12 @@ def _execute_inference(selected_algs: List[str],
 
             draw_stats = _drawing_matrix(a_stats_arr, truth_tr)
             dot_9_hier = export_9state_graphviz_dot(draw_stats, gene_names, graph_name=f"Diff_{alg}_dot", layout="dot")
-            dot_9_neato = export_9state_graphviz_dot(draw_stats, gene_names, graph_name=f"Diff_{alg}_neato", layout="neato")
             dots_dict[alg] = dot_9_hier
-            svgs_dot_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True)
-            svgs_dot_grid_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True, layout="grid")
-            svgs_neato_dict[alg] = render_graphviz_svg(dot_9_neato, engine="neato", matrix=draw_stats, gene_names=gene_names, is_9state=True)
+            if N <= STORED_SVG_MAX_GENES:
+                dot_9_neato = export_9state_graphviz_dot(draw_stats, gene_names, graph_name=f"Diff_{alg}_neato", layout="neato")
+                svgs_dot_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True)
+                svgs_dot_grid_dict[alg] = render_graphviz_svg(dot_9_hier, engine="dot", matrix=draw_stats, gene_names=gene_names, is_9state=True, layout="grid")
+                svgs_neato_dict[alg] = render_graphviz_svg(dot_9_neato, engine="neato", matrix=draw_stats, gene_names=gene_names, is_9state=True)
 
     aic_profile = _compute_aic_profile(X, U, target_gene=0)
     primary_alg = prev.get("primary_algorithm") or (selected_algs[0] if selected_algs else "s2g")
@@ -1184,7 +1190,8 @@ def _ensure_graph_views(sim_payload: Dict[str, Any]) -> Dict[str, Any]:
     svgs_dot = inferred.setdefault("svgs_dot", {}) if inferred else {}
     svgs_neato = inferred.setdefault("svgs_neato", {}) if inferred else {}
     svgs_grid = inferred.setdefault("svgs_dot_grid", {}) if inferred else {}
-    for alg, pred in (inferred.get("pred_matrices") or {}).items():
+    # Larger networks have no stored SVGs (see STORED_SVG_MAX_GENES): nothing to rebuild
+    for alg, pred in ((inferred.get("pred_matrices") or {}) if len(names) <= STORED_SVG_MAX_GENES else {}).items():
         stale_dot = reversed_views or alg not in svgs_dot or _is_arrowless_fallback_svg(svgs_dot.get(alg, ""))
         stale_neato = reversed_views or alg not in svgs_neato or _is_arrowless_fallback_svg(svgs_neato.get(alg, ""))
         if not (stale_dot or stale_neato or alg not in svgs_grid):
