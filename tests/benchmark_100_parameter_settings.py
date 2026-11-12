@@ -364,7 +364,8 @@ def reclassify_sqlite_database(db_path: Path):
         if not sim_json:
             continue
         try:
-            data = json.loads(sim_json)
+            from grn_sim.web.database import unpack_json
+            data = json.loads(unpack_json(sim_json))
             X = np.asarray(data.get("X") or [], dtype=float)
             diag = data.get("steady_state_diagnostics") or {}
             pert_trajs = data.get("perturbation_trajectories") or []

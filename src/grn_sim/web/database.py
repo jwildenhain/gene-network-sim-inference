@@ -9,9 +9,38 @@ import json
 import os
 import sqlite3
 import tempfile
+import zlib
 from typing import Any, Dict, Iterable, List, Optional
 
 from grn_sim.paths import archive_db_path
+
+
+# Payload columns larger than this are stored zlib-compressed (BLOB with a magic prefix; about 7x smaller for the
+# result payloads of large networks). Smaller ones stay plain text, so small archives are still readable with the
+# sqlite3 shell. ``unpack_json`` accepts both forms: use it for every read of these columns.
+COMPRESS_OVER_CHARS = 1_000_000
+_PACK_MAGIC = b"GRZ1"
+# Above this many genes the write-only legacy columns (mdot, mnet, mpet, mmsmt, mat, alg.dmf: kept from the PHP
+# schema, nothing reads them) are left empty: they only duplicate what the payload JSON holds (about 105 MB per
+# 2000-gene run).
+LEGACY_COLUMNS_MAX_GENES = 100
+
+
+def pack_json(text: str) -> Any:
+    """``text`` unchanged when small, else a compressed BLOB for the database."""
+    if len(text) <= COMPRESS_OVER_CHARS:
+        return text
+    return _PACK_MAGIC + zlib.compress(text.encode("utf-8"), 3)
+
+
+def unpack_json(value: Any) -> str:
+    """The JSON text of a payload column, whether it was stored as text or compressed."""
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        raw = bytes(value)
+        if raw[:4] == _PACK_MAGIC:
+            return zlib.decompress(raw[4:]).decode("utf-8")
+        return raw.decode("utf-8")
+    return value
 
 
 def get_db_path() -> str:
@@ -138,15 +167,16 @@ def save_simulation_to_db(
         response_type = str(resp_dyn.get("response_type", "responsive"))
         response_stats_json = json.dumps(resp_dyn)
 
-        mdot = str(sim_payload.get("svg_hierarchical", ""))
-        mnet = str(sim_payload.get("svg_spring", ""))
-        mpet = str(sim_payload.get("pert_text", ""))
-        mmsmt = str(sim_payload.get("msmt_text", ""))
-        mat = json.dumps(sim_payload.get("true_matrix", []))
+        legacy = nz <= LEGACY_COLUMNS_MAX_GENES
+        mdot = str(sim_payload.get("svg_hierarchical", "")) if legacy else ""
+        mnet = str(sim_payload.get("svg_spring", "")) if legacy else ""
+        mpet = str(sim_payload.get("pert_text", "")) if legacy else ""
+        mmsmt = str(sim_payload.get("msmt_text", "")) if legacy else ""
+        mat = json.dumps(sim_payload.get("true_matrix", [])) if legacy else ""
 
         settings_json = json.dumps(sim_payload.get("settings", {}))
-        sim_json = json.dumps(sim_payload)
-        inf_json = json.dumps(inferred_payload or {})
+        sim_json = pack_json(json.dumps(sim_payload))
+        inf_json = pack_json(json.dumps(inferred_payload or {}))
         hist_json = json.dumps(history_entry or {})
 
         cur.execute(
@@ -175,7 +205,7 @@ def save_simulation_to_db(
                 spec = round(float(stat.get("specificity", 0.0)) / 100.0, 4)
                 sens = round(float(stat.get("power", 0.0)) / 100.0, 4)
                 tot_err = int(metrics.get(alg_id, {}).get("total_errors", 0))
-                dmf = str(dots.get(alg_id, ""))
+                dmf = str(dots.get(alg_id, "")) if legacy else ""
                 dmo = json.dumps({
                     "tmp_statmat": stat,
                     "metrics": metrics.get(alg_id, {}),
@@ -290,8 +320,8 @@ def load_run_from_db(run_id: str, db_path: Optional[str] = None) -> Optional[Dic
         if not row:
             return None
         settings = json.loads(row[0]) if row[0] else {}
-        sim_payload = json.loads(row[1]) if row[1] else {}
-        inferred_payload = json.loads(row[2]) if row[2] else {}
+        sim_payload = json.loads(unpack_json(row[1])) if row[1] else {}
+        inferred_payload = json.loads(unpack_json(row[2])) if row[2] else {}
         history_entry = json.loads(row[3]) if row[3] else {}
         response_type = row[4]
         response_dynamics = json.loads(row[5]) if row[5] else None

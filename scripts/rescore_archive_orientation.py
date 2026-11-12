@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from grn_sim.evaluation.prediction_codec import decode_prediction, encode_prediction
+from grn_sim.web.database import pack_json, unpack_json
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.inference.orientation import ADDITIVE_GARDNER, ADDITIVE_PHYSICAL, REGULATOR_INPUT_ALGORITHMS, orient_prediction
 from grn_sim.visualization.graph_export import (
@@ -269,8 +270,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         ).fetchall()
         for simid, uid, settings_json, sim_json, inferred_json, history_json in rows:
             settings = json.loads(settings_json or "{}")
-            sim_payload = json.loads(sim_json or "{}")
-            inferred = json.loads(inferred_json or "{}")
+            sim_payload = json.loads(unpack_json(sim_json) or "{}")
+            inferred = json.loads(unpack_json(inferred_json) or "{}")
             history = json.loads(history_json or "{}")
             summary = rescore_run(simid, settings, sim_payload, inferred, history)
             if summary is None:
@@ -280,7 +281,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 continue
             conn.execute(
                 "UPDATE nw SET inferred_payload_json = ?, history_entry_json = ? WHERE simid = ? AND uid = ?",
-                (json.dumps(inferred), json.dumps(history), simid, uid),
+                (pack_json(json.dumps(inferred)), json.dumps(history), simid, uid),
             )
             metrics, statmat, dots = inferred.get("metrics", {}), inferred.get("tmp_statmat", {}), inferred.get("dots", {})
             for alg in summary["changes"]:
