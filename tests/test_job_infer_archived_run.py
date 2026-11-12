@@ -62,3 +62,26 @@ def test_adopting_runs_one_after_another_respects_the_memory_budget(tmp_path, mo
     finally:
         server.CURRENT_STATE.clear(); server.CURRENT_STATE.update(saved_state)
         server.SIMULATION_RUN_STORE.clear(); server.SIMULATION_RUN_STORE.update(saved_store)
+
+
+def test_job_on_a_run_that_is_in_memory_without_its_data(archived_run):
+    """The start-up run and runs opened from the archive are in the store without an experiment."""
+    run_id, _ = archived_run
+    server.CURRENT_STATE["experiment"] = None
+    server._load_archived_run(run_id)  # what the server does at start-up
+    assert server.SIMULATION_RUN_STORE[run_id]["state"].get("experiment") is None
+    out = server._job_infer(run_id, ["by_chance"], _Ctx())
+    assert out["algorithms_failed"] == {} and "by_chance" in out["algorithms_stored"]
+
+
+def test_a_run_adopted_while_another_network_is_open_uses_its_own_data(archived_run):
+    """The loader copies CURRENT_STATE, so a job must not pick up the experiment of the network the studio has open."""
+    import numpy as np
+    run_id, _ = archived_run
+    own_X = np.array(server._load_archived_run(run_id)["X"], dtype=float)
+    server.SIMULATION_RUN_STORE.clear()
+    server._execute_simulation({"num_genes": 12, "topology": "random", "k_av": 1.8, "seed": 99})  # another network is open
+    other = server.CURRENT_STATE["experiment"]
+    assert not np.allclose(np.asarray(other.X), own_X)
+    stored = server._adopt_archived_run(run_id)
+    assert np.allclose(stored["state"]["experiment"].X, own_X)

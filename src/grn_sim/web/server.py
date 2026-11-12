@@ -1374,6 +1374,8 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         "sim_payload": sim_payload,
         "inferred_payload": inferred_payload,
         "settings": settings,
+        # its "state" was copied from whatever network was open, so its experiment (if any) may belong to another run
+        "from_archive": True,
     }
     return sim_payload
 
@@ -2629,7 +2631,7 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
     with STATE_LOCK:
         snapshot = dict(CURRENT_STATE)
         try:
-            stored = SIMULATION_RUN_STORE.get(run_id) or _adopt_archived_run(run_id)
+            stored = _adopt_archived_run(run_id)
             CURRENT_STATE.clear()
             CURRENT_STATE.update(stored["state"])
             for index, alg in enumerate(algorithms):
@@ -2663,17 +2665,24 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
 
 def _adopt_archived_run(run_id: str) -> Dict[str, Any]:
     """
-    Brings an archived run back into the in-memory store with the data the algorithms need (its X and U), so a job can
-    add algorithms to a network generated before the last restart. Call with STATE_LOCK held; the caller restores
-    CURRENT_STATE (the loader switches it to this run).
+    The in-memory run for ``run_id`` with the data the algorithms need (its X and U), loading it from the archive when it
+    is not in memory. A run can be in memory without them (the studio's start-up run and runs opened from the archive
+    are rebuilt from their payload only), so a job on such a run needs them attached too. Call with STATE_LOCK held;
+    the caller restores CURRENT_STATE (the loader switches it to this run).
     """
-    record = _load_archived_run(run_id)
     stored = SIMULATION_RUN_STORE.get(run_id)
-    if record is None or stored is None:
-        raise LookupError(f"network {run_id!r} is neither in memory nor in the archive")
-    if stored["state"].get("experiment") is None:
+    if stored is None:
+        if _load_archived_run(run_id) is None:
+            raise LookupError(f"network {run_id!r} is neither in memory nor in the archive")
+        stored = SIMULATION_RUN_STORE.get(run_id)
+        if stored is None:
+            raise LookupError(f"network {run_id!r} could not be loaded")
+    if stored.get("from_archive") or stored["state"].get("experiment") is None:
+        payload = stored.get("sim_payload") or {}
+        if not payload.get("X") or not payload.get("U"):
+            raise LookupError(f"network {run_id!r} has no stored measurements to infer from")
         stored["state"]["experiment"] = types.SimpleNamespace(
-            X=np.asarray(record["X"], dtype=float), U=np.asarray(record["U"], dtype=float))
+            X=np.asarray(payload["X"], dtype=float), U=np.asarray(payload["U"], dtype=float))
     _trim_run_store()  # runs adopted one after another must not pile up beyond the memory budget
     return stored
 

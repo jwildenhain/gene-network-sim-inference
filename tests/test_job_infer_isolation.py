@@ -23,7 +23,7 @@ class _Ctx:
 @pytest.fixture
 def fake_run(monkeypatch):
     run_id = "test-job-infer-run"
-    server.SIMULATION_RUN_STORE[run_id] = {"state": {"run_id": run_id}, "inferred_payload": {}}
+    server.SIMULATION_RUN_STORE[run_id] = {"state": {"run_id": run_id, "experiment": object()}, "inferred_payload": {}}
     seen = []
 
     def fake_execute(algs, on_algorithm=None, previous=None):
