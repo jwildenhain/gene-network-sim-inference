@@ -181,6 +181,8 @@ def _register_builtin() -> None:
         return NIRAlgorithm(k_interactions=c.k_est, perturbation_mode="regulator", adaptive_k=True)
 
     def g2s_member(c: BuildContext) -> GeneralToSpecific:
+        # AIC should pick the size but does not on Hill data (2 per gene): given the known edge density, like every
+        # algorithm that takes K (an input a real screen does not have; see docs/SCALE_BENCHMARK.md)
         return GeneralToSpecific(max_interactions=2 * c.k_est if c.use_reg else None, drop_rule="loo")
 
     builtin = [

@@ -36,9 +36,11 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   "far below S2G" compared sensitivity alone, and S2G reached it by predicting 6,657 / 21,861 edges. On this data the AIC
   optimum is exactly 2 regulators for every target (the target `U` row is a single spike), so the cap (`k`, `2k`, none), the
   drop rule (`loo` / `exact`) and the regulator formulation (X+U) change nothing. Real 500-gene time is 12 s: the 3906 s in
-  the archive was the pool hang. **S2G was the unfair one**: it had no edge cap while every other algorithm gets `k`; capped
-  at `k` (registry, Hill data) F1 goes 0.109 -> 0.192 (500 genes) and 0.082 -> 0.219 (1000 genes) with AUPR unchanged
-  (committed; not yet in the container image).
+  the archive was the pool hang. **S2G had no edge cap while every other algorithm gets `k`**; they were designed to choose
+  their own size (MDL / AIC) but on this data they do not (S2G 13-22 edges per gene, G2S exactly 2), so by decision
+  (2026-11-12) they are given `k` when it is known, as the others are: S2G F1 0.109 -> 0.192 (500 genes), 0.082 -> 0.219
+  (1000 genes), AUPR unchanged. This uses the truth's edge density; documented in `docs/SCALE_BENCHMARK.md`; compare with
+  AUPR when edge counts differ. (Committed; not yet in the container image.)
 - [ ] **arachne 0.07, netdeconv 0.10, grnboost 0.087, dmdgrn 0.12, pearson 0.08 F1 at 200 genes**: weak or wrong? Compare
   with the controls (gene-feature 0.015, by-chance 0.025) and check orientation / scaling.
 - [ ] **G2S pool deadlock** (one forked worker hung for an hour at 500 genes): guarded by `run_chunks` (kills idle pools
