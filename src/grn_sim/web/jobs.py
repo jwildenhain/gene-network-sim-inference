@@ -212,9 +212,13 @@ class JobManager:
             print(f"[jobs] could not save the job list to {self._store_path}: {exc}", file=sys.stderr)
 
     def _trim(self) -> None:
+        # A finished job that a queued or running job still depends on stays, however old: dropping it made the
+        # dependent fail with "no longer exists" once more than ``keep_finished`` jobs had finished in between.
+        needed = {j.depends_on for j in self._jobs.values() if j.status in ACTIVE and j.depends_on}
         finished = sorted((j for j in self._jobs.values() if j.status in FINISHED), key=lambda j: j.finished or 0)
         for old in finished[:max(0, len(finished) - self._keep_finished)]:
-            del self._jobs[old.id]
+            if old.id not in needed:
+                del self._jobs[old.id]
 
     # ---- submitting -------------------------------------------------------------------------------------------
     def submit(self, spec: Dict[str, Any]) -> List[Job]:

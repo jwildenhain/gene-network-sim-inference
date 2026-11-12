@@ -34,7 +34,6 @@ from __future__ import annotations
 import math
 import multiprocessing as mp
 import os
-from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
@@ -758,6 +757,8 @@ _WORKER: Dict[str, Any] = {}
 
 
 def _worker_init(basis: SharedBasis, Y: np.ndarray, params: G2SParams, starts: Optional[Dict[int, Any]]) -> None:
+    from grn_sim.inference._parallel import arm_stall_trace
+    arm_stall_trace()
     try:
         from threadpoolctl import threadpool_limits
         _WORKER["limits"] = threadpool_limits(limits=1, user_api="blas")
@@ -814,14 +815,19 @@ def solve_genes(
     n_chunks = min(len(genes), n_jobs * 8)
     chunks = [genes[c::n_chunks] for c in range(n_chunks)]
     _hh_kernel()                      # compile once in the parent; forked workers inherit it
-    ctx = mp.get_context("fork")
-    parts = []
     from grn_sim.inference._native import NATIVE_LOCK
+    from grn_sim.inference._parallel import run_chunks
     with NATIVE_LOCK:                 # no other thread loads native libraries while this one forks (see _native.py)
-        with ProcessPoolExecutor(max_workers=n_jobs, mp_context=ctx, initializer=_worker_init,
-                                 initargs=(basis, Y, params, starts)) as ex:
-            for part in ex.map(_worker_run, chunks):
-                parts.extend(part)
+        done, _stalled = run_chunks(_worker_run, chunks, n_jobs, initializer=_worker_init,
+                                    initargs=(basis, Y, params, starts))
+    parts = [item for k in sorted(done) for item in done[k]]
+    missing = [i for k in range(len(chunks)) if k not in done for i in chunks[k]]
+    if missing:                       # a stalled pool was killed: solve those genes here, as the serial backend does
+        with _one_blas_thread():
+            for i in missing:
+                s_ind, p_ind = starts.get(i, (None, None))
+                ind, a, stats = solve_gene(Y[i], basis, params, s_ind, p_ind)
+                parts.append((i, ind, a, stats))
     # Final least squares in the parent with one BLAS thread (as the serial backend runs), so near-zero
     # coefficients do not depend on the backend - only after the pool is gone (see GeneralToSpecific._solve_all).
     with _one_blas_thread():

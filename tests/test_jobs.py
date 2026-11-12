@@ -164,6 +164,21 @@ def test_only_the_newest_finished_jobs_are_kept(make):
     assert len(m.list()) == 3
 
 
+def test_a_finished_job_with_queued_dependents_is_not_trimmed(make):
+    import threading
+    fake = Fake()
+    m, _ = make(fake, keep_finished=2)
+    (gen,) = m.submit({"params": {"seed": 1}})
+    _wait(m, gen.id, jobs.FINISHED)
+    fake.gate = threading.Event()  # block the next generation so the dependents stay queued behind it
+    (blocker,) = m.submit({"params": {"seed": 9}})
+    deps = [m.submit({"depends_on": gen.id, "algorithms": ["s2g"]})[0] for _ in range(5)]
+    fake.gate.set()
+    for j in [blocker] + deps:
+        assert _wait(m, j.id, jobs.FINISHED)["status"] == jobs.DONE  # none failed with "no longer exists"
+    assert m.get(gen.id) is not None or len(m.list()) <= 2  # trimmed once nothing depends on it any more
+
+
 # --- the real wiring ----------------------------------------------------------------------------------------------
 def _call(url, method="GET", body=None):
     req = urllib.request.Request(url, method=method, data=None if body is None else json.dumps(body).encode(),

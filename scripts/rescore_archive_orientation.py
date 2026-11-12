@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from grn_sim.evaluation.prediction_codec import decode_prediction, encode_prediction
 from grn_sim.evaluation.metrics import evaluate_inference
 from grn_sim.inference.orientation import ADDITIVE_GARDNER, ADDITIVE_PHYSICAL, REGULATOR_INPUT_ALGORITHMS, orient_prediction
 from grn_sim.visualization.graph_export import (
@@ -159,7 +160,7 @@ def rescore_run(
     statmat_all = inferred.setdefault("tmp_statmat", {})
     changes: Dict[str, Dict[str, Any]] = {}
     for alg, raw in preds.items():
-        raw_arr = np.array(raw, dtype=int)
+        raw_arr = decode_prediction(raw)
         if raw_arr.shape != true_matrix.shape:
             continue
         pred = orient_prediction(alg, raw_arr, data_model, truth_tr, _fit_mode(run, alg))
@@ -170,7 +171,7 @@ def rescore_run(
         before = {"power": _power(old_stat, old_metrics), "total_errors": old_metrics.get("total_errors", old_stat.get("total_errors"))}
 
         m = evaluate_inference(true_matrix, pred)
-        preds[alg] = pred.tolist()
+        preds[alg] = encode_prediction(pred)
         if sweep_format:
             metrics_all[alg], statmat_all[alg] = _sweep_entries(old_metrics, old_stat, m)
         else:
