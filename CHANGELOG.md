@@ -4,6 +4,15 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## Unreleased - Collapsed network view: accuracy per module and a module matrix
+
+- Networks above 25 genes were already drawn as modules of the *true* network (the same modules for every algorithm). The module
+  overview now also shows how each algorithm does there: a ring on every module (correct / wrong sign / extra / missed links touching
+  it), the precision and recall of links inside modules and of links between modules in the info line, and a **Module matrix** view
+  (rows = regulator modules, columns = target modules, colour = share of wrong links, brightness = number of links, number = links)
+  that stays readable at 500-2000 genes. Cells and labels open the module. Graphs without classified links (the truth-only panels)
+  are drawn as before. Tests: `tests/test_playwright_collapsed_modules.py`.
+
 ## Unreleased - Audit follow-ups: reproducible re-analysis, tab 5 from the archive, zipped .h5ad
 
 - **Re-analysing an archived run reproduces its result.** Inference ran on the full-precision matrices while the archive keeps

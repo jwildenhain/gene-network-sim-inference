@@ -814,6 +814,12 @@
     .cg-wrap { display: flex; flex-direction: column; width: 100%; height: 100%; }
     .cg-info { flex: 0 0 auto; padding: 6px 10px; font-size: 11.5px; color: var(--text-muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .cg-wrap .cg-svg { flex: 1 1 auto; min-height: 0; }
+    .cg-mode { display: inline-flex; gap: 0; }
+    .cg-mode .btn { border-radius: 0; padding: 2px 10px; }
+    .cg-mode .btn:first-child { border-radius: 5px 0 0 5px; }
+    .cg-mode .btn:last-child { border-radius: 0 5px 5px 0; }
+    .cg-mode .btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    .cg-legend { color: var(--text-muted); }
     .cg-node:hover circle { filter: brightness(0.95); stroke-width: 3.5; }
     .studio-loading-fill { height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #38bdf8, #10b981, #6366f1, #38bdf8); background-size: 200% 100%; animation: shimmerProgress 1.4s infinite linear; transition: width 0.35s ease; }
 
@@ -5133,16 +5139,79 @@
       return layoutCircle(n);
     }
 
+    // ---- module accuracy ---------------------------------------------------------------------------------------
+    // The comparison graph's links carry `status` (TP_CORRECT, TP_SIGN_ERR, FP, FN). They are counted per pair of modules (the
+    // modules are those of the true network, so every algorithm is drawn on the same ones).
+    const TALLY_COLORS = { tp: '#10b981', sign: '#f59e0b', fp: '#ef4444', fn: '#64748b' };
+
+    function emptyTally() { return { tp: 0, sign: 0, fp: 0, fn: 0 }; }
+
+    function addToTally(t, status) {
+      if (status === 'TP_CORRECT') t.tp++;
+      else if (status === 'TP_SIGN_ERR') t.sign++;
+      else if (status === 'FP') t.fp++;
+      else if (status === 'FN') t.fn++;
+    }
+
+    function hasClassifiedLinks(graph) {
+      return Boolean(graph && graph.links && graph.links.some(l => l.status));
+    }
+
+    // cell[from][to]: links from a regulator in module `from` to a target in module `to`; touching[m]: links with an end in m.
+    function moduleTallies(graph, cl) {
+      const k = cl.clusters.length;
+      const cell = Array.from({ length: k }, () => Array.from({ length: k }, emptyTally));
+      const touching = Array.from({ length: k }, emptyTally);
+      const total = emptyTally();
+      const within = emptyTally();
+      const between = emptyTally();
+      graph.links.forEach(l => {
+        const a = cl.of[l.source_idx];
+        const b = cl.of[l.target_idx];
+        if (a == null || b == null) return;
+        addToTally(cell[a][b], l.status);
+        addToTally(total, l.status);
+        addToTally(a === b ? within : between, l.status);
+        addToTally(touching[a], l.status);
+        if (b !== a) addToTally(touching[b], l.status);
+      });
+      return { k, cell, touching, total, within, between };
+    }
+
+    // Edge existence only (a wrong sign still counts as found): precision = found / (found + extra), recall = found / (found + missed).
+    function tallyScores(t) {
+      const found = t.tp + t.sign;
+      return {
+        precision: found + t.fp ? found / (found + t.fp) : null,
+        recall: found + t.fn ? found / (found + t.fn) : null,
+        links: found + t.fp + t.fn,
+      };
+    }
+
+    function tallyWrongShare(t) {
+      const n = t.tp + t.sign + t.fp + t.fn;
+      return n ? (t.sign + t.fp + t.fn) / n : null;
+    }
+
+    function tallyText(t) {
+      return `${t.tp} correct, ${t.sign} wrong sign, ${t.fp} extra, ${t.fn} missed`;
+    }
+
+    function pctText(x) { return x == null ? 'n/a' : (100 * x).toFixed(0) + '%'; }
+
     // ---- scenes ---------------------------------------------------------------------------------------------
     // overview: one node per module, one bundle per (from, to, look); detail: the genes of one module
     function collapsedOverviewScene(graph, basis) {
       const cl = clusterGraph(basis);
+      const tal = hasClassifiedLinks(graph) ? moduleTallies(graph, cl) : null;
       const nodes = cl.clusters.map(c => {
         const names = c.hubs.map(g => graph.nodes[g].label);
+        const acc = tal ? tal.touching[c.id] : null;
         return {
           key: c.id, label: `M${c.id + 1}`, sub: `${c.members.length} genes`,
-          r: 11 + 3.2 * Math.sqrt(c.members.length), members: c.members,
-          title: `Module M${c.id + 1}: ${c.members.length} genes, ${c.internal} links inside. Best connected: ${names.join(', ')}. Click to open.`,
+          r: 11 + 3.2 * Math.sqrt(c.members.length), members: c.members, acc,
+          title: `Module M${c.id + 1}: ${c.members.length} genes, ${c.internal} links inside. Best connected: ${names.join(', ')}.`
+            + (acc ? ` Links touching it: ${tallyText(acc)}.` : '') + ' Click to open.',
         };
       });
       const bundles = new Map();
@@ -5156,7 +5225,7 @@
         cur.count++;
         bundles.set(key, cur);
       });
-      return { nodes, bundles: [...bundles.values()], overview: true, clusters: cl };
+      return { nodes, bundles: [...bundles.values()], overview: true, clusters: cl, tallies: tal };
     }
 
     function collapsedDetailScene(graph, basis, clusterId) {
@@ -5257,8 +5326,23 @@
         const selected = scene.overview ? (selectedGene >= 0 && nd.members.includes(selectedGene)) : nd.gene === selectedGene;
         const clickable = scene.overview || nd.gene != null;
         const fs = scene.overview ? 13 : (nd.label.length > 6 ? 9.5 : 11.5);
+        let ring = '';
+        if (scene.overview && nd.acc) {                                   // share of correct / wrong-sign / extra / missed links
+          const parts = ['tp', 'sign', 'fp', 'fn'].map(k => [k, nd.acc[k]]).filter(x => x[1] > 0);
+          const sum = parts.reduce((a, x) => a + x[1], 0);
+          const rr = nd.r + 5;
+          const circ = 2 * Math.PI * rr;
+          let used = 0;
+          parts.forEach(([k, v]) => {
+            const len = circ * v / sum;
+            ring += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rr.toFixed(1)}" fill="none" stroke="${TALLY_COLORS[k]}" stroke-width="5" `
+              + `stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}" stroke-dashoffset="${(-used).toFixed(2)}" `
+              + `transform="rotate(-90 ${p.x.toFixed(1)} ${p.y.toFixed(1)})" class="cg-ring cg-ring-${k}"/>`;
+            used += len;
+          });
+        }
         nodeSvg += `<g class="cg-node" data-key="${jobEsc(nd.key)}" style="cursor:${clickable ? 'pointer' : 'default'};">`
-          + `<title>${jobEsc(nd.title)}</title>`
+          + `<title>${jobEsc(nd.title)}</title>` + ring
           + `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${nd.r.toFixed(1)}" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="${selected ? 4 : 2}"${nd.rest ? ' stroke-dasharray="4 3"' : ''}/>`
           + `<text x="${p.x.toFixed(1)}" y="${(p.y + (nd.sub ? -2 : 0)).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" fill="var(--text-main)">${jobEsc(nd.label)}</text>`
           + (nd.sub ? `<text x="${p.x.toFixed(1)}" y="${(p.y + 11).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="var(--text-muted)">${jobEsc(nd.sub)}</text>` : '')
@@ -5271,6 +5355,49 @@
       return `<svg class="cg-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Collapsed network graph"><defs>${defs}</defs>${edgeSvg}${nodeSvg}</svg>`;
     }
 
+    // Module matrix: rows = modules holding the regulators, columns = modules holding the targets. Hue = share of the links in the
+    // cell that are wrong (green 0% to red 100%), brightness = how many links there are, number = links in the cell.
+    function moduleMatrixSvg(scene, selectedModule) {
+      const tal = scene.tallies;
+      const k = tal.k;
+      const W = COLLAPSE_VIEW_W;
+      const H = COLLAPSE_VIEW_H;
+      const left = 54;
+      const top = 44;
+      const size = Math.max(8, Math.min(34, Math.floor(Math.min(W - left - 12, H - top - 12) / Math.max(k, 1))));
+      let body = '';
+      for (let a = 0; a < k; a++) {
+        body += `<text x="${left - 6}" y="${top + a * size + size / 2}" text-anchor="end" dominant-baseline="middle" font-size="${size < 14 ? 8 : 10.5}" `
+          + `font-weight="${a === selectedModule ? 800 : 600}" fill="var(--text-main)" data-module="${a}" style="cursor:pointer">M${a + 1}<title>Open module M${a + 1}</title></text>`;
+        body += `<text x="${left + a * size + size / 2}" y="${top - 6}" text-anchor="middle" font-size="${size < 14 ? 8 : 10.5}" font-weight="600" `
+          + `fill="var(--text-main)" data-module="${a}" style="cursor:pointer">M${a + 1}<title>Open module M${a + 1}</title></text>`;
+        for (let b = 0; b < k; b++) {
+          const t = tal.cell[a][b];
+          const n = t.tp + t.sign + t.fp + t.fn;
+          const x = left + b * size;
+          const y = top + a * size;
+          const wrong = tallyWrongShare(t);
+          const fill = n ? `hsl(${(120 * (1 - wrong)).toFixed(0)}, 65%, 45%)` : 'var(--bg-card)';
+          const opacity = n ? (0.25 + 0.75 * Math.min(1, Math.log2(1 + n) / 6)).toFixed(2) : '1';
+          body += `<g class="cg-cell" data-from="${a}" data-to="${b}" style="cursor:pointer">`
+            + `<title>${jobEsc(`regulators in M${a + 1} -> targets in M${b + 1}: ${n ? tallyText(t) : 'no links'}`)}</title>`
+            + `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${fill}" fill-opacity="${opacity}" stroke="var(--border-color, #cbd5e1)" stroke-width="0.5"/>`
+            + (n && size >= 14 ? `<text x="${x + size / 2}" y="${y + size / 2}" text-anchor="middle" dominant-baseline="middle" font-size="${size < 18 ? 7.5 : 9}" fill="var(--text-main)">${n}</text>` : '')
+            + '</g>';
+        }
+      }
+      const axis = `<text x="${left + k * size / 2}" y="${top - 24}" text-anchor="middle" font-size="10" fill="var(--text-muted)">target module</text>`
+        + `<text x="12" y="${top + k * size / 2}" text-anchor="middle" font-size="10" fill="var(--text-muted)" transform="rotate(-90 12 ${top + k * size / 2})">regulator module</text>`;
+      return `<svg class="cg-svg cg-matrix" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Module matrix: links between modules, coloured by share of wrong links">${axis}${body}</svg>`;
+    }
+
+    function collapsedLegend(mode) {
+      const dot = c => `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin:0 3px 0 8px;"></span>`;
+      return mode === 'matrix'
+        ? '<span class="cg-legend">cell colour: green = links right, red = links wrong; brighter = more links; number = links in the cell</span>'
+        : `<span class="cg-legend">ring: ${dot(TALLY_COLORS.tp)}correct${dot(TALLY_COLORS.sign)}wrong sign${dot(TALLY_COLORS.fp)}extra${dot(TALLY_COLORS.fn)}missed</span>`;
+    }
+
     function renderCollapsedPanel(p, host, data) {
       const graph = data.graph;
       const basisGraph = (p.clusterBasis && p.clusterBasis()) || graph;
@@ -5281,15 +5408,43 @@
       const scene = p.focus == null ? collapsedOverviewScene(graph, basis) : collapsedDetailScene(graph, basis, p.focus);
       const selected = p.selectedIdx ? p.selectedIdx() : -1;
       const nGenes = graph.nodes.length;
+      const mode = scene.overview && scene.tallies && p.collapsedMode === 'matrix' ? 'matrix' : 'graph';
+      let scores = '';
+      if (scene.overview && scene.tallies) {
+        const w = tallyScores(scene.tallies.within);
+        const b = tallyScores(scene.tallies.between);
+        scores = ` &middot; links inside modules: precision ${pctText(w.precision)}, recall ${pctText(w.recall)} (${w.links}) `
+          + `&middot; links between modules: precision ${pctText(b.precision)}, recall ${pctText(b.recall)} (${b.links})`;
+      }
+      const toggle = scene.overview && scene.tallies
+        ? ` <span class="cg-mode"><button type="button" class="btn btn-secondary btn-sm${mode === 'graph' ? ' active' : ''}" data-cg-mode="graph">Graph</button>`
+          + `<button type="button" class="btn btn-secondary btn-sm${mode === 'matrix' ? ' active' : ''}" data-cg-mode="matrix">Module matrix</button></span>` : '';
       const info = scene.overview
-        ? `<b>${nGenes} genes</b> in <b>${cl.clusters.length} modules</b> &middot; circle = genes, line number = links &middot; click a module to open it`
+        ? `<b>${nGenes} genes</b> in <b>${cl.clusters.length} modules</b> (those of the true network)${toggle} &middot; `
+          + (mode === 'matrix' ? 'click a cell or a label to open a module' : 'circle = genes, line number = links &middot; click a module to open it')
+          + (scene.tallies ? ' &middot; ' + collapsedLegend(mode) : '') + scores
         : `<button type="button" class="btn btn-secondary btn-sm" data-cg-back="1">&larr; All modules</button> <b>Module M${p.focus + 1}</b> &middot; ${scene.cluster.members.length} genes`
           + (scene.hidden ? ` (best connected ${COLLAPSE_MAX_NODES - 1} drawn, ${scene.hidden} in the "others" node)` : '')
           + ` &middot; ${scene.leaving} links go to other modules`;
       host.style.display = 'block';
       host.style.padding = '0';
       host.style.overflow = 'hidden';
-      host.innerHTML = `<div class="cg-wrap"><div class="cg-info">${info}</div>${collapsedSvg(scene, p.view, selected)}</div>`;
+      const selectedModule = selected >= 0 ? cl.of[selected] : -1;
+      host.innerHTML = `<div class="cg-wrap"><div class="cg-info">${info}</div>${mode === 'matrix' ? moduleMatrixSvg(scene, selectedModule) : collapsedSvg(scene, p.view, selected)}</div>`;
+      host.querySelectorAll('[data-cg-mode]').forEach(b => b.addEventListener('click', () => {
+        p.collapsedMode = b.dataset.cgMode;
+        renderGraphPanel(p.id);
+      }));
+      host.querySelectorAll('.cg-cell').forEach(g => g.addEventListener('click', ev => {
+        ev.stopPropagation();
+        p.focus = Number(g.dataset.from);
+        renderGraphPanel(p.id);
+      }));
+      host.querySelectorAll('text[data-module]').forEach(t => t.addEventListener('click', ev => {
+        ev.stopPropagation();
+        p.focus = Number(t.dataset.module);
+        renderGraphPanel(p.id);
+      }));
       host.querySelectorAll('.cg-node').forEach(g => g.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const key = g.dataset.key;
