@@ -88,6 +88,9 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Changed
+- **Scale benchmark table rendered from the archive.** `scripts/render_scale_benchmark.py` snapshots F1 / AUPR / time of all
+  algorithms at 500, 1000 and 2000 genes into `docs/results/scale_benchmark.json` and renders `docs/SCALE_BENCHMARK.md`; a test
+  fails on drift. 2000 genes: all algorithms stored.
 - **G2S reports progress.** The pool workers count finished target genes in a shared counter; the job queue shows it as a
   percentage of the running step (`progress_pct`, `JobContext.fraction`, `_parallel.progress_to/report_progress`). Also:
   G2S accepts uncertified drops on ill-conditioned wide bases when K is given (2000 genes: every step recomputed an SVD).

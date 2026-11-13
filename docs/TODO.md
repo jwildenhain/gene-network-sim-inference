@@ -110,12 +110,15 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 
 ## 2. Scale run (in progress)
 
+- [ ] **Uniform re-run of 500, 1000 and 2000 genes** with the current image (rows in `docs/results/scale_benchmark.json` were stored
+  at different times, some before their algorithm's fix), then `scripts/render_scale_benchmark.py snapshot` and `render`.
 - [ ] **numba is not in the Docker image.** G2S's downdate kernel then runs in numpy: measured 52 s per gene at 2000 genes
   (single core) against 15 s with numba 0.60 (host). The 2000-gene G2S job therefore takes about 3.6 h instead of about 1 h.
   Add numba to the image (pyproject extra) and rebuild when the queue is idle.
-- [ ] **1000 genes**: 21 of 24 stored (`cpa_lite` was stuck 105 min in the old image, `notears`, `cellbox` not run).
-- [ ] **2000 genes**: 8 of 24 stored; to run: genie3, inspre, ridge_cv, nir, s2g, g2s, vote, score_vote, sfinn, dmdgrn,
-  arachne, causalgrn, deeprig, notears, cellbox. `cpa_lite` is fine now (see section 1).
+- [x] **All 22 algorithms stored at 500, 1000 and 2000 genes** (2026-11-13); table in `docs/SCALE_BENCHMARK.md`, rendered from
+  `docs/results/scale_benchmark.json`. G2S at 2000 genes: 71 min with numba and 8 workers (quick mode, see section 1).
+- [ ] **Collapsed at 2000 genes, to investigate:** CellBox (AUPR 0.21 -> 0.14 -> 0.00), ARACNE (0.05 -> 0.06 -> 0.00), RidgeCV
+  (0.05 -> 0.04 -> 0.00), NIR (0.06 -> 0.03 -> 0.01), inspre (0.14 -> 0.09 -> 0.02); AtlasShift, SFINN, CausalGRN hold up best (about 0.10).
 - [ ] **After `cpa_lite` ends**: stop the container, back up the archive, run `scripts/compact_archive.py --apply --backup`
   (snapshot test: 8.56 GB -> 625 MB), start image `grn-sim-phpiorn:next` (rollback tag `before-scale-2026-11-12`), re-queue
   the remaining algorithms on the archived runs (jobs can run on archived networks since 66667c7). Re-run results for
