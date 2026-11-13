@@ -2425,7 +2425,7 @@ def _build_perturb_seq_h5ad_bytes(
         run = _perturb_seq_run(target_state, perturbation_mode, n_pairs, noise_model, cells_per_condition,
                                preset=preset, measurement=measurement, n_control_cells=n_control_cells,
                                perturbed=perturbed, selection=selection)
-        actual_run_id = target_state.get("run_id") or "vcc_perturb_seq"
+        actual_run_id = run_id or target_state.get("run_id") or "vcc_perturb_seq"
         suffix = f"{perturbation_mode}{f'_{n_pairs}pairs' if n_pairs else ''}_{noise_model}"
         if perturbed:
             suffix += f"_{run.design.label()}"
@@ -2458,7 +2458,7 @@ def _build_perturb_seq_h5ad_bytes(
     if not gene_names:
         gene_names = [f"Gene_{i+1:02d}" for i in range(len(ctrl))]
 
-    actual_run_id = target_state.get("run_id") or "vcc_perturb_seq"
+    actual_run_id = run_id or target_state.get("run_id") or "vcc_perturb_seq"
     mean_expr = np.column_stack([ctrl, pert])
 
     adata = create_perturb_seq_anndata(
@@ -3279,7 +3279,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self._set_headers(404)
                 self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                 return
-            run_id = target_state.get("run_id") or "grn"
+            run_id = req_run_id or target_state.get("run_id") or "grn"   # files are named after the run asked for
             if fmt == "msmt":
                 content = target_state.get("msmt_text", "")
                 self._set_headers(200, "text/plain; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.msmt"'})

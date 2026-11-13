@@ -273,7 +273,11 @@ def test_downloads_of_other_runs_are_not_answered_with_the_current_run(base_url,
     server.SIMULATION_RUN_STORE.pop(sid, None)
     code, _, body = request(f"{base_url}/api/download?format=msmt&run_id={sid}")
     assert code == 200 and body == b"ARCHIVED-MSMT"
+    code, headers, _ = request(f"{base_url}/api/download?format=msmt&run_id={sid}")
+    assert headers["Content-Disposition"] == f'attachment; filename="{sid}.msmt"'            # named after the run asked for
     assert server.CURRENT_STATE["run_id"] == "current-run" and server.CURRENT_STATE["msmt_text"] == "CURRENT-MSMT"
+    code, headers, _ = request(f"{base_url}/api/download?format=msmt&run_id={sid}")
+    assert headers["Content-Disposition"] == f'attachment; filename="{sid}.msmt"'            # named after the run asked for
     assert request(f"{base_url}/api/download?format=msmt")[2] == b"CURRENT-MSMT"        # no id: the current run, as before
     for fmt in ("msmt", "pert", "svg", "dot", "h5ad"):
         code, _, body = request(f"{base_url}/api/download?format={fmt}&run_id=iorn-does-not-exist")
