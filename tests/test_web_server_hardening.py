@@ -232,3 +232,30 @@ def test_aborted_downloads_do_not_log_tracebacks(base_url, capfd):
     err = capfd.readouterr().err
     assert "Traceback" not in err and "BrokenPipe" not in err
     assert request(base_url + "/api/status")[0] == 200, "the server keeps serving"
+
+
+@pytest.mark.parametrize("path", ["/api/export/perturb_seq_h5ad?", "/api/download?format=h5ad&"])
+def test_h5ad_downloads_are_zipped_unless_zip_is_switched_off(base_url, path):
+    import io
+    import zipfile
+
+    code, headers, body = request(f"{base_url}{path}cells_per_condition=2")
+    assert code == 200 and headers["Content-Type"] == "application/zip"
+    name = headers["Content-Disposition"].split('filename="')[1].rstrip('"')
+    assert name.endswith(".h5ad.zip")
+    with zipfile.ZipFile(io.BytesIO(body)) as z:
+        assert z.namelist() == [name[:-len(".zip")]]
+        assert z.testzip() is None
+        inner = z.read(z.namelist()[0])
+    assert inner[:8] == b"\x89HDF\r\n\x1a\n"                       # the file inside is the HDF5 / AnnData file itself
+
+    code, headers, raw = request(f"{base_url}{path}cells_per_condition=2&zip=0")
+    assert code == 200 and headers["Content-Disposition"].endswith('.h5ad"') and raw[:8] == b"\x89HDF\r\n\x1a\n"
+
+
+def test_a_download_that_does_not_exist_for_the_run_is_a_404_with_a_reason_not_an_empty_file(base_url, monkeypatch):
+    monkeypatch.setitem(server.CURRENT_STATE, "svg_hierarchical", "")
+    monkeypatch.setitem(server.CURRENT_STATE, "dot_hierarchical", "")
+    for fmt in ("svg", "dot"):
+        code, _, body = request(f"{base_url}/api/download?format={fmt}")
+        assert code == 404 and f".{fmt}" in json.loads(body)["error"]

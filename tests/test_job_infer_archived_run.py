@@ -86,3 +86,23 @@ def test_a_run_adopted_while_another_network_is_open_uses_its_own_data(archived_
     assert not np.allclose(np.asarray(other.X), own_X)
     stored = server._adopt_archived_run(run_id)
     assert np.allclose(stored["state"]["experiment"].X, own_X)
+
+
+def test_a_fresh_run_and_its_archived_copy_give_the_same_tree_learner_result():
+    """Inference runs on the data as the archive stores it (4 decimals), so re-analysing an archived run reproduces the result
+    (GRNBoost / GENIE3 used to differ: 0.083 vs 0.091 F1 on one 250-gene network)."""
+    import types
+    import numpy as np
+    from grn_sim.web import server
+
+    server._execute_simulation({"num_genes": 40, "topology": "modular", "seed": 7, "calibration_preset": "replogle_like"})
+    exp = server.CURRENT_STATE["experiment"]
+    assert np.array_equal(exp.X, np.round(exp.X, server.ARCHIVE_DECIMALS))
+    assert np.array_equal(exp.U, np.round(exp.U, server.ARCHIVE_DECIMALS))
+    fresh = server._execute_inference(["grnboost", "genie3"])["metrics"]
+
+    stored = server.SIMULATION_RUN_STORE[server.CURRENT_STATE["run_id"]]["sim_payload"]
+    server.CURRENT_STATE["experiment"] = types.SimpleNamespace(X=np.array(stored["X"], dtype=float), U=np.array(stored["U"], dtype=float))
+    again = server._execute_inference(["grnboost", "genie3"])["metrics"]
+    for alg in ("grnboost", "genie3"):
+        assert fresh[alg]["f1_score"] == again[alg]["f1_score"] and fresh[alg]["aupr"] == again[alg]["aupr"], alg

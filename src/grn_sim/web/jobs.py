@@ -262,8 +262,8 @@ class JobManager:
         if run_id is not None:
             run_id = str(run_id)
             if self._can_infer is not None and not self._can_infer(run_id):
-                raise ValueError(f"network {run_id!r} is not in memory (generated before the last server restart?); "
-                                 "queue a new generation instead")
+                raise ValueError(f"unknown network {run_id!r}: it is neither in the archive nor in memory (check the run id "
+                                 "in tab 3, or queue a new generation)")
 
         with self._lock:
             if depends_on is not None:

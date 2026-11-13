@@ -4,6 +4,31 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## Unreleased - Audit follow-ups: reproducible re-analysis, tab 5 from the archive, zipped .h5ad
+
+- **Re-analysing an archived run reproduces its result.** Inference ran on the full-precision matrices while the archive keeps
+  X and U to 4 decimals (`ARCHIVE_DECIMALS`); tree learners split differently on the rounded copy (250 genes: GRNBoost F1 0.083
+  vs 0.091, GENIE3 0.149 vs 0.156; RidgeCV unchanged). X and U are now rounded when the simulation is generated. Runs archived
+  before this change were scored on unrounded data, so re-running them can differ slightly for tree learners. A host/container
+  difference remains for CellBox and GRNBoost (scikit-learn 1.6 vs 1.9, NumPy 1.23 vs 2.4, torch): compare scores only within
+  one environment. The 56 s GRNBoost time seen at 250 genes was CPU contention with the container (10 s when run alone).
+- **Tab 5 (Overall Statistics) is built from the archive and stored in it.** It showed a 3 Nov file (69 networks, 19
+  algorithms). `grn_sim.benchmarks.overall_stats` now reads the 69 sweep networks from the archive (each has all 24
+  algorithms), aggregates them into the same structure and stores the snapshot in the new `overall_stats` table; the endpoint
+  serves the stored snapshot, rebuilds it when it lacks registered algorithms or on `?refresh=1`, and falls back to the bundled
+  file only when the archive has no sweep networks. The bundled file was regenerated the same way.
+- **.h5ad downloads are zip files** (`/api/download?format=h5ad`, `/api/export/perturb_seq_h5ad`; `zip=0` returns the raw file).
+- Archive search: a search with no match says so in the table (it was only in the pager below).
+- Job error for an unknown run id no longer blames a server restart.
+- Tests: a submitted job is registered, listed, archived, found by the archive search and loadable in the detail view.
+- `.svg` / `.dot` downloads of runs without a stored graph (above 100 genes) return a 404 with a reason instead of an empty 200.
+- Legacy `$TMP_STATMAT` / `$TMP_CMAT` labels removed from the studio and archive pages; the Virtual Cell form wraps at phone width.
+- Stale tests fixed: GRNBoost's orientation is [regulator, target] on Hill data (measured: 28 vs 17 true positives at 100 genes, 70 vs
+  19 at 250) and [target, regulator] on additive data; the DMD-GRN rescore test rebuilds the pre-fix state instead of reading the
+  already re-oriented real archive; the CellBox penalty test's spy accepts the new `target` argument.
+- New generated, tested page `docs/results/audit_100_250.md` (time, memory, accuracy of all 24 algorithms at 100 and 250 genes);
+  the archive leaderboard was re-rendered with the two new runs (506 runs).
+
 ## Unreleased - Virtual Cell tab: tuning round and measured limits
 
 - Second calibration round (effect scale x noise x weight spread, `calibrate_statgen.py --spreads`): linear SEM and NB copula

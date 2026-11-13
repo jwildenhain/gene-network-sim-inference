@@ -64,7 +64,7 @@ def test_cellbox_penalty_is_size_scaled_only_above_the_reference(monkeypatch):
 
     seen = {}
 
-    def spy(self, X, U, l1, l2, epochs, device="cpu"):
+    def spy(self, X, U, l1, l2, epochs, device="cpu", **_):
         seen[X.shape[0]] = (l1, l2, epochs)
         return np.zeros((X.shape[0], X.shape[0])), {}
 

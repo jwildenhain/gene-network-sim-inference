@@ -110,6 +110,17 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 
 ## 2. Scale run (in progress)
 
+- [x] **Audit follow-ups (2026-11-13):** 100 and 250-gene audits stored in the archive and as `docs/results/audit_100_250.*`; inference now
+  runs on X and U rounded to the archive's 4 decimals so archived runs re-analyse reproducibly; tab 5 rebuilt from the archived sweep
+  networks and stored in the `overall_stats` table; `.h5ad` downloads zipped; empty-search row, job error text, `$TMP_` labels,
+  404 for missing `.svg`/`.dot`, phone-width Virtual Cell form.
+- [ ] **Archived runs scored before the rounding change** (everything up to `iorn-336039`, incl. the 500 and 1000-gene rows) used
+  unrounded data; tree learners (GRNBoost, GENIE3) can move by a few thousandths of F1 when re-run. Re-run them in one pass if exact
+  reproducibility of the stored rows matters.
+- [ ] **CellBox / GRNBoost differ slightly between the host and the container** (scikit-learn 1.6 vs 1.9, NumPy 1.23 vs 2.4, torch):
+  compare scores within one environment, or pin the host environment to the image's versions.
+- [ ] **`.h5ad` export size:** 140 MB (zipped smaller) for 250 genes with 400 cells per condition; consider sparse counts and a size
+  warning before the export starts.
 - [x] **Archive cleaned and complete (2026-11-13):** 504 runs of at most 1000 genes, every run with all 24 algorithms under one key
   (`scripts/clean_archive.py --verify`); 2000-gene runs removed (numbers kept in `docs/results/scale_benchmark.json`); DMD-GRN re-scored;
   500 and 1000 gene benchmark networks re-run uniformly; per-algorithm tables in `docs/results/archive_leaderboard.md`.

@@ -91,7 +91,10 @@ def test_registered_with_the_orientation_they_return():
         assert k in keys
     from grn_sim.inference import orientation
     assert not orientation.output_is_target_regulator("inspre", orientation.HILL)
-    assert orientation.output_is_target_regulator("grnboost", orientation.HILL)
+    # as GENIE3: [regulator, target] on Hill data (fitted to X + U; measured on archived runs, 28 vs 17 true positives as returned
+    # vs transposed at 100 genes, 70 vs 19 at 250), [target, regulator] on additive data
+    assert not orientation.output_is_target_regulator("grnboost", orientation.HILL)
+    assert orientation.output_is_target_regulator("grnboost", orientation.ADDITIVE_GARDNER)
     algo = registry.build("inspre", registry.BuildContext(k_est=3))
     assert isinstance(algo, InspreAlgorithm)
 

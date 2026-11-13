@@ -1057,6 +1057,9 @@
 
     @media (max-width: 600px) {
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      /* the Virtual Cell form kept its desktop widths and pushed the page sideways */
+      #tab-vcc select, #tab-vcc .btn, #tab-vcc label { max-width: 100%; box-sizing: border-box; }
+      #tab-vcc div[style*="display:flex"] { flex-wrap: wrap; }
     }
     /* Slow requests: a bar across the top of the page with what is being loaded and how long it has taken */
     #global-load { position: fixed; top: 0; left: 0; right: 0; z-index: 10000; pointer-events: none; display: none; }
@@ -1212,7 +1215,7 @@
           <a class="btn btn-secondary btn-sm" href="/api/download?format=pert" download>Download .pert</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=dot" download>Download .dot</a>
           <a class="btn btn-secondary btn-sm" href="/api/download?format=svg" download>Download .svg</a>
-          <a class="btn btn-secondary btn-sm" href="/api/download?format=h5ad" download title="Single-cell Perturb-seq AnnData .h5ad (400 cells/cond)">Download .h5ad</a>
+          <a class="btn btn-secondary btn-sm" href="/api/download?format=h5ad" download title="Single-cell Perturb-seq AnnData .h5ad (400 cells/cond), delivered as a zip file">Download .h5ad (zip)</a>
         </div>
       </div>
 
@@ -1577,7 +1580,7 @@
           <div class="panel step-section" id="panel-step6-statmat" style="padding:12px 16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <div class="panel-title" style="font-size:13px;">
-                Step 6 Statistical Summary ($TMP_STATMAT — get_results.php &amp; php_and_stats.m)
+                Step 6 Statistical Summary (8-metric ribbon)
               </div>
               <span style="font-size:11.5px;color:var(--text-muted);" id="statmat-subtitle">Active Algorithm: S2G</span>
             </div>
@@ -1671,7 +1674,7 @@
             <!-- 4x4 Observed vs Predicted Misclassification Table ($TMP_CMAT in get_results.php) -->
             <div class="panel">
               <div class="panel-header">
-                <div class="panel-title">4&times;4 Misclassification Matrix ($TMP_CMAT — stats_obs_pred.m)</div>
+                <div class="panel-title">4&times;4 Misclassification Matrix</div>
                 <span class="badge badge-emerald" id="cmat-alg-label">S2G</span>
               </div>
               <div style="overflow-x:auto;">
@@ -2772,7 +2775,7 @@
 
           <div class="panel" style="padding:12px;">
             <div class="panel-header">
-              <div class="panel-title">4&times;4 Misclassification Matrix ($TMP_CMAT — <span id="hist-cmat-alg">VOTE</span>)</div>
+              <div class="panel-title">4&times;4 Misclassification Matrix (<span id="hist-cmat-alg">VOTE</span>)</div>
               <span class="badge badge-amber">stats_obs_pred.m</span>
             </div>
             <div style="overflow-x:auto;"><table class="data-table" id="tbl-hist-cmat">
@@ -2873,7 +2876,7 @@
               &#9654; Re-Simulate Virtual Cell
             </button>
             <a class="btn btn-secondary btn-sm" id="btn-vcc-dl-h5ad" href="/api/export/perturb_seq_h5ad?cells_per_condition=400" download style="border-color:#8b5cf6;color:#8b5cf6;padding:6px 12px;font-weight:700;" title="Download 400 cells/condition single-cell Perturb-seq AnnData file (.h5ad)">
-              &#128190; Export Perturb-seq .h5ad
+              &#128190; Export Perturb-seq .h5ad (zip)
             </a>
             <div id="vcc-load-error" role="alert" style="display:none;flex-basis:100%;font-size:11.5px;font-weight:600;color:var(--accent-red);"></div>
           </div>
@@ -3114,7 +3117,7 @@
             </label>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-            <button class="btn btn-primary btn-sm" id="btn-ps-download" onclick="downloadPerturbSeq()">Download .h5ad</button>
+            <button class="btn btn-primary btn-sm" id="btn-ps-download" onclick="downloadPerturbSeq()">Download .h5ad (zip)</button>
             <button class="btn btn-secondary btn-sm" id="btn-ps-realism" onclick="runRealismReport()">Realism report</button>
           </div>
           <div id="ps-status" style="font-size:10.5px;color:var(--text-muted);margin-top:6px;min-height:14px;"></div>
@@ -3677,7 +3680,7 @@
         num: 6,
         title: '9-State Differential Graph & Metrics Ribbon',
         badge: 'Step 6 of 6',
-        desc: 'Classifies inferred edges against ground truth using the 9-state scheme (+1, -1, +2, -2, +3, -3, +4, -4). Evaluates $TMP_STATMAT ribbon and 4x4 misclassification matrix ($TMP_CMAT).',
+        desc: 'Classifies inferred edges against ground truth using the 9-state scheme (+1, -1, +2, -2, +3, -3, +4, -4). Evaluates the 8-metric ribbon and the 4x4 misclassification matrix.',
         actionText: '📊 Full Pipeline (1–6)',
         targetIds: ['panel-step6-inf', 'panel-step6-statmat'],
         action: () => {
@@ -9196,6 +9199,18 @@
           `;
           tbody.appendChild(tr);
         });
+        if (!visibleRows.length) {                                              // say so in the table itself, not only in the pager
+          const tr = document.createElement('tr');
+          tr.className = 'archive-empty-row';
+          const td = document.createElement('td');
+          td.colSpan = 16;
+          td.style.cssText = 'text-align:center;padding:18px;color:var(--text-muted);';
+          td.textContent = view.q
+            ? `No run id contains “${view.q}”${everything ? '.' : ' in this view. Choose “All runs” to search the whole archive.'}`
+            : 'No runs match this view.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        }
         renderArchivePager(view);
         makeTableSortable('tbl-history');
 

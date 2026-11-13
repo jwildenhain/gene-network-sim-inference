@@ -259,6 +259,7 @@ MAX_CELLS_PER_CONDITION = 2000
 # Above this many genes the N^2-sized trajectory/profile data are not embedded in /api/simulate (or the archive) but
 # served per perturbation / per gene from /api/trajectory and /api/gene_profile.
 LARGE_NETWORK_GENES = 60
+ARCHIVE_DECIMALS = 4          # X and U are stored (and, since this was added, analysed) to this many decimals
 # Above this many genes the per-algorithm comparison SVGs (hierarchical, grid, spring) are neither rendered nor stored:
 # the page draws any graph of more than 25 nodes as modules from `comparison_graphs`, so those SVGs were never shown, yet
 # they were 65-70% of a stored result (about 25 MB per algorithm at 2000 genes) and most of the time a trivial
@@ -760,6 +761,12 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         adj = network.topology.adjacency
         gene_names = [f"G{i+1}" for i in range(num_genes)]
 
+    # The archive keeps X and U to ARCHIVE_DECIMALS places, so inference works on exactly that: a run re-analysed from the
+    # archive then reproduces the stored result. (Unrounded data gave tree learners a different split choice on reload:
+    # GRNBoost F1 0.083 vs 0.091 on the same 250-gene network, GENIE3 0.149 vs 0.156.)
+    experiment.X = np.round(np.asarray(experiment.X, dtype=float), ARCHIVE_DECIMALS)
+    experiment.U = np.round(np.asarray(experiment.U, dtype=float), ARCHIVE_DECIMALS)
+
     on_demand = num_genes > LARGE_NETWORK_GENES
     kin = _extract_kinetics_and_trajectories(network, experiment, gene_names, on_demand=on_demand)
     ss_diag = experiment.steady_state_diagnostics or {
@@ -901,8 +908,8 @@ def _execute_simulation(params: Dict[str, Any]) -> Dict[str, Any]:
         "true_matrix_orientation": "target_regulator" if truth_tr else "regulator_target",
         # the network as T[regulator, target] (gene profiles), when true_matrix is not already that
         "regulatory_matrix": np.asarray(reg_adj).astype(int).tolist() if truth_tr else None,
-        "X": np.round(experiment.X, 4).tolist(),
-        "U": np.round(experiment.U, 4).tolist(),
+        "X": np.round(experiment.X, ARCHIVE_DECIMALS).tolist(),
+        "U": np.round(experiment.U, ARCHIVE_DECIMALS).tolist(),
         "x_steady_unperturbed": np.round(experiment.reference_steady_state, 4).tolist(),
         "x_steady_perturbed": np.round(experiment.perturbed_states, 4).tolist(),
         "node_params": kin["node_params"],
@@ -2345,6 +2352,26 @@ def _parse_perturb_seq_options(query: Dict[str, List[str]]) -> Tuple[str, int, s
     return mode, pairs, noise
 
 
+def _zip_download(data: bytes, filename: str) -> Tuple[bytes, str]:
+    """``data`` as a one-file zip archive (deflate) named ``filename`` + ".zip": the .h5ad exports run to hundreds of MB."""
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+        z.writestr(filename, data)
+    return buf.getvalue(), filename + ".zip"
+
+
+def _send_h5ad(handler, data: bytes, filename: str, query: Dict[str, Any]) -> None:
+    """Writes an .h5ad download: zipped unless the request says ``zip=0``."""
+    if query.get("zip", ["1"])[0] not in ("0", "false", "no"):
+        data, filename = _zip_download(data, filename)
+        ctype = "application/zip"
+    else:
+        ctype = "application/octet-stream"
+    handler._set_headers(200, ctype, {"Content-Disposition": f'attachment; filename="{filename}"'})
+    handler.wfile.write(data)
+
+
 def _build_perturb_seq_h5ad_bytes(
     run_id: Optional[str] = None,
     cells_per_condition: int = 400,
@@ -2995,13 +3022,21 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/benchmark/overall_stats":
             try:
-                stats_file = resolve_data_file("overall_statistics_sweep.json")
-                if stats_file.exists():
-                    with open(stats_file, "r", encoding="utf-8") as f:
-                        payload = json.load(f)
-                else:
-                    from grn_sim.benchmarks.parameter_sweep import run_systematic_sweep
-                    payload = run_systematic_sweep()
+                payload = None
+                try:   # the archive is the source of record: a stored snapshot, rebuilt from the archived sweep networks if stale
+                    from grn_sim.benchmarks import overall_stats
+                    payload, origin = overall_stats.current(refresh=query.get("refresh", ["0"])[0] in ("1", "true"))
+                    payload = dict(payload, snapshot=origin)
+                except LookupError:
+                    payload = None     # this archive holds no sweep networks (a fresh install): use the bundled file
+                if payload is None:
+                    stats_file = resolve_data_file("overall_statistics_sweep.json")
+                    if stats_file.exists():
+                        with open(stats_file, "r", encoding="utf-8") as f:
+                            payload = dict(json.load(f), snapshot="bundled file")
+                    else:
+                        from grn_sim.benchmarks.parameter_sweep import run_systematic_sweep
+                        payload = dict(run_systematic_sweep(), snapshot="fresh sweep")
                 self._set_headers(200)
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
             except Exception as e:
@@ -3097,8 +3132,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
                                                                perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
                                                                **extras)
-                self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
-                self.wfile.write(data)
+                _send_h5ad(self, data, filename, query)
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -3236,6 +3270,12 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                 self._set_headers(200, "text/plain; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.pert"'})
                 self.wfile.write(content.encode("utf-8"))
                 return
+            elif fmt in ("dot", "svg") and not target_state.get("dot_hierarchical" if fmt == "dot" else "svg_hierarchical"):
+                # larger networks keep no graph layout or SVG (STORED_SVG_MAX_GENES): say so instead of sending an empty file
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": f"no .{fmt} is stored for this run (networks above {STORED_SVG_MAX_GENES} genes "
+                                                      "have no graph layout); download the .msmt / .pert files instead"}).encode("utf-8"))
+                return
             elif fmt == "dot":
                 content = target_state.get("dot_hierarchical", "")
                 self._set_headers(200, "text/vnd.graphviz; charset=utf-8", {"Content-Disposition": f'attachment; filename="{run_id}.dot"'})
@@ -3259,8 +3299,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                     data, filename = _build_perturb_seq_h5ad_bytes(run_id=req_run_id, cells_per_condition=cells,
                                                                    perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
                                                                    **extras)
-                    self._set_headers(200, "application/octet-stream", {"Content-Disposition": f'attachment; filename="{filename}"'})
-                    self.wfile.write(data)
+                    _send_h5ad(self, data, filename, query)
                 except Exception as e:
                     self._set_headers(500)
                     self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))

@@ -130,7 +130,7 @@ def test_cancel_queued_and_running_jobs(make):
     ({}, "exactly one"),
     ({"params": {}, "run_id": "known"}, "exactly one"),
     ({"run_id": "known"}, "at least one algorithm"),
-    ({"run_id": "gone", "algorithms": ["s2g"]}, "not in memory"),
+    ({"run_id": "gone", "algorithms": ["s2g"]}, "unknown network"),
     ({"params": {}, "algorithms": ["nope"]}, "unknown algorithm"),
     ({"params": {}, "count": 0}, "count must be"),
     ({"params": {}, "count": 999}, "count must be"),
@@ -386,3 +386,44 @@ def test_infer_ok_is_false_for_networks_no_longer_in_memory(tmp_path):
     by_id = {j["id"]: j for j in m.list()}
     assert by_id[a.id]["infer_ok"] is True and by_id[b.id]["infer_ok"] is False
     m.shutdown()
+
+
+def test_a_submitted_job_is_registered_listed_archived_and_can_be_reviewed(app_url):
+    """Submit through the HTTP API, then review the outcome the way the pages do: the job record, the job list, the
+    archive search and the archived run's detail."""
+    code, body = _call(f"{app_url}/api/jobs", "POST",
+                       {"params": {"num_genes": 6, "seed": 21, "topology": "random", "k_av": 1.5, "noise": 0.0},
+                        "algorithms": ["s2g", "nir"], "label": "review test"})
+    assert code == 202 and body["status"] == "queued"
+    job_id = body["jobs"][0]["id"]
+    assert body["jobs"][0]["label"] == "review test"
+
+    job = _poll(app_url, job_id)
+    assert job["status"] == jobs.DONE and job["error"] is None and job["progress_pct"] == 100.0
+    run_id = job["run_id"]
+    assert run_id and set(job["summary"]["algorithms_stored"]) >= {"s2g", "nir"}
+
+    # the job record and the job list agree
+    code, one = _call(f"{app_url}/api/jobs/{job_id}")
+    assert code == 200 and one["job"]["run_id"] == run_id
+    code, listing = _call(f"{app_url}/api/jobs")
+    assert job_id in [j["id"] for j in listing["jobs"]]
+
+    # the archive search finds exactly this run, in the view that holds every run
+    code, view = _call(f"{app_url}/api/history?set=everything&q={run_id}&page=1&page_size=25")
+    assert code == 200 and view["view"]["total"] == 1 and view["history"][0]["run_id"] == run_id
+    assert view["history"][0]["num_genes"] == 6
+
+    # its detail view carries the algorithm results
+    code, detail = _call(f"{app_url}/api/history/load", "POST", {"run_id": run_id})
+    assert code == 200 and set(detail["inferred"]["metrics"]) >= {"s2g", "nir"}
+
+    # a search that matches nothing is an empty page that echoes the query (the page shows "No run id contains ...")
+    code, none = _call(f"{app_url}/api/history?set=everything&q=zzz-no-such-run&page=1&page_size=25")
+    assert code == 200 and none["view"]["total"] == 0 and none["history"] == [] and none["view"]["q"] == "zzz-no-such-run"
+
+
+def test_an_unknown_run_id_is_reported_as_unknown_not_as_a_restart_problem(app_url):
+    code, body = _call(f"{app_url}/api/jobs", "POST", {"run_id": "iorn-does-not-exist", "algorithms": ["s2g"]})
+    assert code == 400
+    assert "unknown network" in body["error"] and "restart" not in body["error"]

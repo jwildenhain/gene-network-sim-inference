@@ -53,6 +53,18 @@ from grn_sim.visualization.graph_export import (
 from grn_sim.web.database import save_simulation_to_db, init_db, get_db_path
 
 
+# Parameter axes (extended to match the Wildenhain 2004 thesis and Crampin 2006 ranges); ``overall_stats`` rebuilds the page's
+# statistics from the archived runs of exactly this design.
+SIZE_VALUES = (12, 20, 30, 40, 50, 60)
+K_VALUES = (1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0)
+NOISE_VALUES = (0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.25)
+TOPOLOGY_DEFS = (
+    ("random", TopologyType.RANDOM, "Random (Erdős-Rényi)"),
+    ("power_law", TopologyType.POWER_LAW, "Scale-Free (Barabási-Albert)"),
+    ("hierarchical", TopologyType.HIERARCHICAL, "Hierarchical Modular (Ravasz-Barabási)"),
+)
+
+
 def ALGO_METADATA() -> Dict[str, Dict[str, str]]:
     """Name / type / badge of every registered algorithm (the sweep covers whatever is registered when it runs)."""
     return algorithm_registry.sweep_metadata()
@@ -66,16 +78,8 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
 
     sweep_runs: List[Dict[str, Any]] = []
 
-    # 1. Parameter Axes Definitions (Extended to Match Wildenhain 2004 Thesis & Crampin 2006 Ranges)
-    size_values = [12, 20, 30, 40, 50, 60]
-    k_values = [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]
-    noise_values = [0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.25]
-
-    topology_defs = [
-        ("random", TopologyType.RANDOM, "Random (Erdős-Rényi)"),
-        ("power_law", TopologyType.POWER_LAW, "Scale-Free (Barabási-Albert)"),
-        ("hierarchical", TopologyType.HIERARCHICAL, "Hierarchical Modular (Ravasz-Barabási)"),
-    ]
+    size_values, k_values, noise_values = list(SIZE_VALUES), list(K_VALUES), list(NOISE_VALUES)
+    topology_defs = list(TOPOLOGY_DEFS)
 
     algo_meta = ALGO_METADATA()
     all_algorithms = list(algo_meta.keys())

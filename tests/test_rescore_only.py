@@ -22,7 +22,8 @@ def _script():
 
 @pytest.fixture
 def small_archive(tmp_path):
-    """Two real additive runs with DMD-GRN results, copied into a scratch archive."""
+    """Two real additive runs with DMD-GRN results, copied into a scratch archive in their state before the re-orientation
+    (a run the real archive has already re-oriented is put back: its DMD-GRN matrix transposed, the marker removed)."""
     if not REAL.exists():
         pytest.skip("no archive in this checkout")
     from grn_sim.web import database as db
@@ -39,17 +40,19 @@ def small_archive(tmp_path):
         settings = json.loads(settings_json or "{}")
         run = mod._run_context(settings, json.loads(history_json or "{}"))
         data_model = mod._inference_data_model(run)
-        if data_model not in (mod.ADDITIVE_GARDNER, mod.ADDITIVE_PHYSICAL):
-            continue
+        if data_model not in (mod.ADDITIVE_GARDNER, mod.ADDITIVE_PHYSICAL) or mod._fit_mode(run, "dmdgrn") == "regulator":
+            continue                       # (regulator-input fits are not touched by the script: another output convention)
         truth_ctx = dict(sim_p)
         truth_ctx.setdefault("mode", run["mode"])
         truth_ctx.setdefault("settings", settings)
         from grn_sim.evaluation.prediction_codec import decode_prediction
         from grn_sim.inference.orientation import orient_prediction
         raw = decode_prediction(inf_p["pred_matrices"]["dmdgrn"])
+        already_fixed = "dmdgrn" in (inf_p.get("orientation_fixes") or [])
+        raw = raw.T.copy() if already_fixed else raw                      # the matrix as stored before the fix
         if not np.array_equal(orient_prediction("dmdgrn", raw, data_model, mod._run_truth_target_regulator(truth_ctx),
                                                 mod._fit_mode(run, "dmdgrn")), raw):
-            pick.append(simid)             # a run where the current rule really changes the stored matrix
+            pick.append((simid, already_fixed))             # a run where the current rule really changes the stored matrix
         if len(pick) == 2:
             break
     if not pick:
@@ -57,13 +60,23 @@ def small_archive(tmp_path):
     dest = tmp_path / "a.sqlite"
     db.init_db(str(dest))
     out = sqlite3.connect(dest)
-    for simid in pick:
+    for simid, _ in pick:
         for table in ("nw", "alg"):
             cols = [c[1] for c in src.execute(f"PRAGMA table_info({table})")]
             for r in src.execute(f"SELECT * FROM {table} WHERE simid = ?", (simid,)):
                 out.execute(f"INSERT INTO {table} ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})", r)
+    out.commit()
+    from grn_sim.evaluation.prediction_codec import decode_prediction as _dec, encode_prediction as _enc
+    for simid, already_fixed in pick:
+        if not already_fixed:
+            continue
+        raw_json = out.execute("SELECT inferred_payload_json FROM nw WHERE simid = ?", (simid,)).fetchone()[0]
+        inf_p = json.loads(db.unpack_json(raw_json))
+        inf_p["pred_matrices"]["dmdgrn"] = _enc(_dec(inf_p["pred_matrices"]["dmdgrn"]).T.copy())
+        inf_p["orientation_fixes"] = [a for a in inf_p["orientation_fixes"] if a != "dmdgrn"]
+        out.execute("UPDATE nw SET inferred_payload_json = ? WHERE simid = ?", (json.dumps(inf_p), simid))
     out.commit(); out.close(); src.close()
-    return dest, pick
+    return dest, [simid for simid, _ in pick]
 
 
 def _pred(path, simid, alg="dmdgrn"):
