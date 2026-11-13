@@ -110,6 +110,9 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 
 ## 2. Scale run (in progress)
 
+- [ ] **numba is not in the Docker image.** G2S's downdate kernel then runs in numpy: measured 52 s per gene at 2000 genes
+  (single core) against 15 s with numba 0.60 (host). The 2000-gene G2S job therefore takes about 3.6 h instead of about 1 h.
+  Add numba to the image (pyproject extra) and rebuild when the queue is idle.
 - [ ] **1000 genes**: 21 of 24 stored (`cpa_lite` was stuck 105 min in the old image, `notears`, `cellbox` not run).
 - [ ] **2000 genes**: 8 of 24 stored; to run: genie3, inspre, ridge_cv, nir, s2g, g2s, vote, score_vote, sfinn, dmdgrn,
   arachne, causalgrn, deeprig, notears, cellbox. `cpa_lite` is fine now (see section 1).
