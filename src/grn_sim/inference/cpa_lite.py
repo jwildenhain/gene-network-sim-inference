@@ -31,8 +31,21 @@ class CPALite(BaseInferenceAlgorithm):
         lr: float = 0.01,
         threshold: float = 0.05,
         k_interactions: Optional[int] = None,
+        perturbation_mode: str = "additive",
+        regulator_epochs: int = 120,
     ):
+        """
+        ``perturbation_mode="regulator"`` is for the Hill simulator's regulator-input perturbation, where the regulators act
+        at their effective concentration: X ~ Decoder(Encoder(X + U)) is fitted directly, with a latent size of at least
+        N / 2 (a 4-dimensional bottleneck cannot represent a sparse N x N network: AUPR 0.065 -> 0.35 at 100 genes, 0.018 ->
+        0.23 at 200; it plateaus from about N / 2) and ``regulator_epochs`` steps. The result is returned as
+        A[regulator, target], like the other regulator-input fits.
+        """
         super().__init__(name="cpa_lite")
+        if perturbation_mode not in ("additive", "regulator"):
+            raise ValueError(f"perturbation_mode must be 'additive' or 'regulator', got {perturbation_mode!r}")
+        self.perturbation_mode = perturbation_mode
+        self.regulator_epochs = regulator_epochs
         self.latent_dim = latent_dim
         self.epochs = epochs
         self.lr = lr
@@ -45,18 +58,30 @@ class CPALite(BaseInferenceAlgorithm):
         U_mat = np.real(U).astype(float)
         N, M = X_mat.shape
 
-        d = min(self.latent_dim, max(2, N // 2))
+        direct = kwargs.get("perturbation_mode", self.perturbation_mode) == "regulator"
+        d = min(N, max(self.latent_dim, N // 2)) if direct else min(self.latent_dim, max(2, N // 2))
         thresh = float(kwargs.get("threshold", self.threshold))
         K = kwargs.get("k", self.k_interactions)
         if K is not None:
             K = max(1, min(int(K), N - 1))
 
-        try:
-            if not HAS_TORCH:
-                raise ImportError("PyTorch is not installed")
-            A_est, diagnostics = self._fit_torch(X_mat, U_mat, d)
-        except ImportError:  # not installed, or installed but not importable: use the SVD fallback
-            A_est, diagnostics = self._fit_linear_pca(X_mat, U_mat, d)
+        if direct:
+            scale = float(np.std(X_mat)) or 1.0
+            Z_mat = (X_mat + U_mat) / scale
+            try:
+                if not HAS_TORCH:
+                    raise ImportError("PyTorch is not installed")
+                A_est, diagnostics = self._fit_torch(Z_mat, np.zeros_like(X_mat), d, target=X_mat / scale,
+                                                     epochs=int(kwargs.get("epochs", max(self.epochs, self.regulator_epochs))))
+            except ImportError:    # reduced-rank least squares, the closed form of the same model
+                A_est, diagnostics = self._fit_reduced_rank(Z_mat, X_mat / scale, d)
+        else:
+            try:
+                if not HAS_TORCH:
+                    raise ImportError("PyTorch is not installed")
+                A_est, diagnostics = self._fit_torch(X_mat, U_mat, d)
+            except ImportError:  # not installed, or installed but not importable: use the SVD fallback
+                A_est, diagnostics = self._fit_linear_pca(X_mat, U_mat, d)
 
         np.fill_diagonal(A_est, 0.0)
 
@@ -75,6 +100,10 @@ class CPALite(BaseInferenceAlgorithm):
             mask = np.abs(norm_A) >= thresh
             adj_pred[mask] = np.sign(norm_A[mask]).astype(int)
 
+        if direct:       # rows were targets; regulator-input fits return T[regulator, target]
+            A_est, adj_pred = A_est.T.copy(), adj_pred.T.copy()
+            diagnostics = {**diagnostics, "perturbation_mode": "regulator"}
+
         elapsed = time.time() - start_time
         return InferenceResult(
             algorithm_name="cpa_lite",
@@ -84,7 +113,8 @@ class CPALite(BaseInferenceAlgorithm):
             diagnostics=diagnostics,
         )
 
-    def _fit_torch(self, X_mat: np.ndarray, U_mat: np.ndarray, d: int) -> tuple:
+    def _fit_torch(self, X_mat: np.ndarray, U_mat: np.ndarray, d: int, target: Optional[np.ndarray] = None,
+                   epochs: Optional[int] = None) -> tuple:
         import torch
         import torch.nn as nn
         import torch.optim as optim
@@ -95,6 +125,7 @@ class CPALite(BaseInferenceAlgorithm):
         # Linear Autoencoder with perturbation injection in latent space
         X_t = torch.tensor(X_mat.T, dtype=torch.float32, device=device)  # (M, N)
         U_t = torch.tensor(U_mat.T, dtype=torch.float32, device=device)  # (M, N)
+        Y_t = X_t if target is None else torch.tensor(target.T, dtype=torch.float32, device=device)  # the response to fit
 
         # Encoder: N -> d, Decoder: d -> N, Perturbation projector: N -> d
         encoder = nn.Linear(N, d, bias=False)
@@ -104,14 +135,14 @@ class CPALite(BaseInferenceAlgorithm):
         params = list(encoder.parameters()) + list(decoder.parameters()) + list(pert_proj.parameters())
         optimizer = optim.Adam(params, lr=self.lr, weight_decay=1e-4)
 
-        for _ep in range(self.epochs):
+        for _ep in range(self.epochs if epochs is None else epochs):
             optimizer.zero_grad()
             z_basal = encoder(X_t)
             delta_z = pert_proj(U_t)
             z_pert = z_basal + delta_z
             X_recon = decoder(z_pert)
 
-            loss = torch.mean((X_recon - X_t) ** 2)
+            loss = torch.mean((X_recon - Y_t) ** 2)
             loss.backward()
             optimizer.step()
 
@@ -121,6 +152,12 @@ class CPALite(BaseInferenceAlgorithm):
 
         np.fill_diagonal(W, 0.0)
         return W, {"latent_dim": d, "final_loss": round(float(loss.item()), 5), "backend": "pytorch"}
+
+    def _fit_reduced_rank(self, Z: np.ndarray, Y: np.ndarray, d: int) -> tuple:
+        # least squares Y ~ W Z, truncated to rank d (the model a linear autoencoder of width d converges to)
+        W = Y @ np.linalg.pinv(Z)
+        U_svd, S, Vt = np.linalg.svd(W, full_matrices=False)
+        return (U_svd[:, :d] * S[:d]) @ Vt[:d], {"latent_dim": d, "backend": "reduced_rank_ls"}
 
     def _fit_linear_pca(self, X_mat: np.ndarray, U_mat: np.ndarray, d: int) -> tuple:
         # SVD-based linear latent representation

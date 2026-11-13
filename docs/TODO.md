@@ -35,8 +35,11 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   X ~ phi(W (X + U)) / alpha directly (`regulator_direct`): AUPR 0.061 -> 0.441 (100 genes), 0.015 -> 0.293 (200 genes),
   F1 0.43 / 0.37, the best algorithm in these audits, and about 50x faster (0.1-0.6 s against 8-10 s; 70 epochs are as good
   as 1000). Still 510 MB of torch per process.
-- [ ] **cpa_lite is at chance level** too (AUPR 0.018 vs 0.019): a linear autoencoder without structure; decide whether to
-  keep it (it still needs 500 MB of torch).
+- [x] **cpa_lite was at chance because a 4-dimensional bottleneck cannot hold a sparse N x N network and U was a latent shift
+  that does not match the Hill relation.** Regulator mode fits X ~ Decoder(Encoder(X + U)) with latent size >= N / 2 (plateau
+  from about N / 2), closed-form reduced-rank fallback without torch: 200 genes F1 0.025 -> 0.319, AUPR 0.018 -> 0.224;
+  100 genes AUPR 0.065 -> 0.35. Additive mode unchanged. (The 1000-gene 24 GB / 105 min job was the dense-graph rendering,
+  fixed earlier.)
 - [x] **G2S checked: not a bug.** Its F1 is mid-table (500 genes 0.130, 1000 genes 0.161; AUPR 0.05-0.07); the earlier
   "far below S2G" compared sensitivity alone, and S2G reached it by predicting 6,657 / 21,861 edges. On this data the AIC
   optimum is exactly 2 regulators for every target (the target `U` row is a single spike), so the cap (`k`, `2k`, none), the

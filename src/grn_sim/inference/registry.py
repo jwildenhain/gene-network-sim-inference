@@ -226,8 +226,9 @@ def _register_builtin() -> None:
             k_interactions=k_if_reg(c), perturbation_mode=mode(c)), "Multi-Output RidgeCV", "L2 Regularized Inverse",
                       "L2 Ridge Baseline", "#06b6d4", regulator_input=True, negate_u_in_additive=True,
                       additive_target_regulator=True),
-        AlgorithmSpec("cpa_lite", "CPA-Lite Autoenc", lambda c: CPALite(epochs=40, k_interactions=k_if_reg(c)), "CPA-Lite Autoencoder",
-                      "Latent Perturbation AE", "Latent Autoencoder", "#f97316"),
+        AlgorithmSpec("cpa_lite", "CPA-Lite Autoenc", lambda c: CPALite(
+            epochs=40, k_interactions=k_if_reg(c), perturbation_mode=mode(c)), "CPA-Lite Autoencoder",
+                      "Latent Perturbation AE", "Latent Autoencoder", "#f97316", regulator_input=True),
         AlgorithmSpec("arachne", "ARACNE (MI+DPI)", lambda c: eff(c, AracneAlgorithm(k_interactions=k_if_reg(c))), "ARACNE",
                       "Information Theoretic (MI + DPI)", "Mutual Info & DPI", "#84cc16"),
         AlgorithmSpec("causalgrn", "CausalGRN (Causal)", lambda c: eff(c, CausalGRNAlgorithm(k_interactions=k_if_reg(c))),
