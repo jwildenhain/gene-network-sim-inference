@@ -114,6 +114,10 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   runs on X and U rounded to the archive's 4 decimals so archived runs re-analyse reproducibly; tab 5 rebuilt from the archived sweep
   networks and stored in the `overall_stats` table; `.h5ad` downloads zipped; empty-search row, job error text, `$TMP_` labels,
   404 for missing `.svg`/`.dot`, phone-width Virtual Cell form.
+- [ ] **Server start-up archives runs with few algorithms.** Starting a container with no flat/oscillating example in the history seeds
+  four small example runs with 6 algorithms each, and each start archives the studio's start-up run with no inference at all (6 such
+  runs appeared on 2026-11-13 and were completed with `scripts/fill_archive_algorithms.py`; the archive is 512 of 512 complete).
+  Fix: seed with every registered algorithm, and do not archive the start-up run until it has results.
 - [ ] **Archived runs scored before the rounding change** (everything up to `iorn-336039`, incl. the 500 and 1000-gene rows) used
   unrounded data; tree learners (GRNBoost, GENIE3) can move by a few thousandths of F1 when re-run. Re-run them in one pass if exact
   reproducibility of the stored rows matters.

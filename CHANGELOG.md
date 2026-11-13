@@ -30,6 +30,8 @@ versioning once it leaves 0.x.
 - Stale tests fixed: GRNBoost's orientation is [regulator, target] on Hill data (measured: 28 vs 17 true positives at 100 genes, 70 vs
   19 at 250) and [target, regulator] on additive data; the DMD-GRN rescore test rebuilds the pre-fix state instead of reading the
   already re-oriented real archive; the CellBox penalty test's spy accepts the new `target` argument.
+- Archive completed again after container restarts added six runs with few algorithms (512 of 512 complete); leaderboard and scale
+  snapshots re-rendered.
 - New generated, tested page `docs/results/audit_100_250.md` (time, memory, accuracy of all 24 algorithms at 100 and 250 genes);
   the archive leaderboard was re-rendered with the two new runs (506 runs).
 
