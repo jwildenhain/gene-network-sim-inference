@@ -219,7 +219,11 @@ def _register_builtin() -> None:
                       "CellBox Neural ODE", "Adjoint Gradient Optimizer", "Deep Neural ODE", "#ec4899",
                       regulator_input=True, additive_target_regulator=True),
         AlgorithmSpec("genie3", "GENIE3 (Forest)", lambda c: eff(c, GENIE3Algorithm(n_estimators=40, seed=c.seed, k_interactions=k_if_reg(c))), "GENIE3",
-                      "Random Forest Tree Importance", "ML Tree Ensemble", "#10b981", target_row=True),
+                      "Random Forest Tree Importance", "ML Tree Ensemble", "#10b981",
+                      # A[target, regulator] on X alone (additive data), but on Hill data it runs on X + U, where a child's
+                      # response predicts its parent's perturbation: the output then matches T[regulator, target] as it is
+                      # (6 of 6 networks: AUPR 0.25-0.44 as is, 0.04-0.13 transposed)
+                      additive_target_regulator=True),
         AlgorithmSpec("netdeconv", "Net Deconvolution", lambda c: eff(c, NetworkDeconvolution(k_interactions=k_if_reg(c))),
                       "Network Deconvolution", "Direct-Indirect Deconvolution", "Spectral Deconvolution", "#0ea5e9", (2, 2)),
         AlgorithmSpec("ridge_cv", "RidgeCV (L2)", lambda c: KaggleMultiOutputRidge(
@@ -253,7 +257,7 @@ def _register_builtin() -> None:
                       "Pearson Correlation", "Co-expression Baseline", "Correlation Baseline", "#a8a29e", (2, 4)),
         AlgorithmSpec("grnboost", "GRNBoost-lite", lambda c: eff(c, GRNBoostLite(k_interactions=c.k_est, seed=c.seed)),
                       "GRNBoost (gradient-boosted importances)", "Boosted Tree Importance", "Boosted Trees", "#65a30d",
-                      target_row=True),
+                      additive_target_regulator=True),   # as GENIE3: on Hill data (X + U) the output is [regulator, target]
         AlgorithmSpec("gene_features", "Gene-level features", lambda c: GeneFeatureBaseline(k_interactions=c.k_est),
                       "Gene-level Feature Baseline (hubness only)", "Pair-agnostic Baseline", "Hubness Control",
                       "#d6d3d1", (1, 4)),

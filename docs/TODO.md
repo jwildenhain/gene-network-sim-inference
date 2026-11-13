@@ -58,6 +58,12 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   from about N / 2), closed-form reduced-rank fallback without torch: 200 genes F1 0.025 -> 0.319, AUPR 0.018 -> 0.224;
   100 genes AUPR 0.065 -> 0.35. Additive mode unchanged. (The 1000-gene 24 GB / 105 min job was the dense-graph rendering,
   fixed earlier.)
+- [x] **genie3 and grnboost were scored transposed on Hill data** (declared A[target, regulator], which is right for X alone). On
+  X + U (what they now get) a child's response predicts its parent's perturbation, and the output matches T[regulator,
+  target] as returned on 6 of 6 networks (GENIE3 AUPR 0.25-0.44 as returned against 0.04-0.13 transposed; the 200-gene audit
+  showed 0.035). Declared for additive data only. A check of every algorithm's scored against transposed F1 found no other
+  orientation error; pearson and arachne are symmetric (their F1 depends only on whether the K cut-off is taken per
+  regulator or per target, which is a property of this generator's degree distribution, left as it is).
 - [x] **vote and score_vote repeated the G2S (and NIR) fit** that the g2s / nir jobs of the same network had just run (825 s
   of G2S three times at 1000 genes): a small result cache (`inference/_cache.py`, keyed on the data hash, settings and
   arguments) shares them; an ensemble's reported run time still includes what its members got from the cache; vote now uses

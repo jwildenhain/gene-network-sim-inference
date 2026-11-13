@@ -29,12 +29,14 @@ DATA_MODELS = (HILL, ADDITIVE_GARDNER, ADDITIVE_PHYSICAL)
 
 _ALIASES = {"ridge": "ridge_cv"}
 
-# A[target, regulator] by construction, whatever the data.
-_TARGET_ROW_ALGORITHMS = frozenset({"genie3", "causalgrn", "deeprig", "sfinn"})
+# A[target, regulator] by construction, whatever the data. (GENIE3 and GRNBoost return A[target, regulator] too, but on
+# Hill data the studio runs them on the effective concentration X + U, where a child's response predicts its parent's
+# perturbation and the output matches T[regulator, target] as it is, so they are listed for additive data only.)
+_TARGET_ROW_ALGORITHMS = frozenset({"causalgrn", "deeprig", "sfinn"})
 
 # Estimate A[target, regulator] on additive data whatever the sign convention (ridge_cv solves A X = -U row by row
 # like NIR and FAST; its dense predictions match both orientations about equally, so it is listed by construction).
-_ADDITIVE_TARGET_REGULATOR = frozenset({"s2g", "g2s", "vote", "score_vote", "nir", "fast", "cellbox", "ridge_cv"}) | _TARGET_ROW_ALGORITHMS
+_ADDITIVE_TARGET_REGULATOR = frozenset({"s2g", "g2s", "vote", "score_vote", "nir", "fast", "cellbox", "ridge_cv", "genie3"}) | _TARGET_ROW_ALGORITHMS
 
 TARGET_REGULATOR_OUTPUT: Dict[str, FrozenSet[str]] = {
     HILL: _TARGET_ROW_ALGORITHMS,

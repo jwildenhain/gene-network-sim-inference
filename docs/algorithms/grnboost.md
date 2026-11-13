@@ -11,7 +11,7 @@ Not the Dask implementation of GRNBoost2. Many candidate genes and few condition
 ## Interface
 
 - Input: `fit(X, U)`: X is genes × perturbations, U is zero except for each perturbed gene's own response.
-- Output: `A_est[target, regulator]` on every data model.
+- Output: `A_est[target, regulator]` on additive data, `[regulator, target]` on Hill data (`orient_prediction` handles both).
 - Partial screens (m perturbed genes of n measured): runs on a partial screen as it is.
 - Registry key: `grnboost`; listed by `/api/algorithms` and the studio.
 

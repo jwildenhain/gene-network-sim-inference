@@ -97,7 +97,10 @@ def test_orient_prediction_rules():
     assert not output_is_target_regulator("nir", ADDITIVE_PHYSICAL, perturbation_mode="regulator")
     assert output_is_target_regulator("nir", ADDITIVE_PHYSICAL)
     # GENIE3 returns A[target, regulator] on Hill data; the sweep's "ridge" key is ridge_cv
-    assert output_is_target_regulator("genie3", HILL)
+    # GENIE3 returns A[target, regulator] on X alone (additive data) but runs on X + U on Hill data, where its output
+    # matches T[regulator, target] as returned (tests/test_effective_orientation.py)
+    assert not output_is_target_regulator("genie3", HILL)
+    assert output_is_target_regulator("genie3", ADDITIVE_GARDNER)
     assert output_is_target_regulator("ridge", ADDITIVE_GARDNER) == output_is_target_regulator("ridge_cv", ADDITIVE_GARDNER)
     np.testing.assert_array_equal(orient_prediction("by_chance", m, ADDITIVE_GARDNER, target_regulator=True), m)
     with pytest.raises(ValueError):

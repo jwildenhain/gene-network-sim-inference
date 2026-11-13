@@ -11,7 +11,7 @@ Extra-trees per target gene; the sign comes from the correlation. Winner of DREA
 ## Interface
 
 - Input: `fit(X, U)`: X is genes × perturbations, U is zero except for each perturbed gene's own response.
-- Output: `A_est[target, regulator]` on every data model.
+- Output: `A_est[target, regulator]` on additive data, `[regulator, target]` on Hill data (`orient_prediction` handles both).
 - Partial screens (m perturbed genes of n measured): runs on a partial screen as it is.
 - Registry key: `genie3`; listed by `/api/algorithms` and the studio.
 
