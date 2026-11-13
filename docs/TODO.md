@@ -101,7 +101,8 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   Fix: workers replace stdout / stderr with fresh objects first thing (`_parallel.reset_std_streams`, in both pool
   initializers) and the parent kills a worker that has not exited 30 s after its work (`EXIT_GRACE_SECONDS`). Tests: a
   stream whose flush blocks in children does not hang the pool (0.1 s with the fix, 12 s without) and a worker that
-  will not exit is killed.
+  will not exit is killed. Verified on the real job: the polling loop that hung on run 3 before ran 30 + 12 repetitions of
+  the 500-gene G2S job (with the guard messages at zero after a false alarm in the first version of the exit wait was fixed).
 - [ ] Time and memory of every algorithm at 500 / 1000 / 2000 genes with the fixed code (the audit script takes
   `--genes`); a per-algorithm memory estimate that skips or warns before a run.
 - [ ] 40 archived datasets have no algorithm rows (28 small leftovers, 12 profiling), 10 have 6 of 19, 5 lack only

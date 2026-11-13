@@ -124,8 +124,10 @@ def run_chunks(fn: Callable[[Any], Any], chunks: Sequence[Any], n_jobs: int,
         ex.shutdown(wait=False, cancel_futures=True)
         if not stalled:
             # workers that have finished should exit at once; one that does not (a stuck exit flush) is killed, not waited for
+            deadline = time.monotonic() + EXIT_GRACE_SECONDS
             for proc in procs:
-                proc.join(timeout=EXIT_GRACE_SECONDS)
+                while proc.is_alive() and time.monotonic() < deadline:   # join() can return while the child is still exiting
+                    time.sleep(0.02)
                 if proc.is_alive():
                     print(f"[grn_sim] worker {proc.pid} did not exit within {EXIT_GRACE_SECONDS:.0f} s; killing it",
                           file=sys.stderr, flush=True)
