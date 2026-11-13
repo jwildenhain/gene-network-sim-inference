@@ -87,10 +87,12 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   X = cF(X + U): it now fits on (X + U, -X) like NIR / FAST / RidgeCV (`perturbation_mode="regulator"`; 200 genes AUPR
   0.036 -> 0.241, F1 0.12 -> 0.30, level with NIR and SFINN). (2) Its output orientation was undeclared: on additive
   (Gardner) data the raw output is A[target, regulator] and scored 2-3x better transposed (like S2G and NIR); declared now.
-- [ ] **Archived additive-data runs scored dmdgrn with the wrong orientation** (and the archive rows for dmdgrn on Hill data
-  predate the regulator mode): `scripts/rescore_archive_orientation.py` skips runs already marked `pred_orientation`, so it
-  needs a per-algorithm option to re-orient dmdgrn only; the 82 `biophysical` and 167 untagged archive runs with dmdgrn
-  results are the candidates (check which are additive before rescoring).
+- [ ] **Archived additive-data runs scored dmdgrn with the wrong orientation.** `scripts/rescore_archive_orientation.py --only
+  dmdgrn` re-orients it in already rescored runs (additive data models only: Hill-kinetics runs mix regulator-input and
+  additive fits, so their old convention is not recoverable; runs dated before 2026-11-13; `orientation_fixes` makes it
+  run once). Tested on copies of real archive rows. Dry run on the real archive: 14 additive runs would change
+  (2 Gardner, 12 physical), best algorithm changed in 0 runs. **Not applied**: the studio container was writing to the
+  archive; apply with `--apply` (it backs up first) when nothing is.
 - [ ] **G2S pool deadlock** (one forked worker hung for an hour at 500 genes): guarded by `run_chunks` (kills idle pools
   after 300 s), root cause unknown; workers dump stacks to `/tmp/grn_sim_worker_<pid>.trace` after 600 s.
 - [ ] Time and memory of every algorithm at 500 / 1000 / 2000 genes with the fixed code (the audit script takes

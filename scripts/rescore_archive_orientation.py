@@ -15,6 +15,12 @@ Dry run by default: prints what would change. With --apply the archive is first 
 Runs already rescored (or scored by the fixed studio) carry ``pred_orientation`` and are skipped.
 
     PYTHONPATH=src python scripts/rescore_archive_orientation.py --db data/rgn_db.sqlite [--apply] [--report out.json]
+
+``--only ALG[,ALG]`` re-orients just those algorithms in runs that were already rescored or scored by the fixed studio
+(used when an algorithm's declared orientation is corrected later, e.g. DMD-GRN on additive data): runs dated before
+``--before`` (default 2026-11-13, the day the DMD-GRN declaration was fixed) are read as scored with the old rule, the
+algorithm is oriented with the current one, and ``orientation_fixes`` records it so no later pass flips it again. Only additive data
+models are handled: Hill-kinetics runs mix regulator-input and additive fits, so the old convention is not recoverable.
 """
 
 import argparse
@@ -31,7 +37,9 @@ import numpy as np
 from grn_sim.evaluation.prediction_codec import decode_prediction, encode_prediction
 from grn_sim.web.database import pack_json, unpack_json
 from grn_sim.evaluation.metrics import evaluate_inference
-from grn_sim.inference.orientation import ADDITIVE_GARDNER, ADDITIVE_PHYSICAL, REGULATOR_INPUT_ALGORITHMS, orient_prediction
+from grn_sim.inference import orientation as _orientation
+from grn_sim.inference import registry as _registry  # noqa: F401  (registers the algorithms' declared orientations)
+from grn_sim.inference.orientation import ADDITIVE_GARDNER, ADDITIVE_PHYSICAL, orient_prediction
 from grn_sim.visualization.graph_export import (
     compute_detailed_confusion_matrix,
     compute_new_stats_9state,
@@ -63,7 +71,7 @@ def _fit_mode(run: Dict[str, Any], alg: str) -> str:
     mode = str(run.get("mode") or "")
     engine = settings.get("kinetics_engine", "hill_nonlinear")
     use_reg = mode != "sos" and not mode.startswith("benchmark_") and engine in ("hill_nonlinear", "perturb_seq_counts")
-    return "regulator" if use_reg and alg in REGULATOR_INPUT_ALGORITHMS else "additive"
+    return "regulator" if use_reg and alg in _orientation.REGULATOR_INPUT_ALGORITHMS else "additive"
 
 
 def _studio_metrics(old: Dict[str, Any], m: Any, stats_9: Dict[str, Any]) -> Dict[str, Any]:
@@ -133,14 +141,21 @@ def rescore_run(
     sim_payload: Dict[str, Any],
     inferred: Dict[str, Any],
     history: Dict[str, Any],
+    only: Optional[set] = None,
+    before: str = "9999",
 ) -> Optional[Dict[str, Any]]:
     """
     Rescores one run in place (``inferred`` and ``history`` are modified). Returns a summary of the changes, or
-    None when the run has nothing to rescore.
+    None when the run has nothing to rescore. ``only``: re-orient just those algorithms (runs dated before ``before``),
+    also in runs already rescored.
     """
     preds = inferred.get("pred_matrices") or {}
-    if not preds or inferred.get("pred_orientation"):
+    if only:
+        if not preds or str(history.get("timestamp") or inferred.get("timestamp") or settings.get("timestamp") or "") >= before:
+            return None
+    elif not preds or inferred.get("pred_orientation"):
         return None
+    fixed = set(inferred.get("orientation_fixes") or [])
     true_matrix = np.array(sim_payload.get("true_matrix") or [], dtype=int)
     names = sim_payload.get("gene_names") or [f"G{i + 1}" for i in range(true_matrix.shape[0] if true_matrix.ndim == 2 else 0)]
     if true_matrix.ndim != 2 or not true_matrix.size:
@@ -156,14 +171,23 @@ def rescore_run(
     if data_model == ADDITIVE_GARDNER and dataset in LEGACY_PHYSICAL_SIGN_DATASETS:
         data_model = ADDITIVE_PHYSICAL
     sweep_format = simid.startswith("sweep-")
+    if only and data_model not in (ADDITIVE_GARDNER, ADDITIVE_PHYSICAL):
+        return None   # Hill-kinetics runs mix regulator-input and additive fits: their old convention is not recoverable
 
     metrics_all = inferred.setdefault("metrics", {})
     statmat_all = inferred.setdefault("tmp_statmat", {})
     changes: Dict[str, Dict[str, Any]] = {}
+    marked = set()
     for alg, raw in preds.items():
+        if alg in fixed or (only and alg not in only):
+            continue
+        if only and _fit_mode(run, alg) == "regulator":
+            continue   # the studio fits it differently now (regulator-input fit): the old output has another convention
         raw_arr = decode_prediction(raw)
         if raw_arr.shape != true_matrix.shape:
             continue
+        if only:
+            marked.add(alg)
         pred = orient_prediction(alg, raw_arr, data_model, truth_tr, _fit_mode(run, alg))
         if np.array_equal(pred, raw_arr):
             continue
@@ -197,18 +221,22 @@ def rescore_run(
         after = {"power": _power(statmat_all[alg], metrics_all[alg]), "total_errors": metrics_all[alg].get("total_errors")}
         changes[alg] = {"before": before, "after": after}
 
+    if marked:
+        inferred["orientation_fixes"] = sorted(fixed | marked)
     if not changes:
-        return None
+        return {"simid": simid, "data_model": data_model, "truth_target_regulator": truth_tr, "changes": {},
+                "best_before": history.get("best_alg_key"), "best_after": history.get("best_alg_key")} if marked else None
     primary = inferred.get("primary_algorithm")
     if primary in (inferred.get("comparison_graphs") or {}):
         inferred["comparison_graph"] = inferred["comparison_graphs"][primary]
         inferred["dot"] = (inferred.get("dots") or {}).get(primary, inferred.get("dot", ""))
-    inferred["pred_orientation"] = "true_matrix"
-    inferred["data_model"] = data_model
-    inferred["orientation_rescored"] = {
-        "at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "transposed_algorithms": sorted(changes),
-    }
+    if not only:
+        inferred["pred_orientation"] = "true_matrix"
+        inferred["data_model"] = data_model
+        inferred["orientation_rescored"] = {
+            "at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "transposed_algorithms": sorted(changes),
+        }
 
     best_before = history.get("best_alg_key")
     if history and statmat_all:
@@ -254,7 +282,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--apply", action="store_true", help="write the changes (default: dry run)")
     ap.add_argument("--backup-dir", type=Path, default=DEFAULT_BACKUP_DIR)
     ap.add_argument("--report", type=Path, help="write the per-run changes as JSON")
+    ap.add_argument("--only", help="comma separated algorithms to re-orient in already rescored runs")
+    ap.add_argument("--before", default="2026-11-13", help="with --only: runs dated before this are read as scored with the old rule")
     args = ap.parse_args(argv)
+    only = {a.strip() for a in args.only.split(",") if a.strip()} if args.only else None
 
     if not args.db.exists():
         print(f"no archive at {args.db}", file=sys.stderr)
@@ -273,7 +304,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             sim_payload = json.loads(unpack_json(sim_json) or "{}")
             inferred = json.loads(unpack_json(inferred_json) or "{}")
             history = json.loads(history_json or "{}")
-            summary = rescore_run(simid, settings, sim_payload, inferred, history)
+            summary = rescore_run(simid, settings, sim_payload, inferred, history, only=only, before=args.before)
             if summary is None:
                 continue
             summaries.append(summary)
