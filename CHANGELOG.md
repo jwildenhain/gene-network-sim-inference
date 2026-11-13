@@ -102,7 +102,8 @@ versioning once it leaves 0.x.
   `scripts/compact_archive.py` converts an existing archive (dry run by default, `--apply` needs a backup path and verifies
   each run: 8.56 GB -> 625 MB on the real one).
 - The in-memory run store is bounded by bytes (`GRN_SIM_RUN_STORE_GB`, default 8) and keeps runs queued jobs need; a pool of
-  forked workers that makes no progress for 5 minutes is killed and its chunks are finished in the calling process;
+  forked workers that makes no progress for 5 minutes is killed (and a worker that hangs at exit is killed after 30 s: forked workers
+  now get fresh stdout / stderr, because a request-handler thread's log line could leave the inherited stream locked and hang a G2S job for ever) and its chunks are finished in the calling process;
   background inference jobs store each algorithm's result as it finishes and an algorithm that fails no longer discards
   the others; the job list keeps a finished job while queued jobs depend on it; the kinetics kernel uses grouped products
   (bit-identical, about 1.8x faster network generation at 500 genes).

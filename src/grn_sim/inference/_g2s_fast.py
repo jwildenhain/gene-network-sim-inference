@@ -757,8 +757,8 @@ _WORKER: Dict[str, Any] = {}
 
 
 def _worker_init(basis: SharedBasis, Y: np.ndarray, params: G2SParams, starts: Optional[Dict[int, Any]]) -> None:
-    from grn_sim.inference._parallel import arm_stall_trace
-    arm_stall_trace()
+    from grn_sim.inference._parallel import prepare_worker
+    prepare_worker()
     try:
         from threadpoolctl import threadpool_limits
         _WORKER["limits"] = threadpool_limits(limits=1, user_api="blas")

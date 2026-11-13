@@ -1,6 +1,7 @@
 """Fork-based process pool for per-target-gene loops (one BLAS thread per worker, results returned in index order)."""
 
 import faulthandler
+import io
 import multiprocessing as mp
 import os
 import sys
@@ -28,6 +29,34 @@ def default_n_jobs(cap: int = 6) -> int:
 # chunks use CPU continuously, so the guard cannot fire on slow-but-working workers.
 STALL_IDLE_SECONDS = float(os.environ.get("GRN_SIM_POOL_STALL_SECONDS", "300"))
 _BUSY_TICKS = 50                       # clock ticks (0.5 s at 100 Hz) of CPU across all workers that count as progress
+
+
+EXIT_GRACE_SECONDS = 30.0   # how long the parent waits for a finished worker to exit before killing it
+
+
+def reset_std_streams() -> None:
+    """
+    Worker side: give the child fresh stdout / stderr objects.
+
+    A thread of the parent (a request handler writing its log line) can hold a stream's buffer lock at the instant of the
+    fork; the child inherits that lock held, and ``multiprocessing`` flushes both streams when the worker exits, so the
+    worker hangs for ever after finishing its work and the parent waits for it to exit (seen at 500 genes: a G2S job
+    "running" for an hour, then reproduced by polling the API while G2S ran; the workers' own stack dumps ended in
+    ``util._flush_std_streams``). The inherited objects are replaced without being flushed or touched.
+    """
+    for name, fd in (("stdout", 1), ("stderr", 2)):
+        try:
+            encoding = getattr(getattr(sys, name), "encoding", None) or "utf-8"
+            setattr(sys, name, io.TextIOWrapper(io.FileIO(fd, "w", closefd=False), encoding=encoding,
+                                                errors="replace", line_buffering=True))
+        except Exception:  # pragma: no cover - a stream without a descriptor (captured output)
+            pass
+
+
+def prepare_worker() -> None:
+    """First thing every forked worker does (pool initializers)."""
+    reset_std_streams()
+    arm_stall_trace()
 
 
 def arm_stall_trace() -> None:
@@ -91,12 +120,24 @@ def run_chunks(fn: Callable[[Any], Any], chunks: Sequence[Any], n_jobs: int,
                     proc.kill()
                 except Exception:  # pragma: no cover
                     pass
-        ex.shutdown(wait=not stalled, cancel_futures=True)
+        procs = list(getattr(ex, "_processes", None).values()) if getattr(ex, "_processes", None) else []
+        ex.shutdown(wait=False, cancel_futures=True)
+        if not stalled:
+            # workers that have finished should exit at once; one that does not (a stuck exit flush) is killed, not waited for
+            for proc in procs:
+                proc.join(timeout=EXIT_GRACE_SECONDS)
+                if proc.is_alive():
+                    print(f"[grn_sim] worker {proc.pid} did not exit within {EXIT_GRACE_SECONDS:.0f} s; killing it",
+                          file=sys.stderr, flush=True)
+                    try:
+                        proc.kill()
+                    except Exception:  # pragma: no cover
+                        pass
     return results, stalled
 
 
 def _init() -> None:
-    arm_stall_trace()
+    prepare_worker()
     try:
         from threadpoolctl import threadpool_limits
         _STATE["limits"] = threadpool_limits(limits=1, user_api="blas")
