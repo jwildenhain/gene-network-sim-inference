@@ -63,6 +63,10 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
             MATLAB's; the number of
             such steps is reported in ``diagnostics["tie_breaks"]``. ``None`` keeps every step MATLAB-exact.
             Ignored by ``backend="reference"``, which is always exact.
+        accept_uncertified: with ``drop_rule="loo"`` and ``max_interactions``, take the smallest drop score without
+            certification while the basis is still much wider than the cap and too ill-conditioned to certify (see
+            ``G2SParams.accept_uncertified``); otherwise each such step costs a full SVD (hours per gene at 2000
+            genes). The count is in ``diagnostics["uncertified_steps"]``.
     """
 
     def __init__(
@@ -77,6 +81,7 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         backend: str = "auto",
         n_jobs: Optional[int] = None,
         exact_budget_flops: Optional[float] = 2e9,
+        accept_uncertified: bool = False,
     ):
         super().__init__(name="g2s")
         if backend not in _BACKENDS:
@@ -89,6 +94,7 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         if exact_budget_flops is not None and exact_budget_flops < 0:
             raise ValueError(f"exact_budget_flops must be >= 0 or None, got {exact_budget_flops!r}")
         self.exact_budget_flops = exact_budget_flops
+        self.accept_uncertified = accept_uncertified
         self.criterion = criterion.lower()
         self.min_interactions = min_interactions
         self.threshold = threshold
@@ -150,7 +156,8 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
     def _params(self) -> "fast.G2SParams":
         return fast.G2SParams(criterion=self.criterion, min_interactions=self.min_interactions,
                               max_interactions=self.max_interactions, drop_rule=self.drop_rule,
-                              exact_budget_flops=self.exact_budget_flops)
+                              exact_budget_flops=self.exact_budget_flops,
+                              accept_uncertified=self.accept_uncertified)
 
     def _gen2spec(
         self,
@@ -304,5 +311,6 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         diag["downdate_steps"] = int(sum(r[2]["updates"] for r in res.values()))
         diag["exact_residual_evals"] = int(sum(r[2]["exact_evals"] for r in res.values()))
         diag["tie_breaks"] = int(sum(r[2].get("tie_breaks", 0) for r in res.values()))
+        diag["uncertified_steps"] = int(sum(r[2].get("uncertified", 0) for r in res.values()))
         diag["matlab_exact"] = self.drop_rule == "exact" and diag["tie_breaks"] == 0
         return {i: (res[i][0], res[i][1]) for i in genes}

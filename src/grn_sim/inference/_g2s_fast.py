@@ -147,6 +147,12 @@ class G2SParams:
     # (each evaluation of an N x k basis costs ~N*k^2). Beyond it, steps that would need them use the
     # deterministic tie-break (see _GeneState._tie_break); None: no budget (always MATLAB-exact).
     exact_budget_flops: Optional[float] = 2e9
+    # Quick mode for very ill-conditioned bases (``drop_rule="loo"`` with a cap): while the basis is wider than
+    # ``QUICK_WIDTH_FACTOR * max_interactions`` (and ``QUICK_MIN_COLUMNS``), a step whose rounding-error bound is too
+    # loose to certify the decision (kappa of the full basis above ~1e9, e.g. N = M = 2000 with one dependent column)
+    # takes the smallest drop score as it is instead of recomputing an M x M SVD; every such step is counted in
+    # ``stats["uncertified"]``. The exact work resumes once the basis is narrow, where it is cheap.
+    accept_uncertified: bool = False
 
 
 def _penalty_value(sse: float, k: int, n_len: int, criterion: str) -> float:
@@ -157,6 +163,8 @@ def _penalty_value(sse: float, k: int, n_len: int, criterion: str) -> float:
     return sse + float(k)
 
 
+QUICK_WIDTH_FACTOR = 4
+QUICK_MIN_COLUMNS = 100
 _G_MAX = 1e-5          # refresh once the relative error bound of the updated quantities exceeds this
 
 
@@ -239,10 +247,12 @@ class _GeneState:
     __slots__ = ("V", "y", "N", "ny", "ind", "colnorms", "exact", "alpha", "d", "sse", "sse_err",
                  "updatable", "W", "c", "B", "dref", "kappa", "smax", "noise", "k0", "t", "amp",
                  "checks", "g", "neff", "n_refresh", "n_updates", "why", "ad", "cn_all", "kernel", "Wbuf", "sse_ref", "n_exact_evals", "smax_lb2",
-                 "budget", "n_tie_breaks", "last_svd", "exact_work")
+                 "budget", "n_tie_breaks", "last_svd", "exact_work", "quick_above", "bound_failed")
 
     def __init__(self, V: np.ndarray, y: np.ndarray, colnorms: np.ndarray, budget: Optional[float] = None):
         self.budget = budget
+        self.quick_above: Optional[int] = None   # accept uncertified drops while the basis is wider than this
+        self.bound_failed = False
         self.exact_work = 0.0
         self.n_tie_breaks = 0
         self.last_svd: Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]] = None
@@ -359,7 +369,9 @@ class _GeneState:
             g += _TOL_C * neff * math.sqrt(sumd)
             self.neff = neff
         self.g = g
+        self.bound_failed = False
         if g > _G_MAX:
+            self.bound_failed = True
             self._why("bound")
             return False
         return True
@@ -399,6 +411,12 @@ class _GeneState:
                 if certified:
                     return j, sj, tj
                 self._why("tie")
+            elif self.bound_failed and self.updatable and self.quick_above is not None and k > self.quick_above:
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    s = a * a / d
+                j = int(np.argmin(np.where(np.isfinite(s), s, np.inf)))
+                self._why("uncertified")
+                return j, float(s[j]), 0.0
             self.refresh()
         # exact reference arithmetic
         dmax = np.maximum(self.d, 1e-30)
@@ -690,6 +708,8 @@ def solve_gene(
     min_k = params.min_interactions
 
     st = _GeneState(V, y, basis.colnorms, params.exact_budget_flops if params.drop_rule == "exact" else None)
+    if params.accept_uncertified and cap is not None and params.drop_rule == "loo":
+        st.quick_above = max(QUICK_MIN_COLUMNS, QUICK_WIDTH_FACTOR * cap)
     if start_ind is None:
         st.init_full(basis)
     else:

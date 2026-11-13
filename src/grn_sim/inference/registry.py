@@ -187,7 +187,7 @@ def _register_builtin() -> None:
     def g2s_member(c: BuildContext) -> GeneralToSpecific:
         # AIC should pick the size but does not on Hill data (2 per gene): given the known edge density, like every
         # algorithm that takes K (an input a real screen does not have; see docs/SCALE_BENCHMARK.md)
-        return GeneralToSpecific(max_interactions=2 * c.k_est if c.use_reg else None, drop_rule="loo")
+        return GeneralToSpecific(max_interactions=2 * c.k_est if c.use_reg else None, drop_rule="loo", accept_uncertified=True)
 
     builtin = [
         AlgorithmSpec("s2g", "S2G (Forward AIC)", lambda c: SimpleToGeneral(max_interactions=k_if_reg(c)), "Simple-to-General (S2G)",
