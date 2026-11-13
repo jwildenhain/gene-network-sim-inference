@@ -8,6 +8,7 @@ import time
 import importlib.util
 from typing import Optional
 import numpy as np
+from grn_sim.inference._parallel import report_progress
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 
@@ -126,7 +127,9 @@ class CPALite(BaseInferenceAlgorithm):
         params = list(encoder.parameters()) + list(decoder.parameters()) + list(pert_proj.parameters())
         optimizer = optim.Adam(params, lr=self.lr, weight_decay=1e-4)
 
-        for _ep in range(self.epochs if epochs is None else epochs):
+        n_epochs = self.epochs if epochs is None else epochs
+        for _ep in range(n_epochs):
+            report_progress(_ep / max(n_epochs, 1))
             optimizer.zero_grad()
             z_basal = encoder(X_t)
             delta_z = pert_proj(U_t)

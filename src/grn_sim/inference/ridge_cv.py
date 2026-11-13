@@ -11,7 +11,7 @@ from scipy.linalg import cho_factor, cho_solve
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import KFold
 
-from grn_sim.inference._parallel import default_n_jobs, map_indices
+from grn_sim.inference._parallel import default_n_jobs, map_indices, report_progress
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
 
@@ -139,6 +139,7 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
             return P - H * (np.diag(P) / np.diag(H))[None, :]
 
         scores = np.zeros((len(alphas), N))
+        solves_total, solves_done = (cv_folds + 1) * len(alphas), 0
         for tr, te in KFold(n_splits=cv_folds).split(np.arange(M)):
             mu, ym = Z[tr].mean(axis=0), Y[tr].mean(axis=0)
             Zc, Yc = Z[tr] - mu, Y[tr] - ym
@@ -146,6 +147,8 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
             sstot = np.sum((Yte - Yte.mean(axis=0)) ** 2, axis=0)
             for a, alpha in enumerate(alphas):
                 resid = Yte - (Zte @ solve_all(Zc, Yc, alpha) + ym)
+                solves_done += 1
+                report_progress(solves_done / solves_total)
                 sse = np.sum(resid ** 2, axis=0)
                 scores[a] += np.where(sstot > 0, 1.0 - sse / np.where(sstot > 0, sstot, 1.0), np.where(sse > 0, 0.0, 1.0))
         best = np.argmax(scores, axis=0)               # first best alpha, as GridSearchCV ranks them
@@ -156,6 +159,8 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
             chosen = np.flatnonzero(best == a)
             if len(chosen):
                 coefs[:, chosen] = solve_all(Zc, Yc, alpha)[:, chosen]
+            solves_done += 1
+            report_progress(min(1.0, solves_done / solves_total))
         out = []
         for i in range(N):
             reg_idx = list(range(N)) if allow_self else [j for j in range(N) if j != i]

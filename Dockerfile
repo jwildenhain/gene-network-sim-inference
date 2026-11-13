@@ -19,7 +19,7 @@ ENV MKL_NUM_THREADS=1
 COPY pyproject.toml README.md SPECIFICATION.md ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir ".[dev]"
+    pip install --no-cache-dir ".[dev,numba]"
 
 # Run the unit and benchmark tests during the build, against the installed package (the default). On a shared machine build with
 #   docker compose build --build-arg RUN_TESTS=0

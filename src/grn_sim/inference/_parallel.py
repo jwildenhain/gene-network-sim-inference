@@ -46,6 +46,17 @@ def progress_to(callback: Optional[Callable[[float], None]]):
         _PROGRESS.reset(token)
 
 
+@contextmanager
+def progress_slice(lo: float, hi: float):
+    """Within the block the callback sees ``lo + (hi - lo) * fraction``: a composite algorithm gives each part its share."""
+    parent = _PROGRESS.get()
+    token = _PROGRESS.set(None if parent is None else (lambda f: parent(lo + (hi - lo) * f)))
+    try:
+        yield
+    finally:
+        _PROGRESS.reset(token)
+
+
 def report_progress(fraction: float) -> None:
     cb = _PROGRESS.get()
     if cb is not None:
@@ -176,7 +187,14 @@ def _init() -> None:
 
 def _run_chunk(indices: List[int]):
     fn, payload = _STATE["job"]
-    return [(i, fn(payload, i)) for i in indices]
+    counter = _STATE.get("counter")
+    out = []
+    for i in indices:
+        out.append((i, fn(payload, i)))
+        if counter is not None:
+            with counter.get_lock():
+                counter.value += 1
+    return out
 
 
 def map_indices(fn: Callable[[Any, int], Any], payload: Any, n: int, n_jobs: int,
@@ -184,18 +202,29 @@ def map_indices(fn: Callable[[Any, int], Any], payload: Any, n: int, n_jobs: int
     """``[fn(payload, i) for i in range(n)]``, on a fork pool of ``n_jobs`` workers when worthwhile."""
     n_jobs = max(1, min(int(n_jobs), n))
     if n_jobs <= 1 or n < min_parallel or "fork" not in mp.get_all_start_methods():
-        return [fn(payload, i) for i in range(n)]
+        out = []
+        step = max(1, n // 200)
+        for i in range(n):
+            out.append(fn(payload, i))
+            if i % step == 0:
+                report_progress((i + 1) / n)
+        report_progress(1.0)
+        return out
     _STATE["job"] = (fn, payload)          # inherited by the forked workers, nothing is pickled
+    counter = mp.get_context("fork").Value("i", 0)
+    _STATE["counter"] = counter
     try:
         n_chunks = min(n, n_jobs * 8)
         chunks = [list(range(n))[c::n_chunks] for c in range(n_chunks)]
         with NATIVE_LOCK:             # no other thread loads native libraries while this one forks (see _native.py)
-            done, _stalled = run_chunks(_run_chunk, chunks, n_jobs, initializer=_init)
+            done, _stalled = run_chunks(_run_chunk, chunks, n_jobs, initializer=_init,
+                                        on_poll=lambda: report_progress(counter.value / n))
         out = [r for k in sorted(done) for r in done[k]]
         for k in range(len(chunks)):  # chunks a stalled pool did not finish
             if k not in done:
                 out.extend((i, fn(payload, i)) for i in chunks[k])
     finally:
         _STATE.pop("job", None)
+        _STATE.pop("counter", None)
     out.sort(key=lambda t: t[0])
     return [r for _, r in out]

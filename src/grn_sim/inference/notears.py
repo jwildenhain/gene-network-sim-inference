@@ -7,6 +7,7 @@ Enhanced with interventional equilibrium data preparation and soft-acyclicity co
 import time
 from typing import Optional
 import numpy as np
+from grn_sim.inference._parallel import report_progress
 from scipy.linalg import expm
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
@@ -115,7 +116,8 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
         step_size = 0.05 / norm_C
 
         h_prev = np.inf
-        for _ in range(self.max_iter):
+        for outer in range(self.max_iter):
+            report_progress(outer / self.max_iter)      # upper bound: it stops early once h(W) is small
             # Gradient descent inner loop
             for _ in range(15):
                 grad_W, h_val = _grad(W, rho, alpha)

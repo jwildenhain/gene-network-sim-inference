@@ -37,6 +37,8 @@ dependencies = [
 [project.optional-dependencies]
 # PyTorch backend of the CellBox Neural ODE; without it CellBox falls back to a SciPy optimiser.
 torch = ["torch>=2.0"]
+# Compiled downdate kernel of G2S (about 3.5x faster at 2000 genes); without it G2S falls back to NumPy.
+numba = ["numba>=0.58"]
 # Browser (Playwright) tests of the web studio.
 browser = ["playwright>=1.40"]
 dev = [

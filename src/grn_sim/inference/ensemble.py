@@ -7,6 +7,7 @@ which sharply eliminates false positives.
 import time
 from typing import Optional, List
 import numpy as np
+from grn_sim.inference._parallel import progress_slice
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 from grn_sim.inference.s2g import SimpleToGeneral
@@ -41,8 +42,10 @@ class VotingEnsemble(BaseInferenceAlgorithm):
         if self.extra_members:
             return self._fit_majority(X, U, start_time, **kwargs)
 
-        res_s2g = self.s2g.fit(X, U, **kwargs)
-        res_g2s = self.g2s.fit(X, U, **kwargs)
+        with progress_slice(0.0, 0.5):
+            res_s2g = self.s2g.fit(X, U, **kwargs)
+        with progress_slice(0.5, 1.0):
+            res_g2s = self.g2s.fit(X, U, **kwargs)
 
         adj_s2g = res_s2g.adjacency_pred
         adj_g2s = res_g2s.adjacency_pred
@@ -87,7 +90,10 @@ class VotingEnsemble(BaseInferenceAlgorithm):
         (default: strict majority).
         """
         members = [self.s2g, self.g2s] + self.extra_members
-        results = [m.fit(X, U, **kwargs) for m in members]
+        results = []
+        for k, m in enumerate(members):
+            with progress_slice(k / len(members), (k + 1) / len(members)):
+                results.append(m.fit(X, U, **kwargs))
         need = self.min_votes if self.min_votes is not None else len(members) // 2 + 1
         pos = np.sum([(r.adjacency_pred > 0).astype(int) for r in results], axis=0)
         neg = np.sum([(r.adjacency_pred < 0).astype(int) for r in results], axis=0)

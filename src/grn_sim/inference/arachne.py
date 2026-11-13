@@ -9,6 +9,7 @@ Enhanced with Ledoit-Wolf covariance shrinkage and interventional asymmetry comp
 import time
 from typing import Optional
 import numpy as np
+from grn_sim.inference._parallel import report_progress
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 from grn_sim.inference.preprocessor import default_preprocessor
@@ -91,6 +92,8 @@ class AracneAlgorithm(BaseInferenceAlgorithm):
         # For every triplet (i, j, k), if I(i, j) < (1 - eps) * min(I(i, k), I(k, j)), eliminate edge (i, j)
         DPI_pruned = MI_filtered.copy()
         for i in range(N):
+            if i % 16 == 0:
+                report_progress(i / N)
             for j in range(i + 1, N):
                 if DPI_pruned[i, j] == 0:
                     continue

@@ -22,7 +22,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 from scipy import stats
 
-from grn_sim.inference._parallel import default_n_jobs, map_indices
+from grn_sim.inference._parallel import default_n_jobs, map_indices, progress_slice
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 from grn_sim.inference._cache import cached_seconds
 from grn_sim.inference.g2s import GeneralToSpecific
@@ -112,7 +112,8 @@ class ScoreVote(BaseInferenceAlgorithm):
             des_list.append(Z)
         payload = (None, supports, y_list, des_list)
         n_jobs = self.n_jobs if self.n_jobs is not None else default_n_jobs(cap=8)
-        per_target = map_indices(self._target_scores, payload, n, n_jobs)
+        with progress_slice(0.85, 1.0):
+            per_target = map_indices(self._target_scores, payload, n, n_jobs)
 
         z = np.zeros((len(results), n, n))
         for i, members in enumerate(per_target):
@@ -138,9 +139,11 @@ class ScoreVote(BaseInferenceAlgorithm):
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start = time.time()
-        results = [self.s2g.fit(X, U, **kwargs), self.g2s.fit(X, U, **kwargs)]
-        if self.nir is not None:
-            results.append(self.nir.fit(X, U, **kwargs))
+        parts = [self.s2g, self.g2s] + ([self.nir] if self.nir is not None else [])
+        results = []
+        for k, member in enumerate(parts):        # the members take 85% of the time, the scoring below the rest
+            with progress_slice(0.85 * k / len(parts), 0.85 * (k + 1) / len(parts)):
+                results.append(member.fit(X, U, **kwargs))
         z, rho = self.score(X, U, results)
         self.last_scores, self.last_rho = z, rho
         n = z.shape[0]

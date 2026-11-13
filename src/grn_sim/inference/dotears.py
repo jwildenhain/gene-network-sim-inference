@@ -22,6 +22,7 @@ import time
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
+from grn_sim.inference._parallel import report_progress
 from scipy.linalg import expm
 from scipy.optimize import minimize
 
@@ -115,6 +116,7 @@ class DOTEARSLite(BaseInferenceAlgorithm):
 
         rounds = 0
         for _ in range(self.max_outer):
+            report_progress(rounds / self.max_outer)    # upper bound: it stops early once converged
             rounds += 1
 
             def f(x, sig2=sig2, alpha_l=alpha_l, rho=rho):          # bound now: the next round changes them

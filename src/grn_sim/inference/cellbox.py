@@ -10,6 +10,7 @@ import time
 from typing import Optional
 
 import numpy as np
+from grn_sim.inference._parallel import report_progress
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
@@ -217,6 +218,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         best_W = None
 
         for _ep in range(epochs):
+            report_progress(_ep / epochs)
             optimizer.zero_grad()
             alpha = torch.exp(log_alpha) + 1e-4
 
