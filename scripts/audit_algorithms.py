@@ -6,6 +6,7 @@ the archive. Prints one JSON line per algorithm and a table at the end.
 
     python scripts/audit_algorithms.py --genes 200 --seed 7                    # all algorithms
     python scripts/audit_algorithms.py --genes 500 --algs s2g,nir,inspre --out audit500.json
+    python scripts/audit_algorithms.py --run-id iorn-838581                       # on an archived run instead (nothing generated)
 """
 import argparse
 import json
@@ -21,8 +22,15 @@ sys.path.insert(0, {src!r})
 from grn_sim.web import server
 server.save_simulation_to_db = lambda *a, **k: None
 t0 = time.time()
-sim = server._execute_simulation({{"num_genes": {genes}, "topology": "modular", "seed": {seed},
-                                  "calibration_preset": "replogle_like"}})
+if {run_id!r}:
+    import types
+    import numpy as np
+    sim = server._load_archived_run({run_id!r})
+    server.CURRENT_STATE["experiment"] = types.SimpleNamespace(X=np.array(sim["X"], dtype=float), U=np.array(sim["U"], dtype=float))
+    sim = {{"total_edges": int(np.count_nonzero(np.array(sim["true_matrix"])))}}
+else:
+    sim = server._execute_simulation({{"num_genes": {genes}, "topology": "modular", "seed": {seed},
+                                      "calibration_preset": "replogle_like"}})
 t_sim = time.time() - t0
 rss_before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
 t1 = time.time()
@@ -41,6 +49,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--genes", type=int, default=200)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--run-id", default="", help="audit an archived run (read-only) instead of generating a network")
     ap.add_argument("--algs", default="", help="comma separated; default: every registered algorithm")
     ap.add_argument("--timeout", type=int, default=3600, help="seconds per algorithm")
     ap.add_argument("--out", type=Path, default=None)
@@ -51,7 +60,7 @@ def main() -> int:
     algs = [a for a in args.algs.split(",") if a] or [s.key for s in registry.specs()]
     rows = []
     for alg in algs:
-        code = CHILD.format(src=src, genes=args.genes, seed=args.seed, alg=alg)
+        code = CHILD.format(src=src, genes=args.genes, seed=args.seed, alg=alg, run_id=args.run_id)
         t0 = time.time()
         try:
             proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=args.timeout)
