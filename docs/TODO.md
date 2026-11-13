@@ -30,9 +30,11 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 - [ ] **ridge_cv at 2000 genes takes over 95 minutes** (500 genes 28 s, 1000 genes 280 s: worse than the 10x per doubling the
   first two sizes suggested; the job was interrupted at 95 minutes in the container swap of 2026-11-12). Profile it
   (`RidgeCV` per-target loop, the regulator-input transform) before running it again; queued last at 2000 genes.
-- [ ] **cellbox is at chance level** (AUPR 0.030-0.035 vs 0.026 chance at 100 genes) whatever the epochs (70 to 1500) or
-  penalty; 500 MB extra memory at 200 genes; about 21 min at 500 genes. Check the regulator-input adaptation (the model
-  adds u to the activation, the simulator adds it to the regulator concentration) and the GPU path.
+- [x] **cellbox was at chance on Hill data because its regulator route fed it the wrong relation** (`regulator_input_fit`
+  gave the network X + U as the state and -X as the additive term, which does not match x = phi(Wx + u)/alpha). It now fits
+  X ~ phi(W (X + U)) / alpha directly (`regulator_direct`): AUPR 0.061 -> 0.441 (100 genes), 0.015 -> 0.293 (200 genes),
+  F1 0.43 / 0.37, the best algorithm in these audits, and about 50x faster (0.1-0.6 s against 8-10 s; 70 epochs are as good
+  as 1000). Still 510 MB of torch per process.
 - [ ] **cpa_lite is at chance level** too (AUPR 0.018 vs 0.019): a linear autoencoder without structure; decide whether to
   keep it (it still needs 500 MB of torch).
 - [x] **G2S checked: not a bug.** Its F1 is mid-table (500 genes 0.130, 1000 genes 0.161; AUPR 0.05-0.07); the earlier

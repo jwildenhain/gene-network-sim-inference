@@ -65,10 +65,10 @@ def test_auto_falls_back_to_the_cpu_when_the_gpu_run_fails(monkeypatch):
     monkeypatch.setattr(cb, "resolve_device", lambda requested, n: "cpu" if requested == "cpu" else "cuda")   # no real GPU needed
     real = CellBoxNeuralODE._fit_torch
 
-    def flaky(self, X, U, l1, l2, epochs, device_name="cpu"):
+    def flaky(self, X, U, l1, l2, epochs, device_name="cpu", target=None):
         if device_name == "cuda":
             raise RuntimeError("CUDA out of memory (simulated)")
-        return real(self, X, U, l1, l2, epochs, device_name)
+        return real(self, X, U, l1, l2, epochs, device_name, target=target)
 
     monkeypatch.setattr(CellBoxNeuralODE, "_fit_torch", flaky)
     res = CellBoxNeuralODE(epochs=10).fit(*_data())

@@ -70,9 +70,12 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         auto_scale: bool = True,
         size_scaled_penalty: bool = True,
         k_interactions: Optional[int] = None,
+        regulator_direct: bool = True,
     ):
         super().__init__(name="cellbox")
         self.k_interactions = k_interactions
+        # regulator-input data (X = cF(X + U)): fit X ~ phi(W (X + U)) / alpha directly instead of CellBox's additive u
+        self.regulator_direct = regulator_direct
         self.device = device
         self.l1_reg = l1_reg
         self.l2_reg = l2_reg
@@ -96,13 +99,19 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         start_time = time.time()
         X_mat = np.real(X).astype(float)
         U_mat = np.real(U).astype(float)
-        if kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip() == "regulator":
+        mode = kwargs.get("perturbation_mode", self.perturbation_mode).lower().strip()
+        direct = mode == "regulator" and HAS_TORCH and bool(kwargs.get("regulator_direct", self.regulator_direct))
+        if mode == "regulator" and not direct:
             return regulator_input_fit(self, X_mat, U_mat, **kwargs)
         N, M = X_mat.shape
+        # direct regulator fit: the regulators act at their effective concentration Z = X + U, the model has no additive term
+        Z_mat = X_mat + U_mat if direct else None
         if bool(kwargs.get("auto_scale", self.auto_scale)):
             sd = float(np.std(X_mat))
             if sd > 1e-12:
                 X_mat, U_mat = X_mat / sd, U_mat / sd
+                if direct:
+                    Z_mat = Z_mat / sd
 
         l1 = float(kwargs.get("l1_reg", self.l1_reg))
         l2 = float(kwargs.get("l2_reg", self.l2_reg))
@@ -118,12 +127,13 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
                 raise ImportError("PyTorch is not installed")
             requested = (kwargs.get("device", self.device) or os.environ.get("GRN_SIM_DEVICE") or "auto").lower().strip()
             device = resolve_device(requested, N)
+            fit_in, fit_u, fit_target = (Z_mat, np.zeros_like(X_mat), X_mat) if direct else (X_mat, U_mat, None)
             try:
-                A_est, diagnostics = self._fit_torch(X_mat, U_mat, l1, l2, max_epochs, device)
+                A_est, diagnostics = self._fit_torch(fit_in, fit_u, l1, l2, max_epochs, device, target=fit_target)
             except RuntimeError as exc:
                 if device != "cuda" or requested in ("cuda", "gpu"):
                     raise                                                   # an explicit GPU request fails loudly
-                A_est, diagnostics = self._fit_torch(X_mat, U_mat, l1, l2, max_epochs, "cpu")
+                A_est, diagnostics = self._fit_torch(fit_in, fit_u, l1, l2, max_epochs, "cpu", target=fit_target)
                 diagnostics["gpu_fallback"] = str(exc)[:120]                # auto mode: the CPU finishes the job
         except ImportError:  # not installed, or installed but not importable: use the SciPy optimiser
             if N * N > 40000:
@@ -157,6 +167,11 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         if K is None:
             adj_pred[mask] = np.sign(A_est[mask]).astype(int)
 
+        if direct:       # rows were targets; the regulator-input fits return T[regulator, target] (regulator_input_fit)
+            A_est, adj_pred = A_est.T.copy(), adj_pred.T.copy()
+            diagnostics["perturbation_mode"] = "regulator"
+            diagnostics["regulator_direct"] = True
+
         elapsed = time.time() - start_time
         return InferenceResult(
             algorithm_name="cellbox",
@@ -174,6 +189,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         l2: float,
         epochs: int,
         device_name: str = "cpu",
+        target: Optional[np.ndarray] = None,
     ) -> tuple:
         import torch
         import torch.nn as nn
@@ -185,6 +201,8 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         # Convert to tensors: shape (M, N) for batch of experiments
         X_t = torch.tensor(X_mat.T, dtype=torch.float32, device=device)
         U_t = torch.tensor(U_mat.T, dtype=torch.float32, device=device)
+        # the response to fit: the steady state itself, or (regulator-input fit) X when X_mat holds the effective Z = X + U
+        Y_t = X_t if target is None else torch.tensor(target.T, dtype=torch.float32, device=device)
 
         # Learnable interaction matrix W (N, N) and decay alpha (N,)
         # Initialize W with small values and alpha near 1.0
@@ -211,7 +229,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
 
             X_pred = phi_act / alpha
 
-            mse_loss = torch.mean((X_pred - X_t) ** 2)
+            mse_loss = torch.mean((X_pred - Y_t) ** 2)
             # L1 penalty on off-diagonal W
             diag_mask = torch.eye(N, device=device).bool()
             off_diag_W = W.masked_select(~diag_mask)
