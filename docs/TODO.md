@@ -38,6 +38,22 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   F1 0.43 / 0.37, the best algorithm in these audits, and about 50x faster (0.1-0.6 s against 8-10 s; 70 epochs are as good
   as 1000). Still 510 MB of torch per process.
 - [x] **cpa_lite was at chance because a 4-dimensional bottleneck cannot hold a sparse N x N network and U was a latent shift
+  that does not match the Hill relation.** Regulator mode is now the closed form of a rank-d linear autoencoder on the
+  effective concentration (principal component regression on the SVD of X + U; d = 0.75 N up to 500 genes, N/2 above):
+  200 genes F1 0.025 -> 0.294 (AUPR 0.018 -> 0.227), 1000 genes AUPR 0.127, 2000 genes AUPR 0.084 in 4 s (a gradient fit
+  gave 0.001 at 2000 genes: it had not converged), no torch (it needed 510 MB). Additive mode unchanged. (The 1000-gene
+  24 GB / 105 min job was the dense-graph rendering, fixed earlier.)
+- [x] **ridge_cv at 2000 genes took over 95 minutes** (one sklearn RidgeCV per target: about N^4 work). All targets are now
+  solved together from one inverse per fold and alpha (rank-1 correction for the left-out regressor): the same coefficients,
+  alphas and adjacency to 1e-8 (`fast=False` keeps the per-target path), about N^3: 500 genes 28 s -> 3.3 s, 1000 genes
+  280 s -> 22 s, 2000 genes > 95 min -> 156 s. (At 2000 genes its AUPR is 0.004: one condition per gene leaves the ridge
+  with as many regressors as samples; check how the other algorithms behave there once the run has them.)
+- [x] **cellbox was at chance on Hill data because its regulator route fed it the wrong relation** (`regulator_input_fit`
+  gave the network X + U as the state and -X as the additive term, which does not match x = phi(Wx + u)/alpha). It now fits
+  X ~ phi(W (X + U)) / alpha directly (`regulator_direct`): AUPR 0.061 -> 0.441 (100 genes), 0.015 -> 0.293 (200 genes),
+  F1 0.43 / 0.37, the best algorithm in these audits, and about 50x faster (0.1-0.6 s against 8-10 s; 70 epochs are as good
+  as 1000). Still 510 MB of torch per process.
+- [x] **cpa_lite was at chance because a 4-dimensional bottleneck cannot hold a sparse N x N network and U was a latent shift
   that does not match the Hill relation.** Regulator mode fits X ~ Decoder(Encoder(X + U)) with latent size >= N / 2 (plateau
   from about N / 2), closed-form reduced-rank fallback without torch: 200 genes F1 0.025 -> 0.319, AUPR 0.018 -> 0.224;
   100 genes AUPR 0.065 -> 0.35. Additive mode unchanged. (The 1000-gene 24 GB / 105 min job was the dense-graph rendering,

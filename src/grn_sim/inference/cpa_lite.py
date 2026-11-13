@@ -32,20 +32,19 @@ class CPALite(BaseInferenceAlgorithm):
         threshold: float = 0.05,
         k_interactions: Optional[int] = None,
         perturbation_mode: str = "additive",
-        regulator_epochs: int = 120,
     ):
         """
         ``perturbation_mode="regulator"`` is for the Hill simulator's regulator-input perturbation, where the regulators act
-        at their effective concentration: X ~ Decoder(Encoder(X + U)) is fitted directly, with a latent size of at least
-        N / 2 (a 4-dimensional bottleneck cannot represent a sparse N x N network: AUPR 0.065 -> 0.35 at 100 genes, 0.018 ->
-        0.23 at 200; it plateaus from about N / 2) and ``regulator_epochs`` steps. The result is returned as
-        A[regulator, target], like the other regulator-input fits.
+        at their effective concentration: X ~ W (X + U) is fitted as a rank-d linear autoencoder's closed form, principal
+        component regression on the SVD of X + U, with d = 0.75 N up to 500 genes and N / 2 above (measured: a 4-dimensional
+        bottleneck cannot hold a sparse N x N network, AUPR 0.065 -> 0.35 at 100 genes; the best rank falls with N: 0.75 N
+        at 100-200 genes, N / 2 at 1000-2000). Deterministic, seconds, no torch (a gradient fit did not converge at 2000
+        genes: AUPR 0.001 against 0.084). The result is returned as A[regulator, target], like the other regulator-input fits.
         """
         super().__init__(name="cpa_lite")
         if perturbation_mode not in ("additive", "regulator"):
             raise ValueError(f"perturbation_mode must be 'additive' or 'regulator', got {perturbation_mode!r}")
         self.perturbation_mode = perturbation_mode
-        self.regulator_epochs = regulator_epochs
         self.latent_dim = latent_dim
         self.epochs = epochs
         self.lr = lr
@@ -59,22 +58,14 @@ class CPALite(BaseInferenceAlgorithm):
         N, M = X_mat.shape
 
         direct = kwargs.get("perturbation_mode", self.perturbation_mode) == "regulator"
-        d = min(N, max(self.latent_dim, N // 2)) if direct else min(self.latent_dim, max(2, N // 2))
+        d = min(N - 1, max(self.latent_dim, int((0.75 if N <= 500 else 0.5) * N))) if direct else min(self.latent_dim, max(2, N // 2))
         thresh = float(kwargs.get("threshold", self.threshold))
         K = kwargs.get("k", self.k_interactions)
         if K is not None:
             K = max(1, min(int(K), N - 1))
 
         if direct:
-            scale = float(np.std(X_mat)) or 1.0
-            Z_mat = (X_mat + U_mat) / scale
-            try:
-                if not HAS_TORCH:
-                    raise ImportError("PyTorch is not installed")
-                A_est, diagnostics = self._fit_torch(Z_mat, np.zeros_like(X_mat), d, target=X_mat / scale,
-                                                     epochs=int(kwargs.get("epochs", max(self.epochs, self.regulator_epochs))))
-            except ImportError:    # reduced-rank least squares, the closed form of the same model
-                A_est, diagnostics = self._fit_reduced_rank(Z_mat, X_mat / scale, d)
+            A_est, diagnostics = self._fit_pcr(X_mat + U_mat, X_mat, d)
         else:
             try:
                 if not HAS_TORCH:
@@ -153,11 +144,18 @@ class CPALite(BaseInferenceAlgorithm):
         np.fill_diagonal(W, 0.0)
         return W, {"latent_dim": d, "final_loss": round(float(loss.item()), 5), "backend": "pytorch"}
 
-    def _fit_reduced_rank(self, Z: np.ndarray, Y: np.ndarray, d: int) -> tuple:
-        # least squares Y ~ W Z, truncated to rank d (the model a linear autoencoder of width d converges to)
-        W = Y @ np.linalg.pinv(Z)
-        U_svd, S, Vt = np.linalg.svd(W, full_matrices=False)
-        return (U_svd[:, :d] * S[:d]) @ Vt[:d], {"latent_dim": d, "backend": "reduced_rank_ls"}
+    def _fit_pcr(self, Z: np.ndarray, X: np.ndarray, d: int) -> tuple:
+        """Principal component regression X ~ W Z (genes x samples, centred per gene) on the top d components of Z."""
+        scale = float(np.std(X)) or 1.0
+        Zc = Z / scale
+        Zc = Zc - Zc.mean(axis=1, keepdims=True)
+        Xc = X / scale
+        Xc = Xc - Xc.mean(axis=1, keepdims=True)
+        U_svd, S, Vt = np.linalg.svd(Zc, full_matrices=False)
+        d = min(d, int(np.sum(S > S[0] * 1e-10)))
+        W = (Xc @ Vt[:d].T / S[:d]) @ U_svd[:, :d].T
+        np.fill_diagonal(W, 0.0)
+        return W, {"latent_dim": d, "backend": "pcr"}
 
     def _fit_linear_pca(self, X_mat: np.ndarray, U_mat: np.ndarray, d: int) -> tuple:
         # SVD-based linear latent representation

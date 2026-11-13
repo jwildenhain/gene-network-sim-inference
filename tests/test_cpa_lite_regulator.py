@@ -27,17 +27,18 @@ def test_regulator_mode_recovers_edges_the_four_dimensional_bottleneck_cannot(hi
     old = CPALite(epochs=40, k_interactions=3).fit(X, U)
     new = CPALite(epochs=40, k_interactions=3, perturbation_mode="regulator").fit(X, U)
     assert new.diagnostics["perturbation_mode"] == "regulator" and new.diagnostics["latent_dim"] >= 50
+    assert new.diagnostics["backend"] == "pcr"
     best_old = max(_aupr(truth, old), compute_aupr(truth, np.abs(old.A_est.T), ignore_diagonal=True))   # either orientation
     assert _aupr(truth, new) > 3 * best_old
     assert _aupr(truth, new) > 0.25
     assert (new.adjacency_pred != 0).sum(axis=0).max() <= 3      # K regulators per target (columns: output is [regulator, target])
 
 
-def test_the_closed_form_fallback_without_torch_agrees(hill_data, monkeypatch):
+def test_regulator_mode_needs_no_torch(hill_data, monkeypatch):
     truth, X, U = hill_data
     monkeypatch.setattr(cpa_module, "HAS_TORCH", False)
     res = CPALite(k_interactions=3, perturbation_mode="regulator").fit(X, U)
-    assert res.diagnostics["backend"] == "reduced_rank_ls" and _aupr(truth, res) > 0.2
+    assert res.diagnostics["backend"] == "pcr" and _aupr(truth, res) > 0.2
 
 
 def test_additive_mode_is_unchanged(hill_data):
