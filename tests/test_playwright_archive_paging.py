@@ -105,7 +105,8 @@ def test_search_narrows_the_whole_archive_and_clearing_restores_it(archive, brow
     assert _run_ids(page) == [target] and "Page 1 of 1" in _status(page)
     page.fill("#archive-search", "no-such-run")
     page.wait_for_function("document.querySelector('#archive-pager-status').innerText.includes('No run id')", timeout=15000)
-    assert "no-such-run" in _status(page) and page.locator("#tbl-history tbody tr").count() == 0
+    assert "no-such-run" in _status(page) and page.locator("#tbl-history tbody tr:not(.archive-empty-row)").count() == 0
+    assert "no-such-run" in page.inner_text("#tbl-history tbody tr.archive-empty-row")          # the table itself says nothing matched
     page.fill("#archive-search", "")
     page.wait_for_function("document.querySelector('#archive-pager-status').innerText.includes('Page 1 of') && !document.querySelector('#archive-pager-status').innerText.includes('No run')", timeout=15000)
     assert len(_run_ids(page)) == 3
