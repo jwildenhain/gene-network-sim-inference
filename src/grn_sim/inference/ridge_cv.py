@@ -7,7 +7,9 @@ Open Problems in Single-Cell Perturbations competition.
 import time
 from typing import Optional
 import numpy as np
+from scipy.linalg import cho_factor, cho_solve
 from sklearn.linear_model import RidgeCV
+from sklearn.model_selection import KFold
 
 from grn_sim.inference._parallel import default_n_jobs, map_indices
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
@@ -32,8 +34,15 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         stability_freq: float = 0.5,
         seed: int = 0,
         n_jobs: Optional[int] = None,
+        fast: bool = True,
     ):
+        """
+        ``fast`` (default) solves all targets together (about N^3 work instead of the N^4 of one ``RidgeCV`` per target: a
+        2000-gene fit took over 95 minutes); it gives the same coefficients and alphas as the per-target ``RidgeCV``
+        (``fast=False``, also used with ``adaptive_k`` or ``stability_boots``) to numerical precision.
+        """
         super().__init__(name="ridge_cv")
+        self.fast = fast
         self.n_jobs = n_jobs
         self.alphas = alphas or [1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0]
         self.k_interactions = k_interactions
@@ -97,6 +106,62 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
 
         return coefs, float(ridge.alpha_), reg_idx
 
+    def _fit_all_targets(self, X_mat: np.ndarray, U_mat: np.ndarray, allow_self: bool):
+        """
+        The result of ``_fit_target`` for every target, from one inverse per fold and alpha instead of one RidgeCV per target.
+
+        Targets share the design Z = X^T (M x N) and differ in the response (-U row i) and in the regressor left out (the
+        gene itself unless ``allow_self``). With H = (Zc^T Zc + alpha I)^-1 on the centred training data and b = Zc^T yc, the
+        ridge solution without regressor i is  beta = H b~ - H[:, i] (H b~)_i / H_ii  with b~ = b with entry i zeroed
+        (block-inverse identity), for all i at once as matrix products. Alpha is chosen as sklearn's RidgeCV(cv) does:
+        mean held-out R^2 over KFold(cv) without shuffling, first best alpha, then a refit on all rows.
+        """
+        N, M = X_mat.shape
+        Z, Y = X_mat.T, -U_mat.T                      # (M, N) both: column i of Y is target i
+        cv_folds = min(self.cv, max(2, M // 2))
+        alphas = [float(a) for a in self.alphas]
+        eye = np.eye(N)
+        diag_idx = np.arange(N)
+
+        def solve_all(Zc: np.ndarray, Yc: np.ndarray, alpha: float) -> np.ndarray:
+            G = Zc.T @ Zc
+            G[diag_idx, diag_idx] += alpha
+            B = Zc.T @ Yc                              # B[:, i] = Zc^T yc_i
+            try:
+                H = cho_solve(cho_factor(G, lower=True, check_finite=False), eye, check_finite=False)
+            except np.linalg.LinAlgError:              # not positive definite at tiny alpha: fall back to a general inverse
+                H = np.linalg.inv(G)
+            if allow_self:
+                return H @ B
+            Bt = B.copy()
+            Bt[diag_idx, diag_idx] = 0.0
+            P = H @ Bt
+            return P - H * (np.diag(P) / np.diag(H))[None, :]
+
+        scores = np.zeros((len(alphas), N))
+        for tr, te in KFold(n_splits=cv_folds).split(np.arange(M)):
+            mu, ym = Z[tr].mean(axis=0), Y[tr].mean(axis=0)
+            Zc, Yc = Z[tr] - mu, Y[tr] - ym
+            Zte, Yte = Z[te] - mu, Y[te]
+            sstot = np.sum((Yte - Yte.mean(axis=0)) ** 2, axis=0)
+            for a, alpha in enumerate(alphas):
+                resid = Yte - (Zte @ solve_all(Zc, Yc, alpha) + ym)
+                sse = np.sum(resid ** 2, axis=0)
+                scores[a] += np.where(sstot > 0, 1.0 - sse / np.where(sstot > 0, sstot, 1.0), np.where(sse > 0, 0.0, 1.0))
+        best = np.argmax(scores, axis=0)               # first best alpha, as GridSearchCV ranks them
+        mu, ym = Z.mean(axis=0), Y.mean(axis=0)
+        Zc, Yc = Z - mu, Y - ym
+        coefs = np.zeros((N, N))                       # coefs[:, i]: regressors of target i
+        for a, alpha in enumerate(alphas):
+            chosen = np.flatnonzero(best == a)
+            if len(chosen):
+                coefs[:, chosen] = solve_all(Zc, Yc, alpha)[:, chosen]
+        out = []
+        for i in range(N):
+            reg_idx = list(range(N)) if allow_self else [j for j in range(N) if j != i]
+            out.append((coefs[reg_idx, i], alphas[int(best[i])], reg_idx))
+        return out
+
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         start_time = time.time()
         X_mat = np.real(X).astype(float)
@@ -123,7 +188,13 @@ class KaggleMultiOutputRidge(BaseInferenceAlgorithm):
         # Fit each target gene i from regressors (targets are independent)
         n_jobs = self.n_jobs if self.n_jobs is not None else default_n_jobs(cap=16)
         payload = (X_mat, U_mat, K, allow_self, kwargs)
-        for i, (coefs, alpha, reg_idx) in enumerate(map_indices(self._fit_target, payload, N, n_jobs)):
+        per_gene_options = (int(kwargs.get("stability_boots", self.stability_boots)) > 0
+                            or bool(kwargs.get("adaptive_k", self.adaptive_k)))
+        if bool(kwargs.get("fast", self.fast)) and not per_gene_options:
+            results = self._fit_all_targets(X_mat, U_mat, allow_self)
+        else:
+            results = map_indices(self._fit_target, payload, N, n_jobs)
+        for i, (coefs, alpha, reg_idx) in enumerate(results):
             best_alphas.append(alpha)
             for idx, reg in enumerate(reg_idx):
                 A_est[i, reg] = coefs[idx]

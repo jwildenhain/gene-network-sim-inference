@@ -27,9 +27,11 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 - [x] Per-algorithm job storage with error isolation; stall guard for forked pools; run store bounded by bytes.
 
 ### Still open
-- [ ] **ridge_cv at 2000 genes takes over 95 minutes** (500 genes 28 s, 1000 genes 280 s: worse than the 10x per doubling the
-  first two sizes suggested; the job was interrupted at 95 minutes in the container swap of 2026-11-12). Profile it
-  (`RidgeCV` per-target loop, the regulator-input transform) before running it again; queued last at 2000 genes.
+- [x] **ridge_cv at 2000 genes took over 95 minutes** (one sklearn RidgeCV per target: about N^4 work). All targets are now
+  solved together from one inverse per fold and alpha (rank-1 correction for the left-out regressor): the same coefficients,
+  alphas and adjacency to 1e-8 (`fast=False` keeps the per-target path), about N^3: 500 genes 28 s -> 3.3 s, 1000 genes
+  280 s -> 22 s, 2000 genes > 95 min -> 156 s. (At 2000 genes its AUPR is 0.004: one condition per gene leaves the ridge
+  with as many regressors as samples; check how the other algorithms behave there once the run has them.)
 - [x] **cellbox was at chance on Hill data because its regulator route fed it the wrong relation** (`regulator_input_fit`
   gave the network X + U as the state and -X as the additive term, which does not match x = phi(Wx + u)/alpha). It now fits
   X ~ phi(W (X + U)) / alpha directly (`regulator_direct`): AUPR 0.061 -> 0.441 (100 genes), 0.015 -> 0.293 (200 genes),
