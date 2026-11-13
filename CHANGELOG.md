@@ -88,6 +88,9 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Changed
+- **G2S reports progress.** The pool workers count finished target genes in a shared counter; the job queue shows it as a
+  percentage of the running step (`progress_pct`, `JobContext.fraction`, `_parallel.progress_to/report_progress`). Also:
+  G2S accepts uncertified drops on ill-conditioned wide bases when K is given (2000 genes: every step recomputed an SVD).
 - **Algorithm fixes found by `scripts/audit_algorithms.py`** (one process per algorithm: accuracy, time, peak memory).
   inspre applies to the response of X + U on Hill-simulator data (it returned an empty graph; 500 genes F1 0 -> 0.255);
   genie3, cpa_lite, cellbox and ridge_cv keep K regulators per target whenever K is known (ridge_cv F1 0.17 -> 0.33,

@@ -16,6 +16,9 @@ class _Ctx:
     def progress(self, *a, **k):
         pass
 
+    def fraction(self, value):
+        pass
+
     def log(self, line):
         self.lines.append(line)
 

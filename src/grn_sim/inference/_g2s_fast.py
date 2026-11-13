@@ -776,7 +776,7 @@ def solve_gene(
 _WORKER: Dict[str, Any] = {}
 
 
-def _worker_init(basis: SharedBasis, Y: np.ndarray, params: G2SParams, starts: Optional[Dict[int, Any]]) -> None:
+def _worker_init(basis: SharedBasis, Y: np.ndarray, params: G2SParams, starts: Optional[Dict[int, Any]], counter: Any = None) -> None:
     from grn_sim.inference._parallel import prepare_worker
     prepare_worker()
     try:
@@ -788,6 +788,7 @@ def _worker_init(basis: SharedBasis, Y: np.ndarray, params: G2SParams, starts: O
     _WORKER["Y"] = Y
     _WORKER["params"] = params
     _WORKER["starts"] = starts or {}
+    _WORKER["counter"] = counter
 
 
 def _worker_run(genes: Sequence[int]) -> List[Tuple[int, np.ndarray, np.ndarray, Dict[str, int]]]:
@@ -800,6 +801,10 @@ def _worker_run(genes: Sequence[int]) -> List[Tuple[int, np.ndarray, np.ndarray,
         s_ind, p_ind = starts.get(i, (None, None))
         ind, a, stats = solve_gene(Y[i], basis, params, s_ind, p_ind)
         out.append((i, ind, a, stats))
+        counter = _WORKER.get("counter")
+        if counter is not None:
+            with counter.get_lock():
+                counter.value += 1
     return out
 
 
@@ -825,11 +830,13 @@ def solve_genes(
     results: Dict[int, Tuple[np.ndarray, np.ndarray, Dict[str, int]]] = {}
     n_jobs = max(1, min(int(n_jobs), len(genes))) if genes else 1
     if n_jobs <= 1 or "fork" not in mp.get_all_start_methods():
+        from grn_sim.inference._parallel import report_progress
         with _one_blas_thread():
-            for i in genes:
+            for n_done, i in enumerate(genes):
                 s_ind, p_ind = starts.get(i, (None, None))
                 ind, a, stats = solve_gene(Y[i], basis, params, s_ind, p_ind)
                 results[i] = (ind, a, stats)
+                report_progress((n_done + 1) / len(genes))
         return results
     # Small interleaved chunks balance the load (genes differ in how many fallback steps they need).
     n_chunks = min(len(genes), n_jobs * 8)
@@ -837,9 +844,12 @@ def solve_genes(
     _hh_kernel()                      # compile once in the parent; forked workers inherit it
     from grn_sim.inference._native import NATIVE_LOCK
     from grn_sim.inference._parallel import run_chunks
+    from grn_sim.inference._parallel import report_progress
+    counter = mp.get_context("fork").Value("i", 0)     # genes finished by all workers (inherited through the fork)
     with NATIVE_LOCK:                 # no other thread loads native libraries while this one forks (see _native.py)
         done, _stalled = run_chunks(_worker_run, chunks, n_jobs, initializer=_worker_init,
-                                    initargs=(basis, Y, params, starts))
+                                    initargs=(basis, Y, params, starts, counter),
+                                    on_poll=lambda: report_progress(counter.value / len(genes)))
     parts = [item for k in sorted(done) for item in done[k]]
     missing = [i for k in range(len(chunks)) if k not in done for i in chunks[k]]
     if missing:                       # a stalled pool was killed: solve those genes here, as the serial backend does

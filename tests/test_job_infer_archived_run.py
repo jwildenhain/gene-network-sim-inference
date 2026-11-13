@@ -8,6 +8,7 @@ from grn_sim.web import server
 class _Ctx:
     def check_cancel(self): pass
     def progress(self, *a, **k): pass
+    def fraction(self, value): pass
     def log(self, line): pass
 
 

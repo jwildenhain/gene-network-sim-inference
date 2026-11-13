@@ -64,6 +64,7 @@ class Job:
         self.stage: Optional[str] = None
         self.steps_total = (1 if params is not None else 0) + len(algorithms)
         self.steps_done = 0
+        self.sub_fraction = 0.0   # fraction of the step in progress (reported by long algorithms)
         self.current: Optional[str] = None
         self.error: Optional[str] = None
         self.summary: Dict[str, Any] = {}
@@ -112,7 +113,8 @@ class Job:
             "run_id": self.run_id, "depends_on": self.depends_on, "algorithms": list(self.algorithms),
             "steps_done": self.steps_done, "steps_total": self.steps_total, "current": self.current,
             "progress_pct": 100.0 if self.status == DONE else (
-                round(100.0 * self.steps_done / self.steps_total, 1) if self.steps_total else 0.0),
+                round(100.0 * min(self.steps_done + self.sub_fraction, self.steps_total) / self.steps_total, 1)
+                if self.steps_total else 0.0),
             "error": self.error, "summary": self.summary, "cancel_requested": self.cancel_requested,
             "created": _stamp(self.created), "started": _stamp(self.started), "finished": _stamp(self.finished),
             "elapsed_s": round(end - self.started, 1) if self.started else 0.0,
@@ -145,6 +147,12 @@ class JobContext:
                 self._job.current = label
             if advance:
                 self._job.steps_done = min(self._job.steps_total, self._job.steps_done + 1)
+                self._job.sub_fraction = 0.0
+
+    def fraction(self, value: float) -> None:
+        """Fraction (0..1) of the current step that is done; shown as part of the job's progress."""
+        with self._manager._lock:
+            self._job.sub_fraction = max(0.0, min(0.99, float(value)))
 
 
 GenerateFn = Callable[[Dict[str, Any], JobContext], Dict[str, Any]]

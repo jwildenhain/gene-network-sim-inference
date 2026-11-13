@@ -40,6 +40,7 @@ from grn_sim.inference.fast_svd import FastSVD
 from grn_sim.inference.ensemble import VotingEnsemble
 from grn_sim.inference.score_vote import ScoreVote
 from grn_sim.inference import registry as algorithm_registry
+from grn_sim.inference import _parallel
 from grn_sim.web import history_view, vcc_screen_view
 from grn_sim.inference.by_chance import ByChance
 from grn_sim.inference.atlasshift import AtlasShift
@@ -2642,7 +2643,8 @@ def _job_infer(run_id: str, algorithms: List[str], ctx: "_jobs.JobContext") -> D
                     ctx.progress(advance=True)
                 ctx.log(f"running {alg}")
                 try:
-                    _execute_inference([alg], previous=stored.get("inferred_payload") or None)
+                    with _parallel.progress_to(ctx.fraction):
+                        _execute_inference([alg], previous=stored.get("inferred_payload") or None)
                 except _jobs.JobCancelled:
                     raise
                 except Exception as exc:  # one failing algorithm must not discard the others

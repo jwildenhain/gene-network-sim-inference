@@ -7,6 +7,8 @@ import os
 import sys
 import tempfile
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -29,6 +31,28 @@ def default_n_jobs(cap: int = 6) -> int:
 # chunks use CPU continuously, so the guard cannot fire on slow-but-working workers.
 STALL_IDLE_SECONDS = float(os.environ.get("GRN_SIM_POOL_STALL_SECONDS", "300"))
 _BUSY_TICKS = 50                       # clock ticks (0.5 s at 100 Hz) of CPU across all workers that count as progress
+
+
+_PROGRESS: ContextVar[Optional[Callable[[float], None]]] = ContextVar("grn_sim_progress", default=None)
+
+
+@contextmanager
+def progress_to(callback: Optional[Callable[[float], None]]):
+    """Within the block, long algorithms report their fraction done (0..1) to ``callback`` (e.g. a job's progress)."""
+    token = _PROGRESS.set(callback)
+    try:
+        yield
+    finally:
+        _PROGRESS.reset(token)
+
+
+def report_progress(fraction: float) -> None:
+    cb = _PROGRESS.get()
+    if cb is not None:
+        try:
+            cb(max(0.0, min(1.0, float(fraction))))
+        except Exception:  # progress reporting must never break a fit
+            pass
 
 
 EXIT_GRACE_SECONDS = 30.0   # how long the parent waits for a finished worker to exit before killing it
@@ -84,7 +108,8 @@ def _cpu_ticks(pids: Sequence[int]) -> Optional[int]:
 
 def run_chunks(fn: Callable[[Any], Any], chunks: Sequence[Any], n_jobs: int,
                initializer: Optional[Callable[..., None]] = None, initargs: Tuple[Any, ...] = (),
-               stall_seconds: Optional[float] = None) -> Tuple[Dict[int, Any], bool]:
+               stall_seconds: Optional[float] = None,
+               on_poll: Optional[Callable[[], None]] = None) -> Tuple[Dict[int, Any], bool]:
     """Runs ``fn(chunk)`` for every chunk on a fork pool; returns ``({chunk index: result}, stalled)``.
 
     When the workers make no progress (no chunk finished and no CPU used) for ``stall_seconds`` the pool is killed and
@@ -104,6 +129,8 @@ def run_chunks(fn: Callable[[Any], Any], chunks: Sequence[Any], n_jobs: int,
             done, pending = wait(pending, timeout=min(10.0, max(0.05, stall / 4)), return_when=FIRST_COMPLETED)
             for fut in done:
                 results[futures[fut]] = fut.result()
+            if on_poll is not None:
+                on_poll()
             now = time.monotonic()
             ticks = _cpu_ticks([p.pid for p in list(getattr(ex, "_processes", {}).values())])
             if done or ticks is None or ref_ticks is None or ticks - ref_ticks > _BUSY_TICKS:
