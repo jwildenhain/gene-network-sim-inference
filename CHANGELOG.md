@@ -21,6 +21,10 @@ versioning once it leaves 0.x.
 - Archive search: a search with no match says so in the table (it was only in the pager below).
 - Job error for an unknown run id no longer blames a server restart.
 - Tests: a submitted job is registered, listed, archived, found by the archive search and loadable in the detail view.
+- **Downloads of an archived run returned the current run's file.** `/api/download` (msmt, pert, dot, svg, h5ad), the h5ad export,
+  trajectories, gene profiles and the realism report answered any `run_id` that was not in memory (every archived run after a
+  restart, and ids that do not exist) with the studio's current run, so the archive table's download links could hand out another
+  run's data. Archived runs are now loaded into the run store without touching the current network, and an unknown id is a 404.
 - `.svg` / `.dot` downloads of runs without a stored graph (above 100 genes) return a 404 with a reason instead of an empty 200.
 - Legacy `$TMP_STATMAT` / `$TMP_CMAT` labels removed from the studio and archive pages; the Virtual Cell form wraps at phone width.
 - Stale tests fixed: GRNBoost's orientation is [regulator, target] on Hill data (measured: 28 vs 17 true positives at 100 genes, 70 vs

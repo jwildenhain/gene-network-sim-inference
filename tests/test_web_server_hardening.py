@@ -259,3 +259,24 @@ def test_a_download_that_does_not_exist_for_the_run_is_a_404_with_a_reason_not_a
     for fmt in ("svg", "dot"):
         code, _, body = request(f"{base_url}/api/download?format={fmt}")
         assert code == 404 and f".{fmt}" in json.loads(body)["error"]
+
+
+def test_downloads_of_other_runs_are_not_answered_with_the_current_run(base_url, monkeypatch):
+    """A run id that is not in memory used to get the studio's current run's file; archived runs are loaded, unknown ids are 404."""
+    sid = "iorn-dl-test"
+    sim = {"run_id": sid, "num_genes": 3, "gene_names": ["G1", "G2", "G3"], "true_matrix": [[0, 1, 0], [0, 0, 1], [0, 0, 0]],
+           "msmt_text": "ARCHIVED-MSMT", "pert_text": "ARCHIVED-PERT", "svg_hierarchical": "<svg/>", "dot_hierarchical": "digraph{}",
+           "X": [[0.0] * 3] * 3, "U": [[0.0] * 3] * 3}
+    database.save_simulation_to_db(run_id=sid, sim_payload=sim, inferred_payload={"metrics": {}}, history_entry={"run_id": sid})
+    monkeypatch.setitem(server.CURRENT_STATE, "msmt_text", "CURRENT-MSMT")
+    monkeypatch.setitem(server.CURRENT_STATE, "run_id", "current-run")
+    server.SIMULATION_RUN_STORE.pop(sid, None)
+    code, _, body = request(f"{base_url}/api/download?format=msmt&run_id={sid}")
+    assert code == 200 and body == b"ARCHIVED-MSMT"
+    assert server.CURRENT_STATE["run_id"] == "current-run" and server.CURRENT_STATE["msmt_text"] == "CURRENT-MSMT"
+    assert request(f"{base_url}/api/download?format=msmt")[2] == b"CURRENT-MSMT"        # no id: the current run, as before
+    for fmt in ("msmt", "pert", "svg", "dot", "h5ad"):
+        code, _, body = request(f"{base_url}/api/download?format={fmt}&run_id=iorn-does-not-exist")
+        assert code == 404 and "unknown run" in json.loads(body)["error"], fmt
+    code, _, body = request(f"{base_url}/api/export/perturb_seq_h5ad?run_id=iorn-does-not-exist")
+    assert code == 404

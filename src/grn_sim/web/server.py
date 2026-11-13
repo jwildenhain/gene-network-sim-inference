@@ -511,7 +511,11 @@ def _compact_trajectories(experiment: SimulationExperiment, max_points: int = 50
 
 
 def _run_state(run_id: Optional[str]) -> Dict[str, Any]:
-    if run_id and run_id in SIMULATION_RUN_STORE:
+    """The state of ``run_id`` (loaded from the archive when it is not in memory), or the studio's current state when no id is
+    given. An id that is neither in memory nor archived raises LookupError: it used to be answered with the current run's data."""
+    if run_id:
+        if run_id not in SIMULATION_RUN_STORE and not _ensure_run_loaded(run_id):
+            raise LookupError(f"unknown run {run_id!r}: it is neither in the archive nor in memory")
         return SIMULATION_RUN_STORE[run_id]["state"]
     return CURRENT_STATE
 
@@ -1387,6 +1391,20 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         "from_archive": True,
     }
     return sim_payload
+
+
+def _ensure_run_loaded(run_id: Optional[str]) -> bool:
+    """True when ``run_id`` can be served: no id, a run in memory, or an archived run (loaded into the run store without
+    changing the studio's current network). False for an id that is nowhere."""
+    if not run_id or run_id in SIMULATION_RUN_STORE:
+        return True
+    with STATE_LOCK:
+        saved = dict(CURRENT_STATE)
+        try:
+            return _load_archived_run(run_id) is not None
+        finally:
+            CURRENT_STATE.clear()
+            CURRENT_STATE.update(saved)
 
 
 def _build_benchmark_studio(dataset_id: str = "ecoli_sos") -> Dict[str, Any]:
@@ -2313,9 +2331,7 @@ def _perturb_seq_realism_payload(
     selection: str = "effective",
 ) -> Dict[str, Any]:
     """Realism report of the run's Perturb-seq screen against the genome-scale targets (JSON-ready)."""
-    target_state = CURRENT_STATE
-    if run_id and run_id in SIMULATION_RUN_STORE:
-        target_state = SIMULATION_RUN_STORE[run_id]["state"]
+    target_state = _run_state(run_id)
     if not isinstance(target_state.get("network"), GeneNetwork):
         raise LookupError("the realism report needs a simulated network (run a simulation first)")
     if perturbation_mode == "input":
@@ -2396,9 +2412,7 @@ def _build_perturb_seq_h5ad_bytes(
     simulated network (archived arrays, real benchmark data) always use that path. ``preset`` other than
     ``current`` simulates a fresh network of the run's size from that preset (e.g. ``replogle_like``).
     """
-    target_state = CURRENT_STATE
-    if run_id and run_id in SIMULATION_RUN_STORE:
-        target_state = SIMULATION_RUN_STORE[run_id]["state"]
+    target_state = _run_state(run_id)
 
     network = target_state.get("network")
     if perturbation_mode != "input" and target_state.get("experiment") is None and network is None:
@@ -3133,6 +3147,9 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                                                                perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
                                                                **extras)
                 _send_h5ad(self, data, filename, query)
+            except LookupError as e:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -3256,9 +3273,12 @@ class GRNWebHandler(BaseHTTPRequestHandler):
         elif path == "/api/download":
             fmt = query.get("format", ["msmt"])[0]
             req_run_id = query.get("run_id", [None])[0]
-            target_state = CURRENT_STATE
-            if req_run_id and req_run_id in SIMULATION_RUN_STORE:
-                target_state = SIMULATION_RUN_STORE[req_run_id]["state"]
+            try:
+                target_state = _run_state(req_run_id)
+            except LookupError as e:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
             run_id = target_state.get("run_id") or "grn"
             if fmt == "msmt":
                 content = target_state.get("msmt_text", "")
@@ -3300,6 +3320,9 @@ class GRNWebHandler(BaseHTTPRequestHandler):
                                                                    perturbation_mode=pmode, n_pairs=n_pairs, noise_model=noise,
                                                                    **extras)
                     _send_h5ad(self, data, filename, query)
+                except LookupError as e:
+                    self._set_headers(404)
+                    self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
                 except Exception as e:
                     self._set_headers(500)
                     self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
