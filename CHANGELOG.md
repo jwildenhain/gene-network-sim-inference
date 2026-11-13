@@ -88,6 +88,12 @@ versioning once it leaves 0.x.
 ## [Unreleased]
 
 ### Changed
+- **Archive clean-up (2026-11-13).** `scripts/clean_archive.py` (dry run by default, `--apply --backup`, `--verify`) removes runs over
+  1000 genes, merges the legacy `ridge` key into `ridge_cv`, and verifies that every run holds all algorithms under one key in
+  payload and `alg` table; `scripts/fill_archive_algorithms.py` queued the 2611 missing (run, algorithm) pairs through the job
+  queue; DMD-GRN re-scored with `scripts/rescore_archive_orientation.py --only dmdgrn`; the 500 and 1000 gene benchmark networks
+  were re-run with every algorithm. `scripts/render_archive_leaderboard.py` writes `docs/results/archive_leaderboard.md` from a
+  committed snapshot (tested for drift).
 - **Scale benchmark table rendered from the archive.** `scripts/render_scale_benchmark.py` snapshots F1 / AUPR / time of all
   algorithms at 500, 1000 and 2000 genes into `docs/results/scale_benchmark.json` and renders `docs/SCALE_BENCHMARK.md`; a test
   fails on drift. 2000 genes: all algorithms stored.

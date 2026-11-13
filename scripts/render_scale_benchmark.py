@@ -42,9 +42,18 @@ def _metrics(con: sqlite3.Connection, simid: str) -> Dict[str, Any]:
 def snapshot(db: Path) -> Dict[str, Any]:
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     rows: Dict[str, Dict[str, Any]] = {}
+    previous = json.loads(SNAPSHOT.read_text()) if SNAPSHOT.exists() else {}
+    removed: Dict[str, str] = dict(previous.get("removed_runs", {}))
     for size, simid in SCALE_RUNS.items():
+        if con.execute("SELECT 1 FROM nw WHERE simid = ?", (simid,)).fetchone() is None:
+            # the run was taken out of the archive (2000 genes, 2026-11-13); its numbers stay as recorded in the snapshot
+            removed[size] = simid
+            for alg, d in previous.get("algorithms", {}).items():
+                if size in d:
+                    rows.setdefault(alg, {})[size] = d[size]
+            continue
         for alg, m in _metrics(con, simid).items():
-            rows.setdefault(alg, {})[size] = {"f1": round(m["f1_score"], 3), "aupr": round(m.get("aupr", 0.0), 3),
+            rows.setdefault(alg, {})[size] = {"f1": round(m["f1_score"], 3), "aupr": round(m.get("aupr") or 0.0, 3),
                                               "seconds": round(m["runtime_ms"] / 1000.0, 1)}
     small: Dict[str, List[List[float]]] = {}
     n_runs = 0
@@ -54,11 +63,13 @@ def snapshot(db: Path) -> Dict[str, Any]:
             continue
         n_runs += 1
         for alg, v in m.items():
-            small.setdefault(alg, []).append([v["f1_score"], v.get("aupr", 0.0)])
+            small.setdefault(alg, []).append([v["f1_score"], v.get("aupr")])      # AUPR is None in rescored runs
     for alg, vals in small.items():
+        aupr = [v[1] for v in vals if isinstance(v[1], (int, float))]
         rows.setdefault(alg, {})["small"] = {"f1": round(st.mean(v[0] for v in vals), 3),
-                                             "aupr": round(st.mean(v[1] for v in vals), 3), "runs": len(vals)}
-    return {"runs": SCALE_RUNS, "small_genes": list(SMALL_GENES), "small_runs_with_results": n_runs, "algorithms": rows}
+                                             "aupr": round(st.mean(aupr), 3) if aupr else 0.0, "runs": len(vals),
+                                             "aupr_runs": len(aupr)}
+    return {"runs": SCALE_RUNS, "removed_runs": removed, "small_genes": list(SMALL_GENES), "small_runs_with_results": n_runs, "algorithms": rows}
 
 
 def render_table(snap: Dict[str, Any]) -> str:
@@ -84,6 +95,8 @@ def render_table(snap: Dict[str, Any]) -> str:
     L.append("Cells are F1 / AUPR. Controls (`by_chance`, `gene_features`) are not listed. Ranked by AUPR at 2000 genes. Seconds are as stored: "
              "different hosts, core counts and image versions, so compare orders of magnitude only. "
              f"Networks: " + ", ".join(f"{s} genes `{snap['runs'][s]}`" for s in sizes)
+             + ("; " + ", ".join(f"the {s}-gene run `{r}` was removed from the archive on 2026-11-13 (work limited to 1000 genes), its numbers are kept from the snapshot"
+                                  for s, r in sorted(snap.get("removed_runs", {}).items())) if snap.get("removed_runs") else "")
              + f"; the small-network column is the mean over {snap['small_runs_with_results']} archived runs "
              f"({lo}-{hi} genes, algorithms that were run on them).")
     return "\n".join(L)

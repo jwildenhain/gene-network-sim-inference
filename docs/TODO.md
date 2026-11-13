@@ -110,11 +110,9 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 
 ## 2. Scale run (in progress)
 
-- [ ] **Uniform re-run of 500, 1000 and 2000 genes** with the current image (rows in `docs/results/scale_benchmark.json` were stored
-  at different times, some before their algorithm's fix), then `scripts/render_scale_benchmark.py snapshot` and `render`.
-- [ ] **numba is not in the Docker image.** G2S's downdate kernel then runs in numpy: measured 52 s per gene at 2000 genes
-  (single core) against 15 s with numba 0.60 (host). The 2000-gene G2S job therefore takes about 3.6 h instead of about 1 h.
-  Add numba to the image (pyproject extra) and rebuild when the queue is idle.
+- [x] **Archive cleaned and complete (2026-11-13):** 504 runs of at most 1000 genes, every run with all 24 algorithms under one key
+  (`scripts/clean_archive.py --verify`); 2000-gene runs removed (numbers kept in `docs/results/scale_benchmark.json`); DMD-GRN re-scored;
+  500 and 1000 gene benchmark networks re-run uniformly; per-algorithm tables in `docs/results/archive_leaderboard.md`.
 - [x] **All 22 algorithms stored at 500, 1000 and 2000 genes** (2026-11-13); table in `docs/SCALE_BENCHMARK.md`, rendered from
   `docs/results/scale_benchmark.json`. G2S at 2000 genes: 71 min with numba and 8 workers (quick mode, see section 1).
 - [ ] **Collapsed at 2000 genes, to investigate:** CellBox (AUPR 0.21 -> 0.14 -> 0.00), ARACNE (0.05 -> 0.06 -> 0.00), RidgeCV
