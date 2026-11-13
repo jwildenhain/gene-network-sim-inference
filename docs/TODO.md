@@ -42,6 +42,10 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   from about N / 2), closed-form reduced-rank fallback without torch: 200 genes F1 0.025 -> 0.319, AUPR 0.018 -> 0.224;
   100 genes AUPR 0.065 -> 0.35. Additive mode unchanged. (The 1000-gene 24 GB / 105 min job was the dense-graph rendering,
   fixed earlier.)
+- [x] **vote and score_vote repeated the G2S (and NIR) fit** that the g2s / nir jobs of the same network had just run (825 s
+  of G2S three times at 1000 genes): a small result cache (`inference/_cache.py`, keyed on the data hash, settings and
+  arguments) shares them; an ensemble's reported run time still includes what its members got from the cache; vote now uses
+  the same G2S settings as the g2s entry so they match.
 - [x] **G2S checked: not a bug.** Its F1 is mid-table (500 genes 0.130, 1000 genes 0.161; AUPR 0.05-0.07); the earlier
   "far below S2G" compared sensitivity alone, and S2G reached it by predicting 6,657 / 21,861 edges. On this data the AIC
   optimum is exactly 2 regulators for every target (the target `U` row is a single spike), so the cap (`k`, `2k`, none), the

@@ -195,7 +195,7 @@ def _register_builtin() -> None:
         AlgorithmSpec("g2s", "G2S (Backward AIC)", lambda c: g2s_member(c), "General-to-Specific (G2S)",
                       "Backward Stepwise AIC", "Stepwise Backward", "#d97706", core=True, additive_target_regulator=True),
         AlgorithmSpec("vote", "Voting Ensemble", lambda c: VotingEnsemble(
-            g2s=GeneralToSpecific(drop_rule="loo"), extra_members=[nir_member(c)] if c.use_reg else None),
+            g2s=g2s_member(c), extra_members=[nir_member(c)] if c.use_reg else None),
                       "Voting Ensemble", "Majority (S2G, G2S, NIR)", "Consensus Winner", "#16a34a", core=True,
                       uses_regulator_model=True, additive_target_regulator=True),
         AlgorithmSpec("score_vote", "Score Vote (evidence-weighted)", lambda c: ScoreVote(

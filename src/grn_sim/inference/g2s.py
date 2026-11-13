@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from typing import Any, Dict, Iterator, Optional, List, Tuple
 import numpy as np
 
+from grn_sim.inference._cache import result_cache
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 from grn_sim.inference import _g2s_fast as fast
 
@@ -214,6 +215,7 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
         final_a = np.linalg.pinv(Xb) @ y
         return np.array(indopt, dtype=int), final_a
 
+    @result_cache
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
         Infers regulatory matrix matching g2s.m / s2g_and_g2s.m:

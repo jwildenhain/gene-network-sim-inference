@@ -24,6 +24,7 @@ from scipy import stats
 
 from grn_sim.inference._parallel import default_n_jobs, map_indices
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference._cache import cached_seconds
 from grn_sim.inference.g2s import GeneralToSpecific
 from grn_sim.inference.nir import NIRAlgorithm
 from grn_sim.inference.s2g import SimpleToGeneral
@@ -162,5 +163,6 @@ class ScoreVote(BaseInferenceAlgorithm):
             adjacency_pred=adj,
             time_elapsed=time.time() - start,
             diagnostics={"members": [r.algorithm_name for r in results], "rho": rho,
-                         "k_interactions": K, "consensus_edges": int(np.sum(adj != 0))},
+                         "k_interactions": K, "consensus_edges": int(np.sum(adj != 0)),
+                         "cached_seconds": cached_seconds(results)},
         )

@@ -997,7 +997,8 @@ def _execute_inference(selected_algs: List[str],
             # In web_run_rgn.m lines 42 & 48, simulated perturbation matrix is multiplied by -1 for nir_v3, fast_modified, and ridge_cv
             U_input = U if (use_reg or is_sos or not algorithm_registry.get(alg).negate_u_in_additive) else (-U)
             res = alg_runners[alg].fit(X, U_input)
-            elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+            # an ensemble's cost is its stand-alone cost: add what its members got from the result cache
+            elapsed_ms = round((time.perf_counter() - t0 + float(res.diagnostics.get("cached_seconds", 0.0))) * 1000.0, 2)
             # predictions in the orientation of true_matrix (algorithms differ, see grn_sim.inference.orientation)
             fit_mode = str(res.diagnostics.get("perturbation_mode", "additive"))
             pred = orient_prediction(alg, res.adjacency_pred, data_model, truth_tr, fit_mode)

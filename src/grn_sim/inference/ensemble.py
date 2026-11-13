@@ -10,6 +10,7 @@ import numpy as np
 
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
 from grn_sim.inference.s2g import SimpleToGeneral
+from grn_sim.inference._cache import cached_seconds
 from grn_sim.inference.g2s import GeneralToSpecific
 
 
@@ -75,6 +76,7 @@ class VotingEnsemble(BaseInferenceAlgorithm):
                 "s2g_edges": res_s2g.total_predicted_edges,
                 "g2s_edges": res_g2s.total_predicted_edges,
                 "consensus_edges": int(np.sum(consensus_adj != 0)),
+                "cached_seconds": cached_seconds([res_s2g, res_g2s]),
             },
         )
 
@@ -99,5 +101,5 @@ class VotingEnsemble(BaseInferenceAlgorithm):
             adjacency_pred=adj,
             time_elapsed=time.time() - start_time,
             diagnostics={"members": [r.algorithm_name for r in results], "min_votes": need,
-                         "consensus_edges": int(np.sum(adj != 0))},
+                         "consensus_edges": int(np.sum(adj != 0)), "cached_seconds": cached_seconds(results)},
         )

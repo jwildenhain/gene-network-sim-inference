@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from grn_sim.inference._parallel import default_n_jobs, map_indices
+from grn_sim.inference._cache import result_cache
 from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, regulator_input_fit
 
 
@@ -185,6 +186,7 @@ class NIRAlgorithm(BaseInferenceAlgorithm):
                 resid = u[None, :] + np.einsum("ck,ckm->cm", coef[ok], Z[sel[ok]])
                 SSEK_tmp[rows] = np.sum(resid ** 2, axis=1)
 
+    @result_cache
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
         Fits regulatory interaction matrix using NIR matching nir_v3.m.
