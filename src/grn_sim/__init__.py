@@ -16,7 +16,7 @@ import os as _os
 for _var in ("OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
     _os.environ.setdefault(_var, "1")
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Jan Wildenhain"
 
 from grn_sim.core.topology import generate_topology, NetworkTopology, TopologyType

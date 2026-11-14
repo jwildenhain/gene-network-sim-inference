@@ -1380,6 +1380,10 @@ def _load_archived_run(run_id: Optional[str]) -> Optional[Dict[str, Any]]:
         "x_steady_perturbed": sim_payload.get("x_steady_perturbed", []),
         "X": sim_payload.get("X", []),
         "U": sim_payload.get("U", []),
+        # the run's own dynamics type: inference on it writes this into its history entry (it used to write whatever the
+        # previously open run had, which turned 121 flat / oscillating runs into "responsive" entries)
+        "response_type": sim_payload.get("response_type", "responsive"),
+        "response_dynamics": sim_payload.get("response_dynamics", {}),
         "inferred_results": inferred_payload,
     })
     SIMULATION_RUN_STORE[run_id] = {

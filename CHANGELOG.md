@@ -4,6 +4,16 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## [1.0.1] - 2026-11-14
+
+- **Inference jobs on archived runs overwrote the run's dynamics type.** Loading an archived run did not copy its own `response_type`
+  into the studio state, so a job that re-analysed it wrote the previously open run's type (usually "responsive") into its history
+  entry. 121 flat and oscillating runs were affected: the curated "Best 15 Flat" and "Best 15 Oscillating" views were nearly empty and
+  the server re-seeded four example runs on restart. Fixed in the loader; `scripts/clean_archive.py --sync-response-types` repairs
+  existing entries and `--verify` now reports the mismatch.
+- Start-up examples are completed with all algorithms by queued jobs (1.0.0), which stops once the flat / oscillating entries are right.
+- Test: the h5ad download test no longer depends on the state earlier tests leave behind.
+
 ## [1.0.0] - 2026-11-13
 
 First stable release. The simulator, the 24 reverse-engineering algorithms, the studio (six tabs, job queue, archive) and the benchmark

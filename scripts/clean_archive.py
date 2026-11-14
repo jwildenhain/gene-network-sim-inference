@@ -4,7 +4,10 @@
   * renames the legacy ``alg.algid`` "ridge" to "ridge_cv" (drops it when the run has both), so the comparison tables do not
     list one algorithm under two keys;
   * ``--verify``: for every run, the algorithm keys of the payload metrics and of the ``alg`` table are the same and equal
-    the registry (all algorithms); prints the runs that are not (nothing is changed).
+    the registry (all algorithms), and the history entry's ``response_type`` equals the ``nw.response_type`` column; prints the
+    runs that are not (nothing is changed);
+  * ``--sync-response-types``: sets the history entry's ``response_type`` to the column's value where they differ (inference jobs
+    on archived runs used to write "responsive" into the entry of flat and oscillating runs, which emptied the curated views).
 
 Dry run by default; ``--apply`` copies the database to ``--backup`` first (a path that must not exist) and must not run
 while a server writes to the archive.
@@ -66,6 +69,28 @@ def verify(con: sqlite3.Connection) -> List[str]:
     return bad
 
 
+def response_type_mismatches(con: sqlite3.Connection) -> List[tuple]:
+    """(simid, column value, history-entry value) of the runs whose history entry names another dynamics type than the column."""
+    out = []
+    for simid, col, hist in con.execute("SELECT simid, response_type, history_entry_json FROM nw").fetchall():
+        entry = json.loads(hist or "{}") if hist and hist != "{}" else None
+        if entry is not None and col and entry.get("response_type") != col:
+            out.append((simid, col, entry.get("response_type")))
+    return out
+
+
+def sync_response_types(con: sqlite3.Connection) -> int:
+    """Makes the history entries agree with the column; returns how many were changed."""
+    changed = 0
+    for simid, col, _ in response_type_mismatches(con):
+        entry = json.loads(con.execute("SELECT history_entry_json FROM nw WHERE simid = ?", (simid,)).fetchone()[0])
+        entry["response_type"] = col
+        con.execute("UPDATE nw SET history_entry_json = ? WHERE simid = ?", (json.dumps(entry), simid))
+        changed += 1
+    con.commit()
+    return changed
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("db", type=Path)
@@ -73,10 +98,11 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--backup", type=Path)
     ap.add_argument("--verify", action="store_true")
+    ap.add_argument("--sync-response-types", action="store_true", help="needs --apply --backup")
     args = ap.parse_args()
     if args.verify:
         con = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
-        bad = verify(con)
+        bad = verify(con) + [f"{sid}: history entry says {entry!r}, the column says {col!r}" for sid, col, entry in response_type_mismatches(con)]
         total = con.execute("SELECT COUNT(*) FROM nw").fetchone()[0]
         for line in bad:
             print(line)
@@ -89,6 +115,11 @@ def main() -> int:
         shutil.copy2(args.db, args.backup)
         print(f"backed up to {args.backup}")
     con = sqlite3.connect(str(args.db))
+    if args.sync_response_types:
+        print(f"{sync_response_types(con) if args.apply else len(response_type_mismatches(con))} history entries "
+              f"{'changed' if args.apply else 'would change'} to the column's response type")
+        con.close()
+        return 0
     p = plan(con, args.max_genes)
     print(f"remove {len(p['remove_runs'])} runs over {args.max_genes} genes {p['remove_runs']}; rename {len(p['rename'])} legacy "
           f"alg keys; drop {len(p['drop_duplicate'])} duplicate legacy keys")

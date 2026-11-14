@@ -239,6 +239,7 @@ def test_h5ad_downloads_are_zipped_unless_zip_is_switched_off(base_url, path):
     import io
     import zipfile
 
+    server._execute_simulation({"num_genes": 12, "seed": 3, "topology": "random", "k_av": 1.8})      # a steady-state run to export
     code, headers, body = request(f"{base_url}{path}cells_per_condition=2")
     assert code == 200 and headers["Content-Type"] == "application/zip"
     name = headers["Content-Disposition"].split('filename="')[1].rstrip('"')
