@@ -2504,8 +2504,15 @@ def _write_h5ad_bytes(adata: Any, stem: str) -> Tuple[bytes, str]:
     return data, filename
 
 
-def _bootstrap_initial_simulation():
-    """Seeds an initial 12-gene Scale-Free simulation + inference + archive history covering all 3 dynamics categories on startup."""
+SEED_ALGORITHMS = ["s2g", "g2s", "vote", "nir", "fast", "by_chance"]   # what a start-up example is analysed with before the job queue completes it
+
+
+def _bootstrap_initial_simulation(complete_with_jobs: bool = False):
+    """Seeds an initial 12-gene Scale-Free simulation + inference + archive history covering all 3 dynamics categories on startup.
+
+    The seeded runs get a fast subset of algorithms at once (the server must come up quickly). With ``complete_with_jobs`` (the
+    real server) the other registered algorithms are queued as background jobs, so every archived run ends up with every algorithm."""
+    seeded: List[str] = []
     try:
         init_db()
         existing_db_history = load_all_history_from_db()
@@ -2535,7 +2542,9 @@ def _bootstrap_initial_simulation():
                 p_type = p.get("dynamics_preset", "responsive")
                 if p_type not in existing_types or not existing_db_history:
                     _execute_simulation(p)
-                    _execute_inference(["s2g", "g2s", "vote", "nir", "fast", "by_chance"])
+                    _execute_inference(SEED_ALGORITHMS)
+                    if CURRENT_STATE.get("run_id"):
+                        seeded.append(CURRENT_STATE["run_id"])
 
             existing_db_history = load_all_history_from_db()
 
@@ -2546,6 +2555,13 @@ def _bootstrap_initial_simulation():
                 _load_archived_run(latest_run_id)
     except Exception as e:
         print(f"Bootstrap warning: {e}")
+    if complete_with_jobs and seeded:
+        rest = [a for a in known_algorithms() if a not in SEED_ALGORITHMS]
+        for run_id in seeded:
+            try:
+                JOB_MANAGER.submit({"run_id": run_id, "algorithms": rest, "label": f"start-up example {run_id}: remaining algorithms"})
+            except Exception as e:     # a full queue or an unknown run must not stop the server from starting
+                print(f"Bootstrap warning: could not queue the remaining algorithms for {run_id}: {e}")
 
 
 # --- Parameter validation and the background job queue ------------------------------------------------------------
@@ -3486,7 +3502,7 @@ class GRNWebHandler(BaseHTTPRequestHandler):
 
 def run_server(port: int = 8080, host: str = "127.0.0.1", open_browser: bool = False):
     """Starts the GRN-Sim interactive web server."""
-    _bootstrap_initial_simulation()
+    _bootstrap_initial_simulation(complete_with_jobs=True)
     server_address = (host, port)
     httpd = ThreadedHTTPServer(server_address, GRNWebHandler)
     url = f"http://localhost:{port}"

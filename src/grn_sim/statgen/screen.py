@@ -58,7 +58,8 @@ def condition_screen(model: StatModel, genes: Optional[Sequence[int]] = None, pa
     dose = _nominal(model.mode, cfg)
     ref = np.log(model.baseline)
     singles = model.log_mean((), np.zeros((1, 0)))[0]
-    cols, conditions = [], []
+    cols: List[np.ndarray] = []
+    conditions: List[Tuple[int, ...]] = []
     for g in genes:
         cols.append(model.log_mean((g,), np.array([[dose]]))[0])
         conditions.append((g,))
@@ -111,7 +112,8 @@ def simulate_cells(model: StatModel, screen: ConditionScreen, cells_per_conditio
             d = _beta(rng, guide_mean[gene, g_idx], cfg.cell_efficiency_concentration)
         return np.where(escaped, 0.0, d), escaped
 
-    blocks, cond, guide, targets, dose_rows, esc_rows = [], [], [], [], [], []
+    targets: List[Tuple[int, ...]] = []
+    blocks, cond, guide, dose_rows, esc_rows = [], [], [], [], []
     n_ctrl = cells_per_condition if n_control_cells is None else int(n_control_cells)
     if n_ctrl:
         g_idx = rng.integers(0, cfg.n_control_guides, size=n_ctrl)

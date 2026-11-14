@@ -106,12 +106,12 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
             return regulator_input_fit(self, X_mat, U_mat, **kwargs)
         N, M = X_mat.shape
         # direct regulator fit: the regulators act at their effective concentration Z = X + U, the model has no additive term
-        Z_mat = X_mat + U_mat if direct else None
+        Z_mat: Optional[np.ndarray] = X_mat + U_mat if direct else None
         if bool(kwargs.get("auto_scale", self.auto_scale)):
             sd = float(np.std(X_mat))
             if sd > 1e-12:
                 X_mat, U_mat = X_mat / sd, U_mat / sd
-                if direct:
+                if Z_mat is not None:
                     Z_mat = Z_mat / sd
 
         l1 = float(kwargs.get("l1_reg", self.l1_reg))
@@ -128,7 +128,11 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
                 raise ImportError("PyTorch is not installed")
             requested = (kwargs.get("device", self.device) or os.environ.get("GRN_SIM_DEVICE") or "auto").lower().strip()
             device = resolve_device(requested, N)
-            fit_in, fit_u, fit_target = (Z_mat, np.zeros_like(X_mat), X_mat) if direct else (X_mat, U_mat, None)
+            fit_target: Optional[np.ndarray] = None
+            if Z_mat is not None:
+                fit_in, fit_u, fit_target = Z_mat, np.zeros_like(X_mat), X_mat
+            else:
+                fit_in, fit_u = X_mat, U_mat
             try:
                 A_est, diagnostics = self._fit_torch(fit_in, fit_u, l1, l2, max_epochs, device, target=fit_target)
             except RuntimeError as exc:
@@ -243,6 +247,7 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
 
             # Zero out diagonal gradients
             with torch.no_grad():
+                assert W.grad is not None
                 W.grad.fill_diagonal_(0.0)
 
             optimizer.step()

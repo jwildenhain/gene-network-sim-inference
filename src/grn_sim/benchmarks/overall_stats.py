@@ -72,6 +72,10 @@ def _run_metrics(con: sqlite3.Connection, run_id: str) -> Optional[Dict[str, Dic
     return out
 
 
+def _col(sel, k, field):
+    return [r["m"][k][field] for r in sel]
+
+
 def _mean(xs, nd):
     return round(float(np.mean(xs)), nd)
 
@@ -95,16 +99,15 @@ def build_payload(db_path: Optional[str] = None) -> Dict[str, Any]:
         con.close()
 
     def curve(axis: str, values) -> Dict[str, Dict[str, List[float]]]:
-        out = {k: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for k in keys}
+        out: Dict[str, Dict[str, List[float]]] = {k: {"power": [], "fdr": [], "f1": [], "total_errors": [], "runtime": []} for k in keys}
         for v in values:
             sel = [r for r in runs if r["axis"] == axis and r["value"] == v]
             for k in keys:
-                col = lambda f: [r["m"][k][f] for r in sel]  # noqa: E731
-                out[k]["power"].append(_mean(col("power"), 1))
-                out[k]["fdr"].append(_mean(col("fdr"), 1))
-                out[k]["f1"].append(_mean(col("f1"), 3))
-                out[k]["total_errors"].append(_mean(col("total_errors"), 1))
-                out[k]["runtime"].append(_mean(col("runtime"), 4))
+                out[k]["power"].append(_mean(_col(sel, k, "power"), 1))
+                out[k]["fdr"].append(_mean(_col(sel, k, "fdr"), 1))
+                out[k]["f1"].append(_mean(_col(sel, k, "f1"), 3))
+                out[k]["total_errors"].append(_mean(_col(sel, k, "total_errors"), 1))
+                out[k]["runtime"].append(_mean(_col(sel, k, "runtime"), 4))
         return out
 
     size, conn, noise = curve("size", SIZE_VALUES), curve("conn", K_VALUES), curve("noise", NOISE_VALUES)
@@ -130,8 +133,12 @@ def build_payload(db_path: Optional[str] = None) -> Dict[str, Any]:
                    "mean_fdr": _mean([r["m"][k]["fdr"] for r in sel], 1),
                    "mean_specificity": _mean([r["m"][k]["specificity"] for r in sel], 1),
                    "mean_errors": _mean([r["m"][k]["total_errors"] for r in sel], 1)} for k in keys}
-        best = max(per, key=lambda k: per[k]["mean_f1"])
-        mean_of = lambda f: _mean([v[f] for v in per.values()], 1)  # noqa: E731
+        per_alg: Dict[str, Dict[str, float]] = per
+        best = max(per_alg.items(), key=lambda kv: kv[1]["mean_f1"])[0]
+
+        def mean_of(f: str, per: Dict[str, Dict[str, float]] = per_alg) -> float:
+            return _mean([v[f] for v in per.values()], 1)
+
         arch[name] = {"key": name, "label": label, "runs_evaluated": len(sel),
                       "mean_f1": _mean([v["mean_f1"] for v in per.values()], 3), "mean_power_pct": mean_of("mean_power"),
                       "mean_fdr_pct": mean_of("mean_fdr"), "mean_specificity_pct": mean_of("mean_specificity"),

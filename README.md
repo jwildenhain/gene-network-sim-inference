@@ -204,8 +204,8 @@ A comprehensive systematic parameter sweep benchmark extended to match **Jan Wil
    - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs ($N \ge 12$) within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), ranked by $F_1$ score and minimal total errors.
    - **Balanced Database Benchmark Corpus**: The SQLite `rgn_db.sqlite` archive was augmented with $N \ge 12$ oscillating and flat simulations, ensuring that all 7 sets have at least 15 qualifying runs ($N \in [12, 60]$) for complete, robust representation.
    - **Dynamic Rank Badges & F1 Column**: Each row is badged with its exact ranking within its set (`#1 in Responsive` .. `#15 in Responsive`), its calculated $F_1$ score, Power %, Specificity %, and Total Errors.
-   - **18-Algorithm Detailed Inspector**: Supports inspecting re-engineering performance across **all 18 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
-   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 308 persisted runs in SQLite `rgn_db`.
+   - **24-Algorithm Detailed Inspector**: Supports inspecting re-engineering performance across **all 24 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
+   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 512 persisted runs in SQLite `rgn_db` (each with all 24 algorithms; per-algorithm tables by network size in [`docs/results/archive_leaderboard.md`](docs/results/archive_leaderboard.md)).
 
 | Tab 5: Complete 18-Algorithm Leaderboard | Tab 5: Architecture Cross-Comparison (Random, Scale-Free, Hierarchical) |
 | :---: | :---: |
@@ -396,11 +396,11 @@ When loading a real-world benchmark into Tab 1, users can choose between two dis
     - **Responsive (Clear Level Changes)**: **54%** of tested configurations.
     - **Flat (Damped / Insensitive)**: **33%** of tested configurations.
     - **Persistent Oscillations (Limit Cycles)**: **13%** of tested configurations.
-  - **Reclassified Database Breakdown (130 runs in `rgn_db.sqlite`)**:
+  - **Database Breakdown by dynamics type (512 runs in `rgn_db.sqlite`, 2026-11-13)**:
     Following correction of the steady-state detection logic (eliminating false-positive oscillation flags caused by transient zero-concentration dips or monotonic slow tails), all runs were reclassified according to genuine dynamical convergence:
-    - **Responsive / Clear Level Changes**: **120 runs** (92.3%)
-    - **Flat / Insensitive**: **7 runs** (5.4%)
-    - **Persistent Oscillations / Limit Cycles**: **3 runs** (2.3%)
+    - **Responsive / Clear Level Changes**: **391 runs** (76.4%)
+    - **Flat / Insensitive**: **49 runs** (9.6%)
+    - **Persistent Oscillations / Limit Cycles**: **72 runs** (14.1%)
 * **Thesis & Paper Figures Gallery (Dual Engine, Tab 5)**:
   Tab 5 allows toggling between **"📂 Stored MATLAB `.mat` Archives"** (loaded directly from 31 authentic 2004 MATLAB `.mat` files in `src/grn_sim/data/matlab_benchmarks/`) and **"⚡ Compute Live Python Sweep"** (executing dynamic multi-network ODE simulation and inference across Random, Scale-Free, and Hierarchical topologies). Includes an interactive inspector across all 25 `overallstats/DIAG_nz70_iot*_std*_mean.mat` files ($N \in [10..70]$, $k_{\text{av}} \in [1.0..5.0]$, $\sigma \in [0..0.01]$).
 
@@ -528,7 +528,7 @@ Tested in [`tests/test_atlasshift_and_perturbseq.py`](tests/test_atlasshift_and_
 
 ##### Benchmark Results: Multi-Context Scale-Free Network ($N=16$, $k_{\text{av}}=1.8$, 3 Source Atlases, 15% target rewiring, seed 2026)
 
-Reproduce with `run_vcc_comparative_benchmark(num_genes=16, k_av=1.8, seed=2026)` (the web tab runs all 18 algorithms; the rows below are the original comparison set).
+Reproduce with `run_vcc_comparative_benchmark(num_genes=16, k_av=1.8, seed=2026)` (the web tab runs all 24 algorithms; the rows below are the original comparison set).
 
 ###### 1. Causal Interaction Topology Recovery
 Evaluates how well each algorithm recovers the physical, directed, signed regulatory graph edges ($\mathbf{A}_{ij} \in \{+1, -1\}$) of the rewired target network. Every algorithm is fit on the complete target experiment set:
@@ -753,7 +753,7 @@ gene-network-sim-inference/
 │   ├── paths.py              # bundled data vs. user data, archive location (GRN_SIM_HOME, RGN_DB_PATH)
 │   ├── core/                 # GeneNetwork and topology generators (random, scale-free, hierarchical)
 │   ├── simulator/            # Hill kinetics, ODE solver, perturbation experiments, Perturb-seq .h5ad generator
-│   ├── inference/            # 18 algorithms: S2G, G2S, NIR, FAST, Vote, CellBox, GENIE3, NOTEARS, AtlasShift, ...
+│   ├── inference/            # 24 algorithms: S2G, G2S, NIR, FAST, Vote, CellBox, GENIE3, NOTEARS, AtlasShift, inspre, ...
 │   ├── evaluation/           # confusion matrices, coverage / FDR / power, signed PPV (thesis Table 4.1)
 │   ├── benchmarks/           # SOS replication, dataset registry + provenance, VCC benchmark, held-out prediction, sweeps
 │   ├── visualization/        # DOT / SVG / JSON export and the built-in layered layout

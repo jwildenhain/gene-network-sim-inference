@@ -10,7 +10,6 @@
 """
 import argparse
 import json
-import math
 import sqlite3
 import statistics as st
 import sys

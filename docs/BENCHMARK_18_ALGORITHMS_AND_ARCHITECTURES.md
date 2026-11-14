@@ -1,5 +1,7 @@
 # Systematic Benchmark: 18 Reverse-Engineering Algorithms across 3 Network Graph Architectures
 
+> **Historical snapshot (2026-10).** This benchmark covers the 18 algorithms and 69 sweep networks that existed then. The archive now holds every one of the 24 algorithms for every run: see [`results/archive_leaderboard.md`](results/archive_leaderboard.md) (by network size), [`results/audit_100_250.md`](results/audit_100_250.md) and [`SCALE_BENCHMARK.md`](SCALE_BENCHMARK.md). Tab 5 of the studio is rebuilt from the archive (24 algorithms, the same 69 networks).
+
 This document provides the complete technical specification, mathematical methodology, cross-architecture empirical results, and user-interface integrations for the comprehensive benchmark evaluated across **all 18 algorithms** and **3 network topologies** in GRN-Sim / phpIoRN 2.0.
 
 ---

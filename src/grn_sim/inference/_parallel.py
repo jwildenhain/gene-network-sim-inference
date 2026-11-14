@@ -158,7 +158,7 @@ def run_chunks(fn: Callable[[Any], Any], chunks: Sequence[Any], n_jobs: int,
                     proc.kill()
                 except Exception:  # pragma: no cover
                     pass
-        procs = list(getattr(ex, "_processes", None).values()) if getattr(ex, "_processes", None) else []
+        procs = list((getattr(ex, "_processes", None) or {}).values())
         ex.shutdown(wait=False, cancel_futures=True)
         if not stalled:
             # workers that have finished should exit at once; one that does not (a stuck exit flush) is killed, not waited for

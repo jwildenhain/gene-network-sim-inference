@@ -98,7 +98,10 @@ def inspre_solve(
     RtR = RtW @ R
     cfs = None
     if entry_weights is not None or entry_factors is not None:
-        rho, cfs, diag_w2 = entry_factors if entry_factors is not None else _entry_factors(R, entry_weights)
+        if entry_factors is None:
+            assert entry_weights is not None      # this branch needs one of the two
+            entry_factors = _entry_factors(R, entry_weights)
+        rho, cfs, diag_w2 = entry_factors
     else:
         if rho is None:
             rho = float(max(np.trace(RtR) / max(p, 1), 1e-6))
@@ -121,7 +124,7 @@ def inspre_solve(
         r_pri = np.linalg.norm(Uk - V_new)
         r_dual = rho * np.linalg.norm(V_new - V)
         V = V_new
-        scale = max(np.linalg.norm(V), 1e-12)
+        scale = max(float(np.linalg.norm(V)), 1e-12)
         if r_pri <= tol * scale and r_dual <= tol * scale:
             break
     return V, (V, Z), it

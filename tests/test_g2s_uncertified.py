@@ -1,6 +1,5 @@
 """G2S quick mode for ill-conditioned wide bases: no per-step SVD, same selections as the certified path."""
 import numpy as np
-import pytest
 
 from grn_sim.inference import _g2s_fast as fast
 from grn_sim.inference.g2s import GeneralToSpecific

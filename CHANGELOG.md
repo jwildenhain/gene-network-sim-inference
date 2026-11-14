@@ -4,7 +4,24 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
-## Unreleased - Collapsed network view: accuracy per module and a module matrix
+## [1.0.0] - 2026-11-13
+
+First stable release. The simulator, the 24 reverse-engineering algorithms, the studio (six tabs, job queue, archive) and the benchmark
+pages are complete and consistent with each other; every number on the generated pages is computed from data and checked by tests.
+
+- **Archive:** 512 runs (up to 1000 genes), every run with all 24 algorithms under one key (`scripts/clean_archive.py --verify`);
+  per-algorithm statistics by network size in `docs/results/archive_leaderboard.md`, scale table in `docs/SCALE_BENCHMARK.md`,
+  100/250-gene audit in `docs/results/audit_100_250.md`, tab 5 rebuilt from the archive and stored in it.
+- **Correctness fixes in this release:** archived-run downloads no longer return the current run's file; inference runs on the data as
+  the archive stores it (reproducible re-analysis); DMD-GRN orientation on additive data; seeded start-up examples are completed with
+  all algorithms.
+- **Quality gates:** `ruff` and `mypy` clean (97 source files); the test suite (unit, HTTP and browser tests) passes.
+- **Known limits** (see `docs/TODO.md`): CellBox, ARACNE, RidgeCV, NIR and inspre lose accuracy at 2000 genes; CellBox/GRNBoost scores
+  differ slightly between the host and the container (library versions); archived runs scored before the 4-decimal rounding change
+  can move slightly for tree learners if re-run; the `.h5ad` export is large; several published algorithms (LLC, full bicycle, SCEPTRE,
+  DCD-FG, DCDI/DOTEARS, GIES/IGSP, SparseRC, Dictys/RENGE) are not implemented.
+
+## 0.x (part of 1.0.0) - Collapsed network view: accuracy per module and a module matrix
 
 - Networks above 25 genes were already drawn as modules of the *true* network (the same modules for every algorithm). The module
   overview now also shows how each algorithm does there: a ring on every module (correct / wrong sign / extra / missed links touching
@@ -13,7 +30,7 @@ versioning once it leaves 0.x.
   that stays readable at 500-2000 genes. Cells and labels open the module. Graphs without classified links (the truth-only panels)
   are drawn as before. Tests: `tests/test_playwright_collapsed_modules.py`.
 
-## Unreleased - Audit follow-ups: reproducible re-analysis, tab 5 from the archive, zipped .h5ad
+## 0.x (part of 1.0.0) - Audit follow-ups: reproducible re-analysis, tab 5 from the archive, zipped .h5ad
 
 - **Re-analysing an archived run reproduces its result.** Inference ran on the full-precision matrices while the archive keeps
   X and U to 4 decimals (`ARCHIVE_DECIMALS`); tree learners split differently on the rounded copy (250 genes: GRNBoost F1 0.083
@@ -44,7 +61,7 @@ versioning once it leaves 0.x.
 - New generated, tested page `docs/results/audit_100_250.md` (time, memory, accuracy of all 24 algorithms at 100 and 250 genes);
   the archive leaderboard was re-rendered with the two new runs (506 runs).
 
-## Unreleased - Virtual Cell tab: tuning round and measured limits
+## 0.x (part of 1.0.0) - Virtual Cell tab: tuning round and measured limits
 
 - Second calibration round (effect scale x noise x weight spread, `calibrate_statgen.py --spreads`): linear SEM and NB copula
   now meet every shown realism target; the Boolean model's effect tail is fixed; the nonlinear model stays short on phenotype
@@ -59,7 +76,7 @@ versioning once it leaves 0.x.
 - Simulated source contexts renamed "Source context A/B/C" and the target-context menu shows the rewired share only (the
   cell-line names suggested real data).
 
-## Unreleased - Virtual Cell tab: correctness pass
+## 0.x (part of 1.0.0) - Virtual Cell tab: correctness pass
 
 - Perturbation dependencies tested for every generator (`tests/test_perturbation_dependencies.py`): a perturbation moves exactly
   the genes downstream of it, double perturbations interact only downstream of both partners, at most 5% of independent gene
@@ -78,7 +95,7 @@ versioning once it leaves 0.x.
 - Findings and calibration documents are generated from the data (`grn_sim.evaluation.vcc_findings`, `grn_sim.statgen.report`)
   and tests fail when the documents and the data disagree. Loading bar names every pending request.
 
-## Unreleased - Virtual Cell tab: statistical data generators
+## 0.x (part of 1.0.0) - Virtual Cell tab: statistical data generators
 
 - New package `grn_sim.statgen`: data from statistical models instead of the panel-1 Hill kinetics - linear SEM, nonlinear
   additive-noise SCM, negative-binomial Gaussian copula, probabilistic (logistic) Boolean network - on the same graphs
@@ -95,7 +112,7 @@ versioning once it leaves 0.x.
   graph" comparison and the panel-1 network as the graph (mechanistic vs statistical data on one network).
 - `run_screen(cell_options=...)` overrides the cell model; benchmark mechanistic screens use the preset's 0.92 guide efficiency.
 
-## Unreleased - Virtual Cell tab: pathways and screen statistics
+## 0.x (part of 1.0.0) - Virtual Cell tab: pathways and screen statistics
 
 - Tab 4 now states what it is: experiments simulated from statistics (Perturb-seq-like screens generated from the panel-1 simulator),
   not a comparison with a mechanistic model. The AtlasShift/mechanistic header box is gone (the cross-atlas section stays, up to 32 genes).
@@ -109,7 +126,7 @@ versioning once it leaves 0.x.
   (`evaluation/vcc_benchmark.py`, `scripts/run_vcc_benchmark.py`, `/api/vcc/screen_benchmark`, `docs/results/vcc_screen_benchmark.md`).
 - S2G and G2S in the benchmark run in their regression form (`matlab_mode=False`), which accepts partial screens and double knockouts.
 
-## Unreleased - partial screens
+## 0.x (part of 1.0.0) - partial screens
 
 - Documentation: one page per algorithm in `docs/algorithms/` (generated from `inference/descriptions.py`, checked by a test), a docs index
   (`docs/README.md`), result files moved to `docs/results/`.

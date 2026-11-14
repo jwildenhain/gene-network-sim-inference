@@ -290,7 +290,7 @@ class _StatContexts:
 
     def dual_screen(self, exp: SimulationExperiment) -> Tuple[np.ndarray, int, List[int]]:
         """eps_ij = ||L_ij - (L_i + L_j)|| (log2, noise-free) over all genes, or the most-connected ones above the cap."""
-        model = exp.network
+        model: Any = exp.network      # a mechanistic GeneNetwork or a statistical model; both give log_mean
         n = self.n
         if n <= SCREEN_MAX_GENES[self.generator]:
             genes = list(range(n))

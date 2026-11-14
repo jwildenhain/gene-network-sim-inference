@@ -87,7 +87,7 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   X = cF(X + U): it now fits on (X + U, -X) like NIR / FAST / RidgeCV (`perturbation_mode="regulator"`; 200 genes AUPR
   0.036 -> 0.241, F1 0.12 -> 0.30, level with NIR and SFINN). (2) Its output orientation was undeclared: on additive
   (Gardner) data the raw output is A[target, regulator] and scored 2-3x better transposed (like S2G and NIR); declared now.
-- [ ] **Archived additive-data runs scored dmdgrn with the wrong orientation.** `scripts/rescore_archive_orientation.py --only
+- [x] **Archived additive-data runs scored dmdgrn with the wrong orientation** (applied to the archive on 2026-11-13, 14 runs). `scripts/rescore_archive_orientation.py --only
   dmdgrn` re-orients it in already rescored runs (additive data models only: Hill-kinetics runs mix regulator-input and
   additive fits, so their old convention is not recoverable; runs dated before 2026-11-13; `orientation_fixes` makes it
   run once). Tested on copies of real archive rows. Dry run on the real archive: 14 additive runs would change
@@ -105,8 +105,7 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   the 500-gene G2S job (with the guard messages at zero after a false alarm in the first version of the exit wait was fixed).
 - [ ] Time and memory of every algorithm at 500 / 1000 / 2000 genes with the fixed code (the audit script takes
   `--genes`); a per-algorithm memory estimate that skips or warns before a run.
-- [ ] 40 archived datasets have no algorithm rows (28 small leftovers, 12 profiling), 10 have 6 of 19, 5 lack only
-  `score_vote`.
+- [x] Incomplete archived runs: none left (512 of 512 runs have all 24 algorithms, `scripts/clean_archive.py --verify`).
 
 ## 2. Scale run (in progress)
 
@@ -114,7 +113,8 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   runs on X and U rounded to the archive's 4 decimals so archived runs re-analyse reproducibly; tab 5 rebuilt from the archived sweep
   networks and stored in the `overall_stats` table; `.h5ad` downloads zipped; empty-search row, job error text, `$TMP_` labels,
   404 for missing `.svg`/`.dot`, phone-width Virtual Cell form.
-- [ ] **Server start-up archives runs with few algorithms.** Starting a container with no flat/oscillating example in the history seeds
+- [x] **Server start-up archived runs with few algorithms** (fixed in 1.0.0: seeded examples are completed with the remaining algorithms by queued jobs).
+  Was: Starting a container with no flat/oscillating example in the history seeds
   four small example runs with 6 algorithms each, and each start archives the studio's start-up run with no inference at all (6 such
   runs appeared on 2026-11-13 and were completed with `scripts/fill_archive_algorithms.py`; the archive is 512 of 512 complete).
   Fix: seed with every registered algorithm, and do not archive the start-up run until it has results.
@@ -177,7 +177,6 @@ Papers still to read before implementing: LLC, GIES, IGSP, DCDI, NODAGS-Flow, Di
 
 ## 6. Housekeeping
 
-- [ ] Push the last commit (`66667c7`, local only) and open the PR for `feat/inspre-and-interventional-baselines`.
-- [ ] Cut a release (everything is under `[Unreleased]`).
+- [x] Branches merged into `main` and released as 1.0.0 (2026-11-13).
 - [ ] Real-data check of the Hill refit and transfer predictors on Norman 2019 / Replogle 2022.
 - [ ] Resume interrupted jobs automatically (they come back as "interrupted"; a job on an archived run can be re-queued).

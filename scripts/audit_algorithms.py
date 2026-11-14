@@ -10,7 +10,6 @@ the archive. Prints one JSON line per algorithm and a table at the end.
 """
 import argparse
 import json
-import resource
 import subprocess
 import sys
 import time

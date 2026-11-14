@@ -374,11 +374,11 @@ def _cascade_topology(n: int, k_av: float, rng: np.random.Generator, sample_sign
         return int(rng.choice(cand, p=w / w.sum()))
 
     for t in range(1, n_tiers):
-        for k in genes[t]:
+        for kg in genes[t]:
             for _ in range(1 + int(rng.uniform() < 0.4)):
-                j = pick(genes[t - 1], int(k))
+                j = pick(genes[t - 1], int(kg))
                 if j >= 0:
-                    T[j, k] = sample_sign()
+                    T[j, kg] = sample_sign()
                     out_deg[j] += 1
     target = int(np.ceil(k_av * n))
     n_feedback = int(round(0.08 * target))

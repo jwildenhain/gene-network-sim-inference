@@ -219,11 +219,11 @@ In the Historical Archive (Tab 3, `#tab-history`, `#history-detail-panel`), user
   - **Responsive (Clear Level Changes)**: **54%**
   - **Flat (Damped / Insensitive)**: **33%**
   - **Persistent Oscillations (Limit Cycles)**: **13%**
-- **Reclassified Database Breakdown (`rgn_db.sqlite`, 130 total runs)**:
+- **Database Breakdown by dynamics type (`rgn_db.sqlite`, 512 runs, 2026-11-13)**:
   Following correction of the steady-state convergence criteria (distinguishing true limit cycles from asymptotic plateauing and transient zero-concentration dips):
-  - Responsive: **120 runs** (92.3%)
-  - Flat / Damped: **7 runs** (5.4%)
-  - Persistent Oscillations: **3 runs** (2.3%)
+  - Responsive: **391 runs** (76.4%)
+  - Flat / Damped: **49 runs** (9.6%)
+  - Persistent Oscillations: **72 runs** (14.1%)
 
 ---
 
@@ -365,5 +365,5 @@ Systematic parameter sweeps across 4 continuous and structural axes evaluate alg
 ### 5.2 Curated Best-15 Archive View (Tab 3: Previous Simulations)
 - **Top 15 Restriction**: Restricts archive views strictly to the top 15 highest-performing runs within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), sorted by $F_1$ re-engineering accuracy and lowest total errors.
 - **Dynamic Rank Indicators**: Shows `#1 in Set` through `#15 in Set` with dedicated rank badges and explicit $F_1$ score column.
-- **Detailed Inspector Algorithm View**: Supports inspecting re-engineering performance across **all 12 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
+- **Detailed Inspector Algorithm View**: Supports inspecting re-engineering performance across **all 24 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
 - **Curated Benchmark Corpus**: Default "All" view displays 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) out of 196 persisted runs in SQLite `rgn_db`.

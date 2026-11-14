@@ -427,3 +427,31 @@ def test_an_unknown_run_id_is_reported_as_unknown_not_as_a_restart_problem(app_u
     code, body = _call(f"{app_url}/api/jobs", "POST", {"run_id": "iorn-does-not-exist", "algorithms": ["s2g"]})
     assert code == 400
     assert "unknown network" in body["error"] and "restart" not in body["error"]
+
+
+def test_start_up_examples_are_completed_with_the_remaining_algorithms_by_queued_jobs(tmp_path, monkeypatch):
+    """The seeded example runs are analysed with a fast subset; the real server queues the other registered algorithms for them."""
+    from grn_sim.web import server
+    monkeypatch.setenv("RGN_DB_PATH", str(tmp_path / "seed.sqlite"))
+    submitted, runs = [], iter(["seed-a", "seed-b", "seed-c", "seed-d", "seed-e", "seed-f", "seed-g"])
+    monkeypatch.setattr(server, "load_all_history_from_db", lambda *a, **k: [])
+    monkeypatch.setattr(server, "init_db", lambda *a, **k: None)
+    monkeypatch.setattr(server, "_execute_simulation", lambda p: server.CURRENT_STATE.update(run_id=next(runs)))
+    monkeypatch.setattr(server, "_execute_inference", lambda algs: submitted.append(("inf", list(algs))))
+    monkeypatch.setattr(server, "_load_archived_run", lambda rid: None)
+    jobs_seen = []
+    monkeypatch.setattr(server.JOB_MANAGER, "submit", lambda spec: jobs_seen.append(spec) or [])
+    saved = dict(server.CURRENT_STATE)
+    try:
+        server._bootstrap_initial_simulation(complete_with_jobs=False)
+        assert jobs_seen == []                                                  # lazy bootstrap (tests, /api/state): no jobs
+        runs = iter(["seed-a", "seed-b", "seed-c", "seed-d", "seed-e", "seed-f", "seed-g"])
+        server._bootstrap_initial_simulation(complete_with_jobs=True)
+    finally:
+        server.CURRENT_STATE.clear()
+        server.CURRENT_STATE.update(saved)
+    assert all(alg == server.SEED_ALGORITHMS for _, alg in submitted)
+    assert len(jobs_seen) == 7 and [j["run_id"] for j in jobs_seen] == [f"seed-{c}" for c in "abcdefg"]
+    expected = [a for a in server.known_algorithms() if a not in server.SEED_ALGORITHMS]
+    assert all(j["algorithms"] == expected for j in jobs_seen) and expected
+    assert set(expected) | set(server.SEED_ALGORITHMS) == set(server.known_algorithms())

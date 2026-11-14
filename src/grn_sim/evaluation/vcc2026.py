@@ -719,13 +719,13 @@ def replicate_anchor(real: Prepared, base_seed: int = BASE_SEED, n_splits: int =
         vals = dict(scored["aggregate"])
         vals["nmae"] = _mean(nmae_replicate(real, prep_a, prep_b))
         rows.append(vals)
-    rep = {m: _mean({i: r[m] for i, r in enumerate(rows)}) for m in METRICS}
+    rep = {m: _mean({str(i): r[m] for i, r in enumerate(rows)}) for m in METRICS}
     return {"replicate": rep, "splits": rows, "seeds": seeds}
 
 
 # -- scaling and the competition score -----------------------------------------------------------------------------------
 
-def scale_member(metric: str, u: float, b: float, r: float) -> Tuple[Optional[float], str]:
+def scale_member(metric: str, u: Optional[float], b: Optional[float], r: Optional[float]) -> Tuple[Optional[float], str]:
     """``(u - b) / (r - b)`` with the member's clamps; a missing ``u`` takes the score of the member's structural worst
     value (its floor). ``(None, reason)`` when the anchors leave no scale."""
     if b is None or r is None or not (np.isfinite(b) and np.isfinite(r)):

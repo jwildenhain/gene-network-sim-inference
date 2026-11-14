@@ -241,14 +241,14 @@ def estimate_ace(
 
     # null: pseudo-perturbations drawn from the controls, against the remaining controls
     typical = int(np.clip(np.median(cnt), 5, max(5, n0 // 3)))
-    zs = []
+    zs_list: List[np.ndarray] = []
     for _ in range(n_null_groups):
         pick = rng.choice(n0, size=typical, replace=False)
         rest = np.ones(n0, dtype=bool)
         rest[pick] = False
         a, b = Yc[pick].astype(np.float64), Yc[rest].astype(np.float64)
-        zs.append((a.mean(0) - b.mean(0)) / np.sqrt(a.var(0, ddof=1) / len(a) + b.var(0, ddof=1) / len(b) + 1e-12))
-    zs = np.asarray(zs)
+        zs_list.append((a.mean(0) - b.mean(0)) / np.sqrt(a.var(0, ddof=1) / len(a) + b.var(0, ddof=1) / len(b) + 1e-12))
+    zs = np.asarray(zs_list)
     null_scale = np.maximum(1.4826 * np.median(np.abs(zs - np.median(zs, axis=0)), axis=0), 0.5)
     null_scale = np.minimum(np.maximum(null_scale, 0.5), 3.0)
     z = (lfc / se) / null_scale[None, :]
@@ -259,10 +259,10 @@ def estimate_ace(
         order_cells = np.argsort(grp, kind="stable")
         Yp_sorted = Y[cells_p][order_cells]
         pval = np.ones((p, n))
-        for a in range(p):
-            block = Yp_sorted[starts[a]:starts[a + 1]]
+        for ai in range(p):
+            block = Yp_sorted[starts[ai]:starts[ai + 1]]
             for j in range(n):
-                pval[a, j] = ks_2samp(block[:, j], Yc[:, j]).pvalue
+                pval[ai, j] = ks_2samp(block[:, j], Yc[:, j]).pvalue
         z = np.sign(lfc) * norm.isf(np.clip(pval, 1e-300, 1.0) / 2.0)
     mask = np.ones_like(pval, dtype=bool)
     mask[np.arange(p), nodes] = False

@@ -94,7 +94,7 @@ def render_table(snap: Dict[str, Any]) -> str:
     L.append("")
     L.append("Cells are F1 / AUPR. Controls (`by_chance`, `gene_features`) are not listed. Ranked by AUPR at 2000 genes. Seconds are as stored: "
              "different hosts, core counts and image versions, so compare orders of magnitude only. "
-             f"Networks: " + ", ".join(f"{s} genes `{snap['runs'][s]}`" for s in sizes)
+             "Networks: " + ", ".join(f"{s} genes `{snap['runs'][s]}`" for s in sizes)
              + ("; " + ", ".join(f"the {s}-gene run `{r}` was removed from the archive on 2026-11-13 (work limited to 1000 genes), its numbers are kept from the snapshot"
                                   for s, r in sorted(snap.get("removed_runs", {}).items())) if snap.get("removed_runs") else "")
              + f"; the small-network column is the mean over {snap['small_runs_with_results']} archived runs "

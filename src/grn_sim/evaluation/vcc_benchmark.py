@@ -321,8 +321,8 @@ def run_simulation(setting: Setting, seed: int, algorithms: Optional[Sequence[Al
                n_genes_scored=panel.n_genes)
     by_key = {r["key"]: r for r in vcc["rows"]}
     for row in rows:
-        r = by_key.get(row["algorithm"])
-        ok = bool(r and r["available"])
+        r: Dict[str, Any] = by_key.get(row["algorithm"]) or {}
+        ok = bool(r.get("available"))
         row["vcc_overall"] = r["overall"] if ok else None
         row["vcc_n_scaled"] = r.get("n_scaled") if ok else None
         for m in vcc["metrics"]:

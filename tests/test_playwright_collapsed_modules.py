@@ -1,5 +1,4 @@
 """The collapsed (module) view of a large network: per-module accuracy tallies, the accuracy ring and the module matrix."""
-import json
 import random
 
 import pytest

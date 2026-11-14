@@ -46,7 +46,7 @@ def matched(rows: Sequence[Dict[str, Any]], factor: str, levels: Sequence[Any], 
     """Mean AUPR per level and the paired difference of each level against the first, per algorithm."""
     idx = _index(rows)
     want = {k: v for k, v in base.items() if k != factor}
-    by_level: Dict[Any, Dict[Tuple[str, int], Dict[str, float]]] = {lv: {} for lv in levels}
+    by_level: Dict[Any, Dict[Tuple[Any, ...], Dict[str, float]]] = {lv: {} for lv in levels}
     for (s, seed), algs in idx.items():
         d = s.to_dict()
         if any(str(d[k]) != str(v) for k, v in want.items()):

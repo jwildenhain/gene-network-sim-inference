@@ -1,9 +1,7 @@
 """scripts/rescore_archive_orientation.py --only: re-orients one algorithm in additive runs, once, and leaves the rest."""
 import importlib.util
 import json
-import shutil
 import sqlite3
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -75,7 +73,9 @@ def small_archive(tmp_path):
         inf_p["pred_matrices"]["dmdgrn"] = _enc(_dec(inf_p["pred_matrices"]["dmdgrn"]).T.copy())
         inf_p["orientation_fixes"] = [a for a in inf_p["orientation_fixes"] if a != "dmdgrn"]
         out.execute("UPDATE nw SET inferred_payload_json = ? WHERE simid = ?", (json.dumps(inf_p), simid))
-    out.commit(); out.close(); src.close()
+    out.commit()
+    out.close()
+    src.close()
     return dest, [simid for simid, _ in pick]
 
 

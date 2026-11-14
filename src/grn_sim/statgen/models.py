@@ -144,8 +144,8 @@ class NonlinearSCM(StatModel):
 
     def __init__(self, adjacency: np.ndarray, params: ModelParams, mode: str, rng: np.random.Generator):
         super().__init__(adjacency, params, mode, rng)
-        self.beta = rng.uniform(0.5, 3.0, size=self.n)             # steepness of each regulator's link
-        self.theta = rng.normal(0.0, 0.5, size=self.n)             # where the link saturates
+        self.beta: np.ndarray = np.asarray(rng.uniform(0.5, 3.0, size=self.n))             # steepness of each regulator's link
+        self.theta: np.ndarray = np.asarray(rng.normal(0.0, 0.5, size=self.n))             # where the link saturates
 
     def _g(self, z: np.ndarray) -> np.ndarray:
         b, t = self.beta[None, :], self.theta[None, :]

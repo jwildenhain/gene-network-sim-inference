@@ -147,10 +147,10 @@ def _refit(support: np.ndarray, X: np.ndarray, nodes: Sequence[int], ridge: floa
     over the conditions that do not perturb k itself (there the equation has an exogenous term)."""
     n, p = X.shape
     W = np.zeros((n, n))
-    nodes = np.asarray(nodes)
+    nodes_arr = np.asarray(nodes)
     for k in range(n):
         parents = np.flatnonzero(support[:, k])
-        cols = np.flatnonzero(nodes != k)
+        cols = np.flatnonzero(nodes_arr != k)
         if parents.size == 0 or cols.size == 0:
             continue
         D = X[parents][:, cols].T

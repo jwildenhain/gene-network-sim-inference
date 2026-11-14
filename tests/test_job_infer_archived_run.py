@@ -21,8 +21,10 @@ def archived_run(tmp_path, monkeypatch):
     server._execute_inference(["s2g"])
     server.SIMULATION_RUN_STORE.clear()  # what a server restart does
     yield run_id, str(tmp_path / "t.sqlite")
-    server.CURRENT_STATE.clear(); server.CURRENT_STATE.update(saved_state)
-    server.SIMULATION_RUN_STORE.clear(); server.SIMULATION_RUN_STORE.update(saved_store)
+    server.CURRENT_STATE.clear()
+    server.CURRENT_STATE.update(saved_state)
+    server.SIMULATION_RUN_STORE.clear()
+    server.SIMULATION_RUN_STORE.update(saved_store)
 
 
 def test_job_can_infer_knows_archived_runs(archived_run):
@@ -61,8 +63,10 @@ def test_adopting_runs_one_after_another_respects_the_memory_budget(tmp_path, mo
             server._job_infer(rid, ["by_chance"], _Ctx())
         assert list(server.SIMULATION_RUN_STORE) == [ids[-1]]
     finally:
-        server.CURRENT_STATE.clear(); server.CURRENT_STATE.update(saved_state)
-        server.SIMULATION_RUN_STORE.clear(); server.SIMULATION_RUN_STORE.update(saved_store)
+        server.CURRENT_STATE.clear()
+        server.CURRENT_STATE.update(saved_state)
+        server.SIMULATION_RUN_STORE.clear()
+        server.SIMULATION_RUN_STORE.update(saved_store)
 
 
 def test_job_on_a_run_that_is_in_memory_without_its_data(archived_run):

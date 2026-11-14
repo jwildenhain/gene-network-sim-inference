@@ -50,11 +50,13 @@ def consensus(scores: Dict[str, np.ndarray], weights: Optional[Dict[str, float]]
 
 
 def agreement(scores: Dict[str, np.ndarray], top_fraction: float = 0.02, rows: Optional[np.ndarray] = None) -> np.ndarray:
-    out = None
+    out: Optional[np.ndarray] = None
     for S in scores.values():
         R = rank_normalise(S, rows)
         m = _mask(R, rows)
         thr = np.quantile(R[m], 1.0 - top_fraction)
         hit = (R >= thr) & m
         out = hit.astype(int) if out is None else out + hit
+    if out is None:
+        raise ValueError("agreement needs at least one score matrix")
     return out
