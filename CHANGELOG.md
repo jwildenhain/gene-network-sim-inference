@@ -4,6 +4,13 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## [1.0.2] - 2026-11-15
+
+- **GitHub CI is green again** (it had been red since 1.0.0; the local suite passed because torch is installed locally):
+  CellBox tests that need the torch fit (progress per epoch, admission ratio, size-scaled penalty) are skipped when torch is not
+  installed, as CI's `.[dev]` install has no torch; the workflow runs on `ubuntu-24.04` because `ubuntu-latest` moved to 26.04,
+  which has no Python 3.9; a NumPy-stub typing error in `core/topology.py` seen by mypy on Python 3.12 is fixed (`np.max`).
+
 ## [1.0.1] - 2026-11-14
 
 - **Inference jobs on archived runs overwrote the run's dynamics type.** Loading an archived run did not copy its own `response_type`
