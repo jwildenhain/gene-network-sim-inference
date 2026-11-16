@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 ARG RUN_TESTS=1
 COPY scripts/ ./scripts/
 COPY tests/ ./tests/
+COPY docs/results/ ./docs/results/
 RUN if [ "$RUN_TESTS" = "1" ]; then pytest -v -p no:cacheprovider --ignore-glob="*playwright*"; else echo "tests skipped in the build (RUN_TESTS=$RUN_TESTS)"; fi
 
 # Everything the studio writes (simulation archive, exports, downloads) lives in /app/data: mount a volume there
