@@ -4,6 +4,14 @@ All notable changes. The format follows [Keep a Changelog](https://keepachangelo
 versioning once it leaves 0.x.
 
 
+## [Unreleased]
+
+- **Archive re-scored with the current code.** The 500 archived runs created before the rounding fix (all algorithms, 500-1000
+  genes included) were re-run through the job queue; 0 failures. In a 6-run trial 50 of 144 scores changed, some by 0.4-0.6 F1
+  (e.g. CausalGRN 0.00 -> 0.63), so the stored scores had not been reproducible. `docs/results/archive_leaderboard.*`,
+  `docs/results/scale_benchmark.json` and the table in `docs/SCALE_BENCHMARK.md` are regenerated; the Tab 5 statistics
+  (`overall_stats` table) are rebuilt (top: SFINN 0.571). The two duplicate runs iorn-694875 / iorn-718730 were removed.
+
 ## [1.0.2] - 2026-11-15
 
 - **GitHub CI is green again** (it had been red since 1.0.0; the local suite passed because torch is installed locally):
