@@ -450,7 +450,7 @@ def _feedforward_topology(n: int, k_av: float, ratio: float, rng: np.random.Gene
     while int(np.count_nonzero(T)) < target and guard < 100 * target:
         guard += 1
         a, b = int(rng.integers(0, n)), int(rng.integers(0, n))
-        if rank[a] < rank[b] and rng.uniform() < out_deg[a] / out_deg.max():
+        if rank[a] < rank[b] and rng.uniform() < out_deg[a] / np.max(out_deg):
             if _add_edge(T, a, b, sample_sign()):
                 out_deg[a] += 1
     return T

@@ -72,6 +72,8 @@ def small_hill():
 
 @pytest.mark.parametrize("key", LONG_RUNNING)
 def test_long_running_algorithms_report_progress(key, small_hill, monkeypatch):
+    if key == "cellbox":
+        pytest.importorskip("torch")        # CellBox reports per epoch of its torch fit; without torch it takes the closed-form path
     from grn_sim.inference import registry
     monkeypatch.setenv("GRN_SIM_NO_RESULT_CACHE", "1")
     X, U = small_hill
