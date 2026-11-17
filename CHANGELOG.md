@@ -6,6 +6,16 @@ versioning once it leaves 0.x.
 
 ## [Unreleased]
 
+- **NOTEARS penalty is relative to the data.** A fixed `lambda1` could not suit every data type: 0.02 shrank mechanistic networks
+  to a few edges, 0.0005 made `Tr(exp(W o W))` overflow on the statistical screens at 200 genes (weights NaN, empty graph, chance
+  score; the stored Tab 4 benchmark still showed about 0.098 from before that change). The default (`lambda1=None`) is now 0.1 x the
+  data's own lambda_max, refitted at 0.2 / 0.4 / 0.8 when a fit overflows or comes out dense (more than 5 x N non-zero weights);
+  a number passed as `lambda1` is still used as given. The progress bar spans the whole path. On 11 archived mechanistic runs mean
+  AUPR 0.30 -> 0.34, F1 0.30 -> 0.36 (clearest from 100 genes up; two of six runs of 30 genes or fewer got worse).
+  New `tests/test_notears_penalty.py`.
+- **Tab 4 screen benchmark regenerated with the current code** (1000 simulations x 22 algorithms, 22,000 rows). Only NOTEARS
+  changed: mean AUPR 0.191 -> 0.241 (rank 16 -> 10; `nonlinear_scm` 0.127 -> 0.227); every other algorithm reproduces its
+  stored mean to three decimals. `docs/results/vcc_screen_benchmark.md` and `vcc_screen_findings.md` re-rendered.
 - **Archive re-scored with the current code.** The 500 archived runs created before the rounding fix (all algorithms, 500-1000
   genes included) were re-run through the job queue; 0 failures. In a 6-run trial 50 of 144 scores changed, some by 0.4-0.6 F1
   (e.g. CausalGRN 0.00 -> 0.63), so the stored scores had not been reproducible. `docs/results/archive_leaderboard.*`,

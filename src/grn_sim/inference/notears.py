@@ -23,20 +23,32 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
         s.t.   h(W) = Tr(exp(W o W)) - d = 0
 
     Solves the continuous constrained formulation using an Augmented Lagrangian method.
+
+    The L1 penalty is relative to the data: ``lambda1=None`` (the default) uses ``lambda_fractions[0]`` times the smallest
+    penalty that keeps every weight at zero (the lasso's lambda_max, read off the gradient at W = 0), so it scales with
+    whatever units and size the data have. A fixed value cannot do that: 0.02 shrank whole networks to a few edges on the
+    mechanistic data, and 0.0005 let the solver overflow (``Tr(exp(W o W))`` becomes inf, the weights NaN) on the
+    statistical screens, which returned an empty graph that scored as chance. A fit that overflows, or that comes out
+    dense (more than ``max_density`` x N non-zero weights, the sign of a penalty below the sparsity transition), is
+    refitted with the next, larger fraction. Pass a number as ``lambda1`` to fix the penalty (no refits).
     """
 
     def __init__(
         self,
-        lambda1: float = 0.0005,
+        lambda1: Optional[float] = None,
         max_iter: int = 25,
         h_tol: float = 1e-4,
         rho_max: float = 1000.0,
         w_threshold: float = 0.05,
         k_interactions: Optional[int] = None,
         use_data_prep: bool = True,
+        lambda_fractions: tuple = (0.1, 0.2, 0.4, 0.8),
+        max_density: float = 5.0,
     ):
         super().__init__(name="notears")
         self.lambda1 = lambda1
+        self.lambda_fractions = tuple(lambda_fractions)
+        self.max_density = float(max_density)
         self.max_iter = max_iter
         self.h_tol = h_tol
         self.rho_max = rho_max
@@ -77,6 +89,7 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
             B = (1.0 / max(1, M)) * (Delta_X + U_mat) @ Delta_X.T
             norm_C = float(np.linalg.norm(C, 2)) + 1e-4
             eff_rho_max = min(self.rho_max, 1000.0)
+            lambda_max = float(np.max(np.abs(B - np.diag(np.diag(B))))) if N > 1 else 0.0
 
             def _grad(W, rho, alpha):
                 # Interventional equilibrium gradient: nabla_W F(W) = W @ C - B
@@ -93,6 +106,7 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
             C = (1.0 / max(1, M)) * (X_centered @ X_centered.T)
             norm_C = float(np.linalg.norm(C, 2)) + 1e-4
             eff_rho_max = self.rho_max
+            lambda_max = float(np.max(np.abs(C - np.diag(np.diag(C))))) if N > 1 else 0.0
 
             def _grad(W, rho, alpha):
                 grad_F = C @ W - C
@@ -109,35 +123,62 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
             E = expm(M_sq)
             return float(np.trace(E) - N)
 
-        # Augmented Lagrangian initialization
-        W = np.zeros((N, N), dtype=float)
-        rho = 1.0
-        alpha = 0.0
         step_size = 0.05 / norm_C
 
-        h_prev = np.inf
-        for outer in range(self.max_iter):
-            report_progress(outer / self.max_iter)      # upper bound: it stops early once h(W) is small
-            # Gradient descent inner loop
-            for _ in range(15):
-                grad_W, h_val = _grad(W, rho, alpha)
-                np.fill_diagonal(grad_W, 0.0)
+        def _solve(lam: float, base: float, span: float):
+            """One augmented-Lagrangian fit at penalty ``lam`` (progress base..base+span); (W, converged-finite)."""
+            W = np.zeros((N, N), dtype=float)
+            rho = 1.0
+            alpha = 0.0
+            h_prev = np.inf
+            for outer in range(self.max_iter):
+                report_progress(base + span * outer / self.max_iter)      # upper bound: it stops early once h(W) is small
+                # Gradient descent inner loop
+                for _ in range(15):
+                    grad_W, h_val = _grad(W, rho, alpha)
+                    np.fill_diagonal(grad_W, 0.0)
 
-                # Proximal gradient step for L1 regularization
-                W_step = W - step_size * grad_W
-                lam_step = self.lambda1 * step_size
-                W = np.sign(W_step) * np.maximum(0.0, np.abs(W_step) - lam_step)
-                W = np.clip(W, -3.0, 3.0)
-                np.fill_diagonal(W, 0.0)
+                    # Proximal gradient step for L1 regularization
+                    W_step = W - step_size * grad_W
+                    lam_step = lam * step_size
+                    W = np.sign(W_step) * np.maximum(0.0, np.abs(W_step) - lam_step)
+                    W = np.clip(W, -3.0, 3.0)
+                    np.fill_diagonal(W, 0.0)
 
-            # Check constraint violation
-            h_val = _h(W)
-            if abs(h_val) <= self.h_tol or rho >= eff_rho_max:
+                # Check constraint violation
+                h_val = _h(W)
+                if not np.isfinite(h_val) or not np.all(np.isfinite(W)):
+                    return W, False                         # overflow: Tr(exp(W o W)) left the float range
+                if abs(h_val) <= self.h_tol or rho >= eff_rho_max:
+                    break
+                if h_val > 0.25 * h_prev:
+                    rho = min(eff_rho_max, rho * 2.0)
+                h_prev = h_val
+                alpha += rho * h_val
+            return W, True
+
+        if self.lambda1 is not None:
+            lambdas = [float(self.lambda1)]                 # a fixed penalty: one fit, taken as it is
+        else:
+            lambdas = [f * lambda_max for f in self.lambda_fractions] if lambda_max > 0 else [0.0]
+        max_edges = max(50, int(self.max_density * N))
+        tries = []
+        W = np.zeros((N, N), dtype=float)
+        lam_used = lambdas[-1]
+        for fit_no, lam in enumerate(lambdas):
+            W_try, ok = _solve(lam, fit_no / len(lambdas), 1.0 / len(lambdas))     # the path is an upper bound too
+            report_progress((fit_no + 1) / len(lambdas))
+            n_edges = int(np.count_nonzero(np.abs(W_try) > 1e-6)) if ok else -1
+            tries.append({"lambda1": float(lam), "finite": bool(ok), "nonzero": n_edges})
+            if ok and (self.lambda1 is not None or n_edges <= max_edges):
+                W, lam_used = W_try, lam
                 break
-            if h_val > 0.25 * h_prev:
-                rho = min(eff_rho_max, rho * 2.0)
-            h_prev = h_val
-            alpha += rho * h_val
+            if ok:
+                W, lam_used = W_try, lam                     # dense: keep it only if no larger penalty does better
+        else:
+            if not any(t["finite"] for t in tries):
+                W = np.zeros((N, N), dtype=float)            # every fit overflowed: an honest empty graph
+        diverged = not any(t["finite"] for t in tries)
 
         np.fill_diagonal(W, 0.0)
         A_est = W * (gene_scale[:, None] / gene_scale[None, :])  # back to the original units
@@ -167,5 +208,9 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
                 "h_violation": float(_h(W)),
                 "total_reconstructed_edges": int(np.sum(adj_pred != 0)),
                 "use_data_prep": use_prep,
+                "lambda1": float(lam_used),
+                "lambda_max": float(lambda_max),
+                "fits": tries,
+                "diverged": bool(diverged),
             },
         )

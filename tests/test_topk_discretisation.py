@@ -44,8 +44,9 @@ def test_registry_gives_these_algorithms_k_on_hill_data_and_none_otherwise():
         assert on.k_interactions == 4 and off.k_interactions is None, key
 
 
-def test_notears_default_penalty_does_not_empty_the_graph():
-    assert NOTEARSAlgorithm().lambda1 <= 0.001   # 0.02 shrank whole networks to 17-45 edges at 200-300 genes
+def test_notears_default_penalty_is_relative_to_the_data():
+    # a fixed 0.02 shrank whole networks to 17-45 edges at 200-300 genes, a fixed 0.0005 overflowed on the statistical screens
+    assert NOTEARSAlgorithm().lambda1 is None
 
 
 def test_s2g_is_capped_at_k_on_hill_data_so_it_is_comparable_with_the_others():
