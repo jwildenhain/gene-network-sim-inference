@@ -6,6 +6,8 @@ versioning once it leaves 0.x.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-17
+
 - **NOTEARS penalty is relative to the data.** A fixed `lambda1` could not suit every data type: 0.02 shrank mechanistic networks
   to a few edges, 0.0005 made `Tr(exp(W o W))` overflow on the statistical screens at 200 genes (weights NaN, empty graph, chance
   score; the stored Tab 4 benchmark still showed about 0.098 from before that change). The default (`lambda1=None`) is now 0.1 x the

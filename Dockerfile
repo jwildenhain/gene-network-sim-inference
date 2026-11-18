@@ -28,6 +28,7 @@ ARG RUN_TESTS=1
 COPY scripts/ ./scripts/
 COPY tests/ ./tests/
 COPY docs/results/ ./docs/results/
+COPY docs/SCALE_BENCHMARK.md ./docs/SCALE_BENCHMARK.md
 RUN if [ "$RUN_TESTS" = "1" ]; then pytest -v -p no:cacheprovider --ignore-glob="*playwright*"; else echo "tests skipped in the build (RUN_TESTS=$RUN_TESTS)"; fi
 
 # Everything the studio writes (simulation archive, exports, downloads) lives in /app/data: mount a volume there
