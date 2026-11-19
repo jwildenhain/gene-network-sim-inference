@@ -113,7 +113,8 @@ class InferenceAgent(BaseAgent):
 
             results = {}
             for name, algo in self.algos.items():
-                res = algo.fit(exp.X, exp.U, k=k_val)
+                extra = {"seed": msg.payload["seed"]} if name == "by_chance" and msg.payload.get("seed") is not None else {}
+                res = algo.fit(exp.X, exp.U, k=k_val, **extra)   # the null model is random: seed it so a study repeats
                 results[name] = res
 
             return AgentMessage(
@@ -191,7 +192,7 @@ class CoordinatorAgent(BaseAgent):
             sender=self.name,
             recipient=self.inf_agent.name,
             topic="RUN_INFERENCE",
-            payload={"experiment": exp, "k_interactions": k_interactions},
+            payload={"experiment": exp, "k_interactions": k_interactions, "seed": seed},
         )
         self.inf_agent.receive(inf_request)
         inf_reply = self.inf_agent.step()

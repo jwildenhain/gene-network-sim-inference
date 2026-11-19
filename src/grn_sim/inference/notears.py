@@ -24,13 +24,16 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
 
     Solves the continuous constrained formulation using an Augmented Lagrangian method.
 
-    The L1 penalty is relative to the data: ``lambda1=None`` (the default) uses ``lambda_fractions[0]`` times the smallest
-    penalty that keeps every weight at zero (the lasso's lambda_max, read off the gradient at W = 0), so it scales with
-    whatever units and size the data have. A fixed value cannot do that: 0.02 shrank whole networks to a few edges on the
-    mechanistic data, and 0.0005 let the solver overflow (``Tr(exp(W o W))`` becomes inf, the weights NaN) on the
-    statistical screens, which returned an empty graph that scored as chance. A fit that overflows, or that comes out
-    dense (more than ``max_density`` x N non-zero weights, the sign of a penalty below the sparsity transition), is
-    refitted with the next, larger fraction. Pass a number as ``lambda1`` to fix the penalty (no refits).
+    The L1 penalty is relative to the data: ``lambda1=None`` (the default) tries ``lambda_fractions`` (0.01 ... 0.8) times
+    the smallest penalty that keeps every weight at zero (the lasso's lambda_max, read off the gradient at W = 0), smallest
+    first, and keeps the first fit that is finite and neither empty nor dense (more than ``max_density`` = 12 x N non-zero
+    weights: mechanistic networks fit best at up to about 11 per gene, the non-converged fits of the statistical screens
+    have 20 to 99). A fixed value cannot suit every data type: 0.02 shrank whole networks to a few edges on the mechanistic data,
+    and 0.0005 let the solver overflow (``Tr(exp(W o W))`` becomes inf, the weights NaN) on the statistical screens, which
+    returned an empty graph that scored as chance. The smallest fraction that gives a sane fit is what each data set
+    needs: 0.01-0.02 on mechanistic networks, 0.05-0.2 on the statistical screens, where smaller fractions overflow or
+    return a dense graph that did not converge (measured on archived runs and simulated screens, 2026-11-19). Pass a
+    number as ``lambda1`` to fix the penalty (no refits).
     """
 
     def __init__(
@@ -42,8 +45,8 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
         w_threshold: float = 0.05,
         k_interactions: Optional[int] = None,
         use_data_prep: bool = True,
-        lambda_fractions: tuple = (0.1, 0.2, 0.4, 0.8),
-        max_density: float = 5.0,
+        lambda_fractions: tuple = (0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.8),
+        max_density: float = 12.0,
     ):
         super().__init__(name="notears")
         self.lambda1 = lambda1
@@ -170,7 +173,7 @@ class NOTEARSAlgorithm(BaseInferenceAlgorithm):
             report_progress((fit_no + 1) / len(lambdas))
             n_edges = int(np.count_nonzero(np.abs(W_try) > 1e-6)) if ok else -1
             tries.append({"lambda1": float(lam), "finite": bool(ok), "nonzero": n_edges})
-            if ok and (self.lambda1 is not None or n_edges <= max_edges):
+            if ok and (self.lambda1 is not None or 0 < n_edges <= max_edges):
                 W, lam_used = W_try, lam
                 break
             if ok:

@@ -349,6 +349,46 @@ def test_jobs_that_were_active_at_shutdown_come_back_as_interrupted(tmp_path):
     again.shutdown()
 
 
+def test_inference_on_an_archived_network_is_resumed_after_a_restart(tmp_path):
+    store = tmp_path / "jobs.json"
+    m, fake = _manager(store)
+    fake.gate = threading.Event()
+    (running,) = m.submit({"run_id": "run-1", "algorithms": ["s2g"]})
+    (queued,) = m.submit({"run_id": "run-1", "algorithms": ["g2s"]})
+    (gen,) = m.submit({"params": {"seed": 3}, "algorithms": ["nir"]})   # generating again would make a second network
+    _wait(m, running.id, {jobs.RUNNING})
+    saved = json.loads(store.read_text())
+    fake.gate.set()
+    m.shutdown()
+
+    store.write_text(json.dumps(saved))  # the process died while the first was running
+    again, _ = _manager(store)
+    _wait(again, running.id, jobs.FINISHED)
+    _wait(again, queued.id, jobs.FINISHED)
+    states = {j["id"]: j for j in again.list()}
+    assert states[running.id]["status"] == jobs.DONE and states[queued.id]["status"] == jobs.DONE
+    assert any("re-queued after a restart" in line for line in again.get(running.id)["log"])
+    assert states[gen.id]["status"] == jobs.FAILED and "interrupted" in states[gen.id]["error"]
+    again.shutdown()
+
+
+def test_inference_on_a_network_that_is_gone_is_not_resumed(tmp_path):
+    store = tmp_path / "jobs.json"
+    m, fake = _manager(store)
+    fake.gate = threading.Event()
+    (job,) = m.submit({"run_id": "run-1", "algorithms": ["s2g"]})
+    _wait(m, job.id, {jobs.RUNNING})
+    saved = json.loads(store.read_text())
+    fake.gate.set()
+    m.shutdown()
+    saved["jobs"][0]["run_id"] = "run-deleted"
+    store.write_text(json.dumps(saved))
+    again, _ = _manager(store)
+    (state,) = again.list()
+    assert state["status"] == jobs.FAILED and "interrupted" in state["error"]
+    again.shutdown()
+
+
 def test_only_the_last_ten_finished_jobs_are_kept_on_disk(tmp_path):
     store = tmp_path / "jobs.json"
     m, _ = _manager(store, keep_finished=10)

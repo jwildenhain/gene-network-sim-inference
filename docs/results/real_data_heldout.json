@@ -1,0 +1,1211 @@
+{
+ "info": {
+  "perturbations": 104,
+  "genes": 5045,
+  "cells_per_perturbation_median": 291.0,
+  "threshold": 0.15,
+  "seeds": 10
+ },
+ "runs": [
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.48104942959996705,
+     "deg_mse_skill": 0.2532749689446689,
+     "direction": 0.8074554615470156,
+     "top_overlap": 0.44187459477356583,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.48104942959996705,
+     "deg_mse_skill": 0.2532749689446689,
+     "direction": 0.8074554615470156,
+     "top_overlap": 0.44187459477356583,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.21511073941904288,
+     "deg_mse_skill": -0.7246971753505753,
+     "direction": 0.6422557951629239,
+     "top_overlap": 0.35698869391007665,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.21511073941904288,
+     "deg_mse_skill": -0.7246971753505753,
+     "direction": 0.6422557951629239,
+     "top_overlap": 0.35698869391007665,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.4021552741869835,
+     "deg_mse_skill": 0.054830173074123426,
+     "direction": 0.7603670177246777,
+     "top_overlap": 0.41137510317497256,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4021552741869835,
+     "deg_mse_skill": 0.054830173074123426,
+     "direction": 0.7603670177246777,
+     "top_overlap": 0.41137510317497256,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.10760272811830378,
+     "deg_mse_skill": -0.11314738374474856,
+     "direction": 0.5619175441157326,
+     "top_overlap": 0.35772530371972194,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.10760272811830378,
+     "deg_mse_skill": -0.11314738374474856,
+     "direction": 0.5619175441157326,
+     "top_overlap": 0.35772530371972194,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.48361836597847907,
+     "deg_mse_skill": 0.26189537224387865,
+     "direction": 0.8133645482103001,
+     "top_overlap": 0.43948884589830317,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.48361836597847907,
+     "deg_mse_skill": 0.26189537224387865,
+     "direction": 0.8133645482103001,
+     "top_overlap": 0.43948884589830317,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.26426783595579484,
+     "deg_mse_skill": -0.9063563778620332,
+     "direction": 0.6828778986591231,
+     "top_overlap": 0.3829600727347676,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.26426783595579484,
+     "deg_mse_skill": -0.9063563778620332,
+     "direction": 0.6828778986591231,
+     "top_overlap": 0.3829600727347676,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.4139681100523448,
+     "deg_mse_skill": 0.10410910196979649,
+     "direction": 0.7643264517407216,
+     "top_overlap": 0.406854950690375,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4139681100523448,
+     "deg_mse_skill": 0.10410910196979649,
+     "direction": 0.7643264517407216,
+     "top_overlap": 0.406854950690375,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.15534430217589554,
+     "deg_mse_skill": -0.06940594703691744,
+     "direction": 0.6110129316004863,
+     "top_overlap": 0.3481575222406852,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.15534430217589554,
+     "deg_mse_skill": -0.06940594703691744,
+     "direction": 0.6110129316004863,
+     "top_overlap": 0.3481575222406852,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.4813022082304534,
+     "deg_mse_skill": 0.25962330746824774,
+     "direction": 0.8081402976749542,
+     "top_overlap": 0.439132839934301,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4813022082304534,
+     "deg_mse_skill": 0.25962330746824774,
+     "direction": 0.8081402976749542,
+     "top_overlap": 0.439132839934301,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.23036678305050648,
+     "deg_mse_skill": -0.541567472914915,
+     "direction": 0.6625517254226113,
+     "top_overlap": 0.34842046354246886,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.23036678305050648,
+     "deg_mse_skill": -0.541567472914915,
+     "direction": 0.6625517254226113,
+     "top_overlap": 0.34842046354246886,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.39500897244021693,
+     "deg_mse_skill": 0.09405467691272752,
+     "direction": 0.7552160758213518,
+     "top_overlap": 0.4038248140541136,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.39500897244021693,
+     "deg_mse_skill": 0.09405467691272752,
+     "direction": 0.7552160758213518,
+     "top_overlap": 0.4038248140541136,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.14139611594039478,
+     "deg_mse_skill": -0.01033868152623312,
+     "direction": 0.6121777090452057,
+     "top_overlap": 0.352409763354766,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.14139611594039478,
+     "deg_mse_skill": -0.01033868152623312,
+     "direction": 0.6121777090452057,
+     "top_overlap": 0.352409763354766,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.4823672297254374,
+     "deg_mse_skill": 0.25796084492923055,
+     "direction": 0.8089763763761832,
+     "top_overlap": 0.43567210374278065,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4823672297254374,
+     "deg_mse_skill": 0.25796084492923055,
+     "direction": 0.8089763763761832,
+     "top_overlap": 0.43567210374278065,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.2532580672558403,
+     "deg_mse_skill": -0.7378346534824481,
+     "direction": 0.6716852726032804,
+     "top_overlap": 0.37015532120381367,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.2532580672558403,
+     "deg_mse_skill": -0.7378346534824481,
+     "direction": 0.6716852726032804,
+     "top_overlap": 0.37015532120381367,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.42368194809882753,
+     "deg_mse_skill": 0.10773003732855518,
+     "direction": 0.7716557407322473,
+     "top_overlap": 0.4158207374009286,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.42368194809882753,
+     "deg_mse_skill": 0.10773003732855518,
+     "direction": 0.7716557407322473,
+     "top_overlap": 0.4158207374009286,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.1262204370767722,
+     "deg_mse_skill": -0.06339917410314379,
+     "direction": 0.5796500235248582,
+     "top_overlap": 0.346554165609197,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.1262204370767722,
+     "deg_mse_skill": -0.06339917410314379,
+     "direction": 0.5796500235248582,
+     "top_overlap": 0.346554165609197,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.4827534510595149,
+     "deg_mse_skill": 0.24115455733148464,
+     "direction": 0.8107350408870659,
+     "top_overlap": 0.4362834390206938,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4827534510595149,
+     "deg_mse_skill": 0.24115455733148464,
+     "direction": 0.8107350408870659,
+     "top_overlap": 0.4362834390206938,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.24645998157153665,
+     "deg_mse_skill": -0.961337939638615,
+     "direction": 0.6651581526844889,
+     "top_overlap": 0.3733001763963099,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.24645998157153665,
+     "deg_mse_skill": -0.961337939638615,
+     "direction": 0.6651581526844889,
+     "top_overlap": 0.3733001763963099,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.41594002300113675,
+     "deg_mse_skill": 0.0385191356953568,
+     "direction": 0.7691133428033338,
+     "top_overlap": 0.4119131847085406,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.41594002300113675,
+     "deg_mse_skill": 0.0385191356953568,
+     "direction": 0.7691133428033338,
+     "top_overlap": 0.4119131847085406,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.1339199991571923,
+     "deg_mse_skill": -0.059326998859707616,
+     "direction": 0.6022276178761548,
+     "top_overlap": 0.35336315771250165,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.1339199991571923,
+     "deg_mse_skill": -0.059326998859707616,
+     "direction": 0.6022276178761548,
+     "top_overlap": 0.35336315771250165,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.4779248394810194,
+     "deg_mse_skill": 0.2431194527020961,
+     "direction": 0.8072214886649607,
+     "top_overlap": 0.4408499384099151,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4779248394810194,
+     "deg_mse_skill": 0.2431194527020961,
+     "direction": 0.8072214886649607,
+     "top_overlap": 0.4408499384099151,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.25137308535237685,
+     "deg_mse_skill": -0.32414982353693866,
+     "direction": 0.6836874816416294,
+     "top_overlap": 0.36996496519208455,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.25137308535237685,
+     "deg_mse_skill": -0.32414982353693866,
+     "direction": 0.6836874816416294,
+     "top_overlap": 0.36996496519208455,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.4087966058053343,
+     "deg_mse_skill": 0.0920692294534102,
+     "direction": 0.7739167892686533,
+     "top_overlap": 0.4201221893940551,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4087966058053343,
+     "deg_mse_skill": 0.0920692294534102,
+     "direction": 0.7739167892686533,
+     "top_overlap": 0.4201221893940551,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.09275761406928257,
+     "deg_mse_skill": -0.08817106525167392,
+     "direction": 0.5657644994004241,
+     "top_overlap": 0.3457437370755399,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.09275761406928257,
+     "deg_mse_skill": -0.08817106525167392,
+     "direction": 0.5657644994004241,
+     "top_overlap": 0.3457437370755399,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.4844160610407886,
+     "deg_mse_skill": 0.2605396873800526,
+     "direction": 0.8102578197796048,
+     "top_overlap": 0.4394354330083098,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4844160610407886,
+     "deg_mse_skill": 0.2605396873800526,
+     "direction": 0.8102578197796048,
+     "top_overlap": 0.4394354330083098,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.27049645048015003,
+     "deg_mse_skill": -0.38887391996522563,
+     "direction": 0.6714769234525495,
+     "top_overlap": 0.38404347771282576,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.27049645048015003,
+     "deg_mse_skill": -0.38887391996522563,
+     "direction": 0.6714769234525495,
+     "top_overlap": 0.38404347771282576,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.40869904455437744,
+     "deg_mse_skill": 0.11441949275002601,
+     "direction": 0.7614354374023737,
+     "top_overlap": 0.4136127222400325,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.40869904455437744,
+     "deg_mse_skill": 0.11441949275002601,
+     "direction": 0.7614354374023737,
+     "top_overlap": 0.4136127222400325,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.15079631291245318,
+     "deg_mse_skill": -0.031941452927330104,
+     "direction": 0.5975238159115338,
+     "top_overlap": 0.3591386567940907,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.15079631291245318,
+     "deg_mse_skill": -0.031941452927330104,
+     "direction": 0.5975238159115338,
+     "top_overlap": 0.3591386567940907,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.48070209591903984,
+     "deg_mse_skill": 0.2605978378700955,
+     "direction": 0.8067891804956289,
+     "top_overlap": 0.43909638866786715,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.48070209591903984,
+     "deg_mse_skill": 0.2605978378700955,
+     "direction": 0.8067891804956289,
+     "top_overlap": 0.43909638866786715,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.2518077013969331,
+     "deg_mse_skill": -0.634774039170068,
+     "direction": 0.676215923264138,
+     "top_overlap": 0.36261083797331983,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.2518077013969331,
+     "deg_mse_skill": -0.634774039170068,
+     "direction": 0.676215923264138,
+     "top_overlap": 0.36261083797331983,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.40929938785962555,
+     "deg_mse_skill": 0.14164286671642487,
+     "direction": 0.7633982881267508,
+     "top_overlap": 0.4073529114696708,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.40929938785962555,
+     "deg_mse_skill": 0.14164286671642487,
+     "direction": 0.7633982881267508,
+     "top_overlap": 0.4073529114696708,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.13884156063964156,
+     "deg_mse_skill": -0.06212978527097211,
+     "direction": 0.5993702779648274,
+     "top_overlap": 0.3501068047296246,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.13884156063964156,
+     "deg_mse_skill": -0.06212978527097211,
+     "direction": 0.5993702779648274,
+     "top_overlap": 0.3501068047296246,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.4859235832866063,
+     "deg_mse_skill": 0.26087309384959356,
+     "direction": 0.812038318440907,
+     "top_overlap": 0.4428618325892986,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4859235832866063,
+     "deg_mse_skill": 0.26087309384959356,
+     "direction": 0.812038318440907,
+     "top_overlap": 0.4428618325892986,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.22681564104754162,
+     "deg_mse_skill": -0.8122736957149559,
+     "direction": 0.6442825841954611,
+     "top_overlap": 0.3566686292734588,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.22681564104754162,
+     "deg_mse_skill": -0.8122736957149559,
+     "direction": 0.6442825841954611,
+     "top_overlap": 0.3566686292734588,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.4225191526837578,
+     "deg_mse_skill": 0.1013584468780407,
+     "direction": 0.7658974805797751,
+     "top_overlap": 0.4141047319507362,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4225191526837578,
+     "deg_mse_skill": 0.1013584468780407,
+     "direction": 0.7658974805797751,
+     "top_overlap": 0.4141047319507362,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.11768641599838439,
+     "deg_mse_skill": -0.10670412411426361,
+     "direction": 0.5821723517893662,
+     "top_overlap": 0.35544806402887785,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.11768641599838439,
+     "deg_mse_skill": -0.10670412411426361,
+     "direction": 0.5821723517893662,
+     "top_overlap": 0.35544806402887785,
+     "n": 104
+    }
+   }
+  },
+  {
+   "n_perturbations": 104,
+   "n_folds": 5,
+   "median_affected": 90.5,
+   "control": {
+    "all": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.0,
+     "deg_mse_skill": 0.0,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 104
+    }
+   },
+   "train_mean": {
+    "all": {
+     "pearson_delta": 0.48167482062440076,
+     "deg_mse_skill": 0.2569775071293606,
+     "direction": 0.8098676701265836,
+     "top_overlap": 0.4416207161359277,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.48167482062440076,
+     "deg_mse_skill": 0.2569775071293606,
+     "direction": 0.8098676701265836,
+     "top_overlap": 0.4416207161359277,
+     "n": 104
+    }
+   },
+   "random_response": {
+    "all": {
+     "pearson_delta": 0.24992973326883788,
+     "deg_mse_skill": -0.5840930167991644,
+     "direction": 0.6645143748681013,
+     "top_overlap": 0.3728369612287805,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.24992973326883788,
+     "deg_mse_skill": -0.5840930167991644,
+     "direction": 0.6645143748681013,
+     "top_overlap": 0.3728369612287805,
+     "n": 104
+    }
+   },
+   "coexpression": {
+    "all": {
+     "pearson_delta": 0.4112281137988153,
+     "deg_mse_skill": 0.1677426238092699,
+     "direction": 0.7596897982476734,
+     "top_overlap": 0.4065636778682063,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.4112281137988153,
+     "deg_mse_skill": 0.1677426238092699,
+     "direction": 0.7596897982476734,
+     "top_overlap": 0.4065636778682063,
+     "n": 104
+    }
+   },
+   "linear": {
+    "all": {
+     "pearson_delta": 0.13727929118811602,
+     "deg_mse_skill": -0.032088091449685004,
+     "direction": 0.6022065480600469,
+     "top_overlap": 0.3475677706511464,
+     "n": 104
+    },
+    "silent": {
+     "pearson_delta": NaN,
+     "deg_mse_skill": NaN,
+     "direction": NaN,
+     "top_overlap": NaN,
+     "n": 0
+    },
+    "active": {
+     "pearson_delta": 0.13727929118811602,
+     "deg_mse_skill": -0.032088091449685004,
+     "direction": 0.6022065480600469,
+     "top_overlap": 0.3475677706511464,
+     "n": 104
+    }
+   }
+  }
+ ]
+}

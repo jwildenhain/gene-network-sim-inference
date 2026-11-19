@@ -1,0 +1,3692 @@
+[
+ {
+  "generator": "linear_sem",
+  "n_genes": 100,
+  "seed": 0,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.01728202913367384,
+    "deg_mse_skill": -0.01835049668317131,
+    "direction": 0.4367521367521367,
+    "top_overlap": 0.03720238095238095,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0032208320000603786,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": -0.03026159571854781,
+    "deg_mse_skill": -0.01835049668317131,
+    "direction": 0.4367521367521367,
+    "top_overlap": 0.03720238095238095,
+    "n": 52
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.00210938158554335,
+    "deg_mse_skill": -0.060207581731916246,
+    "direction": 0.513064713064713,
+    "top_overlap": 0.05183913308913309,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0006635463740555414,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.004669007394403866,
+    "deg_mse_skill": -0.060207581731916246,
+    "direction": 0.513064713064713,
+    "top_overlap": 0.05183913308913309,
+    "n": 52
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.026661995181873337,
+    "deg_mse_skill": -0.05770308508633947,
+    "direction": 0.5281440781440782,
+    "top_overlap": 0.12875457875457874,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.00563980810656291,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.046067090943698354,
+    "deg_mse_skill": -0.05770308508633947,
+    "direction": 0.5281440781440782,
+    "top_overlap": 0.12875457875457874,
+    "n": 52
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.04689636592358541,
+    "deg_mse_skill": -0.022909672020603088,
+    "direction": 0.6063721001221002,
+    "top_overlap": 0.10033577533577533,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0016309038633042377,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.09169076880379125,
+    "deg_mse_skill": -0.022909672020603088,
+    "direction": 0.6063721001221002,
+    "top_overlap": 0.10033577533577533,
+    "n": 52
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 100,
+  "seed": 1,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.004555612074478369,
+    "deg_mse_skill": -0.01772090001389287,
+    "direction": 0.5213082056832057,
+    "top_overlap": 0.029109027546527545,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0019961884561961146,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": -0.011653395982709064,
+    "deg_mse_skill": -0.01772090001389287,
+    "direction": 0.5213082056832057,
+    "top_overlap": 0.029109027546527545,
+    "n": 48
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.004505655046414591,
+    "deg_mse_skill": -0.056165449475739475,
+    "direction": 0.49720551439301436,
+    "top_overlap": 0.027253128815628812,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.005605897366600934,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": -0.003313725866212713,
+    "deg_mse_skill": -0.056165449475739475,
+    "direction": 0.49720551439301436,
+    "top_overlap": 0.027253128815628812,
+    "n": 48
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.03964882741844585,
+    "deg_mse_skill": 0.003444270796548484,
+    "direction": 0.5608033748658748,
+    "top_overlap": 0.09069859538609538,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.006760516563551025,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.07527783084458191,
+    "deg_mse_skill": 0.003444270796548484,
+    "direction": 0.5608033748658748,
+    "top_overlap": 0.09069859538609538,
+    "n": 48
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.048192683806964884,
+    "deg_mse_skill": 0.0755536833467761,
+    "direction": 0.6734015405890407,
+    "top_overlap": 0.09116103803603803,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.006918127132499377,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.09290678687096919,
+    "deg_mse_skill": 0.0755536833467761,
+    "direction": 0.6734015405890407,
+    "top_overlap": 0.09116103803603803,
+    "n": 48
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 100,
+  "seed": 2,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 56
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.0006411817557775565,
+    "deg_mse_skill": -0.08187664990918433,
+    "direction": 0.4974103277674706,
+    "top_overlap": 0.009807900432900432,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.011350629383520366,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": -0.007773384237448939,
+    "deg_mse_skill": -0.08187664990918433,
+    "direction": 0.4974103277674706,
+    "top_overlap": 0.009807900432900432,
+    "n": 56
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.005807332574213796,
+    "deg_mse_skill": -0.5426335602400941,
+    "direction": 0.44950718923933203,
+    "top_overlap": 0.03289463512677798,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.014353041041419424,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": -0.021647626129354176,
+    "deg_mse_skill": -0.5426335602400941,
+    "direction": 0.44950718923933203,
+    "top_overlap": 0.03289463512677798,
+    "n": 56
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.024906268301675055,
+    "deg_mse_skill": -0.04292883134900645,
+    "direction": 0.5480403525046382,
+    "top_overlap": 0.04851963512677798,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.013095639872487503,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": 0.034186047781750994,
+    "deg_mse_skill": -0.04292883134900645,
+    "direction": 0.5480403525046382,
+    "top_overlap": 0.04851963512677798,
+    "n": 56
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.015008908115850657,
+    "deg_mse_skill": -0.02451332935977727,
+    "direction": 0.47839749536178106,
+    "top_overlap": 0.034977968460111315,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0040436408894037774,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": 0.029978768048550573,
+    "deg_mse_skill": -0.02451332935977727,
+    "direction": 0.47839749536178106,
+    "top_overlap": 0.034977968460111315,
+    "n": 56
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 100,
+  "seed": 3,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 55
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.009101487765493337,
+    "deg_mse_skill": -0.013645116828562407,
+    "direction": 0.44290043290043285,
+    "top_overlap": 0.04865800865800866,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.010738836201050685,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.007761839045491869,
+    "deg_mse_skill": -0.013645116828562407,
+    "direction": 0.44290043290043285,
+    "top_overlap": 0.04865800865800866,
+    "n": 55
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0017586418776059615,
+    "deg_mse_skill": -0.03507272290644505,
+    "direction": 0.4804978354978355,
+    "top_overlap": 0.05567099567099567,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.007501209237469584,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": -0.002939822325918818,
+    "deg_mse_skill": -0.03507272290644505,
+    "direction": 0.4804978354978355,
+    "top_overlap": 0.05567099567099567,
+    "n": 55
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.01940210193070813,
+    "deg_mse_skill": 0.028790938907132413,
+    "direction": 0.5491558441558443,
+    "top_overlap": 0.03577922077922077,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.004946166230827699,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.03122968568515576,
+    "deg_mse_skill": 0.028790938907132413,
+    "direction": 0.5491558441558443,
+    "top_overlap": 0.03577922077922077,
+    "n": 55
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.01085069539942492,
+    "deg_mse_skill": -0.013731933564109549,
+    "direction": 0.5937445887445888,
+    "top_overlap": 0.041385281385281386,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.007979961496280486,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.026257596495911157,
+    "deg_mse_skill": -0.013731933564109549,
+    "direction": 0.5937445887445888,
+    "top_overlap": 0.041385281385281386,
+    "n": 55
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 100,
+  "seed": 4,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 53
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.006526969858141683,
+    "deg_mse_skill": -0.04963343325811613,
+    "direction": 0.46392245071490346,
+    "top_overlap": 0.05763963499812556,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.018246419305832103,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.02849582439977882,
+    "deg_mse_skill": -0.04963343325811613,
+    "direction": 0.46392245071490346,
+    "top_overlap": 0.05763963499812556,
+    "n": 53
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0030449454832436468,
+    "deg_mse_skill": -0.09755531873941047,
+    "direction": 0.5226771132431509,
+    "top_overlap": 0.03995700316455033,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.011583251061728266,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.016017119777841378,
+    "deg_mse_skill": -0.09755531873941047,
+    "direction": 0.5226771132431509,
+    "top_overlap": 0.03995700316455033,
+    "n": 53
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.03720330467175755,
+    "deg_mse_skill": -0.06210157166987005,
+    "direction": 0.47810030640219314,
+    "top_overlap": 0.07710947333588843,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.00160245558994091,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.0687738689518591,
+    "deg_mse_skill": -0.06210157166987005,
+    "direction": 0.47810030640219314,
+    "top_overlap": 0.07710947333588843,
+    "n": 53
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.025892246659898924,
+    "deg_mse_skill": -0.037778324787911814,
+    "direction": 0.561197973933823,
+    "top_overlap": 0.10484237984237983,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.006698692548867577,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.054793645580880526,
+    "deg_mse_skill": -0.037778324787911814,
+    "direction": 0.561197973933823,
+    "top_overlap": 0.10484237984237983,
+    "n": 53
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 200,
+  "seed": 0,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 101
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.007511361548861098,
+    "deg_mse_skill": -0.032783290048128536,
+    "direction": 0.5515285594493516,
+    "top_overlap": 0.014387977259264387,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.003306128109907922,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.01811464349161489,
+    "deg_mse_skill": -0.032783290048128536,
+    "direction": 0.5515285594493516,
+    "top_overlap": 0.014387977259264387,
+    "n": 101
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -8.024991585782175e-05,
+    "deg_mse_skill": -0.08628821972065336,
+    "direction": 0.4889882394832889,
+    "top_overlap": 0.02168381673332168,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0028740347024759335,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.0026582123997381493,
+    "deg_mse_skill": -0.08628821972065336,
+    "direction": 0.4889882394832889,
+    "top_overlap": 0.02168381673332168,
+    "n": 101
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.018149515105539943,
+    "deg_mse_skill": -0.10356383893723077,
+    "direction": 0.5712823205397461,
+    "top_overlap": 0.06530664055416531,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0012941473310366023,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.03467111322114222,
+    "deg_mse_skill": -0.10356383893723077,
+    "direction": 0.5712823205397461,
+    "top_overlap": 0.06530664055416531,
+    "n": 101
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.022050297959486553,
+    "deg_mse_skill": -0.028190507269356256,
+    "direction": 0.5935632299493687,
+    "top_overlap": 0.06377244867343879,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.005802869032544345,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.0379759956205487,
+    "deg_mse_skill": -0.028190507269356256,
+    "direction": 0.5935632299493687,
+    "top_overlap": 0.06377244867343879,
+    "n": 101
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 200,
+  "seed": 1,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 110
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.004840065743234225,
+    "deg_mse_skill": -0.031676523731634564,
+    "direction": 0.502180698089789,
+    "top_overlap": 0.018216657080293446,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0007542532282292306,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.00941723581079523,
+    "deg_mse_skill": -0.031676523731634564,
+    "direction": 0.502180698089789,
+    "top_overlap": 0.018216657080293446,
+    "n": 110
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0035287236672630253,
+    "deg_mse_skill": -0.6444544406180687,
+    "direction": 0.49601118578391307,
+    "top_overlap": 0.03353063603063603,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.005185994846341826,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.0021727745207440067,
+    "deg_mse_skill": -0.6444544406180687,
+    "direction": 0.49601118578391307,
+    "top_overlap": 0.03353063603063603,
+    "n": 110
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.01927120089567201,
+    "deg_mse_skill": -0.010815555080490799,
+    "direction": 0.5425336784427693,
+    "top_overlap": 0.03719924015378561,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.001151793628829986,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.034096170477633664,
+    "deg_mse_skill": -0.010815555080490799,
+    "direction": 0.5425336784427693,
+    "top_overlap": 0.03719924015378561,
+    "n": 110
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.016462636676988072,
+    "deg_mse_skill": 0.02371748353293646,
+    "direction": 0.5844937133573498,
+    "top_overlap": 0.04817957295230023,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0005974161713725276,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.02944327163612806,
+    "deg_mse_skill": 0.02371748353293646,
+    "direction": 0.5844937133573498,
+    "top_overlap": 0.04817957295230023,
+    "n": 110
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 200,
+  "seed": 2,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 104
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.0015926903589797458,
+    "deg_mse_skill": -0.06023067214845093,
+    "direction": 0.4698885897505748,
+    "top_overlap": 0.026907661608033463,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.005179727421267278,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": -0.0017184207754395156,
+    "deg_mse_skill": -0.06023067214845093,
+    "direction": 0.4698885897505748,
+    "top_overlap": 0.026907661608033463,
+    "n": 104
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0015811433744293197,
+    "deg_mse_skill": -0.0804767572644993,
+    "direction": 0.47522071868825305,
+    "top_overlap": 0.015552537581284722,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0073881170336019195,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": -0.003779140003268464,
+    "deg_mse_skill": -0.0804767572644993,
+    "direction": 0.47522071868825305,
+    "top_overlap": 0.015552537581284722,
+    "n": 104
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.02271798936233167,
+    "deg_mse_skill": -0.05435618277235988,
+    "direction": 0.543881186351152,
+    "top_overlap": 0.052860448412507914,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.006318571589021299,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": 0.03785591346077201,
+    "deg_mse_skill": -0.05435618277235988,
+    "direction": 0.543881186351152,
+    "top_overlap": 0.052860448412507914,
+    "n": 104
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.03236707444139025,
+    "deg_mse_skill": 0.016426809733697294,
+    "direction": 0.5520059702089164,
+    "top_overlap": 0.07969349094206074,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0034065543513246304,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": 0.06538888563466554,
+    "deg_mse_skill": 0.016426809733697294,
+    "direction": 0.5520059702089164,
+    "top_overlap": 0.07969349094206074,
+    "n": 104
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 200,
+  "seed": 3,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 97
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.002178014355254329,
+    "deg_mse_skill": -0.03916408852594421,
+    "direction": 0.49503800895553474,
+    "top_overlap": 0.02684354591571086,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0001660568289933992,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.004667079633373049,
+    "deg_mse_skill": -0.03916408852594421,
+    "direction": 0.49503800895553474,
+    "top_overlap": 0.02684354591571086,
+    "n": 97
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0029842336275251956,
+    "deg_mse_skill": -0.1509815169527105,
+    "direction": 0.4970232516624269,
+    "top_overlap": 0.03375767989170051,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.00035133745765137525,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.005779989354298427,
+    "deg_mse_skill": -0.1509815169527105,
+    "direction": 0.4970232516624269,
+    "top_overlap": 0.03375767989170051,
+    "n": 97
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.015584450624638743,
+    "deg_mse_skill": -0.01656637335401708,
+    "direction": 0.5830837833415153,
+    "top_overlap": 0.04429902857737909,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.001943484301044556,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.03006918806103257,
+    "deg_mse_skill": -0.01656637335401708,
+    "direction": 0.5830837833415153,
+    "top_overlap": 0.04429902857737909,
+    "n": 97
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.021716441864622103,
+    "deg_mse_skill": 0.045766822022519055,
+    "direction": 0.6405583820532273,
+    "top_overlap": 0.06008129899882477,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.004791816205741598,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.049864386001193875,
+    "deg_mse_skill": 0.045766822022519055,
+    "direction": 0.6405583820532273,
+    "top_overlap": 0.06008129899882477,
+    "n": 97
+   }
+  }
+ },
+ {
+  "generator": "linear_sem",
+  "n_genes": 200,
+  "seed": 4,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 105
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.005217313558948092,
+    "deg_mse_skill": -0.08027851453423283,
+    "direction": 0.4718893067389308,
+    "top_overlap": 0.035414618798077446,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.004175739265681862,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": -0.013715789924089483,
+    "deg_mse_skill": -0.08027851453423283,
+    "direction": 0.4718893067389308,
+    "top_overlap": 0.035414618798077446,
+    "n": 105
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.0031658217400086885,
+    "deg_mse_skill": -0.15483700592125083,
+    "direction": 0.41883600248261893,
+    "top_overlap": 0.025996515319823593,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.000395314470650488,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": -0.005672471174189918,
+    "deg_mse_skill": -0.15483700592125083,
+    "direction": 0.41883600248261893,
+    "top_overlap": 0.025996515319823593,
+    "n": 105
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.004060138225340954,
+    "deg_mse_skill": -0.14102896971243936,
+    "direction": 0.5150785151912971,
+    "top_overlap": 0.032427579382466605,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.004508972091539832,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": 0.003654050441637205,
+    "deg_mse_skill": -0.14102896971243936,
+    "direction": 0.5150785151912971,
+    "top_overlap": 0.032427579382466605,
+    "n": 105
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.009333926460307286,
+    "deg_mse_skill": -0.08120484533510927,
+    "direction": 0.49597381037230664,
+    "top_overlap": 0.04418996069372009,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.002962769678778818,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": 0.01509830640549971,
+    "deg_mse_skill": -0.08120484533510927,
+    "direction": 0.49597381037230664,
+    "top_overlap": 0.04418996069372009,
+    "n": 105
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 100,
+  "seed": 0,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.0075660090404039695,
+    "deg_mse_skill": -0.01403619243951949,
+    "direction": 0.4670863858363858,
+    "top_overlap": 0.055257936507936506,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.003315678205721548,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": -0.011489391349341588,
+    "deg_mse_skill": -0.01403619243951949,
+    "direction": 0.4670863858363858,
+    "top_overlap": 0.055257936507936506,
+    "n": 52
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.006413425808914189,
+    "deg_mse_skill": -0.05720224645026921,
+    "direction": 0.5531822344322345,
+    "top_overlap": 0.048473748473748475,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 5.6066051407717365e-05,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.01228175789276631,
+    "deg_mse_skill": -0.05720224645026921,
+    "direction": 0.5531822344322345,
+    "top_overlap": 0.048473748473748475,
+    "n": 52
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.04157781572331532,
+    "deg_mse_skill": -0.030013945963856224,
+    "direction": 0.5298382173382173,
+    "top_overlap": 0.12312271062271064,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.004967304483596937,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.07537213379074767,
+    "deg_mse_skill": -0.030013945963856224,
+    "direction": 0.5298382173382173,
+    "top_overlap": 0.12312271062271064,
+    "n": 52
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.05023631060309604,
+    "deg_mse_skill": -0.010267419801187873,
+    "direction": 0.5645375457875458,
+    "top_overlap": 0.11906288156288157,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0017814462219884763,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   },
+   "active": {
+    "pearson_delta": 0.09496387772411839,
+    "deg_mse_skill": -0.010267419801187873,
+    "direction": 0.5645375457875458,
+    "top_overlap": 0.11906288156288157,
+    "n": 52
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 100,
+  "seed": 1,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.0028774858856969727,
+    "deg_mse_skill": -0.023656684517735727,
+    "direction": 0.5695550398675399,
+    "top_overlap": 0.03523629148629148,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0025293103291068905,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": -0.0032546760720028934,
+    "deg_mse_skill": -0.023656684517735727,
+    "direction": 0.5695550398675399,
+    "top_overlap": 0.03523629148629148,
+    "n": 48
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.00369202512965253,
+    "deg_mse_skill": -0.06762951208724903,
+    "direction": 0.48904631248381253,
+    "top_overlap": 0.021939865689865685,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.00489677244349144,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": -0.0023868822063270435,
+    "deg_mse_skill": -0.06762951208724903,
+    "direction": 0.48904631248381253,
+    "top_overlap": 0.021939865689865685,
+    "n": 48
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.02961527930282425,
+    "deg_mse_skill": 0.027363628113832087,
+    "direction": 0.5723355926480926,
+    "top_overlap": 0.08098516067266066,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0016276150173500567,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.06346174814967975,
+    "deg_mse_skill": 0.027363628113832087,
+    "direction": 0.5723355926480926,
+    "top_overlap": 0.08098516067266066,
+    "n": 48
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.041111637712219595,
+    "deg_mse_skill": 0.09165088107716803,
+    "direction": 0.6787250943500943,
+    "top_overlap": 0.07800220612720613,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0010372236423788204,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.08677290417970122,
+    "deg_mse_skill": 0.09165088107716803,
+    "direction": 0.6787250943500943,
+    "top_overlap": 0.07800220612720613,
+    "n": 48
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 100,
+  "seed": 2,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 56
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.0027546928130600472,
+    "deg_mse_skill": -0.0913392848087391,
+    "direction": 0.41329042980828695,
+    "top_overlap": 0.03481563079777365,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.008439930359466278,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": -0.0017122795448305654,
+    "deg_mse_skill": -0.0913392848087391,
+    "direction": 0.41329042980828695,
+    "top_overlap": 0.03481563079777365,
+    "n": 56
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.0006210352378108006,
+    "deg_mse_skill": -0.6054998120453051,
+    "direction": 0.4850301484230055,
+    "top_overlap": 0.030067254174397033,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.008394195444326987,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": -0.007704430773776204,
+    "deg_mse_skill": -0.6054998120453051,
+    "direction": 0.4850301484230055,
+    "top_overlap": 0.030067254174397033,
+    "n": 56
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.011860066394528704,
+    "deg_mse_skill": -0.11810018234787602,
+    "direction": 0.44111781076066786,
+    "top_overlap": 0.061736626468769325,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.015697207987161257,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": 0.008845169428888832,
+    "deg_mse_skill": -0.11810018234787602,
+    "direction": 0.44111781076066786,
+    "top_overlap": 0.061736626468769325,
+    "n": 56
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.013177023790579008,
+    "deg_mse_skill": 0.005934920641517226,
+    "direction": 0.5014339826839826,
+    "top_overlap": 0.07454777365491651,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.006628118747764228,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 44
+   },
+   "active": {
+    "pearson_delta": 0.028738207213562978,
+    "deg_mse_skill": 0.005934920641517226,
+    "direction": 0.5014339826839826,
+    "top_overlap": 0.07454777365491651,
+    "n": 56
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 100,
+  "seed": 3,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 55
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.016708324981104705,
+    "deg_mse_skill": -0.01591562857230074,
+    "direction": 0.4645021645021644,
+    "top_overlap": 0.0408008658008658,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.009279709158425138,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.022786283381478895,
+    "deg_mse_skill": -0.01591562857230074,
+    "direction": 0.4645021645021644,
+    "top_overlap": 0.0408008658008658,
+    "n": 55
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.01283835546579783,
+    "deg_mse_skill": -0.03198228871368465,
+    "direction": 0.455021645021645,
+    "top_overlap": 0.03549783549783549,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.009522322966785362,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.015551472964989854,
+    "deg_mse_skill": -0.03198228871368465,
+    "direction": 0.455021645021645,
+    "top_overlap": 0.03549783549783549,
+    "n": 55
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.027153420859921732,
+    "deg_mse_skill": 0.01647927064807298,
+    "direction": 0.5091558441558441,
+    "top_overlap": 0.05761904761904762,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.010017780366684484,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.04117349035438857,
+    "deg_mse_skill": 0.01647927064807298,
+    "direction": 0.5091558441558441,
+    "top_overlap": 0.05761904761904762,
+    "n": 55
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": -0.0020818232817074057,
+    "deg_mse_skill": -0.11175683274337041,
+    "direction": 0.5531601731601732,
+    "top_overlap": 0.040151515151515146,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.017092684584325453,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 45
+   },
+   "active": {
+    "pearson_delta": 0.010199790511343726,
+    "deg_mse_skill": -0.11175683274337041,
+    "direction": 0.5531601731601732,
+    "top_overlap": 0.040151515151515146,
+    "n": 55
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 100,
+  "seed": 4,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 53
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.003908439338902343,
+    "deg_mse_skill": -0.06746207515247511,
+    "direction": 0.4274576576463369,
+    "top_overlap": 0.044816923118809915,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0036023010058884846,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": -0.004179920502141048,
+    "deg_mse_skill": -0.06746207515247511,
+    "direction": 0.4274576576463369,
+    "top_overlap": 0.044816923118809915,
+    "n": 53
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.011765053768054212,
+    "deg_mse_skill": -0.12333621216384796,
+    "direction": 0.445304852380324,
+    "top_overlap": 0.04370383285477625,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.004261813039952724,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": -0.018418871017502704,
+    "deg_mse_skill": -0.12333621216384796,
+    "direction": 0.445304852380324,
+    "top_overlap": 0.04370383285477625,
+    "n": 53
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.02374248736179837,
+    "deg_mse_skill": -0.10118241009284361,
+    "direction": 0.4274502750917845,
+    "top_overlap": 0.07073780517176743,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.006966403105787203,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.03861939226807242,
+    "deg_mse_skill": -0.10118241009284361,
+    "direction": 0.4274502750917845,
+    "top_overlap": 0.07073780517176743,
+    "n": 53
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.029071587123011992,
+    "deg_mse_skill": -0.02047109585482394,
+    "direction": 0.5289084605122342,
+    "top_overlap": 0.09221287098645588,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.010566976468675882,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 47
+   },
+   "active": {
+    "pearson_delta": 0.04548133619383836,
+    "deg_mse_skill": -0.02047109585482394,
+    "direction": 0.5289084605122342,
+    "top_overlap": 0.09221287098645588,
+    "n": 53
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 200,
+  "seed": 0,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 101
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.004426210156999674,
+    "deg_mse_skill": -0.06172524373990987,
+    "direction": 0.520021480169995,
+    "top_overlap": 0.016663204782016664,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0009361608868647025,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.007847149540597322,
+    "deg_mse_skill": -0.06172524373990987,
+    "direction": 0.520021480169995,
+    "top_overlap": 0.016663204782016664,
+    "n": 101
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0018595995535899876,
+    "deg_mse_skill": -0.07448830669876161,
+    "direction": 0.4974443323453225,
+    "top_overlap": 0.017448283289867448,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.001299620475544768,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.004956260770266632,
+    "deg_mse_skill": -0.07448830669876161,
+    "direction": 0.4974443323453225,
+    "top_overlap": 0.017448283289867448,
+    "n": 101
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.020941993006113054,
+    "deg_mse_skill": -0.20683329583964732,
+    "direction": 0.577934524221653,
+    "top_overlap": 0.0647995568787648,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.005944364363671188,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.03564263890316003,
+    "deg_mse_skill": -0.20683329583964732,
+    "direction": 0.577934524221653,
+    "top_overlap": 0.0647995568787648,
+    "n": 101
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.025313110923719837,
+    "deg_mse_skill": 0.025940109026156077,
+    "direction": 0.5437915769598938,
+    "top_overlap": 0.07852378644457852,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0022669671853930294,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 99
+   },
+   "active": {
+    "pearson_delta": 0.047902895380099585,
+    "deg_mse_skill": 0.025940109026156077,
+    "direction": 0.5437915769598938,
+    "top_overlap": 0.07852378644457852,
+    "n": 101
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 200,
+  "seed": 1,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 110
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.0025066635021839694,
+    "deg_mse_skill": -0.08470563327675812,
+    "direction": 0.5256754861300316,
+    "top_overlap": 0.02603129194038285,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0009941102961609821,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.0053709329735571135,
+    "deg_mse_skill": -0.08470563327675812,
+    "direction": 0.5256754861300316,
+    "top_overlap": 0.02603129194038285,
+    "n": 110
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.002010039348429865,
+    "deg_mse_skill": -0.6880668257041325,
+    "direction": 0.4552126156671612,
+    "top_overlap": 0.04852374897829442,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0005601311441489921,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": -0.004112906115085288,
+    "deg_mse_skill": -0.6880668257041325,
+    "direction": 0.4552126156671612,
+    "top_overlap": 0.04852374897829442,
+    "n": 110
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.015596727010490523,
+    "deg_mse_skill": -0.11190825095432733,
+    "direction": 0.5591048850139758,
+    "top_overlap": 0.05691568532477623,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0002181086153780296,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.028179232970128015,
+    "deg_mse_skill": -0.11190825095432733,
+    "direction": 0.5591048850139758,
+    "top_overlap": 0.05691568532477623,
+    "n": 110
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.018232013535462156,
+    "deg_mse_skill": 0.03273178853587197,
+    "direction": 0.5884903228085046,
+    "top_overlap": 0.04925299448026721,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.00176108414082328,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 90
+   },
+   "active": {
+    "pearson_delta": 0.031708228494712144,
+    "deg_mse_skill": 0.03273178853587197,
+    "direction": 0.5884903228085046,
+    "top_overlap": 0.04925299448026721,
+    "n": 110
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 200,
+  "seed": 2,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 104
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.0018920664481991672,
+    "deg_mse_skill": -0.05365277314952341,
+    "direction": 0.49042861735581983,
+    "top_overlap": 0.024229437054808903,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.00044913613080951875,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": -0.004053176521130262,
+    "deg_mse_skill": -0.05365277314952341,
+    "direction": 0.49042861735581983,
+    "top_overlap": 0.024229437054808903,
+    "n": 104
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -4.879719114712244e-05,
+    "deg_mse_skill": -0.08728854868404821,
+    "direction": 0.4501177903745124,
+    "top_overlap": 0.018490473739329574,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.00322476699682782,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": -0.0030705487492778405,
+    "deg_mse_skill": -0.08728854868404821,
+    "direction": 0.4501177903745124,
+    "top_overlap": 0.018490473739329574,
+    "n": 104
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.02010364775027082,
+    "deg_mse_skill": -0.03967793657411667,
+    "direction": 0.5101579262334411,
+    "top_overlap": 0.05286661676106756,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.003604074523769839,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": 0.03533402303627172,
+    "deg_mse_skill": -0.03967793657411667,
+    "direction": 0.5101579262334411,
+    "top_overlap": 0.05286661676106756,
+    "n": 104
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.034065956844065444,
+    "deg_mse_skill": 0.016452777932635113,
+    "direction": 0.5948670310905724,
+    "top_overlap": 0.07110988268024881,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.004963805579432617,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 96
+   },
+   "active": {
+    "pearson_delta": 0.06092948108834189,
+    "deg_mse_skill": 0.016452777932635113,
+    "direction": 0.5948670310905724,
+    "top_overlap": 0.07110988268024881,
+    "n": 104
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 200,
+  "seed": 3,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 97
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.005635893742282654,
+    "deg_mse_skill": -0.11070707497573305,
+    "direction": 0.5117537674238706,
+    "top_overlap": 0.020817899168414634,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0022568477029839243,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": -0.009223952938651414,
+    "deg_mse_skill": -0.11070707497573305,
+    "direction": 0.5117537674238706,
+    "top_overlap": 0.020817899168414634,
+    "n": 97
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.0011820991623182524,
+    "deg_mse_skill": -0.237859593160706,
+    "direction": 0.4793885095431487,
+    "top_overlap": 0.028319275226491723,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0012044106900071822,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": -0.0011584075401331014,
+    "deg_mse_skill": -0.237859593160706,
+    "direction": 0.4793885095431487,
+    "top_overlap": 0.028319275226491723,
+    "n": 97
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.0032491566448552226,
+    "deg_mse_skill": -0.10291197137631504,
+    "direction": 0.4943782448937088,
+    "top_overlap": 0.02851303908004939,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.003388214248271006,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.010297086562298535,
+    "deg_mse_skill": -0.10291197137631504,
+    "direction": 0.4943782448937088,
+    "top_overlap": 0.02851303908004939,
+    "n": 97
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.016541287509789074,
+    "deg_mse_skill": 0.03496853307233278,
+    "direction": 0.5891101739039883,
+    "top_overlap": 0.04430051620773271,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.006281822730541023,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.04077613652787154,
+    "deg_mse_skill": 0.03496853307233278,
+    "direction": 0.5891101739039883,
+    "top_overlap": 0.04430051620773271,
+    "n": 97
+   }
+  }
+ },
+ {
+  "generator": "nb_copula",
+  "n_genes": 200,
+  "seed": 4,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 105
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.0009707056660363741,
+    "deg_mse_skill": -0.10381190374792003,
+    "direction": 0.4468236219364039,
+    "top_overlap": 0.021277689172426017,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.00325822227729358,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": -0.004796878567144427,
+    "deg_mse_skill": -0.10381190374792003,
+    "direction": 0.4468236219364039,
+    "top_overlap": 0.021277689172426017,
+    "n": 105
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.001414239662934636,
+    "deg_mse_skill": -0.16602461922941752,
+    "direction": 0.40888163493426644,
+    "top_overlap": 0.030227459813925977,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0012914093364174712,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": 0.00386220780520559,
+    "deg_mse_skill": -0.16602461922941752,
+    "direction": 0.40888163493426644,
+    "top_overlap": 0.030227459813925977,
+    "n": 105
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.009659321031589028,
+    "deg_mse_skill": -0.13214885656748343,
+    "direction": 0.5159553103538066,
+    "top_overlap": 0.0450614701366581,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0018984913834068113,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": 0.016681024046611037,
+    "deg_mse_skill": -0.13214885656748343,
+    "direction": 0.5159553103538066,
+    "top_overlap": 0.0450614701366581,
+    "n": 105
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.013698716833752731,
+    "deg_mse_skill": -0.04098829850295758,
+    "direction": 0.5043242944746704,
+    "top_overlap": 0.03784388265591273,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.003650769701268319,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 95
+   },
+   "active": {
+    "pearson_delta": 0.022789716620286244,
+    "deg_mse_skill": -0.04098829850295758,
+    "direction": 0.5043242944746704,
+    "top_overlap": 0.03784388265591273,
+    "n": 105
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 100,
+  "seed": 0,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 48
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.00627044302093416,
+    "deg_mse_skill": -0.0844930617407279,
+    "direction": 0.42087409118659114,
+    "top_overlap": 0.04446924603174603,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.006031464586042327,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": -0.019597509595158682,
+    "deg_mse_skill": -0.0844930617407279,
+    "direction": 0.42087409118659114,
+    "top_overlap": 0.04446924603174603,
+    "n": 48
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.011589840979263721,
+    "deg_mse_skill": -0.03654844190087314,
+    "direction": 0.5483098498723499,
+    "top_overlap": 0.06249046092796093,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0007873774596220395,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.02329250979220888,
+    "deg_mse_skill": -0.03654844190087314,
+    "direction": 0.5483098498723499,
+    "top_overlap": 0.06249046092796093,
+    "n": 48
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.00902803790694188,
+    "deg_mse_skill": -0.05582433128904548,
+    "direction": 0.4768823190698191,
+    "top_overlap": 0.06600604256854258,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0018799582160682266,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.016771790905388342,
+    "deg_mse_skill": -0.05582433128904548,
+    "direction": 0.4768823190698191,
+    "top_overlap": 0.06600604256854258,
+    "n": 48
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.023178340754368823,
+    "deg_mse_skill": 0.0029328095281567676,
+    "direction": 0.529730685980686,
+    "top_overlap": 0.07649329836829837,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0018916959956647695,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 52
+   },
+   "active": {
+    "pearson_delta": 0.046238872576298225,
+    "deg_mse_skill": 0.0029328095281567676,
+    "direction": 0.529730685980686,
+    "top_overlap": 0.07649329836829837,
+    "n": 48
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 100,
+  "seed": 1,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 58
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 42
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.0010308894240467937,
+    "deg_mse_skill": -0.040729947607170046,
+    "direction": 0.5042633292633293,
+    "top_overlap": 0.0575353218210361,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0034332600168117,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 58
+   },
+   "active": {
+    "pearson_delta": 0.0022866699659618854,
+    "deg_mse_skill": -0.040729947607170046,
+    "direction": 0.5042633292633293,
+    "top_overlap": 0.0575353218210361,
+    "n": 42
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.006830366450719731,
+    "deg_mse_skill": -0.09501037431112208,
+    "direction": 0.4537531251816967,
+    "top_overlap": 0.02926914355485784,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.008465304730262241,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 58
+   },
+   "active": {
+    "pearson_delta": -0.004572594540875318,
+    "deg_mse_skill": -0.09501037431112208,
+    "direction": 0.4537531251816967,
+    "top_overlap": 0.02926914355485784,
+    "n": 42
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.008653072817298418,
+    "deg_mse_skill": -0.04555346737829776,
+    "direction": 0.47177742892028607,
+    "top_overlap": 0.031064306064306064,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0011534299863021555,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 58
+   },
+   "active": {
+    "pearson_delta": 0.022195386212746828,
+    "deg_mse_skill": -0.04555346737829776,
+    "direction": 0.47177742892028607,
+    "top_overlap": 0.031064306064306064,
+    "n": 42
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.013975006319315529,
+    "deg_mse_skill": 0.010333101711142859,
+    "direction": 0.5779536600965172,
+    "top_overlap": 0.04710593639165068,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.004000826388112958,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 58
+   },
+   "active": {
+    "pearson_delta": 0.027748873843357173,
+    "deg_mse_skill": 0.010333101711142859,
+    "direction": 0.5779536600965172,
+    "top_overlap": 0.04710593639165068,
+    "n": 42
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 100,
+  "seed": 2,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 51
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.00601696694948998,
+    "deg_mse_skill": -0.018914673238042683,
+    "direction": 0.42194211017740424,
+    "top_overlap": 0.014939309056956115,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0024825268981035985,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.009412801508665133,
+    "deg_mse_skill": -0.018914673238042683,
+    "direction": 0.42194211017740424,
+    "top_overlap": 0.014939309056956115,
+    "n": 51
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.004357100516090681,
+    "deg_mse_skill": -0.07513504639121654,
+    "direction": 0.4677326486150015,
+    "top_overlap": 0.04057734204793029,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0037026193539208513,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.004985915750332286,
+    "deg_mse_skill": -0.07513504639121654,
+    "direction": 0.4677326486150015,
+    "top_overlap": 0.04057734204793029,
+    "n": 51
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.011050056761792255,
+    "deg_mse_skill": -0.03437936242996625,
+    "direction": 0.45631030189853716,
+    "top_overlap": 0.03356676003734827,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.00020468899722236866,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.02147011598657509,
+    "deg_mse_skill": -0.03437936242996625,
+    "direction": 0.45631030189853716,
+    "top_overlap": 0.03356676003734827,
+    "n": 51
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.0027939343880483596,
+    "deg_mse_skill": -0.04821025804673408,
+    "direction": 0.4309523809523809,
+    "top_overlap": 0.04846716464363523,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0010691041135670184,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.004451124259608864,
+    "deg_mse_skill": -0.04821025804673408,
+    "direction": 0.4309523809523809,
+    "top_overlap": 0.04846716464363523,
+    "n": 51
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 100,
+  "seed": 3,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 0.5,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 50
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 50
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.007380603717176246,
+    "deg_mse_skill": -0.03987835112818147,
+    "direction": 0.4433520923520923,
+    "top_overlap": 0.057867243867243866,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.007857885765651464,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 50
+   },
+   "active": {
+    "pearson_delta": 0.006903321668701026,
+    "deg_mse_skill": -0.03987835112818147,
+    "direction": 0.4433520923520923,
+    "top_overlap": 0.057867243867243866,
+    "n": 50
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0019444742286366182,
+    "deg_mse_skill": -0.10709913759961821,
+    "direction": 0.45726334776334776,
+    "top_overlap": 0.045448051948051946,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.013895126237457622,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 50
+   },
+   "active": {
+    "pearson_delta": -0.010006177780184384,
+    "deg_mse_skill": -0.10709913759961821,
+    "direction": 0.45726334776334776,
+    "top_overlap": 0.045448051948051946,
+    "n": 50
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.01214294324559051,
+    "deg_mse_skill": -0.05804774499678632,
+    "direction": 0.4692027417027416,
+    "top_overlap": 0.04684343434343434,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.011031331049224675,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 50
+   },
+   "active": {
+    "pearson_delta": 0.013254555441956344,
+    "deg_mse_skill": -0.05804774499678632,
+    "direction": 0.4692027417027416,
+    "top_overlap": 0.04684343434343434,
+    "n": 50
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.007767138487105371,
+    "deg_mse_skill": -0.00843169674537269,
+    "direction": 0.527911976911977,
+    "top_overlap": 0.05291486291486291,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.0071302209711591735,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 50
+   },
+   "active": {
+    "pearson_delta": 0.02266449794536992,
+    "deg_mse_skill": -0.00843169674537269,
+    "direction": 0.527911976911977,
+    "top_overlap": 0.05291486291486291,
+    "n": 50
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 100,
+  "seed": 4,
+  "n_perturbations": 100,
+  "n_folds": 5,
+  "median_affected": 1.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 51
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.014365996168838713,
+    "deg_mse_skill": -0.08835312120385455,
+    "direction": 0.32798184930537877,
+    "top_overlap": 0.03130075262428203,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.011871822151517563,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": -0.01676235944038256,
+    "deg_mse_skill": -0.08835312120385455,
+    "direction": 0.32798184930537877,
+    "top_overlap": 0.03130075262428203,
+    "n": 51
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.0002948247671051907,
+    "deg_mse_skill": -0.16722449647059287,
+    "direction": 0.40558703279291514,
+    "top_overlap": 0.03468614718614718,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": -0.004669576984317916,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.005064544096903857,
+    "deg_mse_skill": -0.16722449647059287,
+    "direction": 0.40558703279291514,
+    "top_overlap": 0.03468614718614718,
+    "n": 51
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.008192869843793056,
+    "deg_mse_skill": -0.08382284251198703,
+    "direction": 0.3826174914410209,
+    "top_overlap": 0.04514507823331353,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.0029135591283778782,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.013265148766446857,
+    "deg_mse_skill": -0.08382284251198703,
+    "direction": 0.3826174914410209,
+    "top_overlap": 0.04514507823331353,
+    "n": 51
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.005776155487725865,
+    "deg_mse_skill": -0.031081387313728934,
+    "direction": 0.4965986899810429,
+    "top_overlap": 0.07764267323090852,
+    "n": 100
+   },
+   "silent": {
+    "pearson_delta": 0.004527111494767299,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 49
+   },
+   "active": {
+    "pearson_delta": 0.006976217363313505,
+    "deg_mse_skill": -0.031081387313728934,
+    "direction": 0.4965986899810429,
+    "top_overlap": 0.07764267323090852,
+    "n": 51
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 200,
+  "seed": 0,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 121
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 79
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": 0.0038863932556717513,
+    "deg_mse_skill": -0.009342775349998451,
+    "direction": 0.5694092827004219,
+    "top_overlap": 0.01170886075949367,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0006763499661372067,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 121
+   },
+   "active": {
+    "pearson_delta": 0.008803041838376557,
+    "deg_mse_skill": -0.009342775349998451,
+    "direction": 0.5694092827004219,
+    "top_overlap": 0.01170886075949367,
+    "n": 79
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": 0.004155413633161138,
+    "deg_mse_skill": 0.00398146198190188,
+    "direction": 0.5416666666666666,
+    "top_overlap": 0.006329113924050633,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0028214176691262263,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 121
+   },
+   "active": {
+    "pearson_delta": 0.014841446387297483,
+    "deg_mse_skill": 0.00398146198190188,
+    "direction": 0.5416666666666666,
+    "top_overlap": 0.006329113924050633,
+    "n": 79
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.0033458247420002163,
+    "deg_mse_skill": -0.021580002735871247,
+    "direction": 0.5272151898734178,
+    "top_overlap": 0.010126582278481013,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.00024169434510091565,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 121
+   },
+   "active": {
+    "pearson_delta": 0.008100252311934585,
+    "deg_mse_skill": -0.021580002735871247,
+    "direction": 0.5272151898734178,
+    "top_overlap": 0.010126582278481013,
+    "n": 79
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.0027084237726374264,
+    "deg_mse_skill": -0.024390368439973255,
+    "direction": 0.520042194092827,
+    "top_overlap": 0.01160337552742616,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0005709137131508734,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 121
+   },
+   "active": {
+    "pearson_delta": 0.005982331585268728,
+    "deg_mse_skill": -0.024390368439973255,
+    "direction": 0.520042194092827,
+    "top_overlap": 0.01160337552742616,
+    "n": 79
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 200,
+  "seed": 1,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 115
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 85
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.001041656792280786,
+    "deg_mse_skill": -0.012863506172406409,
+    "direction": 0.4781769211180976,
+    "top_overlap": 0.017824169294757528,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.00482771185732484,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 115
+   },
+   "active": {
+    "pearson_delta": 0.004080653001602346,
+    "deg_mse_skill": -0.012863506172406409,
+    "direction": 0.4781769211180976,
+    "top_overlap": 0.017824169294757528,
+    "n": 85
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.004130890151153492,
+    "deg_mse_skill": -0.14149312748549964,
+    "direction": 0.46226319432201796,
+    "top_overlap": 0.03754901960784313,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0033781158471599525,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 115
+   },
+   "active": {
+    "pearson_delta": -0.005149349503615337,
+    "deg_mse_skill": -0.14149312748549964,
+    "direction": 0.46226319432201796,
+    "top_overlap": 0.03754901960784313,
+    "n": 85
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.0029581284310621504,
+    "deg_mse_skill": -0.01321088002508456,
+    "direction": 0.5111132984662397,
+    "top_overlap": 0.017726130079071256,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.001998132909890917,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 115
+   },
+   "active": {
+    "pearson_delta": 0.009663658480586888,
+    "deg_mse_skill": -0.01321088002508456,
+    "direction": 0.5111132984662397,
+    "top_overlap": 0.017726130079071256,
+    "n": 85
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.009213923245514755,
+    "deg_mse_skill": 0.008314588530240976,
+    "direction": 0.5351931728402317,
+    "top_overlap": 0.010796882855706385,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0054479732608109935,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 115
+   },
+   "active": {
+    "pearson_delta": 0.014309032048349263,
+    "deg_mse_skill": 0.008314588530240976,
+    "direction": 0.5351931728402317,
+    "top_overlap": 0.010796882855706385,
+    "n": 85
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 200,
+  "seed": 2,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 97
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.008982397933917273,
+    "deg_mse_skill": -0.19194432105597903,
+    "direction": 0.4427119588022181,
+    "top_overlap": 0.018440908411773496,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0006725330194906015,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": -0.017806275111091986,
+    "deg_mse_skill": -0.19194432105597903,
+    "direction": 0.4427119588022181,
+    "top_overlap": 0.018440908411773496,
+    "n": 97
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.00214034007777266,
+    "deg_mse_skill": -0.16667062518245362,
+    "direction": 0.4208104549283864,
+    "top_overlap": 0.015234754367548252,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -7.228812689143319e-05,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": -0.0043363127678836535,
+    "deg_mse_skill": -0.16667062518245362,
+    "direction": 0.4208104549283864,
+    "top_overlap": 0.015234754367548252,
+    "n": 97
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": -0.003943394929728828,
+    "deg_mse_skill": -0.21094253907549895,
+    "direction": 0.4859623084038617,
+    "top_overlap": 0.02454083625319087,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.001867435406694177,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": -0.006147764320167682,
+    "deg_mse_skill": -0.21094253907549895,
+    "direction": 0.4859623084038617,
+    "top_overlap": 0.02454083625319087,
+    "n": 97
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.011508997431930075,
+    "deg_mse_skill": 0.03678330847252656,
+    "direction": 0.5331237418364975,
+    "top_overlap": 0.03247129232821276,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.0010115899801629272,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 103
+   },
+   "active": {
+    "pearson_delta": 0.024804054168482432,
+    "deg_mse_skill": 0.03678330847252656,
+    "direction": 0.5331237418364975,
+    "top_overlap": 0.03247129232821276,
+    "n": 97
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 200,
+  "seed": 3,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 122
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 78
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.006117200370135143,
+    "deg_mse_skill": -0.07766617458457663,
+    "direction": 0.4319139194139194,
+    "top_overlap": 0.006013431013431014,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.004288818432892509,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 122
+   },
+   "active": {
+    "pearson_delta": -0.008976977246335163,
+    "deg_mse_skill": -0.07766617458457663,
+    "direction": 0.4319139194139194,
+    "top_overlap": 0.006013431013431014,
+    "n": 78
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.0026451818534805036,
+    "deg_mse_skill": -0.14006689501028763,
+    "direction": 0.4121387871387871,
+    "top_overlap": 0.016905779405779406,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.002605676097600732,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 122
+   },
+   "active": {
+    "pearson_delta": -0.0027069729075488652,
+    "deg_mse_skill": -0.14006689501028763,
+    "direction": 0.4121387871387871,
+    "top_overlap": 0.016905779405779406,
+    "n": 78
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.0005548215670325832,
+    "deg_mse_skill": -0.06013468352349031,
+    "direction": 0.4645451770451771,
+    "top_overlap": 0.011558811558811558,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.001400421075884257,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 122
+   },
+   "active": {
+    "pearson_delta": 0.003613021598261487,
+    "deg_mse_skill": -0.06013468352349031,
+    "direction": 0.4645451770451771,
+    "top_overlap": 0.011558811558811558,
+    "n": 78
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.009434827334592279,
+    "deg_mse_skill": 0.010233554731097867,
+    "direction": 0.529573667073667,
+    "top_overlap": 0.021703296703296703,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.005390180194847911,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 122
+   },
+   "active": {
+    "pearson_delta": 0.015761070296756545,
+    "deg_mse_skill": 0.010233554731097867,
+    "direction": 0.529573667073667,
+    "top_overlap": 0.021703296703296703,
+    "n": 78
+   }
+  }
+ },
+ {
+  "generator": "nonlinear_scm",
+  "n_genes": 200,
+  "seed": 4,
+  "n_perturbations": 200,
+  "n_folds": 5,
+  "median_affected": 0.0,
+  "control": {
+   "all": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 107
+   },
+   "active": {
+    "pearson_delta": 0.0,
+    "deg_mse_skill": 0.0,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 93
+   }
+  },
+  "train_mean": {
+   "all": {
+    "pearson_delta": -0.0046345076131265785,
+    "deg_mse_skill": -0.07697154011115559,
+    "direction": 0.511180398681231,
+    "top_overlap": 0.018930647277962433,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.002409912832347758,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 107
+   },
+   "active": {
+    "pearson_delta": -0.007193987629721571,
+    "deg_mse_skill": -0.07697154011115559,
+    "direction": 0.511180398681231,
+    "top_overlap": 0.018930647277962433,
+    "n": 93
+   }
+  },
+  "random_response": {
+   "all": {
+    "pearson_delta": -0.000542317661885857,
+    "deg_mse_skill": -0.08844820647074135,
+    "direction": 0.44680747704566737,
+    "top_overlap": 0.04447626946170506,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": -0.002592490266425752,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 107
+   },
+   "active": {
+    "pearson_delta": 0.0018164830766707963,
+    "deg_mse_skill": -0.08844820647074135,
+    "direction": 0.44680747704566737,
+    "top_overlap": 0.04447626946170506,
+    "n": 93
+   }
+  },
+  "coexpression": {
+   "all": {
+    "pearson_delta": 0.009171423638489391,
+    "deg_mse_skill": -0.046810607539862964,
+    "direction": 0.5342964270737331,
+    "top_overlap": 0.027876648394974574,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.002197038984854041,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 107
+   },
+   "active": {
+    "pearson_delta": 0.017195715659338667,
+    "deg_mse_skill": -0.046810607539862964,
+    "direction": 0.5342964270737331,
+    "top_overlap": 0.027876648394974574,
+    "n": 93
+   }
+  },
+  "linear": {
+   "all": {
+    "pearson_delta": 0.01154130948946516,
+    "deg_mse_skill": -0.02566951082203173,
+    "direction": 0.523142543823159,
+    "top_overlap": 0.0388423265982439,
+    "n": 200
+   },
+   "silent": {
+    "pearson_delta": 0.006227161174344695,
+    "deg_mse_skill": NaN,
+    "direction": NaN,
+    "top_overlap": NaN,
+    "n": 107
+   },
+   "active": {
+    "pearson_delta": 0.01765543712084032,
+    "deg_mse_skill": -0.02566951082203173,
+    "direction": 0.523142543823159,
+    "top_overlap": 0.0388423265982439,
+    "n": 93
+   }
+  }
+ }
+]

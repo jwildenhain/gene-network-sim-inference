@@ -15,7 +15,7 @@ Everything below is reproducible with `scripts/holdout_study.py` (commands at th
    perturbations held out).
 3. **The bottleneck is the inferred structure.** Across all 17 algorithms, the regulators they find give a Hill refit
    that is not distinguishable from a *randomly chosen* structure (`by_chance`, +0.074 ± 0.052 above the null); only
-   NOTEARS is nominally above the null (+0.106 ± 0.044, one of 17 comparisons) at 1% noise. A structure search
+   NOTEARS is nominally above the null (+0.106 ± 0.044, one of 17 comparisons) at 1% noise. (Measured with the NOTEARS penalty before 1.0.3, which is now relative to the data; not re-measured.) A structure search
    matched to the refit model class (Hill forward selection) is the only approach that beats the null clearly
    (+0.151 ± 0.072), but it recovers only about half of the true edges.
 4. **The simulator's "perturbation" was not a knockdown.** It adds +1 to the *regulator input* of the perturbed gene;

@@ -19,6 +19,7 @@ Python 3.9 or newer. [Graphviz](https://graphviz.org/) is optional (the studio h
 ruff check .                                   # lint (configuration in pyproject.toml)
 mypy                                           # types: the package is expected to stay clean
 pytest                                         # unit, simulation, inference, server and in-process browser tests
+python scripts/check_derived_docs.py      # before pushing: every page rendered from stored data is current (CI fails otherwise)
 ```
 `pytest` runs everything that needs no external service. Browser tests start their own server and skip themselves when
 Chromium is missing (`pip install -e ".[browser]" && playwright install chromium`).

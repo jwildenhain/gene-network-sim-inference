@@ -28,7 +28,7 @@ def test_statistical_screens_give_a_sparse_graph_that_beats_chance(generator):
     res = _fit(NOTEARSAlgorithm(), X, U)
     assert np.all(np.isfinite(res.A_est)) and not res.diagnostics["diverged"]
     nonzero = int((np.abs(res.A_est) > 1e-6).sum())
-    assert 0 < nonzero <= 5 * 100
+    assert 0 < nonzero <= 12 * 100
     scores = sb.evaluate_scores(run.screen, np.abs(res.A_est))
     assert scores["aupr_direct"] > 3 * scores["base_direct"], scores
 

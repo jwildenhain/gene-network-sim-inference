@@ -8,6 +8,7 @@
 | [`PERTURBSEQ.md`](PERTURBSEQ.md) | Perturb-seq screen simulation: stages, partial screens, realism targets, API |
 | [`SCALE_BENCHMARK.md`](SCALE_BENCHMARK.md) | The 500-2000 gene benchmark: same mechanistic simulation, calibrated kinetics, scores against thesis scale, edge counts given to algorithms |
 | [`results/mechanistic_vs_statistical_top5.md`](results/mechanistic_vs_statistical_top5.md) | Top 5 algorithms on mechanistic and on statistical screens (rendered from the corpus, tested) |
+| [`results/heldout_screen_findings.md`](results/heldout_screen_findings.md) | Held-out-perturbation prediction (training mean, random, co-expression, linear baselines) on the statistical generators and on Norman 2019 real data; tables in `heldout_screen_benchmark.md` and `real_data_heldout.md` (`scripts/heldout_screen_benchmark.py`, `scripts/real_data_heldout.py`) |
 | [`results/archive_leaderboard.md`](results/archive_leaderboard.md) | Every algorithm on the cleaned simulation archive, by network size (rendered from a snapshot, tested) |
 | [`results/audit_100_250.md`](results/audit_100_250.md) | Time, memory and accuracy of all 24 algorithms at 100 and 250 genes (generated from `audit_100_250.json`, tested) |
 | [`INFERENCE_GAP_ANALYSIS.md`](INFERENCE_GAP_ANALYSIS.md) | How the algorithms compare on simulated screens and real datasets; what is missing; run time |
@@ -29,7 +30,7 @@ Reproducing the numbers: `scripts/benchmark_screen_methods.py`, `scripts/benchma
   negative-binomial copula, probabilistic Boolean network) and their low / medium / high noise levels were calibrated against
   genome-scale Perturb-seq statistics and checked on unseen seeds (`statgen_noise_verification.json`).
 * `results/vcc_screen_benchmark.md`: 1000 simulated screens (100 settings x 10 seeds) from the five generators - the mechanistic
-  panel-1 engine and the four statistical models, on identical graphs - with 23 algorithms, compared with a random ranking and a
+  panel-1 engine and the four statistical models, on identical graphs - with 22 algorithms, compared with a random ranking and a
   hubness-only control (paired Wilcoxon, BH), ranked with bootstrap intervals. Pooled tables mix factors; use the tab's filters
   or matched comparisons for like-for-like statements.
 * `results/vcc_screen_findings.md`: the findings, rendered from the stored simulations (tested against them).

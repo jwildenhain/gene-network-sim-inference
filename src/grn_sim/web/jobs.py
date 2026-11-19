@@ -14,7 +14,8 @@ without running a simulation. Progress is counted in steps (one for the generati
 infer stage checks for cancellation between algorithms. The networks and inference results jobs create are archived
 like any other run. With a ``store_path`` the job list itself survives a restart too: the active jobs and the last
 ``keep_finished`` finished ones are saved after every change, and jobs that were queued or running when the server
-stopped come back as ``failed`` ("interrupted") - their networks, if they got that far, are in the archive.
+stopped come back as ``failed`` ("interrupted") - their networks, if they got that far, are in the archive. Inference jobs
+on an existing (archived) network are the exception: they are queued again and run from the start.
 """
 
 from __future__ import annotations
@@ -193,8 +194,16 @@ class JobManager:
             print(f"[jobs] ignoring unreadable job list {self._store_path}: {exc}", file=sys.stderr)
             return
         highest = 0
+        resumed: List[Job] = []
         for job in restored:
-            if job.status in ACTIVE:  # the process that was running it is gone
+            if job.status in ACTIVE and self._resumable(job):
+                # inference on a network that is in the archive: running the algorithms again overwrites what they stored, so
+                # it is safe to start the job over instead of making the user re-queue it
+                job.status, job.stage, job.current, job.started = QUEUED, None, None, None
+                job.steps_done, job.sub_fraction, job.summary = 0, 0.0, {}
+                job.log.append(f"{datetime.datetime.now():%H:%M:%S}  re-queued after a restart")
+                resumed.append(job)
+            elif job.status in ACTIVE:  # the process that was running it is gone
                 was = job.status
                 job.status, job.finished, job.stage, job.current = FAILED, time.time(), None, None
                 job.error = f"interrupted: the server restarted while this job was {was}" + (
@@ -205,6 +214,16 @@ class JobManager:
             highest = max(highest, int(digits) if digits else 0)
         self._ids = itertools.count(highest + 1)
         self._trim()
+        for job in sorted(resumed, key=lambda j: j.id):
+            self._queue.append(job.id)
+        if resumed:
+            self._save()
+            self._ensure_worker()
+
+    def _resumable(self, job: Job) -> bool:
+        """An inference job on an existing network (not a generating job: running that again would make a second network)."""
+        return (job.params is None and job.depends_on is None and job.run_id is not None and bool(job.algorithms)
+                and (self._can_infer is None or bool(self._can_infer(job.run_id))))
 
     def _save(self) -> None:
         """Writes the job list atomically. Call with the lock held. A failing disk must not break the queue."""

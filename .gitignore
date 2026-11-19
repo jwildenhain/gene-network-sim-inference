@@ -61,6 +61,8 @@ venv.bak/
 *.sqlite3
 *.db
 data/downloads/
+data/jobs.json
+data/overall_statistics_sweep.json
 *.h5ad
 *.zip
 

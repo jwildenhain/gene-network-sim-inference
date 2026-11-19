@@ -151,6 +151,10 @@ In Tab 3 (Previous Simulations Archive), Step 4 is split into **two side-by-side
 
 ### 11. Complete 18-Algorithm Benchmark, Overall Statistics & Cross-Architecture Evaluation (Tabs 3 & 5)
 
+> **Historical figures.** The numbers in this section are from the original release: 69 networks of 12-60 genes and the first 18 algorithms.
+> The registry now has 24, and the current statistics (500 archived runs, 24 algorithms) are in Tab 5 and
+> [`docs/results/archive_leaderboard.md`](docs/results/archive_leaderboard.md). NOTEARS in particular changed: its penalty is now relative to the data (1.0.4).
+
 > 📊 **Full Technical & Benchmark Specification**: See [`docs/BENCHMARK_18_ALGORITHMS_AND_ARCHITECTURES.md`](docs/BENCHMARK_18_ALGORITHMS_AND_ARCHITECTURES.md) for complete mathematical formulations, per-architecture leaderboards, and parameter sweeps across Random, Scale-Free, and Hierarchical Modular topologies.
 
 A comprehensive systematic parameter sweep benchmark extended to match **Jan Wildenhain's 2004 BHons Thesis & 2006 IEE Systems Biology paper** experimental ranges across 4 continuous and structural axes:
@@ -330,7 +334,7 @@ An exhaustive audit of the complete platform was conducted across all 5 user int
 * **SFINN (`src/grn_sim/inference/sfinn.py`)**:
   * Shared Factor Interaction Neural Network: conditions gene representations on shared perturbation factors with dual-branch GCN and feedforward interaction scorer.
 * **NOTEARS (`src/grn_sim/inference/notears.py`)**:
-  * Continuous differentiable DAG optimization (*Zheng et al., NeurIPS 2018*) using Augmented Lagrangian formulation to enforce acyclicity constraint $h(W) = \text{Tr}(e^{W \circ W}) - d = 0$. Highest single-method specificity (95.4%).
+  * Continuous differentiable DAG optimization (*Zheng et al., NeurIPS 2018*) using Augmented Lagrangian formulation to enforce acyclicity constraint $h(W) = \text{Tr}(e^{W \circ W}) - d = 0$. Highest single-method specificity (95.4%). (Figure from the original 18-algorithm sweep.) Since 1.0.3 the L1 penalty is data-relative (fractions 0.01 ... 0.8 of the data's own lambda_max, smallest first; the first fit that is finite, non-empty and not dense is kept), so a fixed value no longer has to suit both mechanistic and statistical data.
 
 #### Verified 100% Match to Thesis Table 4.1 (*E. coli* SOS Benchmark)
 Tested in [`tests/test_inference.py::test_matlab_equivalence_sos_table_4_1`](tests/test_inference.py):
@@ -578,7 +582,7 @@ Because one simulated network with 4 held-out genes is very noisy (the null alon
 | Hill forward search | +0.167 (+0.151 $\pm$ 0.072, 17/24 wins) | +0.724 | +0.160 (+0.113 $\pm$ 0.069, 16/24 wins) |
 | G2S / NIR / Vote structure + Hill | +0.054 / +0.047 / +0.041 | +0.682 / +0.680 / +0.679 | +0.039 / +0.073 / +0.035 (within 0.03 of the null) |
 
-*Takeaways*: (1) with the **true** structure the response to an unseen perturbation *is* predictable ($r \approx 0.48$ at 1% noise, $0.89$ without noise); (2) the structures **inferred by the existing algorithms are the bottleneck** — across all 17 algorithms the Hill refit is not distinguishable from one that uses a *random* structure (`by_chance`, +0.074 $\pm$ 0.052 over the null); only NOTEARS is nominally above the null (+0.106 $\pm$ 0.044, one of 17 comparisons); (3) searching regulators with the same model class that is refit (Hill forward selection) is the only approach that beats the null clearly, but it recovers only about half of the true edges; (4) the simulator's default perturbation adds $+1$ to the regulator input, so the perturbed gene's *own* transcript barely changes, unlike CRISPRi. With the new **CRISPRi knockdown** generator (`perturbation=knockdown`: the gene's production is cut by 80%) the target's own drop is ~77% of every profile, so **all-gene $r$ is inflated**: a baseline that knows only *which* gene was hit scores $r = 0.79$, higher than every algorithm. Judge knockdown results on the **off-target** column. Details, negative results and caveats: [`docs/HOLDOUT_RESEARCH.md`](docs/HOLDOUT_RESEARCH.md).
+*Takeaways*: (1) with the **true** structure the response to an unseen perturbation *is* predictable ($r \approx 0.48$ at 1% noise, $0.89$ without noise); (2) the structures **inferred by the existing algorithms are the bottleneck** — across all 17 algorithms the Hill refit is not distinguishable from one that uses a *random* structure (`by_chance`, +0.074 $\pm$ 0.052 over the null); only NOTEARS is nominally above the null (+0.106 $\pm$ 0.044, one of 17 comparisons) (measured with the pre-1.0.3 NOTEARS, not re-measured since its penalty changed); (3) searching regulators with the same model class that is refit (Hill forward selection) is the only approach that beats the null clearly, but it recovers only about half of the true edges; (4) the simulator's default perturbation adds $+1$ to the regulator input, so the perturbed gene's *own* transcript barely changes, unlike CRISPRi. With the new **CRISPRi knockdown** generator (`perturbation=knockdown`: the gene's production is cut by 80%) the target's own drop is ~77% of every profile, so **all-gene $r$ is inflated**: a baseline that knows only *which* gene was hit scores $r = 0.79$, higher than every algorithm. Judge knockdown results on the **off-target** column. Details, negative results and caveats: [`docs/HOLDOUT_RESEARCH.md`](docs/HOLDOUT_RESEARCH.md).
 
 ###### 2c. Cross-context transfer predictors (lightweight, leaderboard-inspired)
 A third response method, **Cross-context transfer**, predicts the target context from the three source atlases and calibrates on the

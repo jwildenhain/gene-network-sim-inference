@@ -6,6 +6,30 @@ versioning once it leaves 0.x.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-19
+
+- **NOTEARS penalty path starts small (0.01 x lambda_max) and takes the first sane fit** (finite, not empty, at most 12 non-zero
+  weights per gene). 1.0.3 started at 0.1, which over-shrank mechanistic networks: at 250 genes it kept 48 edges (AUPR 0.116 ->
+  0.014). Measured on archived runs and simulated screens: mechanistic networks fit best at 0.01-0.2 x lambda_max, the statistical
+  screens at 0.05-0.2 (smaller fractions overflow or return a dense graph that did not converge). The default now scores 250 genes
+  0.081, 100 genes 0.143, 500 genes 0.084 and is unchanged on the statistical screens. Tab 4 NOTEARS mean AUPR 0.241 -> 0.277 (rank
+  9 of 22); the NOTEARS column of all 516 archived runs was re-scored and the leaderboard, scale table, Tab 5 statistics and the
+  audit rows re-rendered. A fit with a larger penalty than the first can take several seconds at 200 genes (up to 7 fits).
+
+- **Held-out-perturbation benchmark on single-cell screens** (`grn_sim.evaluation.heldout_screen`, `scripts/heldout_screen_benchmark.py`,
+  `scripts/real_data_heldout.py`): training-mean, random-response, co-expression and ridge-linear predictors, scored on off-target genes
+  by Pearson-delta, DEG-weighted MSE skill, direction accuracy and top-k overlap. On the statistical generators no predictor does much
+  (correlation 0.02-0.06); on Norman 2019 the training mean reaches 0.48, which shows that the generators lack a shared response
+  (`docs/results/heldout_screen_findings.md`).
+- **Interrupted inference jobs are re-queued after a restart** when they run on an archived network (generating jobs still come back
+  as failed: re-running them would make a second network). Previously a restart failed every queued job.
+- **Fix: the multi-agent study was not reproducible**: its `by_chance` null model was not seeded, so two studies with the same seed
+  gave different metrics.
+- `scripts/check_derived_docs.py` runs every renderer in check mode, so a regenerated corpus cannot leave a derived page stale (the
+  1.0.3 NOTEARS commit failed CI on exactly that). Tests for the agent loop, the thesis sweeps and the screen-design statistics.
+- Documentation: README and docs mark the 18-algorithm figures as historical; `docs/TODO.md` brought up to date; the Docker image
+  also gets `docs/SCALE_BENCHMARK.md` (1.0.3).
+
 ## [1.0.3] - 2026-11-17
 
 - **NOTEARS penalty is relative to the data.** A fixed `lambda1` could not suit every data type: 0.02 shrank mechanistic networks
