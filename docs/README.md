@@ -12,6 +12,7 @@
 | [`results/archive_leaderboard.md`](results/archive_leaderboard.md) | Every algorithm on the cleaned simulation archive, by network size (rendered from a snapshot, tested) |
 | [`results/audit_100_250.md`](results/audit_100_250.md) | Time, memory and accuracy of all 24 algorithms at 100 and 250 genes (generated from `audit_100_250.json`, tested) |
 | [`INFERENCE_GAP_ANALYSIS.md`](INFERENCE_GAP_ANALYSIS.md) | How the algorithms compare on simulated screens and real datasets; what is missing; run time |
+| [`results/partial_screen_grid.md`](results/partial_screen_grid.md) | Partial screens by network size (100, 250) and fraction perturbed (6-75%), with and without imputing the missing perturbations |
 | [`results/`](results/) | Raw tables and JSON behind the analyses (partial screens, sweeps, ablations, scaling, imputation, datasets) |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Package map, data flow, conventions, how to extend |
 | [`CROSS_CONTEXT_TRANSFER.md`](CROSS_CONTEXT_TRANSFER.md), [`HOLDOUT_RESEARCH.md`](HOLDOUT_RESEARCH.md) | Held-out and cross-context prediction (Virtual Cell Challenge tab) |

@@ -215,6 +215,9 @@ B = edges from a perturbed gene to an unperturbed one. 500 genes, 100 cells per 
   against a random level of 0.02) but did not improve the observed blocks and hurt when the target's network differed from the sources
   (30% rewired: inspre 0.22 -> 0.09 among perturbed genes). Transfer alone (algorithm on the pooled sources) was often as good as using the
   target's data, partly because it pools three screens (`docs/results/impute_partial_screen_same_noise_sources.md`).
+- **Sizes and fractions** (100 and 250 genes; 6%, 20%, 50%, 75% perturbed; imputed mode): see
+  [`results/partial_screen_grid.md`](results/partial_screen_grid.md). It supersedes the 500-gene table above for NOTEARS (re-fitted with
+  the 1.0.4 penalty path); the table itself was not re-run.
 - **CellBox** was at the random level (AUPR 0.03-0.06) because its tanh envelope was fed log fold changes of ~0.1; rescaling the inputs by
   1/std gives 0.45-0.60 on 100-gene screens. The registry default changed accordingly (the archive was not rescored).
 - Run time at 500 genes is in section 7; bicycle-lite and DOTEARS-lite only fit the perturbed block on a partial screen (about 1 s at 100

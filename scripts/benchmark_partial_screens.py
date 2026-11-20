@@ -63,6 +63,8 @@ def run_one(key: str, mode: str, X: np.ndarray, U: np.ndarray, budget: int) -> D
     except Budget:
         return {"status": f"over {budget}s"}
     except Exception as exc:
+        if mode == "native" and "matmul" in str(exc):
+            return {"status": "n/a: needs a square (full) screen, see the adapted row"}
         return {"status": "error: " + repr(exc)[:70]}
     finally:
         signal.alarm(0)

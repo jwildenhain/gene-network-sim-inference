@@ -6,6 +6,11 @@ versioning once it leaves 0.x.
 
 ## [Unreleased]
 
+- **Partial-screen grid** (`docs/results/partial_screen_grid.md`, `scripts/render_partial_grid.py`): every algorithm at 100 and 250
+  genes with 6%, 20%, 50% and 75% of the genes perturbed (5 seeds), plus the effect of filling in the missing perturbations from
+  three source contexts (6 methods, 3 seeds, with and without 30% rewiring). 500 genes not run. Native fits that need a square
+  screen are now reported as "n/a" in `benchmark_partial_screens.py` instead of a raw matmul error.
+
 ## [1.0.4] - 2026-11-19
 
 - **NOTEARS penalty path starts small (0.01 x lambda_max) and takes the first sane fit** (finite, not empty, at most 12 non-zero
