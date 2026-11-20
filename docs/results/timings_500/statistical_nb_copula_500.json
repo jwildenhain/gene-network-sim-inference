@@ -1,0 +1,218 @@
+[
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "s2g",
+  "status": "ok",
+  "seconds": 0.82,
+  "edges": 4505,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "g2s",
+  "status": "ok",
+  "seconds": 9.43,
+  "edges": 1000,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "vote",
+  "status": "ok",
+  "seconds": 0.79,
+  "edges": 700,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "score_vote",
+  "status": "ok",
+  "seconds": 2.26,
+  "edges": 1500,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "nir",
+  "status": "ok",
+  "seconds": 37.65,
+  "edges": 1500,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "fast",
+  "status": "ok",
+  "seconds": 0.14,
+  "edges": 1500,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "by_chance",
+  "status": "ok",
+  "seconds": 0.04,
+  "edges": 1500,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "atlasshift",
+  "status": "ok",
+  "seconds": 0.01,
+  "edges": 249500,
+  "peak_mb": 1380
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "cellbox",
+  "status": "ok",
+  "seconds": 2.68,
+  "edges": 249496,
+  "peak_mb": 1897
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "genie3",
+  "status": "ok",
+  "seconds": 21.16,
+  "edges": 249500,
+  "peak_mb": 1902
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "netdeconv",
+  "status": "ok",
+  "seconds": 0.66,
+  "edges": 249500,
+  "peak_mb": 1915
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "ridge_cv",
+  "status": "ok",
+  "seconds": 1.03,
+  "edges": 249500,
+  "peak_mb": 1923
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "cpa_lite",
+  "status": "ok",
+  "seconds": 0.18,
+  "edges": 249500,
+  "peak_mb": 1925
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "arachne",
+  "status": "ok",
+  "seconds": 1.46,
+  "edges": 10258,
+  "peak_mb": 1938
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "causalgrn",
+  "status": "ok",
+  "seconds": 1.08,
+  "edges": 249500,
+  "peak_mb": 1946
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "dmdgrn",
+  "status": "ok",
+  "seconds": 0.25,
+  "edges": 249500,
+  "peak_mb": 1947
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "deeprig",
+  "status": "ok",
+  "seconds": 1.06,
+  "edges": 249500,
+  "peak_mb": 1947
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "sfinn",
+  "status": "ok",
+  "seconds": 0.11,
+  "edges": 249500,
+  "peak_mb": 1947
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "notears",
+  "status": "ok",
+  "seconds": 29.25,
+  "edges": 940,
+  "peak_mb": 1964
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "inspre",
+  "status": "ok",
+  "seconds": 6.97,
+  "edges": 3149,
+  "peak_mb": 1964
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "mean_difference",
+  "status": "ok",
+  "seconds": 0.03,
+  "edges": 249500,
+  "peak_mb": 1964
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "pearson",
+  "status": "ok",
+  "seconds": 0.02,
+  "edges": 249500,
+  "peak_mb": 1964
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "grnboost",
+  "status": "ok",
+  "seconds": 62.75,
+  "edges": 117003,
+  "peak_mb": 1964
+ },
+ {
+  "generator": "nb_copula",
+  "n": 500,
+  "alg": "gene_features",
+  "status": "ok",
+  "seconds": 0.03,
+  "edges": 249500,
+  "peak_mb": 1964
+ }
+]

@@ -88,7 +88,7 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   stream whose flush blocks in children does not hang the pool (0.1 s with the fix, 12 s without) and a worker that
   will not exit is killed. Verified on the real job: the polling loop that hung on run 3 before ran 30 + 12 repetitions of
   the 500-gene G2S job (with the guard messages at zero after a false alarm in the first version of the exit wait was fixed).
-- [ ] Time and memory of every algorithm at up to 500 genes with the fixed code (the audit script takes `--genes`), including the three statistical generators at 500 genes; a per-algorithm memory estimate that skips or warns before a run.
+- [x] Time and memory of every algorithm at 500 genes with the 1.0.4 code (2026-11-20): `docs/results/timings_500/` (modular audit and the three statistical generators; all 24 algorithms finish, slowest grnboost about 64 s, peak 2.0 GB). Tab 4 whole-run totals re-measured, limits unchanged. Still open: a per-algorithm memory estimate that skips or warns before a run.
 - [x] Incomplete archived runs: none left (512 of 512 runs have all 24 algorithms, `scripts/clean_archive.py --verify`).
 - [x] **Partial screens across sizes and fractions (2026-11-20):** 100 and 250 genes at 6/20/50/75% perturbed, with imputation of the missing perturbations from source contexts (`docs/results/partial_screen_grid.md`). 500 genes not run. Open: NOTEARS falls as more genes are perturbed (cause unknown); the imputation experiment covers six methods and synthetic sources only.
 

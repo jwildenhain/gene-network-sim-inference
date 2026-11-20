@@ -1,5 +1,5 @@
 {
- "note": "measured 2026-11-10 on the Threadripper (cores 16-31, nice 10) while a 1000-simulation corpus ran on 16 other cores: timings are on the high side",
+ "note": "measured 2026-11-10 on the Threadripper (cores 16-31, nice 10) while a 1000-simulation corpus ran on 16 other cores: timings are on the high side; whole-run totals for linear_sem, nb_copula and nonlinear_scm at 200 genes and mechanistic at 100 and 150 genes re-measured 2026-11-20 with the 1.0.4 NOTEARS penalty path (cores 16-55 split between five parallel runs, machine otherwise lightly loaded); screen timings and the other sizes are from 2026-11-10",
  "budget_seconds": {
   "whole_run": 600,
   "double_screen": 180
@@ -173,15 +173,16 @@
   {
    "generator": "linear_sem",
    "n": 200,
-   "total": 396.2,
+   "total": 367.8,
    "stages": {
-    "simulating the source and target contexts": 2.3,
-    "fitting every algorithm on the target context": 18.1,
-    "refitting every algorithm without the held-out perturbations": 180.0,
-    "refitting the Hill response models": 178.1,
-    "calibrating the cross-context transfer predictors": 5.4,
-    "simulating the double perturbations": 3.8,
-    "sweeping the context rewiring": 8.5
+    "simulating the source and target contexts": 2.1,
+    "fitting every algorithm on the target context": 22.3,
+    "refitting every algorithm without the held-out perturbations": 117.3,
+    "refitting the Hill response models": 142.2,
+    "calibrating the cross-context transfer predictors": 4.9,
+    "scoring the held-out predictions with the VCC 2026 metrics": 64.5,
+    "simulating the double perturbations": 5.0,
+    "sweeping the context rewiring": 9.5
    },
    "limits": "lifted"
   },
@@ -248,30 +249,32 @@
   {
    "generator": "mechanistic",
    "n": 100,
-   "total": 379.3,
+   "total": 280.7,
    "stages": {
-    "simulating the source and target contexts": 13.2,
-    "fitting every algorithm on the target context": 9.3,
-    "refitting every algorithm without the held-out perturbations": 161.0,
-    "refitting the Hill response models": 86.1,
-    "calibrating the cross-context transfer predictors": 2.5,
-    "simulating the double perturbations": 93.7,
-    "sweeping the context rewiring": 13.4
+    "simulating the source and target contexts": 12.3,
+    "fitting every algorithm on the target context": 8.4,
+    "refitting every algorithm without the held-out perturbations": 95.6,
+    "refitting the Hill response models": 77.1,
+    "calibrating the cross-context transfer predictors": 1.8,
+    "scoring the held-out predictions with the VCC 2026 metrics": 11.5,
+    "simulating the double perturbations": 64.5,
+    "sweeping the context rewiring": 9.6
    },
    "limits": "lifted"
   },
   {
    "generator": "mechanistic",
    "n": 150,
-   "total": 535.0,
+   "total": 455.8,
    "stages": {
-    "simulating the source and target contexts": 15.6,
-    "fitting every algorithm on the target context": 10.6,
-    "refitting every algorithm without the held-out perturbations": 184.6,
-    "refitting the Hill response models": 123.1,
-    "calibrating the cross-context transfer predictors": 3.4,
-    "simulating the double perturbations": 178.6,
-    "sweeping the context rewiring": 19.1
+    "simulating the source and target contexts": 12.9,
+    "fitting every algorithm on the target context": 13.0,
+    "refitting every algorithm without the held-out perturbations": 116.8,
+    "refitting the Hill response models": 137.4,
+    "calibrating the cross-context transfer predictors": 3.6,
+    "scoring the held-out predictions with the VCC 2026 metrics": 26.5,
+    "simulating the double perturbations": 127.5,
+    "sweeping the context rewiring": 18.1
    },
    "limits": "lifted"
   },
@@ -293,30 +296,32 @@
   {
    "generator": "nb_copula",
    "n": 200,
-   "total": 348.9,
+   "total": 354.6,
    "stages": {
-    "simulating the source and target contexts": 2.0,
-    "fitting every algorithm on the target context": 15.3,
-    "refitting every algorithm without the held-out perturbations": 140.6,
-    "refitting the Hill response models": 175.2,
-    "calibrating the cross-context transfer predictors": 4.6,
-    "simulating the double perturbations": 3.3,
-    "sweeping the context rewiring": 7.8
+    "simulating the source and target contexts": 2.1,
+    "fitting every algorithm on the target context": 22.8,
+    "refitting every algorithm without the held-out perturbations": 122.7,
+    "refitting the Hill response models": 134.1,
+    "calibrating the cross-context transfer predictors": 4.8,
+    "scoring the held-out predictions with the VCC 2026 metrics": 52.3,
+    "simulating the double perturbations": 4.3,
+    "sweeping the context rewiring": 11.5
    },
    "limits": "configured"
   },
   {
    "generator": "nonlinear_scm",
    "n": 200,
-   "total": 328.9,
+   "total": 388.4,
    "stages": {
-    "simulating the source and target contexts": 2.6,
-    "fitting every algorithm on the target context": 13.9,
-    "refitting every algorithm without the held-out perturbations": 149.7,
-    "refitting the Hill response models": 126.3,
-    "calibrating the cross-context transfer predictors": 4.4,
-    "simulating the double perturbations": 23.5,
-    "sweeping the context rewiring": 8.5
+    "simulating the source and target contexts": 2.8,
+    "fitting every algorithm on the target context": 22.4,
+    "refitting every algorithm without the held-out perturbations": 120.6,
+    "refitting the Hill response models": 144.9,
+    "calibrating the cross-context transfer predictors": 5.4,
+    "scoring the held-out predictions with the VCC 2026 metrics": 52.6,
+    "simulating the double perturbations": 29.6,
+    "sweeping the context rewiring": 10.0
    },
    "limits": "configured"
   }

@@ -1,0 +1,218 @@
+[
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "s2g",
+  "status": "ok",
+  "seconds": 1.24,
+  "edges": 4575,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "g2s",
+  "status": "ok",
+  "seconds": 14.97,
+  "edges": 1000,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "vote",
+  "status": "ok",
+  "seconds": 1.58,
+  "edges": 753,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "score_vote",
+  "status": "ok",
+  "seconds": 2.98,
+  "edges": 1499,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "nir",
+  "status": "ok",
+  "seconds": 30.1,
+  "edges": 1500,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "fast",
+  "status": "ok",
+  "seconds": 0.14,
+  "edges": 1500,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "by_chance",
+  "status": "ok",
+  "seconds": 0.04,
+  "edges": 1500,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "atlasshift",
+  "status": "ok",
+  "seconds": 0.01,
+  "edges": 249500,
+  "peak_mb": 1377
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "cellbox",
+  "status": "ok",
+  "seconds": 2.52,
+  "edges": 249496,
+  "peak_mb": 1851
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "genie3",
+  "status": "ok",
+  "seconds": 17.13,
+  "edges": 249500,
+  "peak_mb": 1856
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "netdeconv",
+  "status": "ok",
+  "seconds": 0.56,
+  "edges": 249500,
+  "peak_mb": 1869
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "ridge_cv",
+  "status": "ok",
+  "seconds": 0.79,
+  "edges": 249500,
+  "peak_mb": 1877
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "cpa_lite",
+  "status": "ok",
+  "seconds": 0.15,
+  "edges": 249500,
+  "peak_mb": 1878
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "arachne",
+  "status": "ok",
+  "seconds": 1.33,
+  "edges": 10538,
+  "peak_mb": 1893
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "causalgrn",
+  "status": "ok",
+  "seconds": 0.64,
+  "edges": 249500,
+  "peak_mb": 1899
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "dmdgrn",
+  "status": "ok",
+  "seconds": 0.21,
+  "edges": 249500,
+  "peak_mb": 1900
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "deeprig",
+  "status": "ok",
+  "seconds": 0.95,
+  "edges": 249500,
+  "peak_mb": 1900
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "sfinn",
+  "status": "ok",
+  "seconds": 0.1,
+  "edges": 249500,
+  "peak_mb": 1900
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "notears",
+  "status": "ok",
+  "seconds": 33.99,
+  "edges": 948,
+  "peak_mb": 1917
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "inspre",
+  "status": "ok",
+  "seconds": 10.63,
+  "edges": 3019,
+  "peak_mb": 1917
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "mean_difference",
+  "status": "ok",
+  "seconds": 0.03,
+  "edges": 249500,
+  "peak_mb": 1917
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "pearson",
+  "status": "ok",
+  "seconds": 0.03,
+  "edges": 249500,
+  "peak_mb": 1917
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "grnboost",
+  "status": "ok",
+  "seconds": 60.83,
+  "edges": 116896,
+  "peak_mb": 1917
+ },
+ {
+  "generator": "linear_sem",
+  "n": 500,
+  "alg": "gene_features",
+  "status": "ok",
+  "seconds": 0.04,
+  "edges": 249500,
+  "peak_mb": 1917
+ }
+]
