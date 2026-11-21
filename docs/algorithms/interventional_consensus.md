@@ -11,7 +11,7 @@ Borda count over the scorable pairs; worth keeping only if it beats its best mem
 ## Interface
 
 - Input: `fit(X, U)`: X is genes × perturbations, U is zero except for each perturbed gene's own response.
-- Output: `A_est[regulator, target]` (direct effects among the perturbed genes, extended to the unperturbed ones).
+- Output: `A_est[regulator, target]` (direct effects among the perturbed genes, extended to the unperturbed ones where the method does so).
 - Not registered: called from Python on a calibrated effect estimate (`grn_sim.perturbseq.ace.estimate_ace`).
 
 ## Measured here

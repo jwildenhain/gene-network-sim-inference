@@ -6,10 +6,41 @@ versioning once it leaves 0.x.
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-21
+
+Review of all algorithms; 25 algorithms now.
+
+- **FAST: the studio's ranking drops the identity** (`FastSVD(rank_without_identity=True)`, set by the registry; the class default stays the
+  MATLAB-identical selection that the equivalence tests pin). FAST's first estimate is `(x - u) X^+ = I + A`, so each row's top-K spent one
+  slot on the diagonal, a self-edge that the truth does not have and the scorer counts as a false positive. Hill data, 50 / 100 genes: F1
+  0.35 / 0.28 -> 0.45 / 0.35 (NIR 0.45 / 0.37). Still weak on the linear engine (0.16 / 0.05). `docs/results/fast_diagnosis.md`,
+  `scripts/diagnose_fast.py`.
+- **`llc_mean` registered** (LLC mean-shift equations, Hyttinen et al. 2012; `inference/llc.py`): best on calibrated screens and on partial
+  screens (balanced AUPR 0.46-0.67 at 6-75% perturbed), mid-field on the studio's Hill data (F1 0.23 at 100 genes, NIR 0.37) and in the pack on
+  the two measured datasets. Added to the page, the API, the job queue, the Virtual Cell tab and the sweep through the registry. The archive's
+  516 runs all got an `llc_mean` result. DCD-FG-lite stays experimental (it fits cells, not an (X, U) pair, and did not beat the baselines).
+- **GRNBoost-lite** looks at about 30 candidate regulators per split instead of 10% (`max_features=None`: `clip(30 / regulators, 0.1, 1)`;
+  unchanged from 300 genes up): F1 0.18 -> 0.25 at 50 genes, 0.13 -> 0.20 at 100.
+- **CellBox**: the size-scaled penalty starts at 55 genes instead of 100. At 100 genes it was at chance on the audit network (F1 0.03) and 0.15 over
+  4 seeds; now 0.20 over the seeds (0.06 on the audit network, which stays poor), unchanged at 70, 200, 250 and 500 genes. Its stored rows were recomputed for 56-266 genes; the 500- and 1000-gene rows keep
+  the old penalty (measured neutral). Tab 4's stored benchmark pages are snapshots of the earlier code.
+- **Clear error for partial screens:** S2G, G2S, the voting ensembles and network deconvolution raise "needs a square screen ... use
+  PartialAdapter" instead of a matmul shape error. `tests/test_algorithm_edge_cases.py` runs every registered algorithm on tiny networks, a
+  constant gene, a control column and duplicated conditions.
+- **Archive rerun:** FAST and GRNBoost-lite (all runs up to 300 genes; FAST also at 500 and 1000), CellBox (56-266 genes) and `llc_mean` (every
+  run) were recomputed through the job queue; the leaderboard, scale table, Tab 5 statistics, top-5 pages and the 100 / 250-gene audit were
+  re-rendered. Archive F1 on the runs of up to 16 genes: FAST 0.30 -> 0.48, GRNBoost-lite 0.24 -> 0.35, `llc_mean` 0.40; in Tab 5 FAST moves
+  to 4th of 25 (0.536). `scripts/fill_archive_algorithms.py` gained `--redo` and `--min-genes`.
+- **SCEPTRE-style test** as an option of `estimate_ace(test="sceptre")` and `screen_inputs(test=...)` (equals the Welch test within noise).
+  **Replogle 2022 held-out check** (`scripts/real_data_heldout.py --dataset replogle`); the ridge predictor solves all held-out genes in one call.
 - **Partial-screen grid** (`docs/results/partial_screen_grid.md`, `scripts/render_partial_grid.py`): every algorithm at 100 and 250
   genes with 6%, 20%, 50% and 75% of the genes perturbed (5 seeds), plus the effect of filling in the missing perturbations from
   three source contexts (6 methods, 3 seeds, with and without 30% rewiring). 500 genes not run. Native fits that need a square
-  screen are now reported as "n/a" in `benchmark_partial_screens.py` instead of a raw matmul error.
+  screen are reported as "n/a" in `benchmark_partial_screens.py` (which also takes `--algs`).
+- **Documentation:** the algorithm count is no longer written into live pages as a number (README, specification, architecture, workflow and
+  real-world guides, the page's headings and buttons said 12, 18 or 19); `tests/test_docs_algorithm_counts.py` fails when a live page states a
+  count other than the registry's. Algorithm pages for `llc_mean` and `dcdfg_lite`; `docs/TODO.md` and the inference gap analysis updated.
+- **Housekeeping:** 500-gene timings and the Tab 4 whole-run totals re-measured (1.0.4 code); stale Docker images, backups and merged branches removed.
 
 ## [1.0.4] - 2026-11-19
 

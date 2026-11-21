@@ -91,15 +91,15 @@
      "seconds": 1.816
     },
     "fast": {
-     "aupr": 0.003,
+     "aupr": 0.011,
      "aupr_runs": 1,
-     "errors": 3630.0,
-     "f1": 0.019,
+     "errors": 3537.0,
+     "f1": 0.029,
      "f1_sd": 0.0,
-     "precision": 0.031,
-     "recall": 0.014,
+     "precision": 0.047,
+     "recall": 0.021,
      "runs": 1,
-     "seconds": 1.292
+     "seconds": 1.318
     },
     "g2s": {
      "aupr": 0.068,
@@ -155,6 +155,17 @@
      "recall": 0.168,
      "runs": 1,
      "seconds": 38.221
+    },
+    "llc_mean": {
+     "aupr": 0.077,
+     "aupr_runs": 1,
+     "errors": 4700.0,
+     "f1": 0.151,
+     "f1_sd": 0.0,
+     "precision": 0.139,
+     "recall": 0.165,
+     "runs": 1,
+     "seconds": 42.823
     },
     "mean_difference": {
      "aupr": 0.172,
@@ -361,15 +372,15 @@
      "seconds": 0.252
     },
     "fast": {
-     "aupr": 0.026,
+     "aupr": 0.13,
      "aupr_runs": 13,
-     "errors": 1804.8,
-     "f1": 0.162,
-     "f1_sd": 0.018,
-     "precision": 0.192,
-     "recall": 0.141,
+     "errors": 1711.5,
+     "f1": 0.223,
+     "f1_sd": 0.022,
+     "precision": 0.258,
+     "recall": 0.198,
      "runs": 13,
-     "seconds": 0.3
+     "seconds": 0.289
     },
     "g2s": {
      "aupr": 0.06,
@@ -425,6 +436,17 @@
      "recall": 0.231,
      "runs": 13,
      "seconds": 6.522
+    },
+    "llc_mean": {
+     "aupr": 0.098,
+     "aupr_runs": 13,
+     "errors": 2346.6,
+     "f1": 0.146,
+     "f1_sd": 0.033,
+     "precision": 0.133,
+     "recall": 0.161,
+     "runs": 13,
+     "seconds": 3.61
     },
     "mean_difference": {
      "aupr": 0.167,
@@ -587,13 +609,13 @@
      "seconds": 0.003
     },
     "cellbox": {
-     "aupr": 0.502,
+     "aupr": 0.501,
      "aupr_runs": 31,
-     "errors": 151.6,
-     "f1": 0.489,
-     "f1_sd": 0.211,
-     "precision": 0.449,
-     "recall": 0.539,
+     "errors": 150.9,
+     "f1": 0.492,
+     "f1_sd": 0.209,
+     "precision": 0.452,
+     "recall": 0.543,
      "runs": 31,
      "seconds": 0.049
     },
@@ -631,15 +653,15 @@
      "seconds": 0.002
     },
     "fast": {
-     "aupr": 0.34,
+     "aupr": 0.47,
      "aupr_runs": 31,
-     "errors": 146.9,
-     "f1": 0.406,
-     "f1_sd": 0.118,
-     "precision": 0.39,
-     "recall": 0.429,
+     "errors": 122.5,
+     "f1": 0.546,
+     "f1_sd": 0.16,
+     "precision": 0.541,
+     "recall": 0.556,
      "runs": 31,
-     "seconds": 0.006
+     "seconds": 0.007
     },
     "g2s": {
      "aupr": 0.257,
@@ -675,15 +697,15 @@
      "seconds": 0.812
     },
     "grnboost": {
-     "aupr": 0.19,
+     "aupr": 0.324,
      "aupr_runs": 31,
-     "errors": 199.8,
-     "f1": 0.216,
-     "f1_sd": 0.066,
-     "precision": 0.198,
-     "recall": 0.237,
+     "errors": 190.0,
+     "f1": 0.323,
+     "f1_sd": 0.095,
+     "precision": 0.297,
+     "recall": 0.355,
      "runs": 31,
-     "seconds": 0.894
+     "seconds": 0.981
     },
     "inspre": {
      "aupr": 0.478,
@@ -695,6 +717,17 @@
      "recall": 0.412,
      "runs": 31,
      "seconds": 0.028
+    },
+    "llc_mean": {
+     "aupr": 0.475,
+     "aupr_runs": 31,
+     "errors": 171.6,
+     "f1": 0.359,
+     "f1_sd": 0.136,
+     "precision": 0.33,
+     "recall": 0.395,
+     "runs": 31,
+     "seconds": 0.004
     },
     "mean_difference": {
      "aupr": 0.444,
@@ -901,13 +934,13 @@
      "seconds": 0.001
     },
     "fast": {
-     "aupr": 0.351,
+     "aupr": 0.507,
      "aupr_runs": 471,
-     "errors": 32.0,
-     "f1": 0.301,
-     "f1_sd": 0.217,
-     "precision": 0.314,
-     "recall": 0.308,
+     "errors": 26.0,
+     "f1": 0.476,
+     "f1_sd": 0.273,
+     "precision": 0.51,
+     "recall": 0.47,
      "runs": 471,
      "seconds": 0.002
     },
@@ -945,15 +978,15 @@
      "seconds": 0.308
     },
     "grnboost": {
-     "aupr": 0.275,
+     "aupr": 0.372,
      "aupr_runs": 471,
-     "errors": 38.2,
-     "f1": 0.24,
-     "f1_sd": 0.174,
-     "precision": 0.229,
-     "recall": 0.258,
+     "errors": 36.4,
+     "f1": 0.353,
+     "f1_sd": 0.235,
+     "precision": 0.337,
+     "recall": 0.377,
      "runs": 471,
-     "seconds": 0.335
+     "seconds": 0.431
     },
     "inspre": {
      "aupr": 0.527,
@@ -965,6 +998,17 @@
      "recall": 0.411,
      "runs": 471,
      "seconds": 0.014
+    },
+    "llc_mean": {
+     "aupr": 0.533,
+     "aupr_runs": 471,
+     "errors": 31.2,
+     "f1": 0.4,
+     "f1_sd": 0.24,
+     "precision": 0.38,
+     "recall": 0.429,
+     "runs": 471,
+     "seconds": 0.002
     },
     "mean_difference": {
      "aupr": 0.481,

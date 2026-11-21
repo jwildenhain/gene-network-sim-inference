@@ -675,7 +675,7 @@ Reverse-engineered from Kaipeng Meng's Arc Institute VCC 2026 solution (`kaipeng
 
 Evaluated in `src/grn_sim/benchmarks/vcc_benchmark.py` (`run_vcc_comparative_benchmark`). One scale-free base network is simulated as three source atlases (K562-, HCT116- and HEK293T-like, differing in basal rates) and a **target context** whose edges are rewired by `target_rewire_fraction`.
 
-1. **Edge recovery.** All 18 algorithms are fit on the complete target experiment set and scored against the rewired ground truth (`evaluate_inference`). Algorithms that expect $-\mathbf{U}$ (NIR, FAST, RidgeCV) receive it (`FIT_INPUT_SIGN`).
+1. **Edge recovery.** Every registered algorithm is fit on the complete target experiment set and scored against the rewired ground truth (`evaluate_inference`). Algorithms that expect $-\mathbf{U}$ (NIR, FAST, RidgeCV) receive it (`FIT_INPUT_SIGN`).
 
 2. **Response prediction with a genuine hold-out.** The last $\max(2, \lfloor 0.25N \rfloor)$ perturbation targets are *held out*. The response models are refit with those experiments **masked** ($\mathbf{X}_{:,j}=\mathbf{U}_{:,j}=\mathbf{0}$; masking instead of dropping keeps the data square, which S2G/G2S/Vote require, and adds nothing to the least-squares problems). Each model's response operator is
    $$\mathbf{R} = s_m\,(\mathbf{A}_{\text{est}} + \lambda\mathbf{I})^{+}, \qquad \hat{\mathbf{X}}_{:,j} = \mathbf{R}\,\mathbf{u}_j,$$
@@ -761,7 +761,7 @@ In the benchmark, the AtlasShift row predicts zeros for held-out genes (no atlas
 ### 12.5 Benchmark Catalog REST API Contract
 Accessible via:
 - `GET /api/benchmark/catalog`: Returns JSON array of all registered benchmarks with metadata.
-- `GET /api/benchmark/dataset?id={dataset_id}`: Returns complete expressions $\mathbf{X}$, perturbations $\mathbf{U}$, true matrix $\mathbf{A}_{\text{true}}$, Graphviz DOT/SVG layouts, and 12-algorithm comparison metrics.
+- `GET /api/benchmark/dataset?id={dataset_id}`: Returns complete expressions $\mathbf{X}$, perturbations $\mathbf{U}$, true matrix $\mathbf{A}_{\text{true}}$, Graphviz DOT/SVG layouts, and the comparison metrics of every registered algorithm.
 - `POST /api/benchmark/load_to_studio`: Loads any benchmark dataset into the Tab 1 interactive simulation studio for real-time ODE inspection and parameter exploration.
 
 ---

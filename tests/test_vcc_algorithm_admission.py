@@ -72,10 +72,14 @@ def test_cellbox_penalty_is_size_scaled_only_above_the_reference(monkeypatch):
         return np.zeros((X.shape[0], X.shape[0])), {}
 
     monkeypatch.setattr(cellbox.CellBoxNeuralODE, "_fit_torch", spy)
+    ref = cellbox.PENALTY_REFERENCE_GENES
+    assert ref == 55                                    # 1.0.5: 100 left a full-strength penalty on 60-100 genes (F1 0.15 at 100)
     for n in (50, 100, 200):
         cellbox.CellBoxNeuralODE(epochs=70, device="cpu").fit(np.random.default_rng(0).normal(size=(n, n)), -np.eye(n))
-    assert seen[50] == seen[100] == (0.003, 0.001, 70)
-    assert seen[200][0] == pytest.approx(0.003 / 4) and seen[200][2] == cellbox.LARGE_NETWORK_EPOCHS
+    assert seen[50] == (0.003, 0.001, 70)
+    for n in (100, 200):
+        assert seen[n][0] == pytest.approx(0.003 * (ref / n) ** 2) and seen[n][1] == pytest.approx(0.001 * (ref / n) ** 2)
+        assert seen[n][2] == cellbox.LARGE_NETWORK_EPOCHS
 
 
 def test_cellbox_keeps_working_at_200_genes():

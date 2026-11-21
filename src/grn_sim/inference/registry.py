@@ -161,6 +161,7 @@ def _register_builtin() -> None:
     from grn_sim.inference.g2s import GeneralToSpecific
     from grn_sim.inference.genie3 import GENIE3Algorithm
     from grn_sim.inference.inspre import InspreAlgorithm
+    from grn_sim.inference.llc import LLCMean
     from grn_sim.inference.interventional_baselines import (GeneFeatureBaseline, GRNBoostLite, MeanDifference,
                                                             PearsonCorrelation)
     from grn_sim.inference.network_deconv import NetworkDeconvolution
@@ -207,7 +208,8 @@ def _register_builtin() -> None:
                       "Linear Matrix Inverse", "Matrix Inverse Baseline", "#8b5cf6", core=True, regulator_input=True,
                       negate_u_in_additive=True, additive_target_regulator=True),
         AlgorithmSpec("fast", "FAST (SVD)", lambda c: FastSVD(
-            k_interactions=c.k_est, add_diagonal_identity=c.is_sos, perturbation_mode=mode(c), adaptive_k=c.use_reg),
+            k_interactions=c.k_est, add_diagonal_identity=c.is_sos, perturbation_mode=mode(c), adaptive_k=c.use_reg,
+            rank_without_identity=True),   # the MATLAB-identical ranking wastes a slot per row on the diagonal (FastSVD docstring)
                       "FAST (SVD Inversion)", "SVD Truncation", "SVD Regularized", "#ef4444", (4, 3), core=True,
                       regulator_input=True, negate_u_in_additive=True, additive_target_regulator=True),
         AlgorithmSpec("by_chance", "By-Chance", lambda c: ByChance(k_interactions=c.k_est, seed=c.seed),
@@ -250,6 +252,9 @@ def _register_builtin() -> None:
         AlgorithmSpec("inspre", "inspre (sparse inverse)", lambda c: InspreAlgorithm(k_interactions=c.k_est, perturbation_mode="regulator" if c.use_reg else "additive"),
                       "inspre (Sparse Inversion of the Response Matrix)", "Sparse Inversion of Total Effects",
                       "Cyclic Total-to-Direct", "#0d9488", (5, 2)),
+        AlgorithmSpec("llc_mean", "LLC (mean shifts)", lambda c: LLCMean(k_interactions=c.k_est, perturbation_mode=mode(c)),
+                      "LLC mean-shift equations (Hyttinen et al. 2012)", "Per-target Regression on Shifts",
+                      "Linear Cyclic Shift Regression", "#7c3aed", (6, 3)),
         AlgorithmSpec("mean_difference", "Mean Difference", lambda c: MeanDifference(k_interactions=c.k_est),
                       "Mean Difference (control vs perturbed)", "Interventional Contrast Baseline",
                       "Total-Effect Baseline", "#78716c", (2, 4)),

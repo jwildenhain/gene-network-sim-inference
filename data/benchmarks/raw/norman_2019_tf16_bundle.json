@@ -44,7 +44,7 @@
     },
     "wrangling_procedure": "1. Single-cell UMI counts extracted from 10x Genomics Chromium 3' sequencing (7,353 control cells + 5,680 single-target cells).\n2. Total-count normalization to Counts Per Million (CPM) and log1p transformation applied.\n3. Mean expression per condition computed across cells bearing single sgRNAs for each of the 16 TFs.\n4. Proportional shifts Delta X_ij = (Mean_pert_ij - Mean_ctrl_i) / Mean_ctrl_i derived as the primary input matrix.\n5. Perturbation matrix U initialized with empirical target overexpression factors (U_jj ~ 2.0).",
     "how_raw_data_is_used": {
-      "wrangled_direct": "The 16x16 proportional shift matrix X and CRISPRa activation matrix U are consumed directly by the 12 algorithms. Because single-cell measurements exhibit Poisson-Gamma overdispersion and biological dropouts, algorithms like Voting, CellBox Neural ODE, and AtlasShift demonstrate superior noise tolerance and precision on these true human measurements.",
+      "wrangled_direct": "The 16x16 proportional shift matrix X and CRISPRa activation matrix U are consumed directly by every selected algorithm. Because single-cell measurements exhibit Poisson-Gamma overdispersion and biological dropouts, algorithms like Voting, CellBox Neural ODE, and AtlasShift demonstrate superior noise tolerance and precision on these true human measurements.",
       "biophysical_fit": "Control cells establish basal synthesis rates v_i = b_i * mean_ctrl_i. Interaction Hill affinities K_ij are placed at the median expression of regulator j across perturbed conditions. Simulating this calibrated ODE model recreates the mutual antagonism toggle between KLF1 (erythroid) and SPI1 (myeloid)."
     }
   },

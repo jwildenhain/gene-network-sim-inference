@@ -99,14 +99,17 @@ def test_tab4_vcc_expanded():
         canvas_epistasis = page.locator("#canvas-vcc-epistasis")
         assert canvas_epistasis.is_visible(), "Epistasis canvas not visible"
 
-        synergy_list = page.locator("#vcc-top-synergy-list")
-        assert synergy_list.is_visible(), "Synergy list container not visible"
-        synergy_items = page.locator("#vcc-top-synergy-list > div")
-        synergy_count = synergy_items.count()
-        print(f"Synergy list item count: {synergy_count}")
-        assert synergy_count >= 3, f"Expected top synergy items, got {synergy_count}"
-        top_synergy_text = synergy_items.first.inner_text()
-        print(f"Top synergy entry: {top_synergy_text.replace(chr(10), ' | ')}")
+        # The default generator is log-linear (linear_sem): double effects add exactly there, so the epistasis list is empty by
+        # construction and the page says so; the mechanistic generator has real synergy to list.
+        scope_note = page.locator("#vcc-epistasis-scope").inner_text()
+        synergy_count = page.locator("#vcc-top-synergy-list > div").count()
+        print(f"Synergy list item count: {synergy_count}; note: {scope_note!r}")
+        if "by construction" in scope_note:
+            assert synergy_count == 0, "a log-linear generator has no epistasis to list"
+        else:
+            assert page.locator("#vcc-top-synergy-list").is_visible(), "Synergy list container not visible"
+            assert synergy_count >= 3, f"Expected top synergy items, got {synergy_count}"
+            print(f"Top synergy entry: {page.locator('#vcc-top-synergy-list > div').first.inner_text()!r}")
 
         # Verify Section 4: Virtual Single-Cell Sequencer & PCA
         canvas_pca = page.locator("#canvas-vcc-pca")

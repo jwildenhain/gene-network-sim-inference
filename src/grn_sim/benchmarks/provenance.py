@@ -161,7 +161,7 @@ BENCHMARK_PROVENANCE: Dict[str, Dict[str, Any]] = {
         ),
         "how_raw_data_is_used": {
             "wrangled_direct": (
-                "The 16x16 proportional shift matrix X and CRISPRa activation matrix U are consumed directly by the 12 algorithms. "
+                "The 16x16 proportional shift matrix X and CRISPRa activation matrix U are consumed directly by every selected algorithm. "
                 "Because single-cell measurements exhibit Poisson-Gamma overdispersion and biological dropouts, algorithms like Voting, "
                 "CellBox Neural ODE, and AtlasShift demonstrate superior noise tolerance and precision on these true human measurements."
             ),

@@ -5,6 +5,9 @@ inference job on the archived network. Nothing that is already stored is recompu
 connection); the server writes the results. Resumable: run it again and it submits what is still missing.
 
     python scripts/fill_archive_algorithms.py --db data/rgn_db.sqlite --url http://localhost:8085 [--max-genes 1000] [--dry-run]
+
+``--redo fast,grnboost`` also recomputes those algorithms on every run (after a change to their code); the stored result of the
+other algorithms stays. Back up the archive first.
 """
 import argparse
 import json
@@ -14,20 +17,20 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
-def missing_by_run(db: Path, max_genes: int) -> Dict[str, List[str]]:
+def missing_by_run(db: Path, max_genes: int, redo: Sequence[str] = (), min_genes: int = 0) -> Dict[str, List[str]]:
     from grn_sim.inference import registry
     from grn_sim.web.database import unpack_json
     full = [s.key for s in registry.specs()]
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     out = {}
-    for simid, raw in con.execute("SELECT simid, inferred_payload_json FROM nw WHERE nz <= ? ORDER BY nz, simid", (max_genes,)).fetchall():
+    for simid, raw in con.execute("SELECT simid, inferred_payload_json FROM nw WHERE nz <= ? AND nz >= ? ORDER BY nz, simid", (max_genes, min_genes)).fetchall():
         have = set(json.loads(unpack_json(raw) or "{}").get("metrics", {})) if raw and len(raw) > 2 else set()
-        todo = [k for k in full if k not in have]
+        todo = [k for k in full if k not in have or k in redo]
         if todo:
             out[simid] = todo
     return out
@@ -48,10 +51,17 @@ def main() -> int:
     ap.add_argument("--db", type=Path, required=True)
     ap.add_argument("--url", default="http://localhost:8085")
     ap.add_argument("--max-genes", type=int, default=1000)
+    ap.add_argument("--min-genes", type=int, default=0, help="only runs with at least this many genes (to split a redo by size)")
     ap.add_argument("--active", type=int, default=100, help="jobs queued at a time")
+    ap.add_argument("--redo", default="", help="comma separated algorithms to recompute on every run, stored or not")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
-    todo = missing_by_run(args.db, args.max_genes)
+    redo = [k for k in args.redo.split(",") if k]
+    from grn_sim.inference import registry as _registry
+    unknown = [k for k in redo if not _registry.is_registered(k)]
+    if unknown:
+        ap.error(f"--redo: not registered: {unknown}")
+    todo = missing_by_run(args.db, args.max_genes, redo, args.min_genes)
     print(f"{len(todo)} runs lack algorithms; {sum(len(v) for v in todo.values())} (run, algorithm) pairs", flush=True)
     if args.dry_run:
         return 0

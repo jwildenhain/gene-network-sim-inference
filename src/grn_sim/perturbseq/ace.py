@@ -163,6 +163,39 @@ def _bh(p: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return q
 
 
+def _conditional_resampling(adata: Any, Y: np.ndarray, ctrl_idx: np.ndarray, cells_p: np.ndarray, grp: np.ndarray, p: int,
+                            lfc: np.ndarray, draws: int, rng: np.random.Generator) -> Tuple[np.ndarray, np.ndarray]:
+    """z and two-sided normal p of every (perturbation, gene) pair against label sets resampled given library size."""
+    from sklearn.linear_model import LogisticRegression
+
+    counts = adata.X.sum(axis=1)
+    lib = np.log(np.asarray(counts, dtype=float).ravel() + 1.0)
+    lib = (lib - lib.mean()) / max(lib.std(), 1e-9)
+    n0 = len(ctrl_idx)
+    z = np.zeros_like(lfc)
+    for a in range(p):
+        idx = cells_p[grp == a]
+        na = len(idx)
+        union = np.concatenate([idx, ctrl_idx])
+        N = len(union)
+        if na < 2 or na >= N - 1:
+            continue
+        Yu = Y[union].astype(np.float32)
+        total = Yu.sum(axis=0, dtype=np.float64)
+        x = lib[union][:, None]
+        yl = np.concatenate([np.ones(na), np.zeros(n0)])
+        pi = LogisticRegression(C=1e4).fit(x, yl).predict_proba(x)[:, 1]
+        logw = np.log(np.clip(pi, 1e-6, 1 - 1e-6) / np.clip(1 - pi, 1e-6, 1.0))
+        keys = logw[None, :] + rng.gumbel(size=(draws, N))           # Gumbel top-k = weighted sampling without replacement
+        top = np.argpartition(-keys, na - 1, axis=1)[:, :na]
+        D = np.zeros((draws, N), dtype=np.float32)
+        np.put_along_axis(D, top, 1.0, axis=1)
+        s1 = D @ Yu
+        T = s1 / na - (total[None, :] - s1) / (N - na)
+        z[a] = (lfc[a] - T.mean(axis=0)) / np.maximum(T.std(axis=0, ddof=1), 1e-6)
+    return z, 2.0 * (1.0 - ndtr(np.abs(z)))
+
+
 def estimate_ace(
     adata: Any,
     perturbation_key: str = "perturbation",
@@ -174,6 +207,7 @@ def estimate_ace(
     seed: int = 0,
     test: str = "welch",
     normalisation: str = "total",
+    sceptre_draws: int = 200,
 ) -> ACEEstimate:
     """
     Effects of every single-gene perturbation in ``adata`` against its non-targeting cells.
@@ -185,13 +219,18 @@ def estimate_ace(
     ``test``: ``"welch"`` (default; Welch z calibrated on non-targeting pseudo-perturbations, fast at any size) or
     ``"ks"`` (two-sample Kolmogorov-Smirnov p-value of every node-gene pair against all controls, as in the CausalBench
     winner Betterboost; distribution-free so no calibration is needed, but one test per pair: ~1 ms each, minutes at
-    500 x 500). The effect size and its standard error are the same in both; only z, p and q come from the test.
+    500 x 500). ``"sceptre"``: a simplified SCEPTRE (Barry et al. 2021) - the null of every pair is made by *conditional
+    resampling*: ``sceptre_draws`` sets of control cells of the perturbation's size are drawn with probabilities from a logistic
+    model of "this cell is perturbed" on log library size, and z is the observed difference standardised by the mean and sd of the
+    resampled differences. Not the full method: the statistic is the mean difference of log-normalised expression, not a
+    negative-binomial regression z, the null is a normal fit (SCEPTRE fits a skew-normal) and library size is the only covariate.
+    The effect size and its standard error are the same in all three; only z, p and q come from the test.
 
     ``normalisation``: ``"total"`` (default, counts per 10k) or ``"median_ratio"`` (size factors against the non-targeting
     cells; see :func:`log_normalise` for why total-count normalisation creates effects on non-downstream genes).
     """
-    if test not in ("welch", "ks"):
-        raise ValueError("test must be 'welch' or 'ks'")
+    if test not in ("welch", "ks", "sceptre"):
+        raise ValueError("test must be 'welch', 'ks' or 'sceptre'")
     rng = np.random.default_rng(seed)
     names = list(gene_names) if gene_names is not None else [str(g) for g in adata.var_names]
     index = {g: i for i, g in enumerate(names)}
@@ -264,6 +303,8 @@ def estimate_ace(
             for j in range(n):
                 pval[ai, j] = ks_2samp(block[:, j], Yc[:, j]).pvalue
         z = np.sign(lfc) * norm.isf(np.clip(pval, 1e-300, 1.0) / 2.0)
+    if test == "sceptre":
+        z, pval = _conditional_resampling(adata, Y, ctrl_idx, cells_p, grp, p, lfc, sceptre_draws, rng)
     mask = np.ones_like(pval, dtype=bool)
     mask[np.arange(p), nodes] = False
     qval = _bh(pval, mask)

@@ -23,7 +23,7 @@ from grn_sim.benchmarks.benchmark_datasets import (benchmark_data_model, list_be
 from grn_sim.evaluation.metrics import compute_aupr, evaluate_inference
 from grn_sim.inference import orientation, registry
 
-NEW = ["inspre", "mean_difference", "pearson", "gene_features", "grnboost"]
+NEW = ["inspre", "llc_mean", "mean_difference", "pearson", "gene_features", "grnboost", "fast"]
 REFERENCE = ["s2g", "nir", "ridge_cv", "genie3", "by_chance"]
 
 

@@ -79,9 +79,13 @@ D: List[AlgorithmDescription] = [
     AlgorithmDescription(
         "fast", "FAST (SVD inversion)", FAMILIES[0], "core",
         "Inverts the response matrix with a truncated SVD and keeps the K largest coefficients per row.",
-        "A0 = (X - U) V S^-1 U^T, then the top-K entries per row are refitted by least squares.",
+        "A0 = (X - U) V S^-1 U^T, then the top-K entries per row are refitted by least squares. A0 is I + A, so the MATLAB ranking spends "
+        "one of the K slots of every row on the diagonal; the studio ranks by |A0 - I| and never selects the diagonal "
+        "(`rank_without_identity`, off by default so the MATLAB-equivalence tests still hold).",
         "Farina et al. (fast.m, fast_modified.m)", "inference/fast_svd.py",
-        "Natively scores only the perturbed genes (0.30 / 0.006 at 30 perturbed, which is chance for unperturbed genes); adapted 0.07 / 0.05."),
+        "Hill screens, 50 / 100 genes: F1 0.35 / 0.28 with the MATLAB ranking, 0.45 / 0.35 without the identity (NIR 0.45 / 0.37); on the linear "
+        "engine it stays weak (0.16 / 0.05; NIR 0.27 / 0.15), see results/fast_diagnosis.md. Natively scores only the perturbed genes on partial "
+        "screens (balanced 0.10-0.25, chance for unperturbed genes); adapted 0.06-0.22."),
     AlgorithmDescription(
         "ridge_cv", "RidgeCV (multi-output ridge)", FAMILIES[0], "baseline",
         "L2-regularised regression of every gene's perturbation on the responses, alpha chosen by cross-validation.",
@@ -104,6 +108,18 @@ D: List[AlgorithmDescription] = [
         "Brown, Morris, Lappalainen & Knowles (Nat. Commun. 2024)", "inference/inspre.py",
         "100-gene screens: direct AUPR 0.24 raw, 0.31 on denoised effects. Partial (native): 0.53 / 0.22 at 30 perturbed, 0.28 / 0.28 at 100. "
         "Real data: E. coli SOS 0.63 (random 0.57), Norman 16 TFs 0.23 (random 0.11)."),
+    AlgorithmDescription(
+        "llc_mean", "LLC (mean-shift equations)", FAMILIES[1], "extended",
+        "Per-target regression of one gene's response on the responses of all other genes, over the experiments in which it was not perturbed.",
+        "For a linear cyclic model and single-gene interventions the shift of gene j is the sum of B[i, j] times the shifts of the other genes, "
+        "so each target is one ridge-regularised linear system; the confounder terms cancel in a shift. Top-K regulators per target. Hill "
+        "(regulator-input) data uses the response of X + U as inspre does. Works on partial screens as they are. Only the mean-shift part "
+        "of LLC: its covariance constraints need many cells per experiment.",
+        "Hyttinen, Eberhardt & Hoyer, UAI 2012 (mean-shift subset)", "inference/llc.py",
+        "Full screens, 100 genes, mechanistic network: direct AUPR 0.68 (cellbox 0.61, inspre 0.42, ridge_cv 0.39, nir 0.35); on three statistical "
+        "generators it ties the best (0.35-0.49). Partial (native, 100 genes): balanced AUPR 0.46 / 0.56 / 0.62 / 0.67 at 6 / 20 / 50 / 75 "
+        "perturbed (NIR 0.20 / 0.40 / 0.42 / 0.39). Real data: E. coli SOS 0.58 (random 0.57), Norman 16 TFs 0.26 (random 0.11), in the pack. "
+        "results/paper_algorithms.md."),
     AlgorithmDescription(
         "mean_difference", "Mean difference", FAMILIES[1], "baseline",
         "Scores edge a -> j by the size of gene j's response when a is perturbed.",
@@ -143,7 +159,8 @@ D: List[AlgorithmDescription] = [
     AlgorithmDescription(
         "grnboost", "GRNBoost-lite (boosted trees)", FAMILIES[2], "baseline",
         "Gradient-boosted trees per target gene, regulators ranked by importance (the GRNBoost2 recipe, with scikit-learn).",
-        "Not the Dask implementation of GRNBoost2. Many candidate genes and few conditions limit it.",
+        "Not the Dask implementation of GRNBoost2. Many candidate genes and few conditions limit it. Each split looks at about 30 candidate "
+        "regulators (GRNBoost2's 10% would be 1 of 15 at 16 genes); on 50 genes this lifted F1 from 0.18 to 0.25.",
         "Moerman et al., Bioinformatics 2019", "inference/interventional_baselines.py",
         "100-gene screens: direct AUPR 0.06. Partial: 0.011 / 0.036 at 30 perturbed."),
     AlgorithmDescription(
@@ -210,6 +227,15 @@ D: List[AlgorithmDescription] = [
         "Linear SEM with the acyclicity constraint, free entries limited to inspre's strongest candidates (optionally all pairs).",
         "DOTEARS (NOTEARS with interventions); NOTEARS: Zheng et al., NeurIPS 2018", "inference/dotears.py",
         "100-gene screens: direct AUPR 0.40 (0.41 with all pairs free). Partial: 0.32 / 0.13 at 30 perturbed."),
+    AlgorithmDescription(
+        "dcdfg_lite", "DCD-FG-lite (low-rank interventional DAG)", FAMILIES[5], "experimental",
+        "Linear-Gaussian version of DCD-FG: a low-rank factor-graph weight matrix fitted by the interventional likelihood of single cells.",
+        "x_j = sum_i W[i, j] x_i + noise with W = U V^T (zero diagonal); a cell whose gene g was perturbed contributes no term for g. "
+        "NOTEARS acyclicity by augmented Lagrangian, L1 penalty, full-batch Adam. Fits cells, not an (X, U) pair, so it cannot be registered. "
+        "Needs torch.",
+        "Lopez, Hao, Regev et al., NeurIPS 2022 (simplified)", "inference/experimental/dcdfg.py",
+        "100-gene screens: direct AUPR 0.06-0.25, between NOTEARS and the other methods; about 31 s per fit at 100 genes (dense matrix "
+        "exponential), so it was not run above 150. results/paper_algorithms.md."),
     AlgorithmDescription(
         "interventional_consensus", "Rank consensus", FAMILIES[5], "experimental",
         "Average of the rank-normalised scores of several interventional-aware methods (inspre, mean difference, bicycle-lite, DOTEARS-lite).",

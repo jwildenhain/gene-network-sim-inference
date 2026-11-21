@@ -23,8 +23,8 @@ PARTIAL = {"native": "runs on a partial screen as it is", "adapter": "needs `Par
 
 
 def orientation_text(key: str) -> str:
-    if key in ("bicycle_lite", "dotears_lite", "interventional_consensus"):
-        return "`A_est[regulator, target]` (direct effects among the perturbed genes, extended to the unperturbed ones)"
+    if key in ("bicycle_lite", "dotears_lite", "interventional_consensus", "dcdfg_lite"):
+        return "`A_est[regulator, target]` (direct effects among the perturbed genes, extended to the unperturbed ones where the method does so)"
     target_row = orientation.output_is_target_regulator(key, orientation.HILL)
     additive = orientation.output_is_target_regulator(key, orientation.ADDITIVE_GARDNER)
     if key in orientation.ORIENTATION_FREE:
@@ -40,13 +40,17 @@ def page(d: AlgorithmDescription) -> str:
     spec = registry.get(d.key) if registry.is_registered(d.key) else None
     lines = [f"# {d.name}", "", f"`{d.key}` · {d.family} · status: {STATUS[d.status]}", "", d.summary, "",
              "## How it works", "", d.how, "", "## Interface", ""]
-    lines.append("- Input: `fit(X, U)`: X is genes × perturbations, U is zero except for each perturbed gene's own response.")
+    if d.key == "dcdfg_lite":
+        lines.append("- Input: `fit_adata(adata, gene_names)`: the cells themselves (the registry's `fit(X, U)` raises `NotImplementedError`).")
+    else:
+        lines.append("- Input: `fit(X, U)`: X is genes × perturbations, U is zero except for each perturbed gene's own response.")
     lines.append(f"- Output: {orientation_text(d.key)}.")
     if spec is not None:
         lines.append(f"- Partial screens (m perturbed genes of n measured): {PARTIAL[spec.partial]}.")
         lines.append(f"- Registry key: `{d.key}`; listed by `/api/algorithms` and the studio.")
     else:
-        lines.append("- Not registered: called from Python on a calibrated effect estimate (`grn_sim.perturbseq.ace.estimate_ace`).")
+        lines.append("- Not registered: called from Python on cells (`fit_adata`)." if d.key == "dcdfg_lite" else
+                     "- Not registered: called from Python on a calibrated effect estimate (`grn_sim.perturbseq.ace.estimate_ace`).")
     lines += ["", "## Measured here", "", d.measured, "",
               "Simulator results, 3-4 seeds, wide spreads: orders of magnitude, not rankings. Sources: "
               "[`docs/INFERENCE_GAP_ANALYSIS.md`](../INFERENCE_GAP_ANALYSIS.md), [`docs/results/`](../results/).", "",

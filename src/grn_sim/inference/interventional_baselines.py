@@ -82,8 +82,11 @@ class PearsonCorrelation(BaseInferenceAlgorithm):
 class GRNBoostLite(BaseInferenceAlgorithm):
     """Gradient-boosted-tree importances per target (the GRNBoost2 recipe with scikit-learn's boosting)."""
 
-    def __init__(self, k_interactions: int = 3, n_estimators: int = 60, max_features: float = 0.1,
+    def __init__(self, k_interactions: int = 3, n_estimators: int = 60, max_features: Optional[float] = None,
                  seed: int = 0, n_jobs: Optional[int] = None):
+        """``max_features`` is the share of the regulators each split may look at. GRNBoost2 uses 0.1, which is right for
+        thousands of genes and starves the splits of a small network (1 of 15 regulators at 16 genes); ``None`` keeps
+        about 30 candidates per split: ``clip(30 / regulators, 0.1, 1)`` (F1 0.18 -> 0.25 at 50 genes, 0.13 -> 0.20 at 100)."""
         super().__init__(name="grnboost")
         self.k_interactions = k_interactions
         self.n_estimators = n_estimators
@@ -107,7 +110,8 @@ class GRNBoostLite(BaseInferenceAlgorithm):
         t0 = time.time()
         X = np.real(np.asarray(X, dtype=float))
         n_jobs = self.n_jobs if self.n_jobs is not None else default_n_jobs(cap=16)
-        rows = map_indices(self._target, (X, self.n_estimators, self.max_features, self.seed), X.shape[0], n_jobs)
+        mf = self.max_features if self.max_features is not None else float(np.clip(30.0 / max(X.shape[0] - 1, 1), 0.1, 1.0))
+        rows = map_indices(self._target, (X, self.n_estimators, mf, self.seed), X.shape[0], n_jobs)
         W = np.vstack(rows)                          # W[target, regulator]
         return _result(self.name, W, int(kwargs.get("k", self.k_interactions)), t0)
 

@@ -35,7 +35,7 @@ from grn_sim.perturbseq.pipeline import build_network, run_screen
 K = 3
 # algorithms whose A_est is a steady-state Jacobian (A X = -U): the adapter applies to them
 JACOBIAN_LIKE = ["s2g", "g2s", "vote", "score_vote", "nir", "fast", "ridge_cv", "dmdgrn", "cellbox", "netdeconv"]
-NEW_PARTIAL = {"inspre"}          # fits partial screens by itself
+NEW_PARTIAL = {"inspre", "llc_mean"}          # fit partial screens by themselves, A_est[regulator, target]
 SKIP: set = set()
 
 
@@ -63,7 +63,7 @@ def run_one(key: str, mode: str, X: np.ndarray, U: np.ndarray, budget: int) -> D
     except Budget:
         return {"status": f"over {budget}s"}
     except Exception as exc:
-        if mode == "native" and "matmul" in str(exc):
+        if mode == "native" and ("matmul" in str(exc) or "needs a square screen" in str(exc)):
             return {"status": "n/a: needs a square (full) screen, see the adapted row"}
         return {"status": "error: " + repr(exc)[:70]}
     finally:
@@ -121,8 +121,11 @@ def main() -> None:
                     help="how the perturbed genes are chosen (the published tables used random)")
     ap.add_argument("--cells", type=int, default=100)
     ap.add_argument("--budget", type=int, default=240, help="seconds per fit")
+    ap.add_argument("--algs", default="", help="comma separated registry keys; default: every registered algorithm (the cell-level "
+                    "methods and the consensus are then run as well)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    only = {k for k in a.algs.split(",") if k}
     rows: List[Dict[str, Any]] = []
     timed_out: set = set()                                   # (method, mode, m): not retried on later seeds
     for m in a.perturbed:
@@ -137,7 +140,7 @@ def main() -> None:
             kept: Dict[Any, np.ndarray] = {}
             P = perturbed_genes(run.screen)
             for key in registry.keys():
-                if key in SKIP:
+                if key in SKIP or (only and key not in only):
                     continue
                 modes = ["native"] + (["adapted"] if key in JACOBIAN_LIKE else [])
                 for mode in modes:
@@ -157,7 +160,7 @@ def main() -> None:
                     print(f"   {key:16} {mode:8} {r['status'][:40]:40} "
                           + (f"A {row['aupr_A']:.3f} B {row['aupr_B']:.3f} {r['seconds']:.1f}s" if r["status"] == "ok" else ""),
                           flush=True)
-            for name in ("bicycle_lite", "dotears_lite"):
+            for name in (("bicycle_lite", "dotears_lite") if not only else tuple(n for n in ("bicycle_lite", "dotears_lite") if n in only)):
                 r = {"status": f"over {a.budget}s (not retried)"} if (name, "native", m) in timed_out else run_cell_level(name, ace, run, a.budget)
                 if r["status"].startswith("over"):
                     timed_out.add((name, "native", m))

@@ -1,6 +1,6 @@
 # To do
 
-State as of 2026-11-19. Scope decision: nothing above 500 genes is planned; items that needed larger runs were dropped. Source for the algorithm list: `research_notes/Perturb seq design and modelling/`
+State as of 2026-11-21. Scope decision: nothing above 500 genes is planned; items that needed larger runs were dropped. Source for the algorithm list: `research_notes/Perturb seq design and modelling/`
 (`causal_grn_inference.md`, `prediction_models_benchmarks.md`); gap audit in `docs/INFERENCE_GAP_ANALYSIS.md`.
 
 ## 1. Algorithm bugs (top priority: speed, memory leakage, accuracy)
@@ -8,6 +8,30 @@ State as of 2026-11-19. Scope decision: nothing above 500 genes is planned; item
 Evidence: the scale run (`replogle_like`, seed 7, 500 / 1000 / 2000 genes; archived runs `iorn-838581`, `iorn-592020`,
 `iorn-846813`) and `scripts/audit_algorithms.py` (every algorithm in its own process: time, peak memory, accuracy; run
 at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the archive as they were; re-run to compare.
+
+### Fixed (2026-11-21, release 1.0.5: review of all 25 algorithms)
+- [x] **FAST ranked low because of the identity in its first estimate.** `A_0 = (x - u) X^+ = I + A`, so each row's top-K spent a slot on the
+  diagonal (a self-edge the truth does not have; the scorer counts it as a false positive). The studio now ranks by `|A_0 - I|` without the
+  diagonal (`FastSVD(rank_without_identity=True)`; the class default stays MATLAB-identical). Hill data, 50 / 100 genes, F1 0.35 / 0.28 ->
+  0.45 / 0.35 (NIR 0.45 / 0.37). Still weak on the linear engine (0.16 / 0.05 against NIR 0.27 / 0.15): the unregularised truncated-SVD inverse
+  of a noisy X, larger damping did not help. `docs/results/fast_diagnosis.md`.
+- [x] **GRNBoost-lite looked at 10% of the regulators per split**, GRNBoost2's setting for thousands of genes (1 of 15 at 16 genes). Now about
+  30 candidates per split (`clip(30 / regulators, 0.1, 1)`; unchanged from 300 genes up): F1 0.18 -> 0.25 at 50 genes, 0.13 -> 0.20 at 100.
+- [x] **CellBox was at chance at 100 genes** (F1 0.03 on the 100-gene audit network, 0.15 over 4 seeds, against 0.25 at 70 and 200): the size-scaled
+  penalty started above 100 genes, leaving the full penalty on 60-100. The reference is now 55 genes (F1 0.20 over 4 seeds at 100, 0.06 on the audit network, still poor there; unchanged at 70, 200,
+  250, 500). Stored CellBox rows were recomputed for 56-266 genes; the 500- and 1000-gene rows keep the old penalty (measured neutral there).
+- [x] **`llc_mean` registered** (LLC mean-shift equations): 25 algorithms. Calibrated screens and partial screens: top; the studio's Hill data: mid-field.
+- [x] **Square-only algorithms** (s2g, g2s, vote, score_vote, netdeconv) raise "needs a square screen ..." with the remedy (`PartialAdapter`) instead of a
+  matmul shape error on a partial screen or replicates. `tests/test_algorithm_edge_cases.py` runs every registered algorithm on tiny networks,
+  a constant gene, a control column and duplicated conditions (finite n x n output on both data models).
+- Reviewed and left as they are:
+  - **ARACNE** returns about 20 edges at 100 genes. The cause is not the DPI (switching it off still gives 21): the preprocessor's shrunk
+    correlation matrix is near zero for almost every pair (median |r| 0.0005), the adaptive MI cut (mean + 0.15 sd of a heavy-tailed
+    distribution) lets 19 pairs through, and K per gene cannot be filled. Without the cut the DPI reduces the dense MI graph to a tree-like
+    skeleton (about N - 1 edges, recall at most 1/K), and F1 hardly moves (0.16 -> 0.14 at 50 genes, 0.10 -> 0.12 at 100, 4 seeds), so the
+    code was left alone.
+  - **G2S** is the weakest regression variant by design (leave-one-out shortcut, documented); **NOTEARS** decline with more perturbed genes is
+    still unexplained; **CellBox** stays well below NIR at 100 genes (a nonlinear fit of a mostly linear response).
 
 ### Fixed (2026-11-12)
 - [x] **inspre returned an empty graph on Hill-simulator data** (F1 0.00, AUPR 0.005 at 500 genes): in the regulator-input
@@ -89,7 +113,7 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
   will not exit is killed. Verified on the real job: the polling loop that hung on run 3 before ran 30 + 12 repetitions of
   the 500-gene G2S job (with the guard messages at zero after a false alarm in the first version of the exit wait was fixed).
 - [x] Time and memory of every algorithm at 500 genes with the 1.0.4 code (2026-11-20): `docs/results/timings_500/` (modular audit and the three statistical generators; all 24 algorithms finish, slowest grnboost about 64 s, peak 2.0 GB). Tab 4 whole-run totals re-measured, limits unchanged. Still open: a per-algorithm memory estimate that skips or warns before a run.
-- [x] Incomplete archived runs: none left (512 of 512 runs have all 24 algorithms, `scripts/clean_archive.py --verify`).
+- [x] Incomplete archived runs: none left (516 of 516 runs have all 25 algorithms after the 1.0.5 rerun, `scripts/clean_archive.py --verify`; it was 512 of 512 with 24).
 - [x] **Partial screens across sizes and fractions (2026-11-20):** 100 and 250 genes at 6/20/50/75% perturbed, with imputation of the missing perturbations from source contexts (`docs/results/partial_screen_grid.md`). 500 genes not run. Open: NOTEARS falls as more genes are perturbed (cause unknown); the imputation experiment covers six methods and synthetic sources only.
 
 ## 2. Scale run (in progress)
@@ -131,17 +155,17 @@ at 200 genes, 2026-11-12). Results of runs made before these fixes stay in the a
 ## 4. Paper algorithms not yet implemented
 
 Implemented so far: inspre, mean-difference, GRNBoost-lite, Pearson, bicycle-lite (no latent variables), DOTEARS-lite,
-interventional consensus, gene-feature baseline (plus the 19 earlier ones).
+interventional consensus, gene-feature baseline (plus the 19 earlier ones); LLC mean-shift joined the registry in 1.0.5 (25 algorithms).
 
 | Priority | Method | Paper | Note |
 |---|---|---|---|
-| 2 | **LLC** (linear cyclic, latent confounders) | Hyttinen et al. 2012 | Reference linear cyclic SEM; inspre is the modern version. |
+| 2 | **LLC** (linear cyclic, latent confounders) | Hyttinen et al. 2012 | **Registered 2026-11-21 as `llc_mean`** (mean-shift part, `inference/llc.py`): best on calibrated screens and partial screens, mid-field on the studio's Hill data (`results/paper_algorithms.md`). Covariance part not done. |
 | 2 | **bicycle, full** (latent variables, Lyapunov likelihood) | Rohbeck et al., CLeaR 2024 | Only the lite version exists; practical to ~250 genes. |
-| 2 | **SCEPTRE** (calibrated ACE) | Barry et al. | `perturbseq/ace.py` uses an NT-calibrated Welch test instead. |
-| 3 | **DCD-FG** | Lopez et al., NeurIPS 2022 | Needs torch (optional extra exists). |
-| 3 | **DCDI / full DOTEARS** | interventional DAG learners | Lite versions exist. |
-| 3 | **GIES / IGSP** | Hauser and Buehlmann 2012; Wang, Squires, Uhler | Slow beyond ~100 genes. |
-| 3 | **SparseRC** | CausalBench challenge | Root-cause assumption on a DAG. |
+| 2 | **SCEPTRE** (calibrated ACE) | Barry et al. | Tried (simplified conditional resampling, `test="sceptre"`): equals the Welch test within noise. Full NB-regression SCEPTRE not done. |
+| 3 | **DCD-FG** | Lopez et al., NeurIPS 2022 | Tried (linear-Gaussian lite, `experimental/dcdfg.py`): 0.06-0.25 AUPR, 31 s; does not beat the baselines; fits cells, so it cannot be registered. |
+| 3 | **DCDI / full DOTEARS** | interventional DAG learners | Not implemented: same family as the lite versions (DOTEARS-lite, DCD-FG-lite). |
+| 3 | **GIES / IGSP** | Hauser and Buehlmann 2012; Wang, Squires, Uhler | Not implemented (slow beyond ~100 genes, binary output, no library available). |
+| 3 | **SparseRC** | CausalBench challenge | Not implemented (needs root-cause assumption and observational data). |
 | 4 | **Dictys / RENGE** | Wang 2023; Ishikawa 2023 | Need time-series data, which the archive does not store. |
 | skipped | **CLIPR / latent causal diffusions** | arXiv 2601.15341 | No code available (decision 2026-11-04). |
 
@@ -158,5 +182,5 @@ Papers still to read before implementing: LLC, GIES, IGSP, DCDI, NODAGS-Flow, Di
 ## 6. Housekeeping
 
 - [x] Branches merged into `main` and released as 1.0.0 (2026-11-13).
-- [~] Real-data check on Norman 2019: the transfer / baseline predictors are checked (`scripts/real_data_heldout.py`, `docs/results/real_data_heldout.md`). Not done: the Hill refit, and Replogle 2022 (its raw data are not in `data/downloads`).
+- [x] Real-data held-out check on Norman 2019 and Replogle 2022 (K562 essential pseudobulk, downloaded 2026-11-20, 80 MB, git-ignored): `scripts/real_data_heldout.py [--dataset replogle]`, `docs/results/real_data_heldout*.md`; the training mean beats the structure-using predictors on both. Not done: the Hill refit on real data.
 - [x] Interrupted inference jobs on archived networks are re-queued after a restart (generating jobs still come back as failed: re-running them would make a second network).

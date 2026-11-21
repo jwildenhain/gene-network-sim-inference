@@ -3,7 +3,7 @@ Virtual Cell Challenge (VCC 2026) Comparative Benchmark & Simulation Engine Suit
 Compares Mechanistic Dynamical GRN Inference (S2G, G2S, Voting Ensemble, CellBox, etc.)
 against Empirical Cross-Atlas Perturbation Transfer (AtlasShift).
 Provides:
-1. 18-Algorithm Comparative Evaluation on Network Topology Edge Recovery
+1. Comparative evaluation of every registered algorithm on network topology edge recovery
 2. In-Distribution vs Out-of-Distribution (OOD) Perturbation Generalization, with two response predictors per
    algorithm: the linear Jacobian operator and the structure -> Hill refit of ``hill_response.py`` (plus the
    mean-profile null and a true-structure oracle as reference rows)

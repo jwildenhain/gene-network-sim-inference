@@ -10,8 +10,10 @@
 | [`results/mechanistic_vs_statistical_top5.md`](results/mechanistic_vs_statistical_top5.md) | Top 5 algorithms on mechanistic and on statistical screens (rendered from the corpus, tested) |
 | [`results/heldout_screen_findings.md`](results/heldout_screen_findings.md) | Held-out-perturbation prediction (training mean, random, co-expression, linear baselines) on the statistical generators and on Norman 2019 real data; tables in `heldout_screen_benchmark.md` and `real_data_heldout.md` (`scripts/heldout_screen_benchmark.py`, `scripts/real_data_heldout.py`) |
 | [`results/archive_leaderboard.md`](results/archive_leaderboard.md) | Every algorithm on the cleaned simulation archive, by network size (rendered from a snapshot, tested) |
-| [`results/audit_100_250.md`](results/audit_100_250.md) | Time, memory and accuracy of all 24 algorithms at 100 and 250 genes (generated from `audit_100_250.json`, tested) |
+| [`results/audit_100_250.md`](results/audit_100_250.md) | Time, memory and accuracy of all 25 algorithms at 100 and 250 genes (generated from `audit_100_250.json`, tested) |
 | [`INFERENCE_GAP_ANALYSIS.md`](INFERENCE_GAP_ANALYSIS.md) | How the algorithms compare on simulated screens and real datasets; what is missing; run time |
+| [`results/paper_algorithms.md`](results/paper_algorithms.md) | LLC (mean-shift, registered as `llc_mean` in 1.0.5), DCD-FG-lite (experimental) and a SCEPTRE-style test, benchmarked |
+| [`results/fast_diagnosis.md`](results/fast_diagnosis.md) | Why FAST ranked low (the identity in its first estimate), the fix and its effect (generated from `fast_diagnosis.json`, tested) |
 | [`results/partial_screen_grid.md`](results/partial_screen_grid.md) | Partial screens by network size (100, 250) and fraction perturbed (6-75%), with and without imputing the missing perturbations |
 | [`results/`](results/) | Raw tables and JSON behind the analyses (partial screens, sweeps, ablations, scaling, imputation, datasets) |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Package map, data flow, conventions, how to extend |

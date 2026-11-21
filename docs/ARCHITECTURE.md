@@ -1,7 +1,7 @@
 # Architecture
 
 GRN-Sim has three jobs: **simulate** perturbation experiments on gene regulatory networks, **infer** the network back
-from the data with 24 registered algorithms ([`docs/algorithms/`](algorithms/README.md)), and **evaluate** the result (against the truth, or on real benchmarks). A web studio
+from the data with 25 registered algorithms ([`docs/algorithms/`](algorithms/README.md)), and **evaluate** the result (against the truth, or on real benchmarks). A web studio
 (`grn-sim web`) wraps all three. This page is the map; the mathematics is in [`SPECIFICATION.md`](../SPECIFICATION.md) and every simulation option is listed in [`SIMULATION_OPTIONS.md`](SIMULATION_OPTIONS.md).
 
 ## Layout
@@ -11,7 +11,7 @@ src/grn_sim/
 ├── paths.py            where bundled data lives and where the package writes (see "Files and paths")
 ├── core/               GeneNetwork (topology + kinetic parameters), topology generators (random, scale-free, hierarchical)
 ├── simulator/          Hill kinetics, ODE solver, PerturbationSimulator, alternative engines, Perturb-seq counts, response classes
-├── inference/          BaseInferenceAlgorithm + 24 registered algorithms (registry.py: one `register` call each), the partial-screen
+├── inference/          BaseInferenceAlgorithm + 25 registered algorithms (registry.py: one `register` call each), the partial-screen
 │                       adapter (partial.py), inspre, baselines, and the experimental bicycle-lite / DOTEARS-lite / consensus;
 │                       descriptions.py holds the one-paragraph description of each (docs/algorithms/ is generated from it)
 ├── perturbseq/         Perturb-seq generator: conditions, cells, measurement, realism, calibration; design.py (full or partial

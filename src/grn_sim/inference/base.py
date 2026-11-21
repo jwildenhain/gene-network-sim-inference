@@ -80,6 +80,16 @@ class BaseInferenceAlgorithm(ABC):
         pass
 
 
+def require_square_screen(name: str, X: np.ndarray, U: np.ndarray) -> None:
+    """Raises a readable ValueError for algorithms that solve ``A X = -U`` as a square problem (one perturbation per gene)."""
+    X, U = np.asarray(X), np.asarray(U)
+    if X.ndim != 2 or X.shape[0] != X.shape[1] or U.shape != X.shape:
+        raise ValueError(
+            f"{name} needs a square screen (n genes x n perturbations, X and U of the same shape); got X {X.shape} and "
+            f"U {U.shape}. For a partial screen or replicates wrap it in grn_sim.inference.partial.PartialAdapter "
+            f"(registry.build_partial does that).")
+
+
 def regulator_input_fit(algo: "BaseInferenceAlgorithm", X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
     """
     Fits ``algo`` under the regulator-input perturbation model used by the Hill simulator.

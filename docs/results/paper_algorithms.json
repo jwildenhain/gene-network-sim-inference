@@ -1,0 +1,2162 @@
+[
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.39253548622194656,
+  "base": 0.05142857142857143,
+  "seconds": 0.0
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.5753493360078691,
+  "base": 0.05142857142857143,
+  "seconds": 0.02
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.5317174992769816,
+  "base": 0.05142857142857143,
+  "seconds": 0.27
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.7717054816833904,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.6615359282393211,
+  "base": 0.05142857142857143,
+  "seconds": 0.22
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.13942328004978477,
+  "base": 0.05142857142857143,
+  "seconds": 0.2
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.6837833220883712,
+  "base": 0.05142857142857143,
+  "seconds": 0.96
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.6693889477297772,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.21398330745499664,
+  "base": 0.05142857142857143,
+  "seconds": 8.89
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.5210257980427317,
+  "base": 0.046122448979591835,
+  "seconds": 0.0
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.6569998204729842,
+  "base": 0.046122448979591835,
+  "seconds": 0.02
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.5652464943573211,
+  "base": 0.046122448979591835,
+  "seconds": 0.35
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.7910951530347367,
+  "base": 0.046122448979591835,
+  "seconds": 0.01
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.7457684326416527,
+  "base": 0.046122448979591835,
+  "seconds": 0.27
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.18347832926029525,
+  "base": 0.046122448979591835,
+  "seconds": 0.19
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.6956796878411167,
+  "base": 0.046122448979591835,
+  "seconds": 0.06
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.6685484571447395,
+  "base": 0.046122448979591835,
+  "seconds": 0.25
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.3405996588002325,
+  "base": 0.046122448979591835,
+  "seconds": 8.82
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.38666062007023816,
+  "base": 0.05142857142857143,
+  "seconds": 0.0
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.6404322160640411,
+  "base": 0.05142857142857143,
+  "seconds": 0.02
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.4966106555852647,
+  "base": 0.05142857142857143,
+  "seconds": 0.31
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.32507920831902326,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.45658183290960114,
+  "base": 0.05142857142857143,
+  "seconds": 0.23
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.16601210085728707,
+  "base": 0.05142857142857143,
+  "seconds": 0.19
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.6334928694896983,
+  "base": 0.05142857142857143,
+  "seconds": 0.06
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.6478552605142005,
+  "base": 0.05142857142857143,
+  "seconds": 0.13
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 50,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.07679193059684083,
+  "base": 0.05142857142857143,
+  "seconds": 9.8
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.46519043652082254,
+  "base": 0.02414141414141414,
+  "seconds": 0.01
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.564397138026552,
+  "base": 0.02414141414141414,
+  "seconds": 0.13
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.41751132459337564,
+  "base": 0.02414141414141414,
+  "seconds": 0.54
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.6313759411608073,
+  "base": 0.02414141414141414,
+  "seconds": 0.05
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.5281111185684573,
+  "base": 0.02414141414141414,
+  "seconds": 0.82
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.08095840556824961,
+  "base": 0.02414141414141414,
+  "seconds": 1.62
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.6811723481516969,
+  "base": 0.02414141414141414,
+  "seconds": 0.12
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.7258341784432599,
+  "base": 0.02414141414141414,
+  "seconds": 0.24
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.16566155963424065,
+  "base": 0.02414141414141414,
+  "seconds": 54.2
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.19507150058433909,
+  "base": 0.022727272727272728,
+  "seconds": 0.01
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.24375623599269078,
+  "base": 0.022727272727272728,
+  "seconds": 0.1
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.2998041480358915,
+  "base": 0.022727272727272728,
+  "seconds": 0.49
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.24438370337321413,
+  "base": 0.022727272727272728,
+  "seconds": 0.04
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.4894107497079467,
+  "base": 0.022727272727272728,
+  "seconds": 0.33
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.09797722409992833,
+  "base": 0.022727272727272728,
+  "seconds": 0.79
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.5523753859343434,
+  "base": 0.022727272727272728,
+  "seconds": 0.12
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.6372934582248142,
+  "base": 0.022727272727272728,
+  "seconds": 0.06
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.10882867246655879,
+  "base": 0.022727272727272728,
+  "seconds": 54.77
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.22066960916815315,
+  "base": 0.026262626262626262,
+  "seconds": 0.01
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.4393165437398644,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.33441578247106507,
+  "base": 0.026262626262626262,
+  "seconds": 0.45
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.3087223430032934,
+  "base": 0.026262626262626262,
+  "seconds": 0.04
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.47852865747853734,
+  "base": 0.026262626262626262,
+  "seconds": 0.27
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.09289616417775982,
+  "base": 0.026262626262626262,
+  "seconds": 0.72
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.5955029262149764,
+  "base": 0.026262626262626262,
+  "seconds": 0.09
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.6678201592132884,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "mechanistic",
+  "genes": 100,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.14707816754381656,
+  "base": 0.026262626262626262,
+  "seconds": 39.83
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.4651163183468268,
+  "base": 0.05142857142857143,
+  "seconds": 0.0
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.5353363564307337,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.5099750764146561,
+  "base": 0.05142857142857143,
+  "seconds": 0.3
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.563752875242333,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.5378822250627054,
+  "base": 0.05142857142857143,
+  "seconds": 0.27
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.167309426808878,
+  "base": 0.05142857142857143,
+  "seconds": 0.22
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.5395685591831704,
+  "base": 0.05142857142857143,
+  "seconds": 0.07
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.5214872776610368,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.24747854059377322,
+  "base": 0.05142857142857143,
+  "seconds": 8.63
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.4942883399186773,
+  "base": 0.046122448979591835,
+  "seconds": 0.0
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.4952269001864781,
+  "base": 0.046122448979591835,
+  "seconds": 0.02
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.4888573070762755,
+  "base": 0.046122448979591835,
+  "seconds": 0.28
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.49383910771878936,
+  "base": 0.046122448979591835,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.5085029914881178,
+  "base": 0.046122448979591835,
+  "seconds": 0.28
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.1517271314008034,
+  "base": 0.046122448979591835,
+  "seconds": 0.15
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.5039661761345074,
+  "base": 0.046122448979591835,
+  "seconds": 0.07
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.48822105630651497,
+  "base": 0.046122448979591835,
+  "seconds": 0.02
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.24592658984982643,
+  "base": 0.046122448979591835,
+  "seconds": 17.52
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.46369973389843494,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.4867235803677396,
+  "base": 0.05142857142857143,
+  "seconds": 0.06
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.463553746077699,
+  "base": 0.05142857142857143,
+  "seconds": 0.46
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.5148614159567299,
+  "base": 0.05142857142857143,
+  "seconds": 0.02
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.4959121272648349,
+  "base": 0.05142857142857143,
+  "seconds": 0.4
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.15615462770223776,
+  "base": 0.05142857142857143,
+  "seconds": 0.49
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.4665147190792618,
+  "base": 0.05142857142857143,
+  "seconds": 0.15
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.4733272275495491,
+  "base": 0.05142857142857143,
+  "seconds": 0.3
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 50,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.25821177606679724,
+  "base": 0.05142857142857143,
+  "seconds": 17.5
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.41562202762216477,
+  "base": 0.02414141414141414,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.3626345996437567,
+  "base": 0.02414141414141414,
+  "seconds": 0.06
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.3492946700226285,
+  "base": 0.02414141414141414,
+  "seconds": 0.46
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.4589238753799469,
+  "base": 0.02414141414141414,
+  "seconds": 0.05
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.41790302954823827,
+  "base": 0.02414141414141414,
+  "seconds": 0.3
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.039362189990085616,
+  "base": 0.02414141414141414,
+  "seconds": 1.53
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.400453037175201,
+  "base": 0.02414141414141414,
+  "seconds": 0.08
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.43310410380267383,
+  "base": 0.02414141414141414,
+  "seconds": 0.06
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.10521600499060486,
+  "base": 0.02414141414141414,
+  "seconds": 43.18
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.42882703494621965,
+  "base": 0.022727272727272728,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.4145577971763129,
+  "base": 0.022727272727272728,
+  "seconds": 0.09
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.38837557901388714,
+  "base": 0.022727272727272728,
+  "seconds": 0.46
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.45591570318318475,
+  "base": 0.022727272727272728,
+  "seconds": 0.03
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.456020805319203,
+  "base": 0.022727272727272728,
+  "seconds": 0.29
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.08632841798567308,
+  "base": 0.022727272727272728,
+  "seconds": 0.53
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.43996247412904993,
+  "base": 0.022727272727272728,
+  "seconds": 0.09
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.4610579270239197,
+  "base": 0.022727272727272728,
+  "seconds": 0.06
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.1330756404780451,
+  "base": 0.022727272727272728,
+  "seconds": 61.27
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.46238485485303715,
+  "base": 0.026262626262626262,
+  "seconds": 0.01
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.41637706033277766,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.3673769274364163,
+  "base": 0.026262626262626262,
+  "seconds": 0.43
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.4911715609955317,
+  "base": 0.026262626262626262,
+  "seconds": 0.05
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.4744185881801622,
+  "base": 0.026262626262626262,
+  "seconds": 0.53
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.07038474869212806,
+  "base": 0.026262626262626262,
+  "seconds": 1.13
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.4584327696874512,
+  "base": 0.026262626262626262,
+  "seconds": 0.09
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.4661780126356134,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "linear_sem",
+  "genes": 100,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.13050563407413818,
+  "base": 0.026262626262626262,
+  "seconds": 41.75
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.45606447409041057,
+  "base": 0.05142857142857143,
+  "seconds": 0.0
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.5037995500211191,
+  "base": 0.05142857142857143,
+  "seconds": 0.02
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.472918202209213,
+  "base": 0.05142857142857143,
+  "seconds": 0.31
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.5694535329312465,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.5273610279157182,
+  "base": 0.05142857142857143,
+  "seconds": 0.27
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.22739865528612002,
+  "base": 0.05142857142857143,
+  "seconds": 0.14
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.5157584459564325,
+  "base": 0.05142857142857143,
+  "seconds": 0.07
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.4952614186725369,
+  "base": 0.05142857142857143,
+  "seconds": 0.17
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.24272435384411942,
+  "base": 0.05142857142857143,
+  "seconds": 9.53
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.496924995889136,
+  "base": 0.046122448979591835,
+  "seconds": 0.0
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.5078980616924058,
+  "base": 0.046122448979591835,
+  "seconds": 0.02
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.4672887765822297,
+  "base": 0.046122448979591835,
+  "seconds": 0.43
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.47958248401004905,
+  "base": 0.046122448979591835,
+  "seconds": 0.02
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.499524285804771,
+  "base": 0.046122448979591835,
+  "seconds": 0.4
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.1546015718744006,
+  "base": 0.046122448979591835,
+  "seconds": 0.23
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.512125646811362,
+  "base": 0.046122448979591835,
+  "seconds": 0.17
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.4870594525037739,
+  "base": 0.046122448979591835,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.25518121844123515,
+  "base": 0.046122448979591835,
+  "seconds": 16.21
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.4571196951183269,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.48733663141213956,
+  "base": 0.05142857142857143,
+  "seconds": 0.03
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.46585030538300604,
+  "base": 0.05142857142857143,
+  "seconds": 0.36
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.5026133430011647,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.48631808907780566,
+  "base": 0.05142857142857143,
+  "seconds": 0.42
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.22713959129581163,
+  "base": 0.05142857142857143,
+  "seconds": 0.26
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.46969508929222675,
+  "base": 0.05142857142857143,
+  "seconds": 0.08
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.46901249817091684,
+  "base": 0.05142857142857143,
+  "seconds": 0.13
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 50,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.2634828073716257,
+  "base": 0.05142857142857143,
+  "seconds": 12.08
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.42009478119454746,
+  "base": 0.02414141414141414,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.39813755298657805,
+  "base": 0.02414141414141414,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.3989409018462091,
+  "base": 0.02414141414141414,
+  "seconds": 0.44
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.4631970631382365,
+  "base": 0.02414141414141414,
+  "seconds": 0.03
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.44077944054201074,
+  "base": 0.02414141414141414,
+  "seconds": 0.45
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.038113007429832785,
+  "base": 0.02414141414141414,
+  "seconds": 1.5
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.42911162527992164,
+  "base": 0.02414141414141414,
+  "seconds": 0.09
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.44836145741550026,
+  "base": 0.02414141414141414,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.12040192446043779,
+  "base": 0.02414141414141414,
+  "seconds": 42.08
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.43300012302917046,
+  "base": 0.022727272727272728,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.39956869491151425,
+  "base": 0.022727272727272728,
+  "seconds": 0.09
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.37627045574103557,
+  "base": 0.022727272727272728,
+  "seconds": 0.43
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.47797637649159364,
+  "base": 0.022727272727272728,
+  "seconds": 0.05
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.453037690773003,
+  "base": 0.022727272727272728,
+  "seconds": 0.27
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.09488688662240123,
+  "base": 0.022727272727272728,
+  "seconds": 0.5
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.4336367306782267,
+  "base": 0.022727272727272728,
+  "seconds": 0.08
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.46659128188165994,
+  "base": 0.022727272727272728,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.13586967973571162,
+  "base": 0.022727272727272728,
+  "seconds": 60.87
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.46121994835440316,
+  "base": 0.026262626262626262,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.4211947536455645,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.38329801354702,
+  "base": 0.026262626262626262,
+  "seconds": 0.47
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.5001083661743163,
+  "base": 0.026262626262626262,
+  "seconds": 0.03
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.4775041788277538,
+  "base": 0.026262626262626262,
+  "seconds": 0.25
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.07361570402352093,
+  "base": 0.026262626262626262,
+  "seconds": 1.09
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.4536363834442862,
+  "base": 0.026262626262626262,
+  "seconds": 0.08
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.46996485433109975,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nb_copula",
+  "genes": 100,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.13361510469828614,
+  "base": 0.026262626262626262,
+  "seconds": 43.45
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.40048440481949993,
+  "base": 0.05142857142857143,
+  "seconds": 0.0
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.46182513339758113,
+  "base": 0.05142857142857143,
+  "seconds": 0.03
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.45305690506952767,
+  "base": 0.05142857142857143,
+  "seconds": 0.5
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.4690673113666951,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.46112427475304474,
+  "base": 0.05142857142857143,
+  "seconds": 0.48
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.13797836329153862,
+  "base": 0.05142857142857143,
+  "seconds": 0.45
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.46017220668068287,
+  "base": 0.05142857142857143,
+  "seconds": 0.14
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.44049120965833954,
+  "base": 0.05142857142857143,
+  "seconds": 0.03
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.17742272323693267,
+  "base": 0.05142857142857143,
+  "seconds": 15.44
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.43058824685972913,
+  "base": 0.046122448979591835,
+  "seconds": 0.0
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.41866119342646374,
+  "base": 0.046122448979591835,
+  "seconds": 0.03
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.3989616784267237,
+  "base": 0.046122448979591835,
+  "seconds": 0.46
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.4266108193670601,
+  "base": 0.046122448979591835,
+  "seconds": 0.02
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.40453303372970834,
+  "base": 0.046122448979591835,
+  "seconds": 0.55
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.10677865142141328,
+  "base": 0.046122448979591835,
+  "seconds": 0.44
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.43209504510644375,
+  "base": 0.046122448979591835,
+  "seconds": 0.12
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.4030307581921348,
+  "base": 0.046122448979591835,
+  "seconds": 0.29
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.10358196872243323,
+  "base": 0.046122448979591835,
+  "seconds": 14.36
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.39242742931951446,
+  "base": 0.05142857142857143,
+  "seconds": 0.0
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.4100932494294942,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.3995559152487413,
+  "base": 0.05142857142857143,
+  "seconds": 0.27
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.45346598326904924,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.40957407960611875,
+  "base": 0.05142857142857143,
+  "seconds": 0.31
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.1426343845800068,
+  "base": 0.05142857142857143,
+  "seconds": 0.19
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.4086464467399598,
+  "base": 0.05142857142857143,
+  "seconds": 0.07
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.40944257528877226,
+  "base": 0.05142857142857143,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 50,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.13739915075287923,
+  "base": 0.05142857142857143,
+  "seconds": 8.57
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.3336275215087864,
+  "base": 0.02414141414141414,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.289446749011415,
+  "base": 0.02414141414141414,
+  "seconds": 0.04
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.26657052225452216,
+  "base": 0.02414141414141414,
+  "seconds": 0.46
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.3530911463333372,
+  "base": 0.02414141414141414,
+  "seconds": 0.08
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.33169146359714535,
+  "base": 0.02414141414141414,
+  "seconds": 0.45
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.040727117558460896,
+  "base": 0.02414141414141414,
+  "seconds": 1.73
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.3107239789923751,
+  "base": 0.02414141414141414,
+  "seconds": 0.09
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.3228120907087114,
+  "base": 0.02414141414141414,
+  "seconds": 0.08
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 1,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.042185178129739334,
+  "base": 0.02414141414141414,
+  "seconds": 42.82
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.3995441234012206,
+  "base": 0.022727272727272728,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.3439308984690443,
+  "base": 0.022727272727272728,
+  "seconds": 0.05
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.3233703112210376,
+  "base": 0.022727272727272728,
+  "seconds": 0.69
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.4355299995613214,
+  "base": 0.022727272727272728,
+  "seconds": 0.04
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.4095651174896786,
+  "base": 0.022727272727272728,
+  "seconds": 0.36
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.03338369708677938,
+  "base": 0.022727272727272728,
+  "seconds": 2.65
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.36530068741702176,
+  "base": 0.022727272727272728,
+  "seconds": 0.15
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.4011716015606031,
+  "base": 0.022727272727272728,
+  "seconds": 0.13
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 2,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.06694014605583283,
+  "base": 0.022727272727272728,
+  "seconds": 52.27
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "mean_difference",
+  "status": "ok",
+  "aupr": 0.3106034822042062,
+  "base": 0.026262626262626262,
+  "seconds": 0.01
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "inspre",
+  "status": "ok",
+  "aupr": 0.3080423611220798,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "nir",
+  "status": "ok",
+  "aupr": 0.2716160387836631,
+  "base": 0.026262626262626262,
+  "seconds": 0.48
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "ridge_cv",
+  "status": "ok",
+  "aupr": 0.3665529390028005,
+  "base": 0.026262626262626262,
+  "seconds": 0.04
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "s2g",
+  "status": "ok",
+  "aupr": 0.34528067804042395,
+  "base": 0.026262626262626262,
+  "seconds": 0.43
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "notears",
+  "status": "ok",
+  "aupr": 0.07121279748667901,
+  "base": 0.026262626262626262,
+  "seconds": 1.1
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "cellbox",
+  "status": "ok",
+  "aupr": 0.3318820657255499,
+  "base": 0.026262626262626262,
+  "seconds": 0.1
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "llc_mean",
+  "status": "ok",
+  "aupr": 0.3295054480959204,
+  "base": 0.026262626262626262,
+  "seconds": 0.06
+ },
+ {
+  "generator": "nonlinear_scm",
+  "genes": 100,
+  "seed": 3,
+  "method": "dcdfg_lite",
+  "status": "ok",
+  "aupr": 0.0656944206879768,
+  "base": 0.026262626262626262,
+  "seconds": 49.58
+ }
+]

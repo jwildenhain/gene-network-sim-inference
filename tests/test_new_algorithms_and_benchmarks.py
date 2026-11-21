@@ -129,7 +129,7 @@ def test_benchmark_studio_pipeline_all_12_algorithms():
     assert studio["dataset_id"] == "dream4_10gene"
     assert len(studio["gene_names"]) == 10
 
-    # Ensure all 12 algorithms evaluated
+    # Ensure every algorithm evaluated
     tbl = studio["table_4_1"]
     expected_algs = {
         "vote", "cellbox", "genie3", "s2g", "g2s", "netdeconv",

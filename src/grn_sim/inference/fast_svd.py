@@ -20,6 +20,13 @@ class FastSVD(BaseInferenceAlgorithm):
     4. Select top K largest |A_0(i, :)| per row and refit via -u(i, :) * pinv(x_row_sel)
     5. Apply self-regulation diagonal correction (+ eye(N)) when N == 9 (SOS benchmark)
        or when add_diagonal_identity=True (matching fast.m line 85 / new_stats.m line 52).
+
+    Why FAST ranked low (measured, docs/results/fast_diagnosis.md): ``A_0 = (x - u) X^+ = I + A`` for a full-rank X, so
+    every row's largest entry is its own diagonal (about 1) and the top-K selection of step 4 spends one of its K slots
+    on a self-edge that is not in the network. With K near the mean in-degree that is a loss of one true regulator in
+    two or three. ``rank_without_identity=True`` ranks the candidates by ``|A_0 - I|`` and never selects the diagonal (the refit of
+    step 4 is unchanged); the studio's registry sets it. The default ``False`` is the MATLAB-identical selection that the
+    equivalence tests pin down. It has no effect when the diagonal correction of step 5 is already on.
     """
 
     def __init__(
@@ -30,6 +37,7 @@ class FastSVD(BaseInferenceAlgorithm):
         perturbation_mode: str = "additive",
         svd_reg: float = 1e-6,
         adaptive_k: bool = False,
+        rank_without_identity: bool = False,
     ):
         super().__init__(name="fast")
         self.k_interactions = k_interactions
@@ -38,6 +46,7 @@ class FastSVD(BaseInferenceAlgorithm):
         self.perturbation_mode = perturbation_mode.lower().strip()
         self.svd_reg = svd_reg
         self.adaptive_k = adaptive_k
+        self.rank_without_identity = rank_without_identity
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
         """
@@ -83,8 +92,14 @@ class FastSVD(BaseInferenceAlgorithm):
         if do_diag:
             A_0 = A_0 - np.eye(N)
 
-        # 2. Select top K elements per row with largest magnitude (fast_modified.m lines 46-63)
-        ind = np.argsort(np.abs(A_0), axis=1, kind="mergesort")
+        # 2. Select top K elements per row with largest magnitude (fast_modified.m lines 46-63). A_0 = I + A, so the ranking
+        # may drop the identity (already removed above when the diagonal correction is on)
+        rank_mat = np.abs(A_0)
+        if bool(kwargs.get("rank_without_identity", self.rank_without_identity)) and not do_diag:
+            # the rank-(N-1) truncation leaves a diagonal of I - X X^+ noise behind, so the diagonal is not a candidate at all
+            rank_mat = np.abs(A_0 - np.eye(N))
+            np.fill_diagonal(rank_mat, -1.0)
+        ind = np.argsort(rank_mat, axis=1, kind="mergesort")
         ind_M = np.sort(ind[:, N - K:N], axis=1)
 
         A_est = np.zeros((N, N), dtype=float)
@@ -93,7 +108,7 @@ class FastSVD(BaseInferenceAlgorithm):
             sel_cols = ind_M[i, :]
             if adaptive and K > 1:
                 # Per-row model order: rank candidates by |A_0| and pick k minimising BIC of the refit
-                cand = np.argsort(-np.abs(A_0[i, :]), kind="mergesort")[:K]
+                cand = np.argsort(-rank_mat[i, :], kind="mergesort")[:K]
                 best = None
                 for kk in range(1, K + 1):
                     cols = np.sort(cand[:kk])
@@ -124,5 +139,5 @@ class FastSVD(BaseInferenceAlgorithm):
             A_est=A_est,
             adjacency_pred=adj,
             time_elapsed=elapsed,
-            diagnostics={"k": K, "add_diagonal_identity": do_diag},
+            diagnostics={"k": K, "add_diagonal_identity": do_diag, "rank_without_identity": self.rank_without_identity},
         )

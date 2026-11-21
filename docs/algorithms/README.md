@@ -25,6 +25,7 @@ One page per algorithm. All of them take the same input, `fit(X, U)`, and are sc
 | algorithm | status | partial | in one line |
 |---|---|---|---|
 | [inspre (sparse inversion of the response matrix)](inspre.md) | extended | native | Turns the matrix of total knockdown effects into direct effects by finding a sparse inverse of it; handles feedback loops. |
+| [LLC (mean-shift equations)](llc_mean.md) | extended | native | Per-target regression of one gene's response on the responses of all other genes, over the experiments in which it was not perturbed. |
 | [Mean difference](mean_difference.md) | baseline / control | native | Scores edge a -> j by the size of gene j's response when a is perturbed. |
 | [Network Deconvolution](netdeconv.md) | extended | adapter | Removes indirect transitive effects from an observed dependency matrix: G_dir = G_obs (I + G_obs)^-1. |
 | [DMD-GRN (Koopman / dynamic mode decomposition)](dmdgrn.md) | extended | native | Fits a linear operator from perturbation to response with a truncated SVD (controlled DMD). |
@@ -62,4 +63,5 @@ One page per algorithm. All of them take the same input, `fit(X, U)`, and are sc
 |---|---|---|---|
 | [bicycle-lite (steady-state OU likelihood)](bicycle_lite.md) | experimental | experimental | Maximum-likelihood direct effects from per-node mean shifts and one pooled covariance of an Ornstein-Uhlenbeck steady state. |
 | [DOTEARS-lite (interventional DAG)](dotears_lite.md) | experimental | experimental | NOTEARS with the intervened gene's equation dropped in its own cells and per-gene noise variances. |
+| [DCD-FG-lite (low-rank interventional DAG)](dcdfg_lite.md) | experimental | experimental | Linear-Gaussian version of DCD-FG: a low-rank factor-graph weight matrix fitted by the interventional likelihood of single cells. |
 | [Rank consensus](interventional_consensus.md) | experimental | experimental | Average of the rank-normalised scores of several interventional-aware methods (inspre, mean difference, bicycle-lite, DOTEARS-lite). |

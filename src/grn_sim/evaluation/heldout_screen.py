@@ -69,16 +69,17 @@ def predict(method: str, R_train: np.ndarray, nodes_train: np.ndarray, nodes_tes
     P = _profiles(R_train, nodes_train)                    # (n, m)
     Z = _zscore(P)
     train_rows = Z[nodes_train]                            # profiles of the training genes, (m, m)
-    for i, a in enumerate(nodes_test):
-        s = train_rows @ Z[a]                              # similarity of gene a to every training gene
-        if method == "coexpression":
+    S = train_rows @ Z[nodes_test].T                       # (m, len(nodes_test)): similarity of each held-out gene to every training gene
+    if method == "coexpression":
+        for i in range(len(nodes_test)):
+            s = S[:, i]
             top = np.argsort(-s)[: min(k, m)]
             w = np.clip(s[top], 0.0, None)
             out[i] = (w @ R_train[top] / w.sum()) if w.sum() > 0 else R_train.mean(axis=0)
-        else:
-            G = train_rows @ train_rows.T                  # (m, m)
-            c = np.linalg.solve(G + ridge * np.eye(m), s)
-            out[i] = c @ R_train
+    else:
+        G = train_rows @ train_rows.T                      # (m, m), solved once for all held-out genes
+        C = np.linalg.solve(G + ridge * np.eye(m), S)      # (m, len(nodes_test))
+        out[:] = C.T @ R_train
     return out
 
 

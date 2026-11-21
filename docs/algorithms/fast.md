@@ -6,7 +6,7 @@ Inverts the response matrix with a truncated SVD and keeps the K largest coeffic
 
 ## How it works
 
-A0 = (X - U) V S^-1 U^T, then the top-K entries per row are refitted by least squares.
+A0 = (X - U) V S^-1 U^T, then the top-K entries per row are refitted by least squares. A0 is I + A, so the MATLAB ranking spends one of the K slots of every row on the diagonal; the studio ranks by |A0 - I| and never selects the diagonal (`rank_without_identity`, off by default so the MATLAB-equivalence tests still hold).
 
 ## Interface
 
@@ -17,7 +17,7 @@ A0 = (X - U) V S^-1 U^T, then the top-K entries per row are refitted by least sq
 
 ## Measured here
 
-Natively scores only the perturbed genes (0.30 / 0.006 at 30 perturbed, which is chance for unperturbed genes); adapted 0.07 / 0.05.
+Hill screens, 50 / 100 genes: F1 0.35 / 0.28 with the MATLAB ranking, 0.45 / 0.35 without the identity (NIR 0.45 / 0.37); on the linear engine it stays weak (0.16 / 0.05; NIR 0.27 / 0.15), see results/fast_diagnosis.md. Natively scores only the perturbed genes on partial screens (balanced 0.10-0.25, chance for unperturbed genes); adapted 0.06-0.22.
 
 Simulator results, 3-4 seeds, wide spreads: orders of magnitude, not rankings. Sources: [`docs/INFERENCE_GAP_ANALYSIS.md`](../INFERENCE_GAP_ANALYSIS.md), [`docs/results/`](../results/).
 

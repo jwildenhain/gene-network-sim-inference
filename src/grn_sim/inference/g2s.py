@@ -14,7 +14,7 @@ from typing import Any, Dict, Iterator, Optional, List, Tuple
 import numpy as np
 
 from grn_sim.inference._cache import result_cache
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, require_square_screen
 from grn_sim.inference import _g2s_fast as fast
 
 _BACKENDS = ("auto", "numpy", "processes", "reference")
@@ -232,6 +232,8 @@ class GeneralToSpecific(BaseInferenceAlgorithm):
                 A_gs(ind1, i) = a1;
             end
         """
+        if self.matlab_mode:                       # the MATLAB form solves a square problem; the regression form takes any number of experiments
+            require_square_screen("g2s", X, U)
         start_time = time.time()
         X_f = np.real(X).astype(float)
         U_f = np.real(U).astype(float)

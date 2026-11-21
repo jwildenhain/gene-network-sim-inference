@@ -9,7 +9,7 @@ from typing import Optional, List
 import numpy as np
 from grn_sim.inference._parallel import progress_slice
 
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, require_square_screen
 from grn_sim.inference.s2g import SimpleToGeneral
 from grn_sim.inference._cache import cached_seconds
 from grn_sim.inference.g2s import GeneralToSpecific
@@ -37,6 +37,8 @@ class VotingEnsemble(BaseInferenceAlgorithm):
         self.min_votes = min_votes
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
+        if getattr(self.s2g, "matlab_mode", True) or getattr(self.g2s, "matlab_mode", True):
+            require_square_screen("vote", X, U)
         start_time = time.time()
 
         if self.extra_members:

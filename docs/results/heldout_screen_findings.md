@@ -20,6 +20,11 @@ perturbations that moved at least one gene ("active").
    have no such shared component, which is why the simulated numbers in point 1 sit near zero. This is a realism gap of the generators,
    not a result about real biology: a screen simulator that is meant to rank virtual-cell models should reproduce a shared response of
    this size before its held-out scores are taken at face value.
+   **Replogle 2022 confirms it** (K562 essential CRISPRi, 1868 knockdowns, 8563 genes, pseudobulk z-scores,
+   `real_data_heldout_replogle.md`): the training mean again beats the structure-using predictors (Pearson 0.24 against `linear` 0.19 and
+   `coexpression` 0.18; sign accuracy 0.76 against 0.68), and a random training response sits at 0.06. Correlations are lower than on Norman
+   because the responses are noisier (median 116 cells) and the screen is larger, but the ordering is the same, and all of them are far
+   above the 0.02-0.06 of the simulated screens.
 5. **Caveats.** The simulated truth is noise-free total effects; the real-data "truth" is itself an estimate from about 290 cells, so the
    real-data scores are lower bounds and only comparable between predictors. The five predictors are baselines, not published methods
    (no GEARS, scGPT or CPA), and no mechanistic (Hill) simulator screens are included: this answers "how hard is held-out prediction on

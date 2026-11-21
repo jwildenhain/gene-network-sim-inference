@@ -10,7 +10,7 @@ Generates comprehensive simulation runs across:
 4. Measurement Noise Axis (sigma_m in [0.0, 0.02, 0.05, 0.10, 0.15, 0.20])
 5. Dynamics Regimes (Responsive, Flat, Oscillating across all 3 architectures)
 
-Evaluates ALL 19 reverse-engineering algorithms, configured as in the web studio (regulator-input fits on the Hill
+Evaluates EVERY registered reverse-engineering algorithm, configured as in the web studio (regulator-input fits on the Hill
 simulator's data, G2S with the LOO drop rule, K = the network's mean in-degree):
 - Voting Ensemble (majority of S2G, G2S and NIR)
 - Score Vote (evidence-weighted S2G + G2S + NIR)
@@ -71,7 +71,7 @@ def ALGO_METADATA() -> Dict[str, Dict[str, str]]:
 
 
 def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True) -> Dict[str, Any]:
-    """Runs a complete 19-algorithm multi-axis benchmark across Random, Scale-Free, and Hierarchical topologies."""
+    """Runs a complete all-registered-algorithms multi-axis benchmark across Random, Scale-Free, and Hierarchical topologies."""
     t_start = time.time()
     db_file = db_path or get_db_path()
     init_db(db_file)
@@ -468,7 +468,7 @@ def run_systematic_sweep(db_path: Optional[str] = None, save_to_db: bool = True)
         sweep_runs.append(res_osc)
 
     # -------------------------------------------------------------------------
-    # 5. OVERALL ALGORITHM LEADERBOARD (ALL 12 ALGORITHMS)
+    # 5. OVERALL ALGORITHM LEADERBOARD (ALL REGISTERED ALGORITHMS)
     # -------------------------------------------------------------------------
     leaderboard: List[Dict[str, Any]] = []
     for alg, m_list in all_evaluated_metrics.items():

@@ -9,7 +9,7 @@ from typing import Optional, List, Tuple
 import numpy as np
 
 from grn_sim.inference._parallel import default_n_jobs, map_indices
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, require_square_screen
 
 
 class SimpleToGeneral(BaseInferenceAlgorithm):
@@ -184,6 +184,8 @@ class SimpleToGeneral(BaseInferenceAlgorithm):
                 A_sg(ind0, i) = a0;
             end
         """
+        if self.matlab_mode:                       # the MATLAB form solves a square problem; the regression form takes any number of experiments
+            require_square_screen("s2g", X, U)
         start_time = time.time()
         X_f = np.real(X).astype(float)
         U_f = np.real(U).astype(float)

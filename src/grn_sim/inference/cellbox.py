@@ -43,7 +43,7 @@ def resolve_device(requested: Optional[str], n_genes: int) -> str:
     return "cuda" if usable and n_genes >= GPU_MIN_GENES else "cpu"
 
 
-PENALTY_REFERENCE_GENES = 100
+PENALTY_REFERENCE_GENES = 55
 LARGE_NETWORK_EPOCHS = 150
 
 
@@ -94,6 +94,8 @@ class CellBoxNeuralODE(BaseInferenceAlgorithm):
         # grows with N^2: tuned near 100 genes, at 200 genes it shrinks every weight to ~0 (AUPR 0.41 -> 0.08 on simulated
         # screens). Above PENALTY_REFERENCE_GENES the penalties are scaled by (reference / N)^2 and the optimiser gets at least
         # LARGE_NETWORK_EPOCHS steps (AUPR at 200 genes back to 0.32-0.49); at or below the reference nothing changes.
+        # The reference was 100 until 1.0.5, which left a full-strength penalty on networks of 60-100 genes: F1 0.15 at 100 genes
+        # (chance on the 100-gene audit network) against 0.25 at 70 and 200. At 55 it is 0.20 at 100 and unchanged at 70, 200, 250 and 500.
         self.size_scaled_penalty = size_scaled_penalty
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:

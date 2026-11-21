@@ -22,6 +22,7 @@ from grn_sim.inference.deeprig import DeepRIGAlgorithm
 from grn_sim.inference.sfinn import SFINNAlgorithm
 from grn_sim.inference.notears import NOTEARSAlgorithm
 from grn_sim.inference.inspre import InspreAlgorithm
+from grn_sim.inference.llc import LLCMean
 from grn_sim.inference.interventional_baselines import (GeneFeatureBaseline, GRNBoostLite, MeanDifference,
                                                         PearsonCorrelation)
 from grn_sim.inference.preprocessor import GRNDataPreprocessor, PreparedGRNData, default_preprocessor
@@ -51,6 +52,7 @@ __all__ = [
     "SFINNAlgorithm",
     "NOTEARSAlgorithm",
     "InspreAlgorithm",
+    "LLCMean",
     "MeanDifference",
     "PearsonCorrelation",
     "GRNBoostLite",

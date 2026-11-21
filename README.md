@@ -67,7 +67,7 @@ Direct comparative benchmarking between Mechanistic Causal GRN modeling (`phpIoR
 | ![AtlasShift in Studio](docs/screenshots/09_tab1_atlasshift_inference_studio.png) | ![VCC Benchmark Dark](docs/screenshots/10_tab5_vcc_atlasshift_benchmark_dark.png) | ![VCC Benchmark Light](docs/screenshots/11_tab5_vcc_atlasshift_benchmark_light.png) |
 
 ### 5. Multi-Paradigm Simulation Engines & Real-World Benchmarks Studio (Tabs 1 & 2)
-Complete integration of 4 simulation dynamics engines (`hill_nonlinear`, `cellbox_neural_ode`, `linear_jacobian`, `perturb_seq_counts`), 18 reverse-engineering inference algorithms (`S2G`, `G2S`, `Voting`, `CellBox`, `GENIE3`, `NetDeconv`, `RidgeCV`, `CPALite`, `AtlasShift`, `NIR`, `FAST`, `By-Chance`, `ARACNE`, `CausalGRN`, `DMD-GRN`, `DeepRIG`, `SFINN`, `NOTEARS`), and real-world benchmark datasets (`ecoli_sos`, `dream4_10gene`, `norman_2019_tf16`, `replogle_2022_p53`):
+Complete integration of 4 simulation dynamics engines (`hill_nonlinear`, `cellbox_neural_ode`, `linear_jacobian`, `perturb_seq_counts`), 25 reverse-engineering inference algorithms (`S2G`, `G2S`, `Voting`, `Score Vote`, `NIR`, `FAST`, `By-Chance`, `AtlasShift`, `CellBox`, `GENIE3`, `NetDeconv`, `RidgeCV`, `CPALite`, `ARACNE`, `CausalGRN`, `DMD-GRN`, `DeepRIG`, `SFINN`, `NOTEARS`, `inspre`, `LLC`, `Mean Difference`, `Pearson`, `GRNBoost-lite`, `Gene features`; one page each in [`docs/algorithms/`](docs/algorithms/README.md)), and real-world benchmark datasets (`ecoli_sos`, `dream4_10gene`, `norman_2019_tf16`, `replogle_2022_p53`):
 
 | Tab 1: Multi-Paradigm Studio (Dark) | Tab 1: Multi-Paradigm Studio (Light) | Tab 2: Real-World Benchmarks Studio |
 | :---: | :---: | :---: |
@@ -149,10 +149,10 @@ In Tab 3 (Previous Simulations Archive), Step 4 is split into **two side-by-side
 | :---: | :---: |
 | ![Side by Side Dual Graph](docs/screenshots/37_tab4_step4_dual_side_by_side_responsive.png) | ![Dual Oscillating](docs/screenshots/40_tab4_step4_dual_side_by_side_oscillating.png) |
 
-### 11. Complete 18-Algorithm Benchmark, Overall Statistics & Cross-Architecture Evaluation (Tabs 3 & 5)
+### 11. Algorithm Benchmark, Overall Statistics & Cross-Architecture Evaluation (Tabs 3 & 5)
 
 > **Historical figures.** The numbers in this section are from the original release: 69 networks of 12-60 genes and the first 18 algorithms.
-> The registry now has 24, and the current statistics (500 archived runs, 24 algorithms) are in Tab 5 and
+> The registry now has 25, and the current statistics (516 archived runs, 25 algorithms) are in Tab 5 and
 > [`docs/results/archive_leaderboard.md`](docs/results/archive_leaderboard.md). NOTEARS in particular changed: its penalty is now relative to the data (1.0.4).
 
 > 📊 **Full Technical & Benchmark Specification**: See [`docs/BENCHMARK_18_ALGORITHMS_AND_ARCHITECTURES.md`](docs/BENCHMARK_18_ALGORITHMS_AND_ARCHITECTURES.md) for complete mathematical formulations, per-architecture leaderboards, and parameter sweeps across Random, Scale-Free, and Hierarchical Modular topologies.
@@ -166,7 +166,7 @@ A comprehensive systematic parameter sweep benchmark extended to match **Jan Wil
 - **Total Systematic Evaluated Runs**: 69 systematic network runs $\times 18$ algorithms = **1,242 algorithmic evaluations**.
 
 1. **Tab 5 Renamed to "5. Overall Statistics"**:
-   - **Complete 18-Algorithm Leaderboard**: Real-time multi-metric cross-evaluation of all 18 inference methods in the repository (`AtlasShift`, `Simple-to-General (S2G)`, `Voting Ensemble`, `General-to-Specific (G2S)`, `NIR`, `Multi-Output RidgeCV`, `CellBox Neural ODE`, `Network Deconvolution`, `FAST SVD Inversion`, `GENIE3`, `CPA-Lite Autoencoder`, `DeepRIG`, `CausalGRN`, `By-Chance Null Model`, `DMD-GRN`, `ARACNE`, `SFINN`, `NOTEARS`).
+   - **Complete Leaderboard**: Real-time multi-metric cross-evaluation of every registered inference method (in the original release, the first 18: `AtlasShift`, `Simple-to-General (S2G)`, `Voting Ensemble`, `General-to-Specific (G2S)`, `NIR`, `Multi-Output RidgeCV`, `CellBox Neural ODE`, `Network Deconvolution`, `FAST SVD Inversion`, `GENIE3`, `CPA-Lite Autoencoder`, `DeepRIG`, `CausalGRN`, `By-Chance Null Model`, `DMD-GRN`, `ARACNE`, `SFINN`, `NOTEARS`).
    - **Leaderboard Performance Summary**:
      - **#1 AtlasShift (Empirical Latent Transfer)**: Top overall re-engineering accuracy with Mean $F_1 = 0.547$, Power / Recall $= 72.7\%$, Specificity $= 86.1\%$, FDR $= 52.2\%$, Mean Runtime $= 0.0001\text{s}$.
      - **#2 Voting Ensemble**: Strict consensus ($S2G \cap G2S$) achieving top specificity ($96.7\%$), low FDR ($44.5\%$), lowest total errors ($32.6$), and Mean $F_1 = 0.420$.
@@ -208,10 +208,10 @@ A comprehensive systematic parameter sweep benchmark extended to match **Jan Wil
    - **Curated Top Performers**: Restricts the display in `tbl-history` strictly to the top 15 highest-performing runs ($N \ge 12$) within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), ranked by $F_1$ score and minimal total errors.
    - **Balanced Database Benchmark Corpus**: The SQLite `rgn_db.sqlite` archive was augmented with $N \ge 12$ oscillating and flat simulations, ensuring that all 7 sets have at least 15 qualifying runs ($N \in [12, 60]$) for complete, robust representation.
    - **Dynamic Rank Badges & F1 Column**: Each row is badged with its exact ranking within its set (`#1 in Responsive` .. `#15 in Responsive`), its calculated $F_1$ score, Power %, Specificity %, and Total Errors.
-   - **24-Algorithm Detailed Inspector**: Supports inspecting re-engineering performance across **all 24 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
-   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 512 persisted runs in SQLite `rgn_db` (each with all 24 algorithms; per-algorithm tables by network size in [`docs/results/archive_leaderboard.md`](docs/results/archive_leaderboard.md)).
+   - **Detailed Inspector**: Supports inspecting re-engineering performance across **every registered algorithm** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
+   - **Curated Benchmark Corpus**: In the default "All Dynamics Sets" filter, exactly 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating, all $N \ge 12$) are displayed out of the 516 persisted runs in SQLite `rgn_db` (each with all 25 algorithms; per-algorithm tables by network size in [`docs/results/archive_leaderboard.md`](docs/results/archive_leaderboard.md)).
 
-| Tab 5: Complete 18-Algorithm Leaderboard | Tab 5: Architecture Cross-Comparison (Random, Scale-Free, Hierarchical) |
+| Tab 5: Complete Leaderboard (original release) | Tab 5: Architecture Cross-Comparison (Random, Scale-Free, Hierarchical) |
 | :---: | :---: |
 | ![Tab 5 Overall Statistics](docs/screenshots/47_tab5_overall_statistics_sweep.png) | ![Tab 5 Architecture Cards & Figures](docs/screenshots/51_tab5_architecture_cards_and_figures.png) |
 
@@ -223,7 +223,7 @@ A comprehensive systematic parameter sweep benchmark extended to match **Jan Wil
 | :---: | :---: |
 | ![Figure 1A Hover](docs/screenshots/54_tab5_hover_algorithm_line.png) | ![Figure 5 Hover](docs/screenshots/55_tab5_hover_runtime_line.png) |
 
-| Tab 3: Restricted View (Best 15 in Set & F1 Badges) | Tab 3: Detailed Inspector with 18-Algorithm Selector |
+| Tab 3: Restricted View (Best 15 in Set & F1 Badges) | Tab 3: Detailed Inspector with Algorithm Selector |
 | :---: | :---: |
 | ![Tab 3 Best 15 Restricted View](docs/screenshots/49_tab3_best15_restricted_view.png) | ![Tab 3 Detailed Inspector](docs/screenshots/53_tab3_detail_inspector_algorithm_view.png) |
 
@@ -291,12 +291,12 @@ An exhaustive audit of the complete platform was conducted across all 5 user int
 * **Noise & Biological Variability Models (`do_biovariability.m`, `error_model.m`)**:
   * Biological variability across $M$ replicates ($\zeta \sim \mathcal{N}(0, \sigma_b^2)$) and Gaussian measurement noise ($\epsilon \sim \mathcal{N}(0, \sigma_m^2)$).
 
-### 2. Network Inference & Reverse Engineering Algorithms (24 registered algorithms)
+### 2. Network Inference & Reverse Engineering Algorithms (25 registered algorithms)
 
 > **Catalogue:** one short page per algorithm (idea, input/output orientation, partial-screen support, what was measured here) is in
 > [`docs/algorithms/`](docs/algorithms/README.md). Since the first version it has gained **inspre** (sparse inversion of the
-> response matrix), mean-difference / Pearson / GRNBoost-lite / gene-level baselines, and the experimental bicycle-lite, DOTEARS-lite
-> and a rank consensus. How they compare, and what a method needs to beat, is in
+> response matrix), **LLC** (mean-shift equations, 1.0.5), mean-difference / Pearson / GRNBoost-lite / gene-level baselines, and the
+> experimental bicycle-lite, DOTEARS-lite, DCD-FG-lite and a rank consensus. How they compare, and what a method needs to beat, is in
 > [`docs/INFERENCE_GAP_ANALYSIS.md`](docs/INFERENCE_GAP_ANALYSIS.md). The list below describes the original 18.
 
 * **S2G (Simple-to-General — `s2g.m` / `getvar.m`)**:
@@ -320,7 +320,7 @@ An exhaustive audit of the complete platform was conducted across all 5 user int
 * **NIR (Network Identification by multiple Regression — `nir_v3.m`)**:
   * Gardner et al. (*Science* 2003) greedy forward top-$D$ search over sparse regulatory subsets with Tikhonov ridge regularization.
 * **FAST (`fast.m` / `fast_modified.m`)**:
-  * Singular Value Decomposition (SVD) pseudo-inverse reconstruction ($A_0 = (X - U) V_r S_r^{-1} U_r^T - I$) with self-regulation adjustment and degree-guided truncation (Farina et al.).
+  * Singular Value Decomposition (SVD) pseudo-inverse reconstruction ($A_0 = (X - U) V_r S_r^{-1} U_r^T - I$) with self-regulation adjustment and degree-guided truncation (Farina et al.). The MATLAB ranking of the top-K entries per row includes the diagonal of $A_0 = I + A$ and so loses one regulator slot per row on data without self-regulation; the studio ranks without the identity (`rank_without_identity`, F1 0.35 to 0.45 at 50 genes, see [`docs/results/fast_diagnosis.md`](docs/results/fast_diagnosis.md)).
 * **By-Chance (`by_chance.m`)**:
   * Random null baseline maintaining expected network connectivity density and activator/inhibitor balance.
 * **ARACNE (`src/grn_sim/inference/arachne.py`)**:
@@ -376,7 +376,7 @@ Tab 2 features an interactive **"📥 Download Raw Data ▾"** dropdown supporti
 #### Dual Loading Modes into Simulation Studio (Tab 1)
 When loading a real-world benchmark into Tab 1, users can choose between two distinct computational workflows:
 1. **⚡ Direct Empirical Wrangled Mode (`btn-load-wrangled`)**:
-   Consumes the empirical $(X, U)$ matrices directly to evaluate all 18 reverse-engineering algorithms (**S2G**, **G2S**, **Voting Ensemble**, **CellBox Neural ODE**, **GENIE3**, **Network Deconvolution**, **RidgeCV**, **CPA-Lite**, **AtlasShift**, **NIR**, **FAST**, **By-Chance**, **ARACNE**, **CausalGRN**, **DMD-GRN**, **DeepRIG**, **SFINN**, **NOTEARS**) without running numerical ODE integration ($\hat{\mathbf{A}} \mathbf{X} \approx -\mathbf{U}$).
+   Consumes the empirical $(X, U)$ matrices directly to evaluate every registered reverse-engineering algorithm (**S2G**, **G2S**, **Voting Ensemble**, **NIR**, **FAST**, **CellBox Neural ODE**, **GENIE3**, **RidgeCV**, **inspre**, **LLC**, ... see [`docs/algorithms/`](docs/algorithms/README.md)) without running numerical ODE integration ($\hat{\mathbf{A}} \mathbf{X} \approx -\mathbf{U}$).
 2. **🔬 Biophysical Parameter Estimation Mode (`btn-load-biophysical`)**:
    Uses the real steady-state observations to estimate mechanistic parameters: basal production $v_i = B_i \cdot x_i^{\text{ctrl}}$, degradation $B_i = 1.0$, Hill affinities $K_{ij} = \text{median}(|X_j|) + 0.1$, and cooperativity $n=2.0$. The non-linear Hill ODE solver then integrates continuous relaxation trajectories $x_i(t)$ towards equilibrium ($\text{efnorm} \le 10^{-4}$).
 
@@ -532,7 +532,7 @@ Tested in [`tests/test_atlasshift_and_perturbseq.py`](tests/test_atlasshift_and_
 
 ##### Benchmark Results: Multi-Context Scale-Free Network ($N=16$, $k_{\text{av}}=1.8$, 3 Source Atlases, 15% target rewiring, seed 2026)
 
-Reproduce with `run_vcc_comparative_benchmark(num_genes=16, k_av=1.8, seed=2026)` (the web tab runs all 24 algorithms; the rows below are the original comparison set).
+Reproduce with `run_vcc_comparative_benchmark(num_genes=16, k_av=1.8, seed=2026)` (the web tab runs every registered algorithm; the rows below are the original comparison set).
 
 ###### 1. Causal Interaction Topology Recovery
 Evaluates how well each algorithm recovers the physical, directed, signed regulatory graph edges ($\mathbf{A}_{ij} \in \{+1, -1\}$) of the rewired target network. Every algorithm is fit on the complete target experiment set:
@@ -667,7 +667,7 @@ metrics = evaluate_inference(experiment.true_matrix, result.adjacency_pred)
 print(f"{result.total_predicted_edges} edges predicted: coverage {metrics.coverage_pct:.0f}%, "
       f"FDR {metrics.fp_per_inferred_pct:.0f}%, F1 {metrics.f1_score:.2f}")     # 30 edges predicted: coverage 78%, FDR 70%, F1 0.37
 ```
-The other 17 algorithms (`NIRAlgorithm`, `FastSVD`, `VotingEnsemble`, `CellBoxNeuralODE`, `GENIE3Algorithm`, ...) are in
+The other algorithms (`NIRAlgorithm`, `FastSVD`, `VotingEnsemble`, `CellBoxNeuralODE`, `GENIE3Algorithm`, ...) are in
 `grn_sim.inference` and share the same `fit(X, U)` interface.
 
 ### Optional components
@@ -757,7 +757,7 @@ gene-network-sim-inference/
 │   ├── paths.py              # bundled data vs. user data, archive location (GRN_SIM_HOME, RGN_DB_PATH)
 │   ├── core/                 # GeneNetwork and topology generators (random, scale-free, hierarchical)
 │   ├── simulator/            # Hill kinetics, ODE solver, perturbation experiments, Perturb-seq .h5ad generator
-│   ├── inference/            # 24 algorithms: S2G, G2S, NIR, FAST, Vote, CellBox, GENIE3, NOTEARS, AtlasShift, inspre, ...
+│   ├── inference/            # 25 algorithms: S2G, G2S, NIR, FAST, Vote, CellBox, GENIE3, NOTEARS, AtlasShift, inspre, LLC, ...
 │   ├── evaluation/           # confusion matrices, coverage / FDR / power, signed PPV (thesis Table 4.1)
 │   ├── benchmarks/           # SOS replication, dataset registry + provenance, VCC benchmark, held-out prediction, sweeps
 │   ├── visualization/        # DOT / SVG / JSON export and the built-in layered layout

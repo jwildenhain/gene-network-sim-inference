@@ -335,11 +335,11 @@ UI Mapping:
 ### 5.1 Systematic Parameter Sweep Multi-Axis Benchmark (Tab 5: Overall Statistics)
 Systematic parameter sweeps across 4 continuous and structural axes evaluate algorithm scalability and limits:
 1. **Network Size Axis ($N \in [6, 16]$)**: Power (Recall) and False Discovery Rate (FDR) scaling under identical edge density $k_{\text{av}} = 2.0$.
-2. **Network Topology Axis**: Random Erdős-Rényi, Scale-Free / Power-Law (Barabási-Albert), and Hierarchical Modular (Ravasz-Barabási) comparison across all 12 algorithms.
+2. **Network Topology Axis**: Random Erdős-Rényi, Scale-Free / Power-Law (Barabási-Albert), and Hierarchical Modular (Ravasz-Barabási) comparison across every registered algorithm.
 3. **Connectivity Axis ($k_{\text{av}} \in [1.0, 3.5]$)**: Evaluates high regulator density and combinatorial regression challenges.
 4. **Measurement Noise Axis ($\sigma_m \in [0.0, 0.20]$)**: Assesses noise degradation from pristine in silico conditions to noisy microarray/scRNA-seq.
 
-#### Leaderboard Results Across All 12 Algorithms (720 Algorithmic Evaluations across 60 Networks):
+#### Leaderboard Results Across the Original 12 Algorithms (720 Algorithmic Evaluations across 60 Networks):
 | Rank | Algorithm | Method Type | Mean $F_1$ | Power (%) | Specificity (%) | FDR (%) | Total Errors | Benchmark Standing |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---|
 | **#1** | **AtlasShift (Empirical)** | Cross-Atlas Latent Transfer | **0.594** | **67.1%** | 85.7% | **41.4%** | 19.1 | `#1 Overall Winner` |
@@ -365,5 +365,5 @@ Systematic parameter sweeps across 4 continuous and structural axes evaluate alg
 ### 5.2 Curated Best-15 Archive View (Tab 3: Previous Simulations)
 - **Top 15 Restriction**: Restricts archive views strictly to the top 15 highest-performing runs within each set (Responsive, Flat Levels, Oscillating, Random Topo, Scale-Free Topo, Hierarchical Topo, and Overall Best), sorted by $F_1$ re-engineering accuracy and lowest total errors.
 - **Dynamic Rank Indicators**: Shows `#1 in Set` through `#15 in Set` with dedicated rank badges and explicit $F_1$ score column.
-- **Detailed Inspector Algorithm View**: Supports inspecting re-engineering performance across **all 24 algorithms** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
+- **Detailed Inspector Algorithm View**: Supports inspecting re-engineering performance across **every registered algorithm** dynamically via `#hist-detail-alg`, updating confusion matrices and Graphviz 9-state differential SVG networks on the fly.
 - **Curated Benchmark Corpus**: Default "All" view displays 45 curated benchmark runs (15 responsive + 15 flat + 15 oscillating) out of 196 persisted runs in SQLite `rgn_db`.

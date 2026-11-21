@@ -1235,7 +1235,7 @@
               <span class="badge" id="empirical-banner-mode" style="background:var(--accent-blue);color:#fff;font-size:10.5px;">⚡ Direct Empirical Wrangled Mode</span>
             </div>
             <p id="empirical-banner-desc" style="margin:4px 0 0 0;font-size:12px;color:var(--text-muted);line-height:1.45;">
-              Authentic biological perturbation measurements loaded directly into reverse-engineering algorithms. <b>Numerical ODE time-course simulation is bypassed</b>; all 12 algorithms reconstruct causal interactions ($\hat{A} X \approx -U$) directly from measured observations. Simulation wizard configuration is locked to empirical parameters.
+              Authentic biological perturbation measurements loaded directly into reverse-engineering algorithms. <b>Numerical ODE time-course simulation is bypassed</b>; every selected algorithm reconstructs causal interactions ($\hat{A} X \approx -U$) directly from measured observations. Simulation wizard configuration is locked to empirical parameters.
             </p>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -1406,9 +1406,9 @@
           <!-- Step 5: Inference Algorithms -->
           <div class="form-group step-section" id="step-section-5" style="border-radius:8px;padding:10px 12px;margin-top:14px;background:var(--bg-card);border:1px solid var(--border);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <label class="form-label" style="margin:0;font-weight:700;">Step 5: Reverse-Engineering (<span class="alg-total">19</span> Algorithms)</label>
+              <label class="form-label" style="margin:0;font-weight:700;">Step 5: Reverse-Engineering (<span class="alg-total">25</span> Algorithms)</label>
               <div style="display:flex;gap:6px;align-items:center;">
-                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(true)" title="Select all 18 available reverse-engineering algorithms">All (<span class="alg-total">19</span>)</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(true)" title="Select all 25 available reverse-engineering algorithms">All (<span class="alg-total">25</span>)</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setAllAlgorithms(false)" title="Clear all selections">Clear</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:2px 8px;cursor:pointer;" onclick="setThesisCoreAlgorithms()" title="Select the 6 core 2004/2006 thesis algorithms (S2G, G2S, Vote, NIR, FAST, By-Chance)">Thesis Core (6)</button>
                 <span class="badge badge-sm" style="font-size:10px;">Step 5</span>
@@ -1738,7 +1738,7 @@
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <!-- Dual Loading Action: Wrangled Direct vs. Biophysical Parameter Estimation -->
             <div class="btn-group" role="group" style="display:inline-flex;">
-              <button class="btn btn-primary btn-sm" id="btn-load-wrangled" onclick="loadBenchmarkIntoStudio('wrangled_direct')" title="Run 12 algorithms directly on authentic wrangled experimental measurements without ODE simulation">
+              <button class="btn btn-primary btn-sm" id="btn-load-wrangled" onclick="loadBenchmarkIntoStudio('wrangled_direct')" title="Run the selected algorithms directly on authentic wrangled experimental measurements without ODE simulation">
                 ⚡ Load Wrangled (Direct Inference)
               </button>
               <button class="btn btn-outline btn-sm" id="btn-load-biophysical" onclick="loadBenchmarkIntoStudio('biophysical_fit')" title="Estimate ODE biophysical parameters (v, B, Ka, n) from real data and simulate dynamic relaxation trajectories">
@@ -2084,7 +2084,7 @@
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Algorithmic Evaluations</div>
             <div style="font-size:24px;font-weight:700;color:#10b981;margin-top:4px;" id="kpi-overall-alg-evals">720</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">18 comparative re-engineering methods</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;"><span class="alg-total">25</span> comparative re-engineering methods</div>
           </div>
           <div class="kpi-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Top Overall Performer</div>
@@ -2108,7 +2108,7 @@
           <div class="panel-header">
             <div>
               <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:8px;">
-                🏆 Systematic Benchmark Algorithm Leaderboard (<span class="alg-total">19</span> Algorithms Evaluated)
+                🏆 Systematic Benchmark Algorithm Leaderboard (<span class="alg-total">25</span> Algorithms Evaluated)
                 <span class="badge badge-emerald">Complete Cross-Architecture Evaluation</span>
               </div>
               <div style="font-size:11.5px;color:var(--text-muted);">
@@ -2150,10 +2150,10 @@
                 <span class="badge badge-emerald">Complete Cross-Topology Sweep</span>
               </div>
               <div style="font-size:11.5px;color:var(--text-muted);">
-                Systematic benchmark evaluated across Random Erdős-Rényi, Scale-Free Barabási-Albert, and Hierarchical Modular Ravasz-Barabási topologies across all 18 algorithms.
+                Systematic benchmark evaluated across Random Erdős-Rényi, Scale-Free Barabási-Albert, and Hierarchical Modular Ravasz-Barabási topologies across all <span class="alg-total">25</span> algorithms.
               </div>
             </div>
-            <span class="badge" id="badge-overall-arch-count">3 Architectures &bull; <span class="alg-total">19</span> Algorithms</span>
+            <span class="badge" id="badge-overall-arch-count">3 Architectures &bull; <span class="alg-total">25</span> Algorithms</span>
           </div>
           <div id="overall-arch-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));gap:12px;padding:4px 0;">
             <!-- Populated dynamically by renderOverallStats() -->
@@ -8663,7 +8663,7 @@
 
     // How many algorithms the page offers (the checkboxes follow the server's registry)
     function algorithmCount() {
-      return new Set([...document.querySelectorAll('.alg-cb')].map(c => c.value)).size || 19;
+      return new Set([...document.querySelectorAll('.alg-cb')].map(c => c.value)).size || 25;
     }
 
     // ============================================================================

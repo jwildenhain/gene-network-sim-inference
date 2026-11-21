@@ -23,7 +23,7 @@ import numpy as np
 from scipy import stats
 
 from grn_sim.inference._parallel import default_n_jobs, map_indices, progress_slice
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, require_square_screen
 from grn_sim.inference._cache import cached_seconds
 from grn_sim.inference.g2s import GeneralToSpecific
 from grn_sim.inference.nir import NIRAlgorithm
@@ -138,6 +138,8 @@ class ScoreVote(BaseInferenceAlgorithm):
         return z.sum(axis=0) / denom, rho
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
+        if getattr(self.s2g, "matlab_mode", True) or getattr(self.g2s, "matlab_mode", True):
+            require_square_screen("score_vote", X, U)
         start = time.time()
         parts = [self.s2g, self.g2s] + ([self.nir] if self.nir is not None else [])
         results = []

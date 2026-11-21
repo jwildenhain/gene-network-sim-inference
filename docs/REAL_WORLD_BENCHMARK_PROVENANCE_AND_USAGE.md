@@ -8,7 +8,7 @@ The system now features:
 1. **Full Scientific Provenance & Dataset Review**: Detailed biological and assay descriptions for the **SOS**, **DREAM4**, **Norman**, and **Replogle** perturbation studies.
 2. **Raw Dataset Download System**: One-click download of authentic expression matrices ($X$), perturbation matrices ($U$), ground truth adjacencies ($A$), and full `.zip` bundles containing complete metadata and citation provenance.
 3. **Dual Loading Distinction into Tab 1**:
-   - **⚡ Direct Empirical Wrangled Mode**: Evaluates all 12 reverse-engineering algorithms directly on authentic experimental measurements without ODE simulation.
+   - **⚡ Direct Empirical Wrangled Mode**: Evaluates every registered reverse-engineering algorithm directly on authentic experimental measurements without ODE simulation.
    - **🔬 Biophysical Parameter Estimation Mode**: Uses real steady-state observations to estimate basal production rates ($v_i$), degradation constants ($B_i$), Hill dissociation affinities ($K_A, K_I$), and cooperativity ($n=2$), simulating continuous non-linear trajectories with numerical ODE integration.
 
 ---
@@ -35,7 +35,7 @@ flowchart TD
     DRM --> RAW
     REP --> RAW
 
-    RAW --> MODE1["⚡ Mode A: Direct Empirical Inference<br/>(12 Algorithms Fit Directly on Measurements)"]
+    RAW --> MODE1["⚡ Mode A: Direct Empirical Inference<br/>(Every Selected Algorithm Fits Directly on Measurements)"]
     RAW --> MODE2["🔬 Mode B: Biophysical Parameter Estimation<br/>(v_i, B_i, K_A, n=2 -> Non-Linear Hill ODEs)"]
 ```
 
@@ -160,7 +160,7 @@ on Real Data        & Forward Predictions
 ### Mode A: ⚡ Direct Empirical Wrangled Mode (`loading_mode="wrangled_direct"`)
 - **How It Works**: Bypasses ODE numerical simulation. The raw, wrangled experimental expression matrix $X$ and perturbation matrix $U$ are loaded directly into Tab 1 as observational data.
 - **Algorithm Consumption**:
-  All 12 reverse-engineering algorithms (**S2G**, **G2S**, **Voting Ensemble**, **CellBox Neural ODE**, **GENIE3**, **Network Deconvolution**, **RidgeCV**, **CPA-Lite**, **AtlasShift**, **NIR**, **FAST**, **By-Chance**) ingest $(X, U)$ directly to reconstruct causal Jacobians:
+  Every registered reverse-engineering algorithm (for example **S2G**, **G2S**, **Voting Ensemble**, **CellBox Neural ODE**, **GENIE3**, **Network Deconvolution**, **RidgeCV**, **CPA-Lite**, **AtlasShift**, **NIR**, **FAST**, **By-Chance**) ingest $(X, U)$ directly to reconstruct causal Jacobians:
   $$\hat{\mathbf{A}} \mathbf{X} \approx -\mathbf{U}$$
 - **Tab 1 UX & Visual Distinctions**:
   1. **Real Experimental Data Verification Banner**: A prominent emerald confirmation card at the top of Tab 1 displays the verified biological dataset source, organism, technology, and confirms that numerical ODE simulation is bypassed.

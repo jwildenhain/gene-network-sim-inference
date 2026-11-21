@@ -8,7 +8,7 @@ import time
 from typing import Optional
 import numpy as np
 
-from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult
+from grn_sim.inference.base import BaseInferenceAlgorithm, InferenceResult, require_square_screen
 
 
 class NetworkDeconvolution(BaseInferenceAlgorithm):
@@ -30,6 +30,7 @@ class NetworkDeconvolution(BaseInferenceAlgorithm):
         self.k_interactions = k_interactions
 
     def fit(self, X: np.ndarray, U: np.ndarray, **kwargs) -> InferenceResult:
+        require_square_screen("netdeconv", X, U)
         start_time = time.time()
         X_mat = np.real(X).astype(float)
         U_mat = np.real(U).astype(float)
