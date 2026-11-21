@@ -6,6 +6,8 @@ versioning once it leaves 0.x.
 
 ## [Unreleased]
 
+- **Run-time table** for every algorithm by network size (`docs/results/algorithm_runtimes.md`, `scripts/render_runtimes.py`, rendered from the stored archive and audit results and covered by a test).
+
 ## [1.0.5] - 2026-11-21
 
 Review of all algorithms; 25 algorithms now.

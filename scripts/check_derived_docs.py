@@ -17,6 +17,7 @@ SCRIPTS = ROOT / "scripts"
 CHECKS = (
     ("render_top5_results.py", "--check"),
     ("render_audit_page.py", "--check"),
+    ("render_runtimes.py", "--check"),
     ("render_archive_leaderboard.py", "render", "--check"),
     ("render_scale_benchmark.py", "render", "--check"),
     ("generate_algorithm_docs.py", "--check"),

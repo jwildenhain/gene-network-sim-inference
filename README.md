@@ -293,6 +293,9 @@ An exhaustive audit of the complete platform was conducted across all 5 user int
 
 ### 2. Network Inference & Reverse Engineering Algorithms (25 registered algorithms)
 
+> **How long does it take?** A table of every algorithm's run time from 16 to 1000 genes, with growth and memory, is in
+> [`docs/results/algorithm_runtimes.md`](docs/results/algorithm_runtimes.md).
+>
 > **Catalogue:** one short page per algorithm (idea, input/output orientation, partial-screen support, what was measured here) is in
 > [`docs/algorithms/`](docs/algorithms/README.md). Since the first version it has gained **inspre** (sparse inversion of the
 > response matrix), **LLC** (mean-shift equations, 1.0.5), mean-difference / Pearson / GRNBoost-lite / gene-level baselines, and the
